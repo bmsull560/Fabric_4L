@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.dev/contracts/jsonschema/layer4-workflow-replay-event-envelope-v1.schema.json",
+  "title": "Layer4WorkflowReplayEventEnvelopeV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "tenant_id",
+    "actor",
+    "timestamp",
+    "correlation_id",
+    "schema_version",
+    "domain",
+    "event_type",
+    "payload_pointer",
+    "payload_checksum",
+    "payload_redacted"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "minLength": 1 },
+    "tenant_id": { "type": "string", "minLength": 1 },
+    "actor": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string", "minLength": 1 },
+    "schema_version": { "type": "string", "pattern": "^1\\.[0-9]+$" },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "layer4.workflow_state",
+        "layer4.business_object",
+        "layer4.integration_callback",
+        "layer5.truth_object"
+      ]
+    },
+    "event_type": { "type": "string", "minLength": 1 },
+    "payload_pointer": { "type": "string", "minLength": 1 },
+    "payload_checksum": { "type": "string", "minLength": 1 },
+    "payload_redacted": { "type": "object" }
+  }
+}

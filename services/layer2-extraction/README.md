@@ -235,3 +235,8 @@ Per the Value Fabric specification:
 - **Compatibility/service import surface (consume here):** `services/layer2-extraction/src/layer2_extraction/`
 
 Files in `services/layer2-extraction/src/layer2_extraction/` that overlap canonical modules are compatibility shims that re-export `value_fabric.layer2.*`. Keep extraction/business logic in `value_fabric/layer2/`; keep service-local code limited to wrapper/bootstrap responsibilities.
+
+
+## Migration reproducibility reference
+
+- `docs/reference/migration-reproducibility-invariants.md` (mandatory migration invariants and incident-state reconstruction)

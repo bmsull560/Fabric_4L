@@ -20,8 +20,8 @@ on:
           - dev
           - staging
           - production
-      image_tag:
-        description: 'Image tag to promote (e.g., sha-abc123)'
+      image_ref:
+        description: 'Image digest or immutable tag to promote (e.g., sha-abc123)'
         required: true
         type: string
 
@@ -30,10 +30,11 @@ permissions:
   pull-requests: write
   id-token: write  # For OIDC with ArgoCD
   actions: read
+  packages: read
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_TAG: ${{ github.event.inputs.image_tag || github.sha }}
+  IMAGE_REF: ${{ github.event.inputs.image_ref || format('sha-{0}', github.sha) }}
   LAYERS: "layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend"
 
 jobs:
@@ -45,30 +46,98 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
     outputs:
-      image_tag: ${{ steps.extract-tag.outputs.image_tag }}
+<<<<<<< ours
+<<<<<<< ours
+      image_ref: ${{ steps.extract-tag.outputs.image_ref }}
+=======
+      image_tag: ${{ steps.metadata.outputs.image_tag }}
+>>>>>>> theirs
+=======
+      image_tag: ${{ steps.metadata.outputs.image_tag }}
+>>>>>>> theirs
       can_promote: ${{ steps.check-promotion.outputs.can_promote }}
     steps:
-      - name: Extract image tag from workflow run
-        id: extract-tag
+      - name: Download build metadata artifacts
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: build-metadata-*
+          path: artifacts/build-metadata
+          merge-multiple: true
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve promotion metadata
+        id: metadata
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+<<<<<<< ours
+<<<<<<< ours
+            echo "image_ref=${{ github.event.inputs.image_ref }}" >> $GITHUB_OUTPUT
             echo "Promoting manually to ${{ github.event.inputs.environment }}"
           else
             # Extract from triggering workflow
-            echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "Auto-promoting build ${{ github.event.workflow_run.head_sha }}"
+            echo "image_ref=sha-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+            echo "Auto-promoting build sha-${{ github.event.workflow_run.head_sha }}"
           fi
 
-      - name: Verify images exist in registry
+      - name: Validate immutable image reference
         run: |
+          set -euo pipefail
+          ref="${{ steps.extract-tag.outputs.image_ref }}"
+          if [[ "$ref" == "latest" ]] || [[ "$ref" =~ ^(main|master|develop|dev|staging|production|stable|edge|nightly)$ ]]; then
+            echo "Mutable image reference is forbidden: $ref"
+            exit 1
+          fi
+          if [[ ! "$ref" =~ ^sha-[0-9a-f]{40}$ ]] && [[ ! "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] && [[ ! "$ref" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Image reference must be sha-<40>, semver release tag, or sha256:<64>: $ref"
+            exit 1
+=======
+            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+            exit 0
+>>>>>>> theirs
+=======
+            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+            exit 0
+>>>>>>> theirs
+          fi
+          test -d artifacts/build-metadata
+          python3 scripts/ci/validate_promotion_artifact_contract.py \
+            --build-workflow .github/workflows/build-deploy.yml \
+            --promotion-workflow .github/workflows/environment-promotion.yml \
+            --metadata-dir artifacts/build-metadata
+          first_file=$(find artifacts/build-metadata -name '*.json' | sort | head -n1)
+          tag=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["published_tag"])' "$first_file")
+          echo "image_tag=${tag}" >> $GITHUB_OUTPUT
+
+      - name: Verify images exist in registry by digest
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+<<<<<<< ours
+<<<<<<< ours
           for layer in $LAYERS; do
-            image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:${{ steps.extract-tag.outputs.image_tag }}"
+            ref="${{ steps.extract-tag.outputs.image_ref }}"
+            if [[ "$ref" == sha256:* ]]; then
+              image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}@${ref}"
+            else
+              image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:${ref}"
+            fi
+=======
+=======
+>>>>>>> theirs
+          for metadata_file in artifacts/build-metadata/*.json; do
+            layer=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["layer"])' "$metadata_file")
+            digest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["image_digest"])' "$metadata_file")
+            image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}@${digest}"
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
             if ! docker manifest inspect "$image" > /dev/null 2>&1; then
-              echo "❌ Image not found: $image"
+              echo "❌ Image digest not found: $image"
               exit 1
             fi
-            echo "✅ Image verified: $image"
+            echo "✅ Image digest verified: $image"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -109,7 +178,7 @@ jobs:
             kustomization_file="k8s/envs/dev/${layer}-kustomization.yaml"
             if [ -f "$kustomization_file" ]; then
               if grep -q "newTag:" "$kustomization_file"; then
-                sed -i "s/newTag: .*/newTag: ${{ needs.validate-build.outputs.image_tag }}/" "$kustomization_file"
+                sed -i "s/newTag: .*/newTag: ${{ needs.validate-build.outputs.image_ref }}/" "$kustomization_file"
                 echo "✅ Updated $kustomization_file"
               else
                 echo "⚠️ No newTag found in $kustomization_file"
@@ -125,7 +194,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add k8s/envs/dev/
-          git commit -m "chore(dev): deploy ${{ needs.validate-build.outputs.image_tag }} to dev [skip ci]"
+          git commit -m "chore(dev): deploy ${{ needs.validate-build.outputs.image_ref }} to dev [skip ci]"
           git push origin main
 
       - name: Trigger ArgoCD sync
@@ -183,7 +252,7 @@ jobs:
 
       - name: Create staging promotion branch
         run: |
-          branch_name="promote/staging-${{ needs.validate-build.outputs.image_tag }}"
+          branch_name="promote/staging-${{ needs.validate-build.outputs.image_ref }}"
           git checkout -b "$branch_name"
           
           # Update Staging overlay with new image digests
@@ -193,7 +262,7 @@ jobs:
             # Use kustomize edit to update image digests for all layers
             for layer in $LAYERS; do
               image="ghcr.io/${{ github.repository_owner }}/fabric_4l/${layer }"
-              digest="${{ needs.validate-build.outputs.image_tag }}"
+              digest="${{ needs.validate-build.outputs.image_ref }}"
               # Note: CI should set actual digests here
               echo "📦 Layer $layer would be updated to $digest"
             done
@@ -204,7 +273,7 @@ jobs:
           fi
           
           git add k8s/envs/staging/
-          git commit -m "chore(staging): promote ${{ needs.validate-build.outputs.image_tag }} to staging"
+          git commit -m "chore(staging): promote ${{ needs.validate-build.outputs.image_ref }} to staging"
           git push origin "$branch_name"
           echo "branch_name=$branch_name" >> $GITHUB_ENV
 
@@ -217,7 +286,7 @@ jobs:
               '',
               '**Source:** Dev environment (verified healthy)',
               '**Target:** Staging',
-              `**Image Tag:** \`${process.env.IMAGE_TAG}\``,
+              `**Image Tag:** \`${process.env.IMAGE_REF}\``,
               '',
               '### Affected Layers',
               ...process.env.LAYERS.split(' ').map((layer) => `- ${layer}`),
@@ -238,7 +307,7 @@ jobs:
             const { data: pr } = await github.rest.pulls.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🚀 Promote ${process.env.IMAGE_TAG.substring(0, 7)} to Staging`,
+              title: `🚀 Promote ${process.env.IMAGE_REF.substring(0, 7)} to Staging`,
               head: process.env.branch_name,
               base: 'main',
               body,
@@ -310,7 +379,7 @@ jobs:
         with:
           script: |
             // Only create prod PR if staging tests pass
-            const branch_name = `promote/prod-${process.env.IMAGE_TAG}`;
+            const branch_name = `promote/prod-${process.env.IMAGE_REF}`;
             
             // Create branch with prod overlay updates
             // Similar to staging PR creation
@@ -383,7 +452,7 @@ jobs:
                   "fields": [
                     {
                       "type": "mrkdwn",
-                      "text": "*Version:*\n`${{ env.IMAGE_TAG }}`"
+                      "text": "*Version:*\n`${{ env.IMAGE_REF }}`"
                     },
                     {
                       "type": "mrkdwn",
@@ -423,7 +492,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: '🚨 EMERGENCY ROLLBACK',
-              head: 'rollback/${process.env.IMAGE_TAG}',
+              head: 'rollback/${process.env.IMAGE_REF}',
               base: 'main',
               body: 'Automatic rollback due to deployment failure'
             });

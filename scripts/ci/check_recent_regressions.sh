@@ -37,7 +37,7 @@ fi
 if printf '%s\n' "$changed_files" | rg -q '^apps/web/'; then
   run_web_checks=true
 fi
-if printf '%s\n' "$changed_files" | rg -q '(^scripts/ci/|\.py$)'; then
+if printf '%s\n' "$changed_files" | rg -q '(^scripts/ci/|^\.github/workflows/|\.py$)'; then
   run_python_checks=true
 fi
 
@@ -64,6 +64,7 @@ fi
 if [ "$run_python_checks" = true ]; then
   run_step "Default scope contract" node scripts/ci/check_default_scope.mjs
   run_step "Workflow reference consistency" python3 scripts/ci/check_workflow_references.py --workflow-glob '*.yml'
+  run_step "Build/promotion artifact contract" python3 scripts/ci/validate_promotion_artifact_contract.py --build-workflow .github/workflows/build-deploy.yml --promotion-workflow .github/workflows/environment-promotion.yml
 fi
 
 echo

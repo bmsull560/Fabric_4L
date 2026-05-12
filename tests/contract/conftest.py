@@ -98,6 +98,7 @@ def _get_env_url(env_var: str, default: str) -> str:
     return url.rstrip("/")
 
 <<<<<<< ours
+<<<<<<< ours
 @pytest.fixture(autouse=True)
 def check_services_availability(request: pytest.FixtureRequest):
     """Gate only live-service contract tests when infrastructure is unavailable."""
@@ -106,6 +107,8 @@ def check_services_availability(request: pytest.FixtureRequest):
     if os.getenv("CONTRACT_TEST_MODE") == "mock":
         return
 =======
+=======
+>>>>>>> theirs
 
 def _is_truthy(value: str | None) -> bool:
     """Return True when an environment flag is set to a truthy value."""
@@ -141,6 +144,9 @@ def _evaluate_services_availability(env: Mapping[str, str] | None = None) -> tup
     source = env if env is not None else os.environ
     if source.get("CONTRACT_TEST_MODE", "").lower() == "mock":
         return True, [], _is_contract_test_strict_mode(source)
+<<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 
     urls_to_check = [

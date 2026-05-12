@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:22-alpine AS builder
+FROM ghcr.io/value-fabric/base-images/node:22-alpine@sha256:3a1f0f45b9f8d2f1470d82895e0f6db2e5f1d9705b7fce6b4f8ee1b9a6f3c4d2 AS builder
 WORKDIR /app
 
 RUN corepack enable
@@ -10,7 +10,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM node:22-alpine AS runtime
+FROM ghcr.io/value-fabric/base-images/node:22-alpine@sha256:3a1f0f45b9f8d2f1470d82895e0f6db2e5f1d9705b7fce6b4f8ee1b9a6f3c4d2 AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production

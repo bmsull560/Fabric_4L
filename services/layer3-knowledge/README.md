@@ -256,3 +256,8 @@ uv export --locked --no-dev --format requirements-txt -o requirements.lock
 ```
 
 - CI and Docker builds must consume `uv.lock` deterministically (`uv sync --locked` or equivalent).
+
+
+## Migration reproducibility reference
+
+- `docs/reference/migration-reproducibility-invariants.md` (mandatory migration invariants and incident-state reconstruction)

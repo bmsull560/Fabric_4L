@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 =======
@@ -22,6 +23,10 @@ from value_fabric.shared.error_handling.middleware import get_request_id
 >>>>>>> theirs
 =======
 from value_fabric.shared.error_handling.middleware import get_request_id
+>>>>>>> theirs
+=======
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_authenticated
 >>>>>>> theirs
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
@@ -393,7 +398,11 @@ async def resume_from_checkpoint(
     request: ResumeFromCheckpointRequest,
     executor: OrchestrationController = Depends(get_executor),
 <<<<<<< ours
+<<<<<<< ours
     _ctx: RequestContext = Depends(require_authenticated),
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> theirs
 =======
     context: RequestContext = Depends(require_authenticated),
 >>>>>>> theirs

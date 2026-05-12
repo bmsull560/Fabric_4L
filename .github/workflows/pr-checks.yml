@@ -138,6 +138,9 @@ jobs:
         run: |
           make check-workflow-matrix
 
+      - name: Enforce hermetic build input policy
+        run: python scripts/ci/check_hermetic_build_inputs.py
+
 
       - name: Generate layer quality scorecard
         run: |

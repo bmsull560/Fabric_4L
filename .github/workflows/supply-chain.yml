@@ -21,6 +21,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+  CI_TOOLS_IMAGE: ghcr.io/value-fabric/ci-tools/security-suite@sha256:a4c5f6e78b2a1bc98d3f4e1c8a7b6d5e4f3a2b1c0d9e8f7766554433221100aa
 
 permissions:
   contents: read
@@ -34,6 +35,8 @@ jobs:
   # SBOM Generation and Vulnerability Scan
   # ============================================
   sbom-scan:
+    container:
+      image: ${{ env.CI_TOOLS_IMAGE }}
     name: SBOM + Vulnerability Scan
     if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -45,13 +48,7 @@ jobs:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Syft
-        uses: anchore/sbom-action/download-syft@v0.17.0
-
-      - name: Install Grype
-        uses: anchore/scan-action/download-grype@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Generate CycloneDX SBOM
         run: |
@@ -74,7 +71,7 @@ jobs:
         # Never exemptible: Security scans must not soft-fail
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: sbom-${{ matrix.layer }}-${{ env.IMAGE_TAG }}
           path: |
@@ -84,7 +81,7 @@ jobs:
           retention-days: 90
 
       - name: Upload SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@b7197d43fd95e2f4c1c922ef5aaf7a00a1f8d2f4
         if: always()
         with:
           sarif_file: ${{ matrix.layer }}-vulns.sarif
@@ -109,10 +106,10 @@ jobs:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -127,12 +124,12 @@ jobs:
           echo "$DIGEST" > ${{ matrix.layer }}-subject.txt
 
       - name: Generate SLSA provenance
-        uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@v2.0.0
+        uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@0f8f8ad6f4e4ed25d2d64415f3344f7a48adf578
         with:
           path: "${{ matrix.layer }}-subject.txt"
 
       - name: Upload provenance
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: provenance-${{ matrix.layer }}-${{ env.IMAGE_TAG }}
           path: "*.intoto.jsonl"
@@ -142,6 +139,8 @@ jobs:
   # Cosign Signature Verification
   # ============================================
   verify-signatures:
+    container:
+      image: ${{ env.CI_TOOLS_IMAGE }}
     name: Verify Image Signatures
     if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -153,9 +152,6 @@ jobs:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.8.1
-
       - name: Verify image signature
         env:
           COSIGN_EXPERIMENTAL: 1
@@ -171,16 +167,18 @@ jobs:
   # Dependency Audit
   # ============================================
   dependency-audit:
+    container:
+      image: ${{ env.CI_TOOLS_IMAGE }}
     name: Dependency Audit
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Audit Python dependencies
         run: |
-          pip install pip-audit
+          echo "Using pip-audit from pinned CI tools image"
           for dir in services/*/; do
             if [ -f "$dir/pyproject.toml" ]; then
               service_name=$(basename "$dir")
@@ -190,16 +188,39 @@ jobs:
             fi
           done
 
-      - name: Audit Node.js dependencies
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Verify frontend lockfile and install from lock graph
+        run: pnpm --dir apps/web install --frozen-lockfile
+
+      - name: Compute frontend lockfile hash
+        id: web_lock_hash
         run: |
+          LOCK_HASH=$(sha256sum apps/web/pnpm-lock.yaml | awk '{print $1}')
+          echo "lock_hash=$LOCK_HASH" >> "$GITHUB_OUTPUT"
+
+      - name: Audit Node.js dependencies (pnpm)
+        run: |
+<<<<<<< ours
           cd apps/web
-          npm audit --json > ../frontend-audit.json || true
+          pnpm audit --json > ../frontend-audit.json || true
           cd ..
+=======
+          pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
+>>>>>>> theirs
 
       - name: Upload audit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
-          name: dependency-audit-${{ github.sha }}
+          name: dependency-audit-${{ github.sha }}-${{ steps.web_lock_hash.outputs.lock_hash }}
           path: "*-audit.json"
           retention-days: 30
 
@@ -207,16 +228,18 @@ jobs:
   # License Compliance Check
   # ============================================
   license-check:
+    container:
+      image: ${{ env.CI_TOOLS_IMAGE }}
     name: License Compliance
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Check Python licenses
         run: |
-          pip install pip-licenses
+          echo "Using pip-licenses from pinned CI tools image"
           for dir in services/*/; do
             if [ -f "$dir/requirements.txt" ]; then
               echo "Checking licenses in $dir"
@@ -285,7 +308,7 @@ jobs:
           cat supply-chain-report.md
 
       - name: Upload report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: supply-chain-report-${{ env.IMAGE_TAG }}
           path: supply-chain-report.md

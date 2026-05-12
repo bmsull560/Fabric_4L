@@ -45,6 +45,11 @@ jobs:
             owner: "@value-fabric/sre-leads"
             escalation: "@value-fabric/qa-leads"
             command: "python -m pytest -q tests/k8s/test_production_blockers.py --maxfail=1"
+          - id: hermetic-build-inputs
+            service: build
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/sre-leads"
+            command: "python scripts/ci/check_hermetic_build_inputs.py"
           - id: correlation-log-contract
             service: shared
             owner: "@value-fabric/backend-leads"
@@ -52,10 +57,10 @@ jobs:
             command: "python -m pytest -q tests/security/test_correlation_logging_contract.py --maxfail=1 --no-mandatory-dep-check -n 0"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: '3.11'
 
@@ -109,7 +114,7 @@ jobs:
 
       - name: Upload gate evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: critical-gate-${{ matrix.gate.id }}
           path: artifacts/critical-gates/

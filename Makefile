@@ -10,7 +10,7 @@
 	gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
 	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
-	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes
+	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints
 
 
 # Strict shell settings for production safety
@@ -35,7 +35,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: check-conflict-markers check-no-nul-bytes lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
+verify: check-conflict-markers check-no-nul-bytes check-migration-entrypoints lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
 	@echo "✅  All checks passed"
 
 verify-structure: ## Run structural preflight and Python contract lint checks
@@ -68,6 +68,9 @@ check-conflict-markers: ## Fail if unresolved merge conflict markers exist in tr
 
 check-no-nul-bytes: ## Fail if tracked source/config files contain NUL bytes
 	@python3 scripts/ci/check_no_nul_bytes.py
+
+check-migration-entrypoints: ## Ensure maintained services expose migration entrypoints and revision history commands
+	@python3 scripts/ci/check_migration_entrypoints.py
 
 check-pytest-skip-governance: ## Enforce pytest skip governance from collection output (with allowlist + baseline)
 	@mkdir -p artifacts

@@ -379,3 +379,8 @@ Validation transitions are handled by `ValidationStateMachine` and routed throug
   - **Idempotent retry guidance:** callers may safely retry after conflict by re-fetching the TruthObject and re-evaluating allowed actions against current status.
 - Tenant isolation:
   - All transition reads and writes are tenant-scoped (`get_truth_object` filter + guarded update includes `tenant_id`).
+
+
+## Migration reproducibility reference
+
+- `docs/reference/migration-reproducibility-invariants.md` (mandatory migration invariants and incident-state reconstruction)

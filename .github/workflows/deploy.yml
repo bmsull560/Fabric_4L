@@ -11,8 +11,8 @@ on:
         required: true
         type: string
         default: 'staging'
-      image_tag:
-        description: 'Image tag to deploy'
+      image_ref:
+        description: 'Image digest or immutable tag to deploy'
         required: true
         type: string
       registry:
@@ -32,8 +32,8 @@ on:
           - staging
           - production
         default: 'staging'
-      image_tag:
-        description: 'Image tag to deploy'
+      image_ref:
+        description: 'Image digest or immutable tag to deploy'
         required: true
         type: string
       registry:
@@ -44,7 +44,7 @@ on:
 
 env:
   REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
-  IMAGE_TAG: ${{ inputs.image_tag }}
+  IMAGE_REF: ${{ inputs.image_ref }}
   ENVIRONMENT: ${{ inputs.environment }}
 
 jobs:
@@ -66,8 +66,22 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: 1
         run: |
+          ref="${{ env.IMAGE_REF }}"
+          if [[ "$ref" == "latest" ]] || [[ "$ref" =~ ^(main|master|develop|dev|staging|production|stable|edge|nightly)$ ]]; then
+            echo "Mutable image reference is forbidden: $ref"
+            exit 1
+          fi
+          if [[ ! "$ref" =~ ^sha-[0-9a-f]{40}$ ]] && [[ ! "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] && [[ ! "$ref" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Image reference must be sha-<40>, semver release tag, or sha256:<64>: $ref"
+            exit 1
+          fi
+
           for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
-            IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/$layer:${{ env.IMAGE_TAG }}"
+            if [[ "$ref" == sha256:* ]]; then
+              IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/$layer@${ref}"
+            else
+              IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/$layer:${ref}"
+            fi
             echo "Verifying signature for: $IMAGE"
             
             if ! cosign verify \
@@ -136,8 +150,8 @@ jobs:
           VALUES_FILE="infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml"
           
           if [ -f "$VALUES_FILE" ]; then
-            sed -i "s/tag: .*/tag: ${{ env.IMAGE_TAG }}/g" "$VALUES_FILE"
-            echo "Updated $VALUES_FILE with tag: ${{ env.IMAGE_TAG }}"
+            sed -i "s/tag: .*/tag: ${{ env.IMAGE_REF }}/g" "$VALUES_FILE"
+            echo "Updated $VALUES_FILE with tag: ${{ env.IMAGE_REF }}"
           else
             echo "Values file not found: $VALUES_FILE"
             # Create environment-specific values if not exists
@@ -161,7 +175,7 @@ jobs:
             --namespace value-fabric-${{ env.ENVIRONMENT }} \
             --values infra/helm/value-fabric/values.yaml \
             --values infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml \
-            --set global.image.tag=${{ env.IMAGE_TAG }} \
+            --set global.image.tag=${{ env.IMAGE_REF }} \
             --atomic \
             --cleanup-on-fail \
             --wait \
@@ -180,7 +194,7 @@ jobs:
           cat << 'EOF' > deployment-record.json
           {
             "environment": "${{ env.ENVIRONMENT }}",
-            "image_tag": "${{ env.IMAGE_TAG }}",
+            "image_ref": "${{ env.IMAGE_REF }}",
             "commit_sha": "${{ github.sha }}",
             "deployed_by": "${{ github.actor }}",
             "deployed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
@@ -193,7 +207,7 @@ jobs:
       - name: Upload deployment record
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-record-${{ env.ENVIRONMENT }}-${{ env.IMAGE_TAG }}
+          name: deployment-record-${{ env.ENVIRONMENT }}-${{ env.IMAGE_REF }}
           path: deployment-record.json
           retention-days: 90
 
@@ -261,7 +275,7 @@ jobs:
         run: |
           echo "Deployment failed - initiating rollback procedures"
           echo "Environment: ${{ env.ENVIRONMENT }}"
-          echo "Failed tag: ${{ env.IMAGE_TAG }}"
+          echo "Failed tag: ${{ env.IMAGE_REF }}"
           
           # Send alert to PagerDuty/Slack
           # curl -X POST ${{ secrets.PAGERDUTY_INTEGRATION_URL }} \
@@ -335,6 +349,6 @@ jobs:
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag**: ${{ env.IMAGE_REF }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status**: ${{ needs.smoke-tests.result == 'success' && '✅ Success' || (needs.deploy.result == 'failure' && '❌ Failed' || '🔄 In Progress') }}" >> $GITHUB_STEP_SUMMARY
           echo "- **URL**: https://api.${{ env.ENVIRONMENT }}.value-fabric.com" >> $GITHUB_STEP_SUMMARY

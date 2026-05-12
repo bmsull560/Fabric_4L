@@ -109,6 +109,7 @@ Key files:
 - packages/platform-contract/src/typescript/ — reference TypeScript types
 - docs/platform-contract/DEPRECATION_MAP.md — what not to use and when it becomes an error
 - docs/governance/compatibility-debt-registry.md — active compatibility wrappers/shims and removal targets
+- docs/reference/migration-reproducibility-invariants.md — mandatory migration invariants, time-travel, and incident reconstruction checklist
 
 ## Required verification steps
 

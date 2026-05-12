@@ -1,0 +1,7 @@
+{
+  "tenant_id": "tenant_alpha",
+  "workflow": "roi_pipeline",
+  "records": [
+    {"record_id": "rec_1", "owner": "person_1", "org": "org_1", "email": "email_1@example.invalid"}
+  ]
+}

@@ -167,3 +167,8 @@ Internal Value Fabric Project
 - **Compatibility/service import surface (consume here):** `services/layer1-ingestion/src/`
 
 Files in `services/layer1-ingestion/src/` that mirror canonical modules are compatibility shims that re-export `value_fabric.layer1.*`. Keep business logic in `value_fabric/layer1/` and only keep service wrapper/bootstrap wiring in this service tree.
+
+
+## Migration reproducibility reference
+
+- `docs/reference/migration-reproducibility-invariants.md` (mandatory migration invariants and incident-state reconstruction)

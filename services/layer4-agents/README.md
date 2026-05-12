@@ -173,3 +173,8 @@ All tables include `tenant_id` for multi-tenant isolation via Row-Level Security
 - Local development can use HTTP endpoints only with explicit `ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true`.
 
 Proprietary - Value Fabric Enterprise Platform
+
+
+## Migration reproducibility reference
+
+- `docs/reference/migration-reproducibility-invariants.md` (mandatory migration invariants and incident-state reconstruction)

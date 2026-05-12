@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
+FROM ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim@sha256:7b96c4cb5e0d3fa2be3d3f1ee3ab6e3a9ec8f0c443b2d0d94fcf4d972cb9e431 AS builder
 WORKDIR /app
 ENV UV_TORCH_BACKEND=cpu
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
-FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
+FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/.venv /app/.venv

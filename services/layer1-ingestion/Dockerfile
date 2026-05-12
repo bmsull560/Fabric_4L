@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for Layer 1: Data Ingestion Service
 # Stage 1: Builder - installs dependencies and Playwright browsers
-FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS builder
+FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS builder
 
 WORKDIR /app
 
@@ -37,7 +37,7 @@ RUN if [ "$INSTALL_PLAYWRIGHT_BROWSERS" = "true" ]; then \
     fi
 
 # Stage 2: Runtime - minimal image with only runtime dependencies
-FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
+FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
 
 # Install runtime dependencies (Playwright libs + curl for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \

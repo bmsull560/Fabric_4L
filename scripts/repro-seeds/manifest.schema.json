@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.dev/schemas/repro-seeds/manifest.schema.json",
+  "title": "Reproducibility Seed Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "seed_id",
+    "source_incident_ticket",
+    "affected_layers",
+    "required_migration_revision",
+    "deterministic_rng_seed",
+    "anonymization_profile",
+    "tenant_scope"
+  ],
+  "properties": {
+    "seed_id": {
+      "type": "string",
+      "pattern": "^seed-[a-z0-9-]+$"
+    },
+    "source_incident_ticket": {
+      "type": "string",
+      "minLength": 3
+    },
+    "affected_layers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["layer1", "layer2", "layer3", "layer4", "layer5", "layer6"]
+      }
+    },
+    "required_migration_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "deterministic_rng_seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "anonymization_profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenant_scope": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^tenant_[a-z0-9_]+$"
+      }
+    }
+  }
+}

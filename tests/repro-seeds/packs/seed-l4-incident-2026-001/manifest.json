@@ -1,0 +1,9 @@
+{
+  "seed_id": "seed-l4-incident-2026-001",
+  "source_incident_ticket": "INC-2026-0421",
+  "affected_layers": ["layer4", "layer5"],
+  "required_migration_revision": "layer4_20260421_add_checkpoint_index",
+  "deterministic_rng_seed": 424242,
+  "anonymization_profile": "v1-strict",
+  "tenant_scope": ["tenant_alpha"]
+}

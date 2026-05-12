@@ -10,17 +10,21 @@
 
 ## 1. Executive Verdict
 
-**Controlled-pilot launch:** 🟡 **CONDITIONAL GO** — unchanged vs. 2026-05-05 baseline. No new release blockers introduced; previously identified P0 RLS NULL-tenant vulnerability is **resolved** in `services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py:40` (NULL clause removed from tenant policy, isolated to admin-only policy at line 61).
+**Controlled-pilot launch:** � **NO-GO** — **NEW CRITICAL BLOCKER**: Unresolved Git merge conflicts detected in 9 Python files. This was not present in the 2026-05-05 baseline and represents a code hygiene regression that blocks all validation and deployment.
 
-**Broad GA:** 🔴 **NO-GO** — same GA blockers from prior assessment remain (OAuth, Celery sync queue, image digest pinning, full SLO/penetration testing). New evidence below adds three hardening items to the GA list.
+**Broad GA:** 🔴 **NO-GO** — same GA blockers from prior assessment remain (OAuth, Celery sync queue, image digest pinning, full SLO/penetration testing). New evidence below adds merge-conflict resolution to the P0 list.
 
-**Net change since 2026-05-05:**
-- ✅ RLS NULL fix landed and verified (`tests/security/test_rls_enforcement.py`: 12/12 pass).
-- ✅ Frontend stabilized: `apps/web` Vitest suite **118 files / 1,424 tests / 0 failures** (previously flaky `useAccounts` test now passes).
-- ⚠️ New: **3 architecture conformance failures** in `tests/arch/` not covered in prior reports — block `gate-arch` once reproduced in Linux CI.
-- ⚠️ New: **Tenant-scoped Redis cache test suite (14/14 failing)** due to test fixture defect (`AsyncMock` vs `int`) — not a runtime leak, but the gate it underpins is currently false-green.
-- ⚠️ New: **1 unauthenticated route outside allowlist** (`GET /workflows/{id}/state/errors`) flagged by `.github/scripts/check_route_auth_inventory.py`.
+**Net change since 2026-05-05 (RE-AUDIT FINDINGS):**
+- 🔴 **CRITICAL NEW**: **9 files with unresolved merge conflict markers** (`<<<<<<< ours`, `=======`, `>>>>>>> theirs`) — blocks parsing, testing, and deployment.
+- 🔴 **CRITICAL NEW**: RLS enforcement test regression — `test_remediation_migrations_do_not_reintroduce_null_visibility` now fails (was 12/12 passing). Suggests a migration may have reintroduced NULL tenant_id visibility pattern.
+- 🔴 **CRITICAL NEW**: Architecture test failures increased from 3 → 5. New failures detect merge markers and L3 runtime shim drift.
+- ⚠️ Route auth inventory script crashes due to syntax error in `checkpoints.py` (merge conflict).
 - ⚠️ Persistent: ~449 active deprecation/contract violations per `reports/CONTRACT_AUDIT_REPORT.md` (canonical compliance ~58%).
+<<<<<<< ours
+- ✅ Frontend remains stable: `apps/web` Vitest suite **118 files / 1,424 tests / 0 failures**.
+=======
+- 📌 Contract debt concentration is uneven: tenant-context propagation (~200) and UI-state progression (~90) account for ~65% of known violations; prioritize these two tracks first to move compliance efficiently toward the ≥85% target.
+>>>>>>> theirs
 
 ---
 
@@ -28,34 +32,39 @@
 
 | Dimension | Status | Rationale |
 |---|---|---|
-| Security & Tenant Isolation | 🟢 | RLS NULL fix landed; 51 security test files; mandatory regression gate (I-04) hardened with fail-closed required-suite manifest. |
+| Security & Tenant Isolation | � | RLS test regression: `test_remediation_migrations_do_not_reintroduce_null_visibility` failing (was passing). Merge conflicts in checkpoint routes block tenant-access validation. |
 | CI/CD Enforcement | 🟡 | 51 workflows present; `prod-readiness.yml` profiles wired. `mandatory-security-regression` not yet a required status check; only 2 `continue-on-error: true` instances (1 advisory deprecation scan, 1 kind-cluster retry — acceptable). |
 | Infrastructure / K8s | 🟡 | H-08 hardening complete on 10 deployments; **image digest pinning still open** (uses `:latest` w/ `imagePullPolicy: Always`). |
-| Testing & Quality | 🟡 | Frontend 1,424/1,424 ✅; arch suite **3 failures**; Redis cache suite **14 failures (fixture bug)**; contract layer tests skip-by-default without live services. |
+<<<<<<< ours
+| Testing & Quality | � | Frontend 1,424/1,424 ✅; arch suite **5 failures** (was 3); Redis cache suite **14 failures (fixture bug)**; merge markers in `tests/contract/conftest.py` block contract tests. |
 | Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations. |
+=======
+| Testing & Quality | 🟡 | Frontend 1,424/1,424 ✅; arch suite **3 failures**; Redis cache suite **14 failures (fixture bug)**; contract layer tests skip-by-default without live services. |
+| Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations (highest debt: tenant-context ~200, UI-state ~90, tool-boundary ~46, DB isolation ~43, middleware/auth ~42). |
+>>>>>>> theirs
 | Frontend Governance | 🟢 | Vitest fully green; design system audit clean; outstanding TODOs are backend-blocked placeholders, not regressions. |
 | Observability | 🟡 | Prom/Grafana/Alertmanager configs present; `gate-obs` advisory only; SLO monitoring is GA blocker. |
 | Documentation & Runbooks | 🟢 | RUNBOOK, launch checklist, evidence paths complete; 0 broken links per Sprint 4 scan. |
 | Packs Ecosystem | 🟢 | 4 packs (ai-technology, energy-utilities, financial-services, life-sciences) carry ontology + formulas + tests; `pack-manifest.json` present. |
 | Supply Chain | 🟡 | gitleaks, Trivy, CycloneDX SBOM, ZAP, Bandit all wired; image digests not pinned. |
+| **Code Hygiene** | 🔴 | **9 files with unresolved merge conflict markers** — blocks parsing, testing, and deployment. |
 
 ---
 
-## 3. Live Validation Evidence (this run)
+## 3. Live Validation Evidence (re-audit run)
 
 Host: Windows 11, Python 3.14.4, pnpm 10.18.1, pytest 9.0.3.
 
 | # | Command | Result | Notes |
 |---|---|---|---|
-| 1 | `python -m pytest tests/arch -q` | **3 failed / 21 passed** | See §4.1 |
-| 2 | `python -m pytest tests/security/test_rls_enforcement.py` | **12 passed / 0 failed** | RLS NULL fix verified. |
-| 3 | `python -m pytest tests/contract/test_layer3_contract.py test_layer4_contract.py test_layer5_contract.py test_tool_manifests.py` | **0 failed / 179 skipped** | Skipped without live services (expected). |
-| 4 | `python -m pytest tests/contract` (broad) | **86 failed / 227 passed / 6 skipped** + xdist crash | Failures are schemathesis path-existence assertions requiring live FastAPI app; 4 collection errors in L3 contract files. |
-| 5 | `python -m pytest tests/cache/test_redis_tenant_isolation.py` | **14 failed / 0 passed** | Fixture defect: `AsyncMock` returned where int expected — see §4.2. |
-| 6 | `pnpm --dir apps/web exec vitest run` | **1,424 passed / 0 failed (118 files)** | Includes `useAccounts.test.tsx` formerly flagged in `FRONTEND_STABILIZATION_REPORT_2026-05-06.md`. |
-| 7 | `python .github/scripts/check_route_auth_inventory.py` | exit 0, **1 route flagged outside allowlist** | `GET /workflows/{workflow_id}/state/errors` in `services/layer4-agents/src/api/routes/state_inspector.py:analyze_errors` |
+| 1 | `python -m pytest tests/arch -q` | **5 failed / 21 passed** | See §4.1 (increased from 3 failures) |
+| 2 | `python -m pytest tests/security/test_rls_enforcement.py` | **1 failed / 12 passed** | **REGRESSION**: `test_remediation_migrations_do_not_reintroduce_null_visibility` now failing (was 12/12 passing). |
+| 3 | `python -m pytest tests/cache` | **14 failed / 0 passed** | Fixture defect: `AsyncMock` returned where int expected — see §4.2. |
+| 4 | `pnpm --dir apps/web exec vitest run` | **1,424 passed / 0 failed (118 files)** | Stable — no change from prior audit. |
+| 5 | `python .github/scripts/check_route_auth_inventory.py` | **CRASH — SyntaxError** | `services/layer4-agents/src/api/routes/checkpoints.py:16` has merge conflict marker `<<<<<<< ours`. |
 
 Not run on this host (require Linux CI / live services / Docker stack):
+
 - `make gate-chaos`, `gate-smoke`, `gate-obs`, `gate-agent` — these target dirs that emit "PLACEHOLDER" if absent (`Makefile:471–510`).
 - `make gate-security` (full version invokes `bash scripts/ci/mandatory_security_regression_gate.sh` which assumes Bash + venv).
 - `pytest tests/backend_integrated` — needs Postgres/Redis/Neo4j stack.
@@ -64,19 +73,46 @@ Not run on this host (require Linux CI / live services / Docker stack):
 
 ## 4. Findings by Severity
 
-### 4.1 P0 — Release blockers for controlled pilot
+### 4.1 P0 — Release blockers for controlled pilot (RE-AUDIT FINDINGS)
 
-**P0-1. Architecture conformance suite has 3 failures.** Blocks `gate-arch` (a `blocking` gate per `.fabric/prod-gates.policy.yaml`).
+**P0-0. Unresolved Git merge conflicts in 9 Python files.** Blocks all validation, parsing, and deployment.
+
+- `services/layer4-agents/src/api/routes/checkpoints.py` — lines 16-25, 202-217, 395-399, 465-473 have conflict markers.
+- `value_fabric/layer3/api/routes/compat_aliases.py`
+- `tests/contract/conftest.py`
+- `specs/value_fabric_api_interfaces.py`
+- `specs/value_fabric_extraction_pipeline.py`
+- `specs/value_fabric_ontology_schema.py`
+- `specs/value_fabric_rdf_serialization.py`
+- `specs/value_fabric_reference_models.py`
+- `scripts/ci/check_layer3_wrapper_drift.py`
+
+Recommended fix path:
+
+1. Identify the branches involved in the merge conflict.
+2. Resolve conflicts manually or with `git mergetool`.
+3. Run `git add` for resolved files and complete the merge.
+4. Verify no remaining conflict markers with `grep -r "<<<<<<< HEAD"`.
+
+**P0-1. RLS enforcement test regression — remediation migration may have reintroduced NULL tenant_id visibility.** `tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_remediation_migrations_do_not_reintroduce_null_visibility` now fails (was 12/12 passing in original audit). Test verifies that migration `026_fix_rls_null_tenant_policy.py` does not reintroduce the unsafe `tenant_id IS NULL OR` pattern. Failure suggests the pattern may have returned in newer migrations or the test itself needs updating.
+
+Recommended fix path:
+
+1. Run test with `-vv` to see which migration file is flagged.
+2. Inspect `services/layer4-agents/migrations/versions/` for `tenant_id IS NULL OR` patterns.
+3. Remove unsafe patterns or update test baseline if pattern is intentional for admin-only policies.
+
+**P0-2. Architecture conformance suite has 5 failures (increased from 3).** Blocks `gate-arch` (a `blocking` gate per `.fabric/prod-gates.policy.yaml`).
+
 - `tests/arch/test_canonical_module_sentinels.py::test_sentinel_compatibility_modules_are_shims_only` — `services/layer3-knowledge/src/api/models.py` carries implementation logic; canonical path is `value_fabric/layer3/api/models.py`. Violates `canonical-paths.yaml` policy.
 - `tests/arch/test_tenant_architecture.py::test_layer5_truth_object_uses_tenant_id` — `services/layer5-ground-truth/src/layer5_ground_truth/models/truth_object.py:TruthObject` is missing `tenant_id` field. **Direct AGENTS.md §6 violation** (tenant-isolation invariant).
 - `tests/arch/test_no_non_runtime_imports.py::test_runtime_python_modules_do_not_import_non_runtime_roots` — `value_fabric/layer3/api/app_monolith.py:571` has a syntax error (markdown bullet bleeding into docstring boundary), which cascades into AST scan failure.
+- `tests/arch/test_layer3_runtime_shim_drift.py::test_layer3_runtime_shim_drift_script_passes` — **NEW**: L3 runtime shim drift detection failure.
+- `tests/arch/test_no_merge_markers.py::test_no_merge_conflict_markers[>>>>>>>]` — **NEW**: Detects merge conflict markers in codebase.
+- `tests/arch/test_no_merge_markers.py::test_no_merge_conflict_markers[<<<<<<<]` — **NEW**: Detects merge conflict markers in codebase.
+- `tests/arch/test_tenant_architecture.py::test_layer3_required_api_dependencies_reject_missing_and_invalid_tenant` — **NEW**: L3 tenant dependency validation failure.
 
-Recommended fix path:
-1. Move L3 model logic to canonical path; replace compatibility file with a shim that re-exports.
-2. Add `tenant_id` to L5 `TruthObject` ORM model + migration.
-3. Repair docstring in `app_monolith.py:571`.
-
-**P0-2. RLS test pyramid covers structure but Redis cache isolation gate is currently false-green.** `tests/cache/test_redis_tenant_isolation.py` — all 14 tests fail with `TypeError: '>=' not supported between instances of 'AsyncMock' and 'int'` (`packages/shared/src/value_fabric/shared/rate_limiting/tenant_rate_limiter.py:324`). Tenant cache isolation invariant is **untested in practice**. Test mocks must return `int` from `incr` instead of bare `AsyncMock`.
+**P0-3. RLS test pyramid covers structure but Redis cache isolation gate is currently false-green.** `tests/cache/test_redis_tenant_isolation.py` — all 14 tests fail with `TypeError: '>=' not supported between instances of 'AsyncMock' and 'int'` (`packages/shared/src/value_fabric/shared/rate_limiting/tenant_rate_limiter.py:324`). Tenant cache isolation invariant is **untested in practice**. Test mocks must return `int` from `incr` instead of bare `AsyncMock`.
 
 ### 4.2 P1 — Pilot-expansion blockers
 
@@ -95,6 +131,7 @@ Recommended fix path:
 ### 4.3 P2 — Broad GA blockers
 
 Carried forward from `PRODUCTION_READINESS_ASSESSMENT_2026-05-05.md` §6.3:
+
 1. OAuth authorization flow for CRM integrations.
 2. Background sync → Celery/Redis queue (currently `asyncio.create_task`).
 3. Comprehensive E2E coverage for critical flows.
@@ -121,7 +158,7 @@ Cross-reference of `.fabric/prod-gates.policy.yaml` ↔ `Makefile` ↔ `.github/
 |---|---|---|---|---|---|
 | policy | blocking | `gates-validate-policy` | `setup` | ✅ | ❓ (verify branch protection) |
 | lint | blocking | `lint-release` | (in `pr-checks.yml`) | ✅ | ✅ wired |
-| arch | blocking | `gate-arch` → `pytest tests/arch` | `arch-conformance` | ✅ **currently FAIL (3)** | ✅ wired |
+| arch | blocking | `gate-arch` → `pytest tests/arch` | `arch-conformance` | ✅ **currently FAIL (5)** | ✅ wired |
 | security | blocking | `gate-security` → mandatory regression script | `security-isolation` | bash-only | ⚠️ **NOT yet required-check** |
 | security-broad | advisory | `gate-security-broad` | (advisory) | ✅ | n/a |
 | chaos | blocking | `gate-chaos` | `dependency-chaos` | needs `tests/chaos/` | ✅ wired |
@@ -141,15 +178,19 @@ Cross-reference of `.fabric/prod-gates.policy.yaml` ↔ `Makefile` ↔ `.github/
 
 | ID | Type | Item | Source |
 |---|---|---|---|
+| D-00 | **Code hygiene** | **9 files with unresolved merge conflict markers** | Re-audit grep scan |
 | D-01 | Code/path | L3 models in compatibility path | `tests/arch/test_canonical_module_sentinels.py` |
 | D-02 | Schema | L5 `TruthObject` missing `tenant_id` | `tests/arch/test_tenant_architecture.py` |
 | D-03 | Code | Syntax error in `value_fabric/layer3/api/app_monolith.py:571` | arch suite |
 | D-04 | Auth | Unauthenticated route not allowlisted | `route-auth-inventory` script |
 | D-05 | Test infra | Schemathesis × pytest-xdist incompat | `tests/contract` run |
 | D-06 | Test infra | AsyncMock fixture leak in cache tests | `tests/cache/test_redis_tenant_isolation.py` |
-| D-07 | Contract backlog | ~449 deprecation instances | `DEPRECATIONS.md` / `CONTRACT_AUDIT_REPORT.md` |
-| D-08 | Frontend↔backend | Extraction endpoint disabled (`L2-42`) | `apps/web/src/api/protocol/extraction.ts:66` |
-| D-09 | Frontend↔backend | Entity creation not exposed by L3 | `apps/web/src/hooks/useEntities.ts:251` |
+| D-07 | **Security** | RLS remediation test regression — NULL pattern may have returned | `tests/security/test_rls_enforcement.py` |
+| D-08 | Contract backlog | ~449 deprecation instances | `DEPRECATIONS.md` / `CONTRACT_AUDIT_REPORT.md` |
+| D-09 | Frontend↔backend | Extraction endpoint disabled (`L2-42`) | `apps/web/src/api/protocol/extraction.ts:66` |
+| D-10 | Frontend↔backend | Entity creation not exposed by L3 | `apps/web/src/hooks/useEntities.ts:251` |
+| D-11 | Arch | L3 runtime shim drift detection failure | `tests/arch/test_layer3_runtime_shim_drift.py` |
+| D-12 | Arch | L3 tenant dependency validation failure | `tests/arch/test_tenant_architecture.py::test_layer3_required_api_dependencies_reject_missing_and_invalid_tenant` |
 
 ---
 
@@ -163,18 +204,25 @@ Cross-reference of `.fabric/prod-gates.policy.yaml` ↔ `Makefile` ↔ `.github/
 
 ## 8. Remediation Plan
 
-### M0 — Pre-pilot (this week, blocks controlled launch)
+### M0 — Immediate (blocks all launches - merge conflicts must be resolved first)
 
 | # | Task | Owner | Exit criteria | Validation command |
 |---|---|---|---|---|
-| M0-1 | Fix arch failure: move L3 models to canonical path; add shim | Layer 3 | `pytest tests/arch/test_canonical_module_sentinels.py` green | `python -m pytest tests/arch/test_canonical_module_sentinels.py` |
-| M0-2 | Add `tenant_id` to L5 `TruthObject` (model + Alembic migration + repo updates) | Layer 5 | `pytest tests/arch/test_tenant_architecture.py::test_layer5_truth_object_uses_tenant_id` green; existing L5 tests still pass | `python -m pytest tests/arch services/layer5-ground-truth/tests` |
-| M0-3 | Repair `value_fabric/layer3/api/app_monolith.py:571` docstring/syntax | Layer 3 | AST scan passes | `python -m pytest tests/arch/test_no_non_runtime_imports.py` |
-| M0-4 | Fix Redis cache tenant-isolation test fixtures (use real fakeredis or proper `AsyncMock(return_value=...)`) | Platform | 14/14 pass | `python -m pytest tests/cache/test_redis_tenant_isolation.py` |
-| M0-5 | Add auth dep or allowlist entry for `GET /workflows/{id}/state/errors` | Layer 4 | Inventory script reports 0 unallowlisted | `python .github/scripts/check_route_auth_inventory.py` |
-| M0-6 | Configure `mandatory-security-regression` as required status check on `main` and `release/*` | Release Mgr | Branch protection screenshot in `fabric_audit/` | n/a (GitHub UI) |
+| M0-0 | **Resolve Git merge conflicts in 9 Python files** | All | `grep -r "<<<<<<< HEAD"` returns 0 matches | `grep -r "<<<<<<< HEAD" .` |
+| M0-1 | Investigate and fix RLS remediation test regression | Layer 4 | `test_remediation_migrations_do_not_reintroduce_null_visibility` passes | `python -m pytest tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_remediation_migrations_do_not_reintroduce_null_visibility -vv` |
 
-**Exit criteria for M0:** all `blocking` gates in `.fabric/prod-gates.policy.yaml` pass on a clean Linux CI run; no unallowlisted unauthenticated routes; required-check enforcement confirmed.
+### M1 — Pre-pilot (after merge conflicts resolved)
+
+| # | Task | Owner | Exit criteria | Validation command |
+|---|---|---|---|---|
+| M1-1 | Fix arch failure: move L3 models to canonical path; add shim | Layer 3 | `pytest tests/arch/test_canonical_module_sentinels.py` green | `python -m pytest tests/arch/test_canonical_module_sentinels.py` |
+| M1-2 | Add `tenant_id` to L5 `TruthObject` (model + Alembic migration + repo updates) | Layer 5 | `pytest tests/arch/test_tenant_architecture.py::test_layer5_truth_object_uses_tenant_id` green; existing L5 tests still pass | `python -m pytest tests/arch services/layer5-ground-truth/tests` |
+| M1-3 | Repair `value_fabric/layer3/api/app_monolith.py:571` docstring/syntax | Layer 3 | AST scan passes | `python -m pytest tests/arch/test_no_non_runtime_imports.py` |
+| M1-4 | Fix Redis cache tenant-isolation test fixtures (use real fakeredis or proper `AsyncMock(return_value=...)`) | Platform | 14/14 pass | `python -m pytest tests/cache/test_redis_tenant_isolation.py` |
+| M1-5 | Add auth dep or allowlist entry for `GET /workflows/{id}/state/errors` | Layer 4 | Inventory script reports 0 unallowlisted | `python .github/scripts/check_route_auth_inventory.py` |
+| M1-6 | Configure `mandatory-security-regression` as required status check on `main` and `release/*` | Release Mgr | Branch protection screenshot in `fabric_audit/` | n/a (GitHub UI) |
+
+**Exit criteria for M1:** all `blocking` gates in `.fabric/prod-gates.policy.yaml` pass on a clean Linux CI run; no unallowlisted unauthenticated routes; required-check enforcement confirmed.
 
 ### M1 — Pilot expansion
 
