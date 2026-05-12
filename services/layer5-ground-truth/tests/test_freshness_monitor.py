@@ -31,7 +31,7 @@ async def clean_truth_objects(db: AsyncSession):
     """Clean up TruthObjects before each test to ensure isolation."""
     from sqlalchemy import text
     await db.execute(text("DELETE FROM truth_objects"))
-    await db.commit()
+    await db.flush()
     yield
 
 
@@ -84,7 +84,7 @@ class TestFreshnessMonitor:
             is_stale=False,
         )
         db.add(expired_truth)
-        await db.commit()
+        await db.flush()
 
         # Run the freshness check
         result = await monitor.check_and_mark_stale(db, org_id)
@@ -93,8 +93,8 @@ class TestFreshnessMonitor:
         assert result["marked_stale"] == 1
         assert result["dry_run"] is False
 
-        # Commit changes made by freshness check
-        await db.commit()
+        # Flush changes made by freshness check so refresh works
+        await db.flush()
 
         # Verify the truth was marked stale
         await db.refresh(expired_truth)
@@ -133,7 +133,7 @@ class TestFreshnessMonitor:
             is_stale=False,
         )
         db.add(expired_truth)
-        await db.commit()
+        await db.flush()
 
         # Run in dry-run mode
         result = await monitor.check_and_mark_stale(db, org_id, dry_run=True)
@@ -168,7 +168,7 @@ class TestFreshnessMonitor:
             is_stale=True,  # Already stale
         )
         db.add(already_stale)
-        await db.commit()
+        await db.flush()
 
         # Run the check
         result = await monitor.check_and_mark_stale(db, org_id)
@@ -199,7 +199,7 @@ class TestFreshnessMonitor:
             is_stale=False,
         )
         db.add(no_expiry)
-        await db.commit()
+        await db.flush()
 
         # Run the check
         result = await monitor.check_and_mark_stale(db, org_id)
@@ -245,7 +245,7 @@ class TestFreshnessMonitor:
             is_stale=False,
         )
         db.add(fresh_truth)
-        await db.commit()
+        await db.flush()
 
         # List stale truths
         items, total = await monitor.list_stale_truths(db, org_id)
@@ -308,7 +308,7 @@ class TestFreshnessMonitor:
             is_stale=False,
         )
         db.add(expiring_soon)
-        await db.commit()
+        await db.flush()
 
         # Get summary
         summary = await monitor.get_freshness_summary(db, org_id)
@@ -340,15 +340,15 @@ class TestFreshnessMonitor:
             is_stale=False,
         )
         db.add(expired)
-        await db.commit()
+        await db.flush()
 
         # Test check_freshness
         result = await check_freshness(db, org_id, dry_run=False)
         assert result["checked"] == 1
         assert result["marked_stale"] == 1
 
-        # Commit changes made by check_freshness
-        await db.commit()
+        # Flush changes made by check_freshness
+        await db.flush()
 
         # Test get_stale_truths
         items, total = await get_stale_truths(db, org_id)

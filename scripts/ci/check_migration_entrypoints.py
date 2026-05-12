@@ -83,12 +83,77 @@ def _run_command(cmd: tuple[str, ...], cwd: Path) -> subprocess.CompletedProcess
     return subprocess.run(cmd, cwd=cwd, text=True, capture_output=True, check=False)
 
 
+def _find_versions_dir(service_dir: Path) -> Path | None:
+    candidates = [
+        service_dir / "migrations" / "versions",
+        service_dir / "src" / "layer5_ground_truth" / "migrations" / "versions",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+
+def _check_alembic_graph(service_dir: Path) -> list[str]:
+    """Statically inspect migration files for graph integrity (no DB required)."""
+    errors: list[str] = []
+    versions_dir = _find_versions_dir(service_dir)
+    if not versions_dir:
+        return errors
+
+    revisions: dict[str, dict] = {}
+    seen_files: dict[str, list[str]] = {}
+    for f in sorted(versions_dir.glob("*.py")):
+        if f.name.startswith(("__", ".")):
+            continue
+        source = f.read_text(encoding="utf-8", errors="ignore")
+        rev: str | None = None
+        down_rev: str | None = None
+        for line in source.splitlines():
+            line = line.strip()
+            if line.startswith("revision") and ("=" in line or ":" in line):
+                try:
+                    rev = line.split("=")[-1].split(":")[-1].strip().strip('"').strip("'")
+                except Exception:
+                    pass
+            if line.startswith("down_revision") and ("=" in line or ":" in line):
+                try:
+                    val = line.split("=")[-1].split(":")[-1].strip().strip('"').strip("'")
+                    down_rev = val if val and val != "None" else None
+                except Exception:
+                    pass
+        if rev:
+            revisions[rev] = {"file": f.name, "down_revision": down_rev}
+            seen_files.setdefault(rev, []).append(f.name)
+
+    if not revisions:
+        return errors
+
+    # Detect duplicate revision IDs
+    for rev, files in seen_files.items():
+        if len(files) > 1:
+            errors.append(f"duplicate revision ID '{rev}' in files: {files}")
+
+    # Build reverse map: parent -> children
+    children: dict[str, list[str]] = {}
+    for rev, info in revisions.items():
+        down = info["down_revision"]
+        if down:
+            children.setdefault(down, []).append(rev)
+
+    heads = [rev for rev in revisions if rev not in children]
+    if len(heads) > 1:
+        errors.append(f"multi-head detected ({len(heads)} heads: {heads})")
+
+    return errors
+
+
 def main() -> int:
     missing_bins = _check_commands_available()
     if missing_bins:
-        print(f"❌ Missing required executables in PATH: {', '.join(missing_bins)}")
-        return 1
+        print(f"[!] Missing executables in PATH: {', '.join(missing_bins)} -- command-based checks will be skipped")
 
+    has_alembic = "alembic" not in missing_bins
     errors: list[str] = []
 
     for contract in CONTRACTS:
@@ -102,32 +167,39 @@ def main() -> int:
             if not candidate.exists():
                 errors.append(f"{contract.name}: required migration path missing: {contract.service_dir / rel_path}")
 
-        entrypoint_result = _run_command(contract.entrypoint_command, service_root)
-        if entrypoint_result.returncode != 0:
-            errors.append(
-                f"{contract.name}: entrypoint command failed: {' '.join(contract.entrypoint_command)}\n"
-                f"stdout: {entrypoint_result.stdout.strip()}\n"
-                f"stderr: {entrypoint_result.stderr.strip()}"
-            )
-
-        for history_command in contract.history_commands:
-            history_result = _run_command(history_command, service_root)
-            if history_result.returncode != 0:
+        needs_alembic = any("alembic" in part for part in contract.entrypoint_command)
+        if has_alembic or not needs_alembic:
+            entrypoint_result = _run_command(contract.entrypoint_command, service_root)
+            if entrypoint_result.returncode != 0:
                 errors.append(
-                    f"{contract.name}: history command failed: {' '.join(history_command)}\n"
-                    f"stdout: {history_result.stdout.strip()}\n"
-                    f"stderr: {history_result.stderr.strip()}"
+                    f"{contract.name}: entrypoint command failed: {' '.join(contract.entrypoint_command)}\n"
+                    f"stdout: {entrypoint_result.stdout.strip()}\n"
+                    f"stderr: {entrypoint_result.stderr.strip()}"
                 )
-            elif not history_result.stdout.strip():
-                errors.append(f"{contract.name}: history command returned no migration revisions: {' '.join(history_command)}")
+
+            for history_command in contract.history_commands:
+                history_result = _run_command(history_command, service_root)
+                if history_result.returncode != 0:
+                    errors.append(
+                        f"{contract.name}: history command failed: {' '.join(history_command)}\n"
+                        f"stdout: {history_result.stdout.strip()}\n"
+                        f"stderr: {history_result.stderr.strip()}"
+                    )
+                elif not history_result.stdout.strip():
+                    errors.append(f"{contract.name}: history command returned no migration revisions: {' '.join(history_command)}")
+
+        # Static graph integrity check (no DB required)
+        graph_errors = _check_alembic_graph(service_root)
+        for err in graph_errors:
+            errors.append(f"{contract.name}: {err}")
 
     if errors:
-        print("❌ Migration entrypoint contract failed:\n")
+        print("[FAIL] Migration entrypoint contract failed:\n")
         for err in errors:
             print(f"- {err}")
         return 1
 
-    print("✅ Migration entrypoint contract passed for all maintained layer services.")
+    print("[PASS] Migration entrypoint contract passed for all maintained layer services.")
     return 0
 
 

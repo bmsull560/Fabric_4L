@@ -21,6 +21,7 @@ from ..database import close_db, db_session, db_session_for_context, init_db
 from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..feature_flags.service import FeatureFlagService
+from ..resilience import TenantRateLimiter
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..services.value_flow_facade import ValueFlowFacadeService
@@ -112,6 +113,7 @@ def build_lifespan(
 
         init_feature_flags(runtime_state.state_manager.redis_client)
         app.state.value_flow_facade = ValueFlowFacadeService(runtime_state.state_manager.redis_client)
+        app.state.rate_limiter = TenantRateLimiter()
 
         async def _feature_flag_lookup(flag_key: str, tenant_id):
             from value_fabric.shared.identity.context import RequestContext

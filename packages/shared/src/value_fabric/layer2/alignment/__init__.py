@@ -12,7 +12,13 @@ class SemanticAligner:
         self._cache: dict[str, Any] = {}
 
     def _normalize_name(self, name: str) -> str:
-        return name.lower().strip().replace("  ", " ")
+        result = name.lower().strip().replace("-", " ").replace("  ", " ")
+        # Remove common trailing suffixes
+        for suffix in (" system", " platform", " service", " tool", " suite"):
+            if result.endswith(suffix):
+                result = result[: -len(suffix)]
+                break
+        return result.strip()
 
     def normalize_name(self, name: str) -> str:
         return self._normalize_name(name)

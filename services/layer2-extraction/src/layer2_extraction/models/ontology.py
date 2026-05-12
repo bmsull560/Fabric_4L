@@ -89,7 +89,7 @@ class OntologyEntity(BaseModel):
     @field_validator("description")
     @classmethod
     def _validate_description(cls, v: str) -> str:
-        if not v or len(v.strip()) < 5:
+        if not v or len(v.strip()) <= 5:
             raise ValueError("Description must be at least 5 characters")
         return v.strip()
 

@@ -35,25 +35,37 @@ class LLMClient:
             if not key:
                 raise ValueError("OpenAI API key required")
             self._api_key = key
-            import openai
-            self._client: Any = openai.AsyncOpenAI(api_key=key)
+            self._client: Any = None
         elif self.provider == LLMProvider.ANTHROPIC:
             key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
             if not key:
                 raise ValueError("Anthropic API key required")
             self._api_key = key
+            self._client = None
+        else:
+            self._client = None
+
+    def _get_client(self) -> Any:
+        if self._client is not None:
+            return self._client
+        if self.provider == LLMProvider.OPENAI:
+            import openai
+            self._client = openai.AsyncOpenAI(api_key=self._api_key)
+        elif self.provider == LLMProvider.ANTHROPIC:
             try:
                 import anthropic
-                self._client = anthropic.AsyncAnthropic(api_key=key)
+                self._client = anthropic.AsyncAnthropic(api_key=self._api_key)
             except ImportError:
                 self._client = None
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
+        return self._client
 
     async def complete(self, messages: list[dict[str, str]], **kwargs: Any) -> str:
         """Send a completion request and return the text response."""
+        client = self._get_client()
+        if client is None:
+            raise ValueError(f"Unsupported provider: {self.provider}")
         if self.provider == LLMProvider.OPENAI:
-            resp = await self._client.chat.completions.create(
+            resp = await client.chat.completions.create(
                 model=kwargs.get("model", "gpt-4o"),
                 messages=messages,
                 temperature=kwargs.get("temperature", 0.0),

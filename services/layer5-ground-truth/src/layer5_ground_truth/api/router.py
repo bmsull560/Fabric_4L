@@ -699,29 +699,4 @@ async def get_maturity_ladder() -> MaturityLadderResponse:
     return MaturityLadderResponse(levels=levels)
 
 
-# ---------------------------------------------------------------------------
-# GET /health
-# ---------------------------------------------------------------------------
 
-
-@router.get(
-    "/health",
-    response_model=HealthResponse,
-    summary="Health check",
-    tags=["system"],
-)
-async def health_check() -> HealthResponse:
-    """Public health check - returns minimal safe information only.
-
-    Note: This is a liveness check only. It does not check database or Layer 3 connectivity
-    to avoid requiring tenant context headers.
-    """
-    # Liveness check only - service is running
-    return HealthResponse(
-        status="ok",
-        version="0.1.0",
-        timestamp=datetime.now(UTC),
-        database="ok",
-        # Internal fields omitted for security - public health checks
-        # should not expose dependency topology or configuration
-    )

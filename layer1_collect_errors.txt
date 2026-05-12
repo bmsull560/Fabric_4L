@@ -1,0 +1,1258 @@
+STDOUT:
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+Using --randomly-seed=4055684057
+rootdir: C:\Users\BBB\Fabric_4L\services\layer1-ingestion
+configfile: pyproject.toml
+plugins: anyio-4.13.0, Faker-40.15.0, hypothesis-6.152.4, langsmith-0.8.0, asyncio-1.3.0, cov-7.1.0, randomly-4.1.0, timeout-2.4.0, xdist-3.8.0, respx-0.23.1, schemathesis-4.17.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 475 items / 2 errors
+
+<Dir layer1-ingestion>
+  <Dir tests>
+    <Dir crawler>
+      <Module test_smart_router.py>
+        Tests for SmartRouter per-URL routing decisions.
+        
+        Covers all 7 routing rules plus SPA detection and quality gate evaluation.
+        <Class TestPageTypeInference>
+          Test page type detection from URL patterns.
+          <Function test_infer_product>
+            Detect product pages.
+          <Function test_infer_customer_story>
+            Detect customer story pages.
+          <Function test_infer_pricing>
+            Detect pricing pages.
+          <Function test_infer_unknown>
+            Default to unknown for unrecognized paths.
+          <Function test_infer_resource_center>
+            Detect resource center pages.
+        <Class TestBrowserConfig>
+          Test browser configuration generation.
+          <Function test_config_product_includes_observe>
+            Product config includes observe_first flag.
+          <Function test_config_pricing_shorter_timeout>
+            Pricing uses shorter timeout.
+          <Function test_default_config_structure>
+            Default config has required fields.
+          <Function test_config_unknown_uses_defaults>
+            Unknown page type gets default config.
+        <Class TestPriorityAssignment>
+          Test priority levels for different page types.
+          <Function test_priority_resource_low>
+            Resource center gets lower priority.
+          <Function test_priority_product_highest>
+            Product pages get highest priority.
+          <Function test_priority_unknown_default>
+            Unknown pages get default priority.
+          <Function test_priority_homepage_high>
+            Homepage gets high priority.
+          <Function test_priority_pricing_trust_high>
+            Pricing and trust get high priority.
+        <Class TestQualityGate>
+          Test quality gate evaluation for fast path results.
+          <Function test_quality_fail_low_ratio>
+            Quality fails with low content ratio.
+          <Function test_quality_fail_status_code>
+            Quality fails with non-200 status.
+          <Function test_quality_fail_short_text>
+            Quality fails with short text.
+          <Function test_quality_pass>
+            Quality passes with good content.
+          <Function test_quality_fail_spa_detected>
+            Quality fails when SPA detected.
+        <Class TestRoutingRules>
+          Test the 7 cascading routing rules.
+          <Function test_rule2_static_assets_js>
+            Rule 2: JS files always use fast path.
+          <Function test_static_pattern_matching[/api/dynamic-fast_fallback]>
+            P1 Regression: Verify static asset patterns correctly route to FAST path.
+          <Function test_rule5_dynamic_solutions>
+            Rule 5: Solutions pages route to browser.
+          <Function test_static_pattern_matching[/static/css/style.css-fast]>
+            P1 Regression: Verify static asset patterns correctly route to FAST path.
+          <Function test_rule5_dynamic_platform>
+            Rule 5: Platform pages route to browser.
+          <Function test_static_pattern_matching[/app.js-fast]>
+            P1 Regression: Verify static asset patterns correctly route to FAST path.
+          <Function test_rule4_previous_crawl_browser>
+            Rule 4: Previous browser crawl maintains consistency.
+          <Function test_static_pattern_matching[/assets/js/app.js-fast]>
+            P1 Regression: Verify static asset patterns correctly route to FAST path.
+          <Function test_rule2_static_assets_css>
+            Rule 2: CSS files always use fast path.
+          <Function test_rule3_sitemap_xml>
+            Rule 3: Sitemap.xml uses fast path with high priority.
+          <Function test_rule1_target_override_browser>
+            Rule 1: Target mode BROWSER always routes to browser.
+          <Function test_decide_is_sync_function>
+            P0 Regression: Verify decide() is synchronous (not async).
+          <Function test_static_pattern_matching[/page.html-fast]>
+            P1 Regression: Verify static asset patterns correctly route to FAST path.
+          <Function test_rule2_static_assets_wp_content>
+            Rule 2: WordPress uploads use fast path.
+          <Function test_rule1_target_override_fast>
+            Rule 1: Target mode FAST always routes to fast path.
+          <Function test_rule7_default_fallback>
+            Rule 7: Default is FAST_WITH_FALLBACK.
+          <Function test_rule6_navigation_fragment>
+            Rule 6: URLs with fragments route to browser.
+          <Function test_static_pattern_matching[/wp-content/uploads/image.jpg-fast]>
+            P1 Regression: Verify static asset patterns correctly route to FAST path.
+          <Function test_rule5_dynamic_pricing>
+            Rule 5: Pricing pages route to browser.
+          <Function test_rule6_navigation_query>
+            Rule 6: URLs with query params route to browser.
+          <Function test_rule3_robots_txt>
+            Rule 3: Robots.txt uses fast path.
+        <Class TestSPADetection>
+          Test SPA shell detection heuristics.
+          <Function test_detect_not_spa_static_page>
+            Static page is not detected as SPA.
+          <Function test_detect_spa_empty_root>
+            Detect SPA with empty root div.
+          <Function test_detect_spa_react_marker>
+            Detect SPA with React marker.
+          <Function test_detect_spa_multiple_indicators>
+            SPA with multiple indicators triggers detection.
+          <Function test_detect_not_spa_empty_html>
+            Empty HTML is not detected as SPA.
+          <Function test_detect_spa_high_script_density>
+            Detect SPA with high script density.
+          <Function test_detect_spa_low_content_ratio>
+            Detect SPA with low content-to-HTML ratio.
+    <Dir unit>
+      <Module test_validation.py>
+        Tests for cron expression validation and extraction schema validation.
+        
+        Covers:
+        - _validate_cron_expression: malformed, boundary, valid, @-macro, timezone
+        - ScheduleInput Pydantic model: field_validator integration
+        - _validate_payload_against_schema: valid payload, missing required fields,
+          wrong types, nested errors, empty schema, no schema
+        - validation_stage Celery task: schema present/absent, tenant isolation,
+          malformed prev_result
+        <Class TestValidationStageTask>
+          Tests for the validation_stage Celery task.
+          <Function test_type_errors_in_payload_recorded>
+            Type mismatches in the payload are recorded in validation_errors.
+          <Function test_malformed_prev_result_invalid_uuid_raises>
+            prev_result with a non-UUID job_id must raise ValueError.
+          <Function test_malformed_prev_result_missing_job_id_raises>
+            prev_result without job_id must raise immediately.
+          <Function test_valid_payload_sets_schema_valid_true>
+            A payload matching the schema sets validation_schema_valid=True.
+          <Function test_no_schema_completes_without_modifying_extracted>
+            When no extraction_schema is configured, stage completes successfully.
+          <Function test_no_extracted_data_record_completes_gracefully>
+            When no ExtractedData exists for the job, stage completes without error.
+          <Function test_schema_not_a_dict_skips_validation>
+            A non-dict extraction_schema (e.g. a string) must be ignored safely.
+          <Function test_job_not_found_raises_value_error>
+            Missing job must raise ValueError (not silently succeed).
+          <Function test_tenant_id_used_in_extracted_data_query>
+            The query for ExtractedData must filter by tenant_id (tenant isolation).
+          <Function test_invalid_payload_sets_schema_valid_false>
+            A payload missing required fields sets validation_schema_valid=False.
+        <Class TestValidatePayloadAgainstSchema>
+          Unit tests for the JSON Schema validation helper in tasks.py.
+          <Function test_nested_type_error>
+          <Function test_extra_fields_allowed_by_default>
+          <Function test_matching_payload_valid>
+          <Function test_wrong_type_number_for_string>
+          <Function test_error_dict_has_required_keys>
+          <Function test_missing_single_required_field>
+          <Function test_empty_data_with_required_fields_invalid>
+          <Function test_empty_data_with_no_required_fields_valid>
+          <Function test_missing_multiple_required_fields>
+          <Function test_nested_required_field_missing>
+          <Function test_empty_schema_always_valid>
+          <Function test_wrong_type_string_for_number>
+          <Function test_root_path_is_dollar_sign>
+            Top-level errors should use '$' as path, not empty string.
+        <Class TestValidateCronExpression>
+          Unit tests for the _validate_cron_expression helper.
+          <Function test_dow_out_of_range>
+            Day-of-week 8 is out of range (0-7).
+          <Function test_first_of_month>
+          <Function test_list_syntax>
+            Comma-separated lists must be accepted.
+          <Function test_non_numeric_field_rejected>
+          <Function test_weekday_only>
+          <Function test_at_daily_rejected>
+          <Function test_empty_string_rejected>
+          <Function test_at_reboot_rejected>
+          <Function test_daily_midnight>
+          <Function test_hour_out_of_range>
+            Hour field 24 is out of range (0-23).
+          <Function test_at_weekly_rejected>
+          <Function test_every_minute>
+          <Function test_step_syntax>
+            */15 step syntax must be accepted.
+          <Function test_month_out_of_range>
+            Month 13 is out of range (1-12).
+          <Function test_every_hour_at_zero>
+          <Function test_at_hourly_rejected>
+          <Function test_leading_trailing_whitespace_stripped>
+            Leading/trailing whitespace must be stripped before validation.
+          <Function test_minute_out_of_range>
+            Minute field 60 is out of range (0-59).
+          <Function test_single_field_rejected>
+          <Function test_dom_out_of_range>
+            Day-of-month 32 is out of range (1-31).
+          <Function test_at_monthly_rejected>
+          <Function test_at_yearly_rejected>
+          <Function test_specific_month>
+          <Function test_four_fields_rejected>
+          <Function test_six_fields_rejected>
+        <Class TestScheduleInputModel>
+          Integration tests for ScheduleInput field validators.
+          <Function test_invalid_cron_raises_validation_error>
+          <Function test_europe_london_accepted>
+          <Function test_four_field_cron_raises_validation_error>
+          <Function test_max_concurrent_jobs_maximum>
+          <Function test_max_concurrent_jobs_minimum>
+          <Function test_max_concurrent_jobs_zero_rejected>
+          <Function test_none_cron_accepted>
+          <Function test_max_concurrent_jobs_over_limit_rejected>
+          <Function test_macro_cron_raises_validation_error>
+          <Function test_empty_timezone_raises_validation_error>
+          <Function test_unknown_timezone_raises_validation_error>
+          <Function test_cron_whitespace_normalised>
+          <Function test_iana_timezone_accepted>
+          <Function test_utc_timezone_accepted>
+          <Function test_valid_cron_stored>
+          <Function test_offset_string_rejected>
+            UTC+5 is not a valid IANA name.
+      <Module test_crawler_config.py>
+        Tests for CrawlerConfig configuration management.
+        
+        Validates YAML loading, validation, and config-driven behavior,
+        following the skill framework's config validation patterns.
+        <Class TestCrawlerConfig>
+          Test CrawlerConfig dataclass functionality.
+          <Function test_viewport_property>
+            Test viewport property returns correct dict.
+          <Function test_browser_args_default>
+            Test default browser security args are present.
+          <Function test_default_values>
+            Test that default config values are sensible.
+          <Function test_blocked_resource_patterns>
+            Test default resource blocking patterns.
+        <Class TestCrawlerConfigYamlLoading>
+          Test YAML config file loading and validation.
+          <Function test_invalid_max_concurrent_raises>
+            Test that invalid max_concurrent raises ValueError.
+          <Function test_load_nonexistent_file_raises>
+            Test that loading missing file raises FileNotFoundError.
+          <Function test_invalid_timeout_raises>
+            Test that invalid timeout_ms raises ValueError.
+          <Function test_load_valid_yaml>
+            Test loading valid YAML config file.
+          <Function test_unknown_fields_logged_and_ignored>
+            Test that unknown fields are logged and ignored.
+          <Function test_to_yaml_roundtrip>
+            Test that saving and loading config preserves values.
+        <Class TestLoadConfig>
+          Test the load_config convenience function.
+          <Function test_load_config_defaults_when_no_file_found>
+            Test that defaults are used when no config file exists.
+          <Function test_load_config_with_explicit_path>
+            Test loading config from explicit path.
+      <Module test_batch_operations.py>
+        Tests for batch operations API endpoints.
+        <Function test_batch_excessive_size_rejected>
+          Test that batch size exceeding maximum is rejected.
+        <Function test_batch_cancel_success>
+          Test successful batch cancel operation.
+        <Function test_batch_mixed_success_failure>
+          Test batch operation with mixed success and failure.
+        <Function test_batch_execute_success>
+          Test successful batch execute operation.
+        <Function test_batch_retry_success>
+          Test successful batch retry operation.
+        <Function test_batch_cross_tenant_access_denied>
+          Test that cross-tenant access is denied.
+        <Function test_batch_wrong_identifier_type>
+          Test batch operation with wrong identifier type for operation.
+        <Function test_batch_empty_rejected>
+          Test that empty batch is rejected.
+      <Module test_h03_security_config.py>
+        <Function test_layer1_cors_policy_uses_explicit_origins_methods_and_headers>
+        <Function test_layer1_development_default_cors_is_localhost_not_wildcard>
+        <Function test_layer1_treats_unknown_environment_as_production_like>
+        <Function test_layer1_rejects_wildcard_and_placeholder_cors_in_production_like_env>
+    <Module test_observability_contract_integration.py>
+      <Function test_standard_observability_probes_and_correlation_header>
+    <Dir unit>
+      <Module test_todo_placeholder_regressions.py>
+        Regression tests for TODO-backed placeholder outputs in Layer 1 APIs/tasks.
+        <Function test_api_runtime_placeholders_not_hardcoded>
+          API must not return TODO-era hardcoded constants.
+        <Function test_task_extraction_time_not_hardcoded_zero>
+          Extraction timing in storage stage must not use a fixed 0 value.
+        <Function test_api_unknown_values_include_explanatory_metadata>
+          Any unknown API metric should include explicit explanatory metadata.
+      <Module test_xbrl_parser_extended.py>
+        Unit tests for XBRLParser edge cases and helpers.
+        
+        Extends the basic tests in test_adapters.py with more thorough coverage:
+        - malformed XML
+        - instant-date contexts (balance sheet)
+        - multi-fact documents
+        - scaled decimals
+        - entity extraction
+        - financial statement classification
+        <Class TestInstantContextParsing>
+          Tests for XBRL instant-period context (balance sheet items).
+          <Function test_liabilities_classified_to_balance_sheet>
+          <Function test_instant_context_fact_is_parsed>
+          <Function test_balance_sheet_is_built_from_asset_fact>
+        <Class TestMultiFactDocuments>
+          Tests with multiple facts in a single XBRL document.
+          <Function test_fact_without_unit_ref_is_still_parsed>
+            Facts without a unitRef (e.g., share counts) are still captured.
+          <Function test_key_metrics_extracted_for_revenue_and_assets>
+          <Function test_facts_classified_across_statements>
+            Revenue -> income_statement, Assets -> balance_sheet.
+          <Function test_multiple_facts_all_parsed>
+        <Class TestFinancialStatementGetFact>
+          Tests for the FinancialStatement.get_fact helper.
+          <Function test_get_fact_not_found_returns_none>
+          <Function test_get_fact_found>
+          <Function test_get_fact_case_insensitive>
+        <Class TestEntityExtraction>
+          Tests for entity and document type info extraction.
+          <Function test_document_type_extracted_from_dei>
+          <Function test_entity_extracted_from_dei>
+        <Class TestDecimalScaling>
+          Tests for the decimals attribute (scale factor).
+          <Function test_zero_decimals_no_scaling>
+            decimals="0" means no scaling.
+          <Function test_inf_decimals_no_scaling>
+            decimals="INF" means exact — no scaling applied.
+          <Function test_invalid_decimals_value_skips_fact>
+            Non-numeric decimals attribute raises XBRLParseError and the fact is skipped.
+          <Function test_negative_decimals_scale_up>
+            decimals="-3" means the value is in thousands (x1000).
+        <Class TestXBRLParserErrorHandling>
+          Tests that malformed input produces safe empty results.
+          <Function test_parse_date_raises_on_invalid_date>
+            _parse_date raises XBRLParseError for unparseable dates.
+          <Function test_empty_string_returns_empty>
+          <Function test_non_xbrl_xml_returns_empty_facts>
+            Valid XML that is not XBRL produces an empty fact list.
+          <Function test_parse_value_narrows_decimal_exception>
+            _parse_value does not swallow broad exceptions during Decimal coercion.
+          <Function test_malformed_xml_returns_empty>
+          <Function test_parse_value_returns_string_for_non_numeric>
+            _parse_value falls back to string for non-numeric input.
+    <Module test_api_tenant_propagation.py>
+      Tenant context propagation guardrails for layer1-ingestion.
+      <Function test_repository_calls_use_context_tenant_id>
+        Enforce trusted context propagation by checking canonical route code.
+      <Function test_missing_tenant_context_has_fail_closed_guard>
+    <Dir crawler>
+      <Module test_quality_gate.py>
+        Tests for QualityGate fast path validation.
+        
+        Covers quality threshold evaluation, fallback decisions, and
+        adaptive threshold functionality.
+        <Class TestAdaptiveQualityGate>
+          Test adaptive quality gate with domain-specific thresholds.
+          <Function test_default_thresholds_for_unknown_domain>
+            Use default thresholds for unknown domains.
+          <Function test_domain_specific_thresholds>
+            Use domain-specific thresholds when available.
+          <Function test_parent_domain_fallback>
+            Fall back to parent domain thresholds.
+        <Class TestQualityThresholds>
+          Test configurable quality thresholds.
+          <Function test_custom_fetch_time_threshold>
+            Custom fetch time threshold.
+          <Function test_custom_content_ratio_threshold>
+            Custom content ratio threshold.
+          <Function test_optional_title_check>
+            Title check can be disabled.
+          <Function test_link_count_threshold>
+            Link count threshold when configured.
+          <Function test_custom_text_length_threshold>
+            Custom text length threshold.
+        <Class TestFallbackDecision>
+          Test should_fallback convenience method.
+          <Function test_should_fallback_false>
+            Returns False when quality passes.
+          <Function test_should_fallback_true>
+            Returns True when quality fails.
+        <Class TestEdgeCases>
+          Test edge cases and boundary conditions.
+          <Function test_exact_threshold_boundary>
+            Test at exact threshold boundary.
+          <Function test_one_under_threshold_boundary>
+            Test just under threshold boundary.
+          <Function test_empty_html_content_ratio>
+            Handle empty HTML gracefully.
+        <Class TestContentTypeChecking>
+          Test content type validation.
+          <Function test_block_pdf_content_type>
+            PDF content type triggers fallback.
+          <Function test_allow_html_content_type>
+            HTML content type is valid.
+        <Class TestQualityGateBasic>
+          Test basic quality gate functionality.
+          <Function test_quality_fail_slow_fetch>
+            Slow fetch fails quality check.
+          <Function test_quality_fail_status_code>
+            Non-200 status fails quality check.
+          <Function test_quality_pass>
+            High quality result passes all checks.
+          <Function test_quality_fail_short_text>
+            Short text fails quality check.
+          <Function test_quality_fail_content_ratio>
+            Low content ratio fails quality check.
+          <Function test_quality_fail_spa_detected>
+            SPA detection fails quality check.
+        <Class TestDetailedMetrics>
+          Test detailed metrics generation.
+          <Function test_evaluate_with_details>
+            Get both decision and detailed metrics.
+    <Dir unit>
+      <Module test_models.py>
+        Unit tests for shared models.
+        <Class TestRawContent>
+          Test cases for RawContent model.
+          <Function test_content_creation>
+            Test creating raw content.
+        <Class TestScrapingJob>
+          Test cases for ScrapingJob model.
+          <Function test_create_scraping_job>
+            Test creating a scraping job.
+          <Function test_job_status_enum>
+            Test job status enumeration.
+        <Class TestCrawlQueueItem>
+          Test cases for CrawlQueueItem model.
+          <Function test_create_queue_item>
+            Test creating a queue item.
+        <Class TestScrapingTarget>
+          Test cases for ScrapingTarget model.
+          <Function test_create_scraping_target_with_source_category>
+            Test creating a scraping target with source_category.
+          <Function test_create_scraping_target>
+            Test creating a scraping target.
+      <Module test_celery_tasks.py>
+        Unit tests for Layer 1 Celery task dispatch.
+        
+        Tests verify:
+        1. process_scraping_job chains all 9 pipeline stages in order.
+        2. compliance_check_stage updates job status to VALIDATING.
+        3. execute_pipeline_stage dispatches to the correct stage task.
+        4. cleanup_old_content returns a dict with deleted_count and cutoff_date.
+        5. Celery app is configured with correct broker and serializer settings.
+        6. Tasks handle missing job gracefully (ValueError, not unhandled exception).
+        <Class TestCeleryAppConfiguration>
+          Verify the Celery app is configured correctly.
+          <Function test_celery_app_name>
+            Celery app must be named 'layer1_ingestion'.
+          <Function test_celery_result_serializer>
+            Celery must use JSON serializer for results.
+          <Function test_celery_timezone_utc>
+            Celery must use UTC timezone.
+          <Function test_celery_task_time_limit>
+            Celery task time limit must be set (prevents runaway tasks).
+          <Function test_celery_task_serializer>
+            Celery must use JSON serializer for task payloads.
+        <Class TestPipelineStageErrorPaths>
+          Test error paths for individual pipeline stages.
+          <Function test_celery_worker_prefetch_is_one>
+            Worker prefetch multiplier must be 1 for sequential processing.
+          <Function test_all_pipeline_stages_are_registered_as_celery_tasks>
+            All 9 pipeline stages must be registered as Celery tasks.
+          <Function test_execute_pipeline_stage_dispatches_all_known_stages>
+            execute_pipeline_stage must recognize all 9 stage names.
+          <Function test_celery_result_expires_configured>
+            Task results must expire (not persist forever).
+        <Class TestCeleryRetryBehavior>
+          Test Celery retry and error handling behavior.
+          <Function test_cleanup_old_content_handles_empty_result>
+            cleanup_old_content must return deleted_count=0 when no old content found.
+          <Function test_compliance_check_stage_handles_db_error>
+            compliance_check_stage must not swallow database connection errors.
+          <Function test_process_scraping_job_handles_chain_failure>
+            process_scraping_job must raise when chain.apply_async fails.
+          <Function test_cleanup_old_content_handles_db_error>
+            cleanup_old_content must propagate database errors.
+          <Function test_compliance_check_stage_handles_invalid_job_configuration>
+            compliance_check_stage must handle jobs with missing configuration.
+          <Function test_celery_max_retries_configured>
+            process_scraping_job must have max_retries configured.
+        <Class TestComplianceCheckStage>
+          Test the compliance_check_stage pipeline task.
+          <Function test_compliance_check_stage_updates_job_status>
+            compliance_check_stage must set job.status to VALIDATING.
+          <Function test_compliance_check_stage_missing_job_retries>
+            compliance_check_stage must raise when job is not found.
+        <Class TestExecutePipelineStage>
+          Test execute_pipeline_stage dispatches to the correct task.
+          <Function test_execute_pipeline_stage_unknown_raises>
+            execute_pipeline_stage must raise ValueError for unknown stage names.
+          <Function test_execute_pipeline_stage_compliance_check>
+            execute_pipeline_stage must dispatch compliance_check_stage for COMPLIANCE_CHECK.
+        <Class TestProcessScrapingJob>
+          Test the main pipeline orchestrator task.
+          <Function test_process_scraping_job_returns_task_id_on_success>
+            process_scraping_job must return dict with success=True and task_id.
+          <Function test_process_scraping_job_chains_all_stages>
+            process_scraping_job must chain all 9 pipeline stages.
+          <Function test_process_scraping_job_missing_job_raises>
+            process_scraping_job must raise ValueError when job is not found in DB.
+        <Class TestCeleryRetrySemantics>
+          Test retry behavior and idempotency.
+          <Function test_idempotency_of_retried_tasks>
+            Retried tasks must be idempotent - same result on retry.
+          <Function test_exponential_backoff_timing>
+            Retries must use exponential backoff.
+          <Function test_max_retry_exhaustion_behavior>
+            Task must fail permanently after max_retries exhausted.
+          <Function test_dead_letter_queue_routing>
+            Failed tasks after max retries should route to DLQ if configured.
+        <Class TestCleanupOldContent>
+          Test the cleanup_old_content periodic task.
+          <Function test_cleanup_default_days_is_30>
+            cleanup_old_content default retention period must be 30 days.
+          <Function test_cleanup_returns_deleted_count_and_cutoff>
+            cleanup_old_content must return deleted_count and cutoff_date.
+          <Function test_cleanup_marks_content_as_deleted>
+            cleanup_old_content must set processing_status to DELETED.
+      <Module test_playwright_crawler.py>
+        Tests for PlaywrightCrawler with mocked Playwright.
+        
+        Comprehensive test coverage for crawling, rate limiting, error handling,
+        and metrics collection - following the skill framework's pytest patterns.
+        <Class TestCrawlUrls>
+          Test batch URL crawling with rate limiting.
+          <Coroutine test_no_delay_for_different_domains>
+            Test that different domains don't trigger rate limiting.
+          <Coroutine test_rate_limiting_delays_requests>
+            Test that rate limiting delays requests to same domain.
+          <Coroutine test_crawl_multiple_urls>
+            Test crawling multiple URLs returns correct results.
+        <Class TestExtractLinks>
+          Test link extraction functionality.
+          <Coroutine test_extract_links_includes_external>
+            Test that external links are included when flag is set.
+          <Coroutine test_extract_links_from_page>
+            Test extracting links from a page.
+        <Class TestPlaywrightCrawlerStartStop>
+          Test crawler lifecycle.
+          <Coroutine test_start_initializes_resources>
+            Test that start() initializes Playwright resources.
+          <Coroutine test_stop_releases_resources>
+            Test that stop() releases all resources.
+          <Coroutine test_context_manager_usage>
+            Test async context manager usage.
+        <Class TestPlaywrightCrawlerInit>
+          Test crawler initialization.
+          <Function test_init_with_custom_config>
+            Test crawler accepts custom config.
+          <Function test_init_with_defaults>
+            Test crawler initializes with default config.
+          <Function test_init_with_override_params>
+            Test constructor params override config values.
+        <Class TestScrollPage>
+          Test page scrolling functionality.
+          <Coroutine test_scroll_enabled_executes_script>
+            Test that scroll executes JavaScript when enabled.
+          <Coroutine test_scroll_handles_error>
+            Test that scroll errors are handled gracefully.
+          <Coroutine test_scroll_disabled_skips_execution>
+            Test that scroll is skipped when disabled in config.
+        <Class TestCrawlUrl>
+          Test single URL crawling.
+          <Coroutine test_successful_crawl>
+            Test successful URL crawl returns correct result.
+          <Coroutine test_crawl_records_metrics>
+            Test that successful crawls record metrics.
+          <Coroutine test_crawl_with_resource_blocking>
+            Test that resource blocking patterns are applied.
+          <Coroutine test_crawl_handles_navigation_error>
+            Test that navigation errors are handled gracefully.
+        <Class TestConcurrency>
+          Test concurrent crawling with semaphore.
+          <Coroutine test_semaphore_limits_concurrency>
+            Test that semaphore limits concurrent page operations.
+      <Module test_content_extractor.py>
+        Tests for ContentExtractor (layer1-ingestion/src/post_processor/content_extractor.py).
+        
+        Covers:
+        - ExtractedContent dataclass structure
+        - ContentExtractor.extract() – metadata, content type, links
+        - ContentExtractor._extract_metadata() – title, description, author, OG/Twitter tags,
+          JSON-LD, noindex/nofollow, canonical URL, article:published_time
+        - ContentExtractor._extract_main_content_manual() – selector priority, fallback
+        - ContentExtractor._convert_to_markdown() – HTML and plain-text inputs
+        - ContentExtractor._clean_markdown() – normalization rules
+        - ContentExtractor._classify_content_type() – pattern matching
+        - ContentExtractor._extract_links() – absolute/relative, internal/external, nofollow
+        - extract_content() convenience function
+        <Class TestExtractLinks>
+          <Function test_no_links_returns_empty>
+          <Function test_internal_link_not_external>
+          <Function test_absolute_external_link>
+          <Function test_link_text_extracted>
+          <Function test_relative_link_resolved>
+          <Function test_nofollow_detected>
+          <Function test_anchor_only_links_excluded>
+          <Function test_non_http_protocols_excluded>
+        <Class TestExtract>
+          <Function test_content_type_classified>
+          <Function test_title_extracted>
+          <Function test_author_extracted>
+          <Function test_links_extracted>
+          <Function test_description_extracted>
+          <Function test_markdown_content_is_string>
+          <Function test_metadata_contains_url>
+          <Function test_metadata_contains_domain>
+          <Function test_links_empty_when_extract_links_false>
+          <Function test_returns_extracted_content>
+          <Function test_html_content_truncated_at_100000>
+        <Class TestCleanMarkdown>
+          <Function test_crlf_normalized>
+          <Function test_trailing_whitespace_removed>
+          <Function test_very_long_text_truncated>
+          <Function test_text_stripped>
+          <Function test_excessive_blank_lines_collapsed>
+        <Class TestExtractMainContentManual>
+          <Function test_nav_and_script_removed>
+          <Function test_extracts_from_main_element>
+          <Function test_extracts_from_article_element>
+          <Function test_falls_back_to_body_when_no_main>
+        <Class TestConvertToMarkdown>
+          <Function test_plain_text_input_returned>
+          <Function test_html_input_detected_by_angle_brackets>
+          <Function test_html_input_converted>
+        <Class TestExtractedContent>
+          <Function test_fields_accessible>
+        <Class TestExtractMetadata>
+          <Function test_author_extracted>
+          <Function test_json_ld_title_extracted>
+          <Function test_title_extracted>
+          <Function test_og_tags_extracted>
+          <Function test_json_ld_author_dict_extracted>
+          <Function test_twitter_tags_extracted>
+          <Function test_json_ld_author_list_extracted>
+          <Function test_no_metadata_returns_basic_keys>
+          <Function test_canonical_url_extracted>
+          <Function test_description_extracted>
+          <Function test_noindex_false_when_not_present>
+          <Function test_title_truncated_at_500_chars>
+          <Function test_article_published_time_extracted>
+          <Function test_noindex_detected>
+        <Class TestClassifyContentType>
+          <Function test_press_release_classified>
+          <Function test_unknown_when_no_match>
+          <Function test_product_page_classified>
+          <Function test_financial_filing_classified>
+          <Function test_blog_post_classified>
+          <Function test_documentation_classified>
+        <Class TestExtractContentConvenience>
+          <Function test_returns_extracted_content>
+          <Function test_no_links_when_false>
+          <Function test_links_extracted_by_default>
+      <Module test_pdf_adapter.py>
+        Unit tests for PDF adapter.
+        <Class TestPDFAdapter>
+          Test cases for PDF adapter.
+          <Coroutine test_download_to_temp_failure>
+            Test handling of failed download.
+          <Coroutine test_process_pdf_file_size_validation>
+            Test that oversized PDFs are rejected with clear error.
+          <Coroutine test_detect_filing_type_generic>
+            Test fallback to generic document type.
+          <Coroutine test_ocr_extract_dpi_clamping_high>
+            Test that excessive DPI is clamped to MAX_DPI (1200).
+          <Coroutine test_adapter_type>
+            Test adapter type is correct.
+          <Coroutine test_detect_filing_type_patent>
+            Test detection of patent filing from content.
+          <Coroutine test_ocr_not_triggered_for_good_text>
+            Test OCR is skipped when sufficient text extracted.
+          <Coroutine test_search_not_supported>
+            Test search returns empty list with warning.
+          <Coroutine test_health_check_success>
+            Test health check passes with dependencies available.
+          <Coroutine test_download_to_temp_success>
+            Test downloading PDF to temporary file.
+          <Coroutine test_detect_filing_type_white_paper>
+            Test detection of white paper from content.
+          <Coroutine test_supported_formats>
+            Test supported formats include expected types.
+          <Coroutine test_ocr_extract_no_confidence>
+            Test OCR when confidence data unavailable.
+          <Coroutine test_detect_filing_type_sec_filing>
+            Test detection of SEC filing from content.
+          <Coroutine test_fetch_document_from_url_success>
+            Test downloading and processing PDF from URL.
+          <Coroutine test_ocr_triggered_for_low_text>
+            Test OCR fallback triggered when text is below threshold.
+          <Coroutine test_ocr_disabled_fallback_skipped>
+            Test OCR fallback is skipped when disabled.
+          <Coroutine test_ocr_extract_failure>
+            Test OCR handling of extraction failure.
+          <Coroutine test_download_to_temp_retry_on_5xx>
+            Test retry logic for 5xx server errors with exponential backoff.
+          <Coroutine test_fetch_document_with_file_path_kwarg>
+            Test using file_path kwarg instead of document_id.
+          <Coroutine test_detect_filing_type_analyst_report>
+            Test detection of analyst report from content.
+          <Coroutine test_ocr_extract_dpi_clamping_low>
+            Test that too-low DPI is clamped to MIN_DPI (72).
+          <Coroutine test_close_client>
+            Test closing HTTP client.
+          <Coroutine test_fetch_document_local_file_not_found>
+            Test handling of non-existent local file.
+          <Coroutine test_process_pdf_tables_detected>
+            Test table detection in PDF content.
+          <Coroutine test_ocr_extract_success>
+            Test OCR text extraction from scanned PDF.
+          <Coroutine test_download_to_temp_no_retry_on_4xx>
+            Test that 4xx client errors are not retried.
+          <Coroutine test_health_check_without_ocr>
+            Test health check passes when OCR disabled.
+          <Coroutine test_fetch_document_with_url_kwarg>
+            Test using url kwarg instead of document_id.
+        <Class TestPDFAdapterConfig>
+          Test cases for PDF adapter configuration.
+          <Function test_custom_config>
+            Test custom configuration values.
+          <Function test_inherited_config>
+            Test inherited base config attributes.
+          <Function test_default_config>
+            Test default configuration values.
+      <Module test_adapters.py>
+        Unit tests for SEC EDGAR adapter.
+        <Class TestAdapterRegistry>
+          Test cases for adapter registry.
+          <Function test_register_adapter>
+            Test registering a new adapter.
+          <Function test_get_sec_edgar_adapter>
+            Test retrieving SEC EDGAR adapter.
+          <Function test_get_adapter_caching>
+            Test that adapter instances are cached.
+        <Class TestSECEdgarAdapter>
+          Test cases for SEC EDGAR adapter.
+          <Coroutine test_get_company_cik_success>
+            Test CIK lookup for known ticker.
+          <Coroutine test_rate_limiting_config>
+            Test rate limiting is configured correctly.
+          <Coroutine test_supported_formats>
+            Test supported formats include expected types.
+          <Coroutine test_search_filings>
+            Test filing search filters by form type and date range.
+          <Coroutine test_fetch_document_not_found>
+            Test fetch with invalid accession number.
+          <Coroutine test_get_company_cik_not_found>
+            Test CIK lookup for unknown ticker.
+          <Coroutine test_adapter_type>
+            Test adapter type is correct.
+        <Class TestXBRLParser>
+          Test cases for XBRL parser.
+          <Function test_extract_key_metrics>
+            Test extracting key financial metrics.
+          <Function test_parse_revenue_fact>
+            Test parsing a simple revenue fact.
+          <Function test_parse_empty>
+            Test parsing empty XBRL.
+    <Dir integration>
+      <Module test_fast_path_pipeline.py>
+        Integration tests for HTTPX Fast Path + Smart Router pipeline.
+        
+        End-to-end tests validating the full hybrid routing architecture
+        from target configuration through execution to result validation.
+        <Class TestQualityGating>
+          Test quality gate evaluation in pipeline.
+          <Coroutine test_error_status_fails_quality>
+            Non-200 status fails quality.
+          <Coroutine test_short_content_fails_quality>
+            Short content fails quality and triggers fallback.
+          <Coroutine test_low_content_ratio_fails_quality>
+            Low text-to-HTML ratio fails quality.
+        <Class TestSPADetection>
+          Test SPA detection triggering fallback.
+          <Coroutine test_spa_detected_triggers_fallback>
+            SPA detection in HTTPX result triggers fallback.
+          <Coroutine test_non_spa_passes_quality>
+            Non-SPA content passes quality check.
+        <Class TestPerformanceCharacteristics>
+          Test performance characteristics of fast path.
+          <Coroutine test_fast_path_fetch_time_under_500ms>
+            Fast path completes in under 500ms.
+          <Function test_content_ratio_uses_original_html_length>
+            P1 Regression: Content ratio uses original HTML length, not truncated.
+          <Function test_execution_logger_handles_invalid_utf8>
+            P1 Regression: ExecutionLogger handles binary/invalid UTF-8 content.
+          <Coroutine test_concurrent_fetch_performance>
+            Multiple URLs fetched concurrently.
+        <Class TestPerURLSmartRouting>
+          Test per-URL Smart Router decisions.
+          <Coroutine test_static_assets_route_fast>
+            Static assets (.css, .js) route to fast path.
+          <Coroutine test_sitemap_routes_fast_high_priority>
+            Sitemap.xml routes to fast with high priority.
+          <Coroutine test_previous_crawl_consistency>
+            Previous browser crawl maintains consistency.
+          <Coroutine test_dynamic_pages_route_browser>
+            Dynamic page patterns route to browser.
+          <Coroutine test_navigation_urls_route_browser>
+            URLs with fragments/query params route to browser.
+        <Class TestExecutionLogging>
+          Test execution logging captures correct data.
+          <Coroutine test_log_fast_path_success>
+            Log fast path execution correctly.
+          <Coroutine test_log_fallback>
+            Log fallback execution correctly.
+        <Class TestTargetLevelModes>
+          Test target-level crawl mode configuration.
+          <Coroutine test_fallback_mode_with_quality_pass>
+            FALLBACK mode uses HTTPX when quality passes.
+          <Coroutine test_browser_mode_skips_fast_path>
+            BROWSER mode skips HTTPX entirely.
+          <Coroutine test_fast_mode_uses_httpx_only>
+            FAST mode always uses HTTPX, even for dynamic-looking URLs.
+        <Class TestEndToEndPipeline>
+          Test complete end-to-end pipeline scenarios.
+          <Coroutine test_mixed_content_target>
+            Handle target with mix of static and dynamic pages.
+          <Coroutine test_backward_compatibility_browser_default>
+            Existing BROWSER targets work unchanged.
+    <Dir benchmarks>
+      <Module test_router_performance.py>
+        Performance benchmarks comparing browser-only vs router+fast-path.
+        
+        Measures:
+        - Speedup factor for static content
+        - Accuracy for mixed content sites
+        - Fallback rate by domain type
+        - Quality gate effectiveness
+        <Class TestFallbackRateTarget>
+          Benchmark: Fallback rate stays within acceptable bounds.
+          <Function test_fallback_rate_on_representative_urls>
+            Fallback rate on representative URL set should be <30%.
+        <Class TestStaticSiteSpeedup>
+          Benchmark: Fast path delivers 10x+ speedup on static content.
+          <Coroutine test_blog_site_speedup>
+            Static blog should be 10x faster with router vs browser-only.
+          <Coroutine test_docs_site_speedup>
+            Documentation site should be significantly faster with fast path.
+        <Class TestMixedContentAccuracy>
+          Benchmark: Router correctly classifies mixed content.
+          <Function test_mixed_site_routing_distribution>
+            Mixed site should have reasonable routing distribution.
+        <Class TestRouterDecisionSpeed>
+          Benchmark: Router decision speed should be negligible.
+          <Function test_router_decision_latency>
+            Router decision should complete in under 10ms.
+        <Class TestQualityGateEffectiveness>
+          Benchmark: Quality gate catches low-quality fast path results.
+          <Function test_content_ratio_validation>
+            Quality gate should validate content-to-markup ratio.
+          <Function test_spa_detection_accuracy>
+            SPA detection should have high accuracy.
+    <Dir unit>
+      <Module test_scheduler.py>
+        Unit tests for priority queue scheduler.
+        <Class TestPriorityScheduler>
+          Test cases for PriorityScheduler.
+          <Function test_get_queue_stats>
+            Test queue statistics.
+          <Function test_priority_ordering>
+            Test URLs are retrieved in priority order.
+          <Function test_rate_limiting>
+            Test per-domain rate limiting.
+          <Function test_add_url>
+            Test adding URL to queue.
+          <Function test_depth_affects_priority>
+            Test that depth increases effective priority.
+        <Class TestRoundRobinScheduler>
+          Test cases for RoundRobinScheduler.
+          <Function test_round_robin_selection>
+            Test round-robin domain selection.
+      <Module test_m02_exception_remediation.py>
+        Tests for M-02 Silent Exception Handling Remediation.
+        
+        Covers:
+        - NoOpExecutionLogger production guard
+        - database.py Redis availability flag
+        - content_extractor metadata extraction logging
+        <Class TestContentExtractorMetadataLogging>
+          ContentExtractor must log warnings instead of silently passing on JSON-LD errors.
+          <Function test_bad_jsonld_logs_warning>
+        <Class TestNoOpExecutionLoggerProductionGuard>
+          NoOpExecutionLogger must refuse instantiation in production-like environments.
+          <Function test_raises_in_production>
+          <Function test_allowed_in_development>
+          <Function test_allowed_in_test>
+        <Class TestDatabaseRedisAvailability>
+          database.py must expose REDIS_AVAILABLE and log on import failure.
+          <Function test_redis_available_flag_exists>
+          <Function test_redis_client_none_when_unavailable>
+    <Module test_cross_tenant_hostile.py>
+      Cross-tenant hostile invariants for layer1-ingestion.
+      <Function test_tenant_a_cannot_mutate_tenant_b_patterns_present>
+      <Function test_tenant_a_cannot_read_tenant_b_patterns_present>
+    <Dir unit>
+      <Module test_crawler_telemetry.py>
+        Tests for OpenTelemetry instrumentation and metrics.
+        
+        Validates tracing setup, span creation, and metrics collection,
+        following the Layer 4 agent tracing patterns mentioned in AGENTS.md.
+        <Class TestInitTelemetry>
+          Test telemetry initialization.
+          <Function test_get_tracer_returns_instance>
+            Test that get_tracer returns a tracer.
+          <Function test_init_creates_provider>
+            Test that init_telemetry creates and sets tracer provider.
+        <Class TestStartCrawlSpan>
+          Test crawl span context managers.
+          <Function test_start_crawl_span_yields_span>
+            Test that start_crawl_span yields the span.
+          <Function test_span_records_exception_on_error>
+            Test that span records exception when error occurs.
+        <Class TestTraceMethodDecorator>
+          Test the trace_method decorator.
+          <Function test_decorator_adds_span>
+            Test that decorator adds tracing to methods.
+        <Class TestCrawlMetrics>
+          Test CrawlMetrics metrics collection.
+          <Function test_to_dict_export>
+            Test metrics export to dictionary.
+          <Function test_error_rate_calculation>
+            Test error rate calculation with mixed results.
+          <Function test_initial_metrics>
+            Test that initial metrics are zero.
+          <Function test_record_failed_crawl>
+            Test recording a failed crawl.
+          <Function test_record_successful_crawl>
+            Test recording a successful crawl.
+          <Function test_avg_duration_calculation>
+            Test average duration calculation across multiple crawls.
+        <Class TestStartBatchSpan>
+          Test batch crawl span context managers.
+          <Function test_start_batch_span_sets_attributes>
+            Test that batch span sets batch_size attribute.
+    <Dir integration>
+      <Module test_router_edge_cases.py>
+        Edge case tests for Smart Router with fixture-based scenarios.
+        
+        Validates routing decisions against real-world HTML patterns:
+        - Static content pages (should use FAST)
+        - SPA shell pages (should use FAST_WITH_FALLBACK)
+        - SSR pages (should use FAST)
+        - Empty pages (should fail quality and fallback)
+        - Heavy markup (content ratio checks)
+        <Class TestFailClosedBehavior>
+          Test fail-closed escalation for ambiguous cases.
+          <Function test_indeterminate_quality_escalates>
+            Indeterminate content quality should escalate.
+          <Function test_borderline_timing_triggers_fallback>
+            Fetch timing near threshold should escalate to browser.
+        <Class TestContentRatioChecks>
+          Test content-to-markup ratio validation.
+          <Function test_heavy_markup_fails_ratio>
+            Page with heavy markup vs content should fail ratio check.
+        <Class TestRouterRuleCoverage>
+          Test all router rules are triggered correctly.
+          <Function test_router_rules[https://example.com/robots.txt-fast-robots]>
+            Each URL pattern should trigger expected router rule.
+          <Function test_router_rules[https://example.com/sitemap.xml-fast-sitemap]>
+            Each URL pattern should trigger expected router rule.
+          <Function test_router_rules[https://example.com/pricing-browser-dynamic]>
+            Each URL pattern should trigger expected router rule.
+          <Function test_router_rules[https://example.com/api/data-fast_fallback-fallback]>
+            Each URL pattern should trigger expected router rule.
+          <Function test_router_rules[https://example.com/image.png-fast-static]>
+            Each URL pattern should trigger expected router rule.
+          <Function test_router_rules[https://example.com/docs/guide-fast_fallback-fallback]>
+            Each URL pattern should trigger expected router rule.
+        <Class TestSPAPageRouting>
+          Test routing decisions for Single Page Applications.
+          <Function test_react_shell_uses_fallback>
+            React SPA shell should use FAST_WITH_FALLBACK.
+          <Function test_nextjs_ssr_uses_fast>
+            Next.js SSR page should route to FAST (content present).
+        <Class TestTargetModeOverride>
+          Test target-level mode overrides all router decisions.
+          <Function test_browser_mode_overrides_all>
+            Target mode BROWSER forces browser regardless of URL.
+          <Function test_fast_mode_overrides_all>
+            Target mode FAST forces fast path regardless of URL.
+        <Class TestPreviousCrawlConsistency>
+          Test previous crawl route consistency.
+          <Function test_previous_fast_allows_fast>
+            If previous crawl used fast, can continue with fast.
+          <Function test_previous_browser_maintains_browser>
+            If previous crawl used browser, continue using browser.
+        <Class TestStaticPageRouting>
+          Test routing decisions for static HTML pages.
+          <Function test_empty_page_fails_quality>
+            Empty page should fail quality gate and fallback.
+          <Function test_docs_page_uses_fast_path>
+            Documentation page should route to FAST.
+          <Function test_blog_post_uses_fast_path>
+            Blog post with semantic HTML should route to FAST.
+    <Dir crawler>
+      <Module test_httpx_crawler.py>
+        Tests for HttpxCrawler fast path implementation.
+        
+        Covers HTTP fetching, SPA detection, content extraction, error handling,
+        and batch operations.
+        <Class TestErrorHandling>
+          Test error cases and edge conditions.
+          <Coroutine test_empty_response>
+            Handle empty HTML response.
+          <Coroutine test_server_error>
+            Handle 500 server error.
+          <Coroutine test_timeout_handling>
+            Handle request timeout.
+        <Class TestFastPathResult>
+          Test FastPathResult data structure.
+          <Function test_result_defaults>
+            Result has sensible defaults.
+          <Function test_result_creation>
+            Create result with all fields.
+        <Class TestLinkExtraction>
+          Test link extraction from HTML.
+          <Function test_skip_mailto_tel>
+            Skip mailto: and tel: links.
+          <Function test_extract_relative_links>
+            Resolve relative URLs to absolute.
+          <Function test_deduplicate_links>
+            Remove duplicate links while preserving order.
+          <Function test_extract_absolute_links>
+            Extract absolute URLs.
+          <Function test_skip_javascript_links>
+            Skip javascript: and anchor-only links.
+        <Class TestSPADetection>
+          Test SPA shell detection heuristics.
+          <Function test_not_detect_server_rendered_react>
+            Server-rendered React (Next.js) is not detected as SPA shell.
+          <Function test_detect_low_content_ratio>
+            Detect SPA with low content ratio.
+          <Function test_detect_react_marker>
+            Detect SPA with React marker.
+          <Function test_not_detect_empty_html>
+            Empty HTML is not a SPA.
+          <Function test_not_detect_static_page>
+            Static page is not detected as SPA.
+          <Function test_detect_high_script_density>
+            Detect SPA with many script tags.
+          <Function test_detect_empty_root>
+            Detect SPA with empty root div.
+        <Class TestBatchOperations>
+          Test batch URL fetching.
+          <Coroutine test_fetch_batch_concurrent>
+            Fetch multiple URLs concurrently.
+        <Class TestHttpxCrawlerBasic>
+          Test basic HTTPX crawler functionality.
+          <Coroutine test_fetch_requires_start>
+            Fetch fails if crawler not started.
+          <Coroutine test_fetch_redirect_followed>
+            Follow redirects automatically.
+          <Coroutine test_fetch_success>
+            Successfully fetch a page.
+          <Function test_custom_config>
+            Crawler accepts custom configuration.
+          <Function test_default_config>
+            Crawler has sensible default configuration.
+          <Coroutine test_fetch_not_found>
+            Handle 404 response gracefully.
+        <Class TestSSRFProtection>
+          Test SSRF network boundary enforcement.
+          <Coroutine test_validate_public_url_rejects_private_targets[http://10.0.0.1/]>
+          <Coroutine test_fetch_blocks_private_ip>
+          <Coroutine test_validate_public_url_rejects_private_targets[http://127.0.0.1/admin]>
+          <Coroutine test_validate_public_url_rejects_private_targets[http://169.254.169.254/latest/meta-data/]>
+          <Coroutine test_redirect_to_private_ip_is_blocked>
+          <Coroutine test_validate_public_url_rejects_private_targets[http://[::1]/]>
+          <Coroutine test_validate_public_url_rejects_private_targets[http://172.16.0.1/]>
+          <Coroutine test_validate_public_url_rejects_private_targets[http://192.168.1.10/]>
+          <Coroutine test_validate_public_url_rejects_private_targets[http://localhost:8000/]>
+          <Coroutine test_validate_public_url_rejects_private_targets[ftp://example.com/file]>
+    <Dir unit>
+      <Module test_pii_scanner.py>
+        Tests for PIIScanner (layer1-ingestion/src/compliance/pii_scanner.py).
+        
+        Covers:
+        - PIIEntity.to_dict()
+        - PIIScanResult.to_dict()
+        - PIIScanner.is_available() when Presidio is absent
+        - PIIScanner.scan() when scanner unavailable (returns empty result)
+        - PIIScanner.scan() with empty/None text
+        - PIIScanner.classify_content() – clean / flagged / quarantined thresholds
+        - PIIScanner.anonymize() when scanner unavailable
+        - PIIScanner._hash_text()
+        - PIIScanner.get_summary_stats() – totals, entity counts, detection_rate
+        - get_scanner() singleton
+        <Class TestHashText>
+          <Function test_different_text_different_hash>
+          <Function test_hash_is_16_char_hex>
+          <Function test_same_text_same_hash>
+          <Function test_empty_string_has_valid_hash>
+        <Class TestGetScanner>
+          <Function test_returns_pii_scanner_instance>
+          <Function test_returns_same_instance_on_repeated_calls>
+        <Class TestClassifyContent>
+          <Function test_score_below_flag_threshold_returns_clean>
+          <Function test_score_above_quarantine_threshold_returns_quarantined>
+          <Function test_score_at_quarantine_threshold_returns_quarantined>
+          <Function test_no_pii_returns_clean>
+          <Function test_score_at_flag_threshold_returns_flagged>
+          <Function test_score_between_flag_and_quarantine_returns_flagged>
+        <Class TestPIIScanResult>
+          <Function test_to_dict_has_pii_true_when_entities_present>
+          <Function test_to_dict_engine_version_default>
+          <Function test_to_dict_has_pii_false_when_no_entities>
+          <Function test_to_dict_highest_score_rounded>
+          <Function test_to_dict_scan_timestamp_is_iso_string>
+        <Class TestGetSummaryStats>
+          <Function test_all_clean_results>
+          <Function test_entity_type_counts_aggregated>
+          <Function test_mixed_results_counts>
+          <Function test_empty_results_returns_zero_totals>
+          <Function test_detection_rate_calculated>
+        <Class TestPIIScannerUnavailable>
+          <Function test_scan_empty_text_returns_clean_result>
+          <Function test_anonymize_returns_text_unchanged_when_unavailable>
+          <Function test_scan_returns_scan_result_when_unavailable>
+          <Function test_scan_none_equivalent_text_returns_clean_result>
+          <Function test_is_available_false>
+        <Class TestPIIEntity>
+          <Function test_to_dict_contains_expected_keys>
+          <Function test_to_dict_score_rounded>
+          <Function test_to_dict_values_match>
+
+=================================== ERRORS ====================================
+______________ ERROR collecting tests/unit/test_quality_gate.py _______________
+import file mismatch:
+imported module 'test_quality_gate' has this __file__ attribute:
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_quality_gate.py
+which is not the same as the test file we want to collect:
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_quality_gate.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+______________ ERROR collecting tests/unit/test_smart_router.py _______________
+import file mismatch:
+imported module 'test_smart_router' has this __file__ attribute:
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\crawler\test_smart_router.py
+which is not the same as the test file we want to collect:
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_smart_router.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+============================== warnings summary ===============================
+packages\shared\src\value_fabric\shared\security\config.py:52
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\security\config.py:52: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class SecurityConfig(BaseModel):
+
+packages\shared\src\value_fabric\shared\identity\jwt.py:19
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\identity\jwt.py:19: UserWarning: Field name "keys" in "get_jwksResult" shadows an attribute in parent "TypedDictModel"
+    class get_jwksResult(TypedDictModel):
+
+packages\shared\src\value_fabric\shared\audit\models.py:154
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\audit\models.py:154: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class TenantResolvedDetails(BaseModel):
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:27
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:27: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:84
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:84: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:121
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:121: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:177
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:177: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:220
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:220: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:272
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:272: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\tests\benchmarks\test_router_performance.py:303
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\benchmarks\test_router_performance.py:303: PytestUnknownMarkWarning: Unknown pytest.mark.benchmark - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.benchmark
+
+services\layer1-ingestion\src\api\app_monolith.py:387
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:387: UserWarning: Field name "items" in "list_contentResult" shadows an attribute in parent "TypedDictModel"
+    class list_contentResult(TypedDictModel):
+
+services\layer1-ingestion\src\api\app_monolith.py:393
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:393: UserWarning: Field name "items" in "list_compliance_logsResult" shadows an attribute in parent "TypedDictModel"
+    class list_compliance_logsResult(TypedDictModel):
+
+packages\shared\src\value_fabric\shared\fastapi_framework\middleware.py:114
+  C:\Users\BBB\Fabric_4L\packages\shared\src\value_fabric\shared\fastapi_framework\middleware.py:114: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+..\AppData\Roaming\Python\Python314\site-packages\fastapi\applications.py:4598
+  C:\Users\BBB\AppData\Roaming\Python\Python314\site-packages\fastapi\applications.py:4598: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+services\layer1-ingestion\src\api\app_monolith.py:1242
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:1242: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_by: str = Query(
+
+services\layer1-ingestion\src\api\app_monolith.py:1245
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:1245: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
+
+services\layer1-ingestion\src\api\app_monolith.py:2015
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2015: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_by: str = Query(
+
+services\layer1-ingestion\src\api\app_monolith.py:2018
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2018: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
+
+services\layer1-ingestion\src\api\app_monolith.py:2257
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2257: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    format: str = Query(default="json", regex="^(json|csv|ndjson)$"),
+
+services\layer1-ingestion\src\api\app_monolith.py:2656
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\src\api\app_monolith.py:2656: FastAPIDeprecationWarning: `regex` has been deprecated, please use `pattern` instead
+    format: str = Query(default="json", regex="^(json|markdown|flattened)$"),
+
+services\layer1-ingestion\tests\unit\test_pdf_adapter.py:19
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_pdf_adapter.py:19: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytest.mark.slow,
+
+services\layer1-ingestion\tests\unit\test_playwright_crawler.py:20
+  C:\Users\BBB\Fabric_4L\services\layer1-ingestion\tests\unit\test_playwright_crawler.py:20: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytest.mark.slow,
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR services\layer1-ingestion\tests\unit\test_quality_gate.py
+ERROR services\layer1-ingestion\tests\unit\test_smart_router.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!
+=================== 475 tests collected, 2 errors in 4.11s ====================
+
+STDERR:
+
+Return code: 2

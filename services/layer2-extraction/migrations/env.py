@@ -1,4 +1,10 @@
-"""Alembic environment configuration."""
+"""Alembic environment configuration for Layer 2.
+
+Note: Layer 2 uses AsyncEngine with asyncio.run() for online migrations.
+This is an accepted service-specific implementation difference (not a bug).
+Synchronous services (L1, L4, L5) use engine_from_config; L2 uses
+asyncpg via AsyncEngine. Both patterns are valid Alembic configurations.
+"""
 
 import asyncio
 from logging.config import fileConfig

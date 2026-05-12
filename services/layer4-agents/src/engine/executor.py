@@ -39,7 +39,7 @@ from ..messaging.router import MessageRouter
 from ..messaging.types import MessageType
 from ..registry.service import resolve_llm_model
 from ..tools.registry import ToolRegistry
-from ..workflows import create_workflow
+from ..workflows import WORKFLOW_TYPES, create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
 from .execution_validation import ensure_controller_accepts_execution
@@ -266,8 +266,16 @@ class OrchestrationController:
             context = RequestContext(tenant_id=tenant_id)
             async with db_session_for_context(context) as db:
                 return await resolve_llm_model(db, tenant_id, provider)
-        except (RuntimeError, ValueError, OSError):
-            logger.exception("Failed to resolve LLM model for tenant %s, using fallback", tenant_id)
+        except (ImportError, ConnectionError) as exc:
+            logger.warning(
+                "Failed to resolve LLM model for tenant %s (%s: %s), using fallback",
+                tenant_id,
+                type(exc).__name__,
+                exc,
+            )
+            return os.getenv("LLM_MODEL", "gpt-4o")
+        except Exception:
+            logger.exception("Unexpected error resolving LLM model for tenant %s, using fallback", tenant_id)
             return os.getenv("LLM_MODEL", "gpt-4o")
 
     async def register_agent(self, agent: BaseAgent) -> None:
@@ -342,6 +350,13 @@ class OrchestrationController:
             is_shutdown=self._shutdown,
             error_cls=WorkflowExecutionError,
         )
+
+        # Validate workflow type early for clear error messages
+        if workflow_type not in WORKFLOW_TYPES:
+            raise WorkflowExecutionError(
+                f"Unknown workflow type: {workflow_type!r}. "
+                f"Supported types: {', '.join(sorted(WORKFLOW_TYPES))}"
+            )
 
         if self.checkpoint_saver is None:
             import os
@@ -1086,10 +1101,25 @@ class OrchestrationController:
         self._active_workflows[workflow_id] = asyncio.current_task()
 
         try:
-            result = await workflow.run(initial_state, thread_id=workflow_id)
+            from ..config.settings import settings
+            result = await asyncio.wait_for(
+                workflow.run(initial_state, thread_id=workflow_id),
+                timeout=settings.workflow_timeout_seconds,
+            )
             await self.state_manager.save_state(workflow_id, result)
             lifecycle_logger.emit(stage="completion", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str(self._workflow_metadata.get(workflow_id, {}).get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph"))
             return result
+        except asyncio.TimeoutError as exc:
+            await persist_workflow_failure(
+                state_manager=self.state_manager,
+                workflow_id=workflow_id,
+                initial_state=initial_state,
+                exc=exc,
+            )
+            lifecycle_logger.emit(stage="failure", context=Layer4EventContext(request_id=workflow_id, trace_id=workflow_id, tenant_id=str(self._workflow_metadata.get(workflow_id, {}).get("tenant_id") or "unknown"), workflow_id=workflow_id, run_id=workflow_id, provider_name="langgraph"), error_class="TimeoutError", error_code="WORKFLOW_TIMEOUT")
+            raise WorkflowExecutionError(
+                f"Workflow {workflow_id} exceeded global timeout of {settings.workflow_timeout_seconds}s"
+            ) from exc
         except asyncio.CancelledError:
             await persist_interruption_if_needed(
                 state_manager=self.state_manager,

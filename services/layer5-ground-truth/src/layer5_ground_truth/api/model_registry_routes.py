@@ -126,6 +126,7 @@ async def create_model_version(
     )
 
     db.add(model)
+    await db.flush()
 
     logger.info(
         "Registered model version: %s/%s@%s (org=%s)",
@@ -265,6 +266,8 @@ async def deprecate_model_version(
     model.deprecation_reason = reason or "Manually deprecated"
     model.is_active = False
 
+    await db.commit()
+
     logger.info(
         "Deprecated model version: %s/%s@%s (org=%s, reason=%s)",
         model.provider,
@@ -329,6 +332,7 @@ async def set_default_model_version(
     )
 
     model.is_default = True
+    await db.flush()
 
     logger.info(
         "Set default model: %s/%s@%s (org=%s)",
@@ -418,6 +422,8 @@ async def promote_model(
             deployed_by=caller.user_id or caller.email,
         )
         db.add(deployment)
+        await db.commit()
+        await db.refresh(deployment)
 
     # If making default, clear other defaults for this environment
     if payload.make_default:
@@ -556,6 +562,8 @@ async def rollback_deployment(
     deployment.rolled_back_by = caller.user_id or caller.email
     deployment.rollback_reason = payload.reason
 
+    await db.commit()
+
     logger.info(
         "Rolled back deployment %s (reason: %s)",
         deployment_id,
@@ -625,6 +633,8 @@ async def create_evaluation(
     )
 
     db.add(evaluation)
+    await db.commit()
+    await db.refresh(evaluation)
 
     logger.info(
         "Recorded evaluation for %s/%s@%s: %s=%.4f",

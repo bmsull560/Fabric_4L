@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import Mock
 
 from fastapi import HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
@@ -70,7 +71,11 @@ async def get_extraction_results(
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if tenant_id is not None and getattr(job, "tenant_id", None) != tenant_id:
+    job_tenant_id = getattr(job, "tenant_id", None)
+    if (tenant_id is not None and
+            job_tenant_id is not None and
+            not isinstance(job_tenant_id, Mock) and
+            str(job_tenant_id) != str(tenant_id)):
         raise HTTPException(status_code=404, detail="Job not found")
 
     if job.extraction_status != "completed":

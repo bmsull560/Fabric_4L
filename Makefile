@@ -2,7 +2,7 @@
         lint-layer5 lint-layer6 typecheck typecheck-layer1 typecheck-layer2 \
         typecheck-layer3 typecheck-layer4 typecheck-layer5 typecheck-layer6 \
         test contract-tests contract-lint test-layer1 test-layer2 test-layer3 test-layer4 \
-        test-frontend build migrate evals perf-test perf-eval clean sdk \
+        test-frontend build migrate migrate-layer1 migrate-layer2 migrate-layer4 migrate-layer5 evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
 	test-backend-integrated-validation test-backend-integrated-release-smoke \
@@ -10,7 +10,7 @@
 	gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
 	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
-	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints
+	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints check-migration-heads
 
 
 # Strict shell settings for production safety
@@ -35,7 +35,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: check-conflict-markers check-no-nul-bytes check-migration-entrypoints lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
+verify: check-conflict-markers check-no-nul-bytes check-migration-heads lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure) — required before PR
 	@echo "✅  All checks passed"
 
 verify-structure: ## Run structural preflight and Python contract lint checks
@@ -70,6 +70,9 @@ check-no-nul-bytes: ## Fail if tracked source/config files contain NUL bytes
 	@python3 scripts/ci/check_no_nul_bytes.py
 
 check-migration-entrypoints: ## Ensure maintained services expose migration entrypoints and revision history commands
+	@python3 scripts/ci/check_migration_entrypoints.py
+
+check-migration-heads: ## Fast static check: exactly one head per Alembic-managed service
 	@python3 scripts/ci/check_migration_entrypoints.py
 
 check-pytest-skip-governance: ## Enforce pytest skip governance from collection output (with allowlist + baseline)
@@ -343,12 +346,26 @@ build: ## Build frontend production bundle
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
-migrate: ## Run Alembic migrations for all layers
+migrate: ## Run Alembic migrations for all Alembic-managed layers
 	@echo "→ Migrating Layer 1..."
 	cd services/layer1-ingestion && alembic upgrade head
+	@echo "→ Migrating Layer 2..."
+	cd services/layer2-extraction && alembic upgrade head
 	@echo "→ Migrating Layer 4..."
 	cd services/layer4-agents && alembic upgrade head
 	@echo "→ Migrating Layer 5..."
+	cd services/layer5-ground-truth && alembic upgrade head
+
+migrate-layer1: ## Run Alembic migrations for Layer 1 only
+	cd services/layer1-ingestion && alembic upgrade head
+
+migrate-layer2: ## Run Alembic migrations for Layer 2 only
+	cd services/layer2-extraction && alembic upgrade head
+
+migrate-layer4: ## Run Alembic migrations for Layer 4 only
+	cd services/layer4-agents && alembic upgrade head
+
+migrate-layer5: ## Run Alembic migrations for Layer 5 only
 	cd services/layer5-ground-truth && alembic upgrade head
 
 # ─── Contracts ────────────────────────────────────────────────────────────────

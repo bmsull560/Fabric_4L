@@ -20,6 +20,7 @@ import inspect
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
+from layer5_ground_truth import __version__
 from ..shared_bootstrap import (
     SecurityConfig,
     add_security_middleware,
@@ -154,6 +155,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Shutting down Layer 5 Ground Truth service")
     await close_db()
 
+    # Close Layer 3 client connection pool
+    try:
+        from ..integration.layer3_client import get_layer3_client
+
+        client = get_layer3_client()
+        await client.close()
+        logger.info("L5: Layer 3 client closed")
+    except Exception as exc:
+        logger.warning("L5: Error closing Layer 3 client: %s", exc)
+
     # Close Redis connection if initialized
     if app.state.redis_rate_limiter:
         try:
@@ -185,7 +196,7 @@ def create_app() -> FastAPI:
             "Provides a validation state machine (extracted → supported → corroborated → approved), "
             "a 0–5 maturity ladder, and bidirectional integration with the Layer 3 Knowledge Graph."
         ),
-        version="0.1.0",
+        version=__version__,
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
@@ -311,10 +322,31 @@ def create_app() -> FastAPI:
     async def public_health() -> HealthResponse:
         return HealthResponse(
             status="ok",
-            version="0.1.0",
+            version=__version__,
             timestamp=datetime.now(UTC),
             database="ok",
         )
+
+    # Readiness check — verifies database connectivity
+    @app.get("/ready", tags=["system"], include_in_schema=False)
+    async def readiness() -> JSONResponse:
+        from sqlalchemy import text
+        from ..database import get_engine
+
+        try:
+            engine = get_engine()
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+            return JSONResponse(
+                content={"status": "ready", "database": "ok"},
+                status_code=200,
+            )
+        except Exception as exc:
+            logger.warning("Readiness check failed: %s", exc)
+            return JSONResponse(
+                content={"status": "not_ready", "database": "unavailable"},
+                status_code=503,
+            )
 
     # Root redirect to docs
     @app.get("/", include_in_schema=False)
@@ -322,7 +354,7 @@ def create_app() -> FastAPI:
         return JSONResponse(
             content={
                 "service": "Value Fabric Ground Truth Layer (L5)",
-                "version": "0.1.0",
+                "version": __version__,
                 "docs": "/docs",
                 "health": "/health",
                 "metrics": "/metrics",

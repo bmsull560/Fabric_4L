@@ -4,6 +4,11 @@ import logging
 import time
 from typing import Any
 
+try:
+    from layer5_ground_truth import __version__
+except ImportError:  # pragma: no cover
+    __version__ = "0.1.0"
+
 from prometheus_client import (
     CollectorRegistry,
     Counter,
@@ -183,7 +188,7 @@ class PrometheusMetrics:
             f"{prefix}build_info", "Build information", registry=self.config.registry
         )
         self._metrics["build_info"].info(
-            {"version": "0.1.0", "service": "layer5-ground-truth"}
+            {"version": __version__, "service": "layer5-ground-truth"}
         )
 
     def increment_requests_total(
@@ -295,7 +300,7 @@ _L5_KNOWN_ROUTES: dict[str, str] = {
     "/api/v1/truths/{truth_id}/sources": "/api/v1/truths/{id}/sources",
     "/api/v1/truths/{truth_id}/audit": "/api/v1/truths/{id}/audit",
     "/api/v1/maturity-ladder": "/api/v1/maturity-ladder",
-    "/api/v1/health": "/api/v1/health",
+    "/health": "/health",
     "/api/v1/truths/sync-kg": "/api/v1/truths/sync-kg",
     "/api/v1/truths/check-stale": "/api/v1/truths/check-stale",
     "/api/v1/truths/stale": "/api/v1/truths/stale",

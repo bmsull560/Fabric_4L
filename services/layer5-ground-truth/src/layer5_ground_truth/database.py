@@ -8,6 +8,7 @@ Follows the same pattern as Layer 1's database.py but with async support.
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -95,13 +96,21 @@ def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(
-            settings.database_url,
+        engine_kwargs: dict[str, Any] = dict(
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
             pool_pre_ping=settings.db_pool_pre_ping,
+            pool_recycle=settings.db_pool_recycle,
+            pool_timeout=settings.db_pool_timeout,
             echo=settings.debug,
             future=True,
+        )
+        # SQLite requires check_same_thread=False for connection pooling
+        if settings.database_url.startswith("sqlite"):
+            engine_kwargs["connect_args"] = {"check_same_thread": False}
+        _engine = create_async_engine(
+            settings.database_url,
+            **engine_kwargs,
         )
         _setup_sqlite_uuid_handling(settings.database_url)
     return _engine

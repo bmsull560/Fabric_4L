@@ -63,6 +63,22 @@ class Layer3Client:
         self._headers: dict[str, str] = {"Content-Type": "application/json"}
         if self._settings.layer3_api_key:
             self._headers["Authorization"] = f"Bearer {self._settings.layer3_api_key}"
+        self._client: httpx.AsyncClient | None = None
+
+    def _get_client(self) -> httpx.AsyncClient:
+        """Return (or lazily create) the persistent HTTP client."""
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                timeout=httpx.Timeout(self._timeout),
+                headers=self._headers,
+            )
+        return self._client
+
+    async def close(self) -> None:
+        """Close the persistent HTTP client."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     # ------------------------------------------------------------------
     # Health check
@@ -71,11 +87,11 @@ class Layer3Client:
     async def ping(self) -> bool:
         """Return True if Layer 3 is reachable."""
         try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                resp = await client.get(
-                    f"{self._base_url}/health", headers=self._headers
-                )
-                return resp.status_code == 200
+            client = self._get_client()
+            resp = await client.get(
+                f"{self._base_url}/health", headers=self._headers
+            )
+            return resp.status_code == 200
         except Exception as exc:
             logger.debug("Layer 3 ping failed: %s", exc)
             return False
@@ -139,37 +155,37 @@ class Layer3Client:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                async with httpx.AsyncClient(timeout=self._timeout) as client:
-                    resp = await client.post(
-                        f"{self._base_url}/api/v1/nodes",
-                        json=payload,
-                        headers=self._headers,
+                client = self._get_client()
+                resp = await client.post(
+                    f"{self._base_url}/api/v1/nodes",
+                    json=payload,
+                    headers=self._headers,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                node_id: str = data.get("id") or data.get("node_id", "")
+                logger.info(
+                    "Synced TruthObject %s to Layer 3 KG as node %s",
+                    truth_object_id,
+                    node_id,
+                )
+                metrics = get_metrics()
+                if metrics:
+                    metrics.increment_kg_sync(status="success")
+                    metrics.increment_kg_sync_outcome(
+                        sync_status="success", transition=f"{status}->kg_sync"
                     )
-                    resp.raise_for_status()
-                    data = resp.json()
-                    node_id: str = data.get("id") or data.get("node_id", "")
-                    logger.info(
-                        "Synced TruthObject %s to Layer 3 KG as node %s",
-                        truth_object_id,
-                        node_id,
-                    )
-                    metrics = get_metrics()
-                    if metrics:
-                        metrics.increment_kg_sync(status="success")
-                        metrics.increment_kg_sync_outcome(
-                            sync_status="success", transition=f"{status}->kg_sync"
-                        )
-                    logger.info(
-                        "kg sync outcome",
-                        extra={
-                            "request_id": None,
-                            "tenant_id": str(tenant_id),
-                            "truth_object_id": str(truth_object_id),
-                            "transition": f"{status}->kg_sync",
-                            "sync_status": "success",
-                        },
-                    )
-                    return node_id
+                logger.info(
+                    "kg sync outcome",
+                    extra={
+                        "request_id": None,
+                        "tenant_id": str(tenant_id),
+                        "truth_object_id": str(truth_object_id),
+                        "transition": f"{status}->kg_sync",
+                        "sync_status": "success",
+                    },
+                )
+                return node_id
             except httpx.HTTPStatusError as exc:
                 # Don't retry 4xx errors (client errors)
                 if 400 <= exc.response.status_code < 500:
@@ -285,20 +301,20 @@ class Layer3Client:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                async with httpx.AsyncClient(timeout=self._timeout) as client:
-                    resp = await client.post(
-                        f"{self._base_url}/api/v1/relationships",
-                        json=payload,
-                        headers=self._headers,
-                    )
-                    resp.raise_for_status()
-                    logger.info(
-                        "Linked KG node %s -[%s]-> %s",
-                        kg_node_id,
-                        relationship_type,
-                        target_entity_id,
-                    )
-                    return True
+                client = self._get_client()
+                resp = await client.post(
+                    f"{self._base_url}/api/v1/relationships",
+                    json=payload,
+                    headers=self._headers,
+                )
+                resp.raise_for_status()
+                logger.info(
+                    "Linked KG node %s -[%s]-> %s",
+                    kg_node_id,
+                    relationship_type,
+                    target_entity_id,
+                )
+                return True
             except httpx.HTTPStatusError as exc:
                 # Don't retry 4xx errors
                 if 400 <= exc.response.status_code < 500:
@@ -354,16 +370,16 @@ class Layer3Client:
         Returns the entity dict or None if not found / unavailable.
         """
         try:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.get(
-                    f"{self._base_url}/api/v1/entities/{entity_id}",
-                    params={"tenant_id": str(tenant_id)},
-                    headers=self._headers,
-                )
-                if resp.status_code == 404:
-                    return None
-                resp.raise_for_status()
-                return resp.json()
+            client = self._get_client()
+            resp = await client.get(
+                f"{self._base_url}/api/v1/entities/{entity_id}",
+                params={"tenant_id": str(tenant_id)},
+                headers=self._headers,
+            )
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return resp.json()
         except Exception as exc:
             logger.debug(
                 "Layer 3 entity context fetch failed for %s: %s", entity_id, exc

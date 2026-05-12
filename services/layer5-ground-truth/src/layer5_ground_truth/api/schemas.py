@@ -541,7 +541,7 @@ class ModelVersionResponse(BaseModel):
     is_active: bool
     is_default: bool
     description: str | None
-    extra_metadata: dict[str, Any]
+    extra_metadata: dict[str, Any] | None = None
     created_by: str | None
     created_at: datetime
     updated_at: datetime
