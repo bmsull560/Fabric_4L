@@ -141,3 +141,8 @@ audit-output/
 /archive/
 apps/web/src/*.backup.*
 apps/web/coverage/
+
+# Test artifacts
+*_test_out.txt
+*_test_summary.txt
+

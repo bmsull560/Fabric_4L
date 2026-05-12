@@ -2,11 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: value-fabric
 spec:
   template:
     spec:
       containers:
-        - name: frontend
+        - name: web
           resources:
             requests:
               memory: "256Mi"
@@ -18,7 +19,8 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: global-config
+  name: value-fabric-config
+  namespace: value-fabric
 data:
   ENVIRONMENT: "production"
   LOG_LEVEL: "info"
