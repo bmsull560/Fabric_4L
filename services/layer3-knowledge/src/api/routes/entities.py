@@ -10,10 +10,12 @@ These endpoints have been refactored from main.py as part of the
 architectural decomposition effort (Weakness #3).
 """
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from value_fabric.shared.identity import RequestContext, require_authenticated
+from value_fabric.shared.identity.isolation import TenantScopedCypher
 
 from ...logging_config import get_logger
 from ..dependencies import (
@@ -37,6 +39,44 @@ router = APIRouter(prefix="/v1", tags=["Entities"], dependencies=[Depends(requir
 logger = get_logger(__name__)
 
 
+@dataclass
+class EntityQueryFilters:
+    """Build parameterized filter clauses for entity routes."""
+
+    clauses: list[str] = field(default_factory=list)
+    params: dict[str, Any] = field(default_factory=dict)
+
+    def add_search_text(self, search_text: str | None) -> None:
+        if not search_text:
+            return
+        self.clauses.append(
+            "(toLower(e.name) CONTAINS toLower($search_text) OR "
+            "toLower(e.description) CONTAINS toLower($search_text))"
+        )
+        self.params["search_text"] = search_text
+
+    def add_entity_types(self, entity_types: list[str] | None) -> None:
+        if not entity_types:
+            return
+        self.clauses.append("e.entity_type IN $entity_types")
+        self.params["entity_types"] = entity_types
+
+    def add_confidence_min(self, confidence_min: float | None) -> None:
+        if confidence_min is None or confidence_min <= 0:
+            return
+        self.clauses.append("e.confidence_score >= $confidence_min")
+        self.params["confidence_min"] = confidence_min
+
+    def add_confidence_max(self, confidence_max: float | None) -> None:
+        if confidence_max is None:
+            return
+        self.clauses.append("e.confidence_score <= $confidence_max")
+        self.params["confidence_max"] = confidence_max
+
+    def scoped_where_clause(self) -> str:
+        return " AND ".join(self.clauses) if self.clauses else "true"
+
+
 @router.get("/entities", response_model=EntityListResponse)
 async def list_entities(
     search_text: str | None = Query(None, max_length=200, description="Search across name and description"),
@@ -55,26 +95,11 @@ async def list_entities(
     Returns high-quality entity summaries with consistent field naming.
     """
     try:
-        # Build the Cypher query with filters
-        where_clauses = ["e.tenant_id = $tenant_id"]
-        params: dict[str, Any] = {}
-
-        if search_text:
-            where_clauses.append(
-                "(toLower(e.name) CONTAINS toLower($search_text) OR "
-                "toLower(e.description) CONTAINS toLower($search_text))"
-            )
-            params["search_text"] = search_text
-
-        if entity_types:
-            where_clauses.append("e.entity_type IN $entity_types")
-            params["entity_types"] = entity_types
-
-        if confidence_min > 0:
-            where_clauses.append("e.confidence_score >= $confidence_min")
-            params["confidence_min"] = confidence_min
-
-        where_clause = " AND ".join(where_clauses)
+        filters = EntityQueryFilters()
+        filters.add_search_text(search_text)
+        filters.add_entity_types(entity_types)
+        filters.add_confidence_min(confidence_min)
+        params: dict[str, Any] = dict(filters.params)
 
         # Validate sort parameters
         valid_sort_fields = {"confidence": "e.confidence_score", "name": "e.name", "created_at": "e.created_at"}
@@ -86,16 +111,16 @@ async def list_entities(
         # returns paginated rows each carrying the pre-computed total.
         params["offset"] = offset
         params["limit"] = limit
-        combined_query = f"""
+        builder = TenantScopedCypher(neo4j.tenant_id or "")
+        scoped_query = builder.custom_tenant_query(
+            f"""
             CALL {{
-                // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
                 MATCH (e:Entity)
-                WHERE {where_clause}
+                WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
                 RETURN count(e) as total
             }}
-            // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
             MATCH (e:Entity)
-            WHERE {where_clause}
+            WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
             RETURN e.id as id,
                    e.name as name,
                    e.description as description,
@@ -106,9 +131,14 @@ async def list_entities(
             ORDER BY {sort_field} {sort_direction}
             SKIP $offset
             LIMIT $limit
-        """
+        """,
+            params=params,
+            operation="entity_list",
+            labels=("Entity",),
+        )
+        params = dict(scoped_query.params)
 
-        results = await neo4j.execute_query(combined_query, params)
+        results = await neo4j.execute_query(scoped_query, params)
         total = results[0]["total"] if results else 0
 
         entities = [
@@ -253,40 +283,34 @@ async def query_entities(
     and custom sorting.
     """
     try:
-        # Build WHERE clause from filters
-        where_clauses = ["e.tenant_id = $tenant_id"]
+        filters = EntityQueryFilters()
         params: dict[str, Any] = {"limit": request.limit or 20, "offset": request.offset or 0}
 
-        if request.entity_types:
-            where_clauses.append("e.entity_type IN $entity_types")
-            params["entity_types"] = request.entity_types
-
-        if request.confidence_min is not None:
-            where_clauses.append("e.confidence_score >= $confidence_min")
-            params["confidence_min"] = request.confidence_min
-
-        if request.confidence_max is not None:
-            where_clauses.append("e.confidence_score <= $confidence_max")
-            params["confidence_max"] = request.confidence_max
-
-        where_clause = " AND ".join(where_clauses)
+        filters.add_entity_types(request.entity_types)
+        filters.add_confidence_min(request.confidence_min)
+        filters.add_confidence_max(request.confidence_max)
+        params.update(filters.params)
+        builder = TenantScopedCypher(neo4j.tenant_id or "")
+        scoped_count = builder.custom_tenant_query(
+            f"""
+            MATCH (e:Entity)
+            WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
+            RETURN count(e) as total
+        """,
+            params={k: v for k, v in params.items() if k not in ("limit", "offset")},
+            operation="entity_query_count",
+            labels=("Entity",),
+        )
 
         # Execute count query for accurate pagination metadata
-        count_cypher = f"""
-            // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
-            MATCH (e:Entity)
-            WHERE {where_clause}
-            RETURN count(e) as total
-        """
-        count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
-        count_results = await neo4j.execute_query(count_cypher, count_params)
+        count_results = await neo4j.execute_query(scoped_count, scoped_count.params)
         total_count = count_results[0]["total"] if count_results else 0
 
         # Execute paginated data query
-        query_cypher = f"""
-            // strict-scoped-query-execution: e.tenant_id predicate is assembled in where_clause
+        scoped_list = builder.custom_tenant_query(
+            f"""
             MATCH (e:Entity)
-            WHERE {where_clause}
+            WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
             RETURN e.id as id,
                    e.name as name,
                    e.description as description,
@@ -296,9 +320,13 @@ async def query_entities(
             ORDER BY e.confidence_score DESC
             SKIP $offset
             LIMIT $limit
-        """
+        """,
+            params=params,
+            operation="entity_query_list",
+            labels=("Entity",),
+        )
 
-        results = await neo4j.execute_query(query_cypher, params)
+        results = await neo4j.execute_query(scoped_list, scoped_list.params)
 
         entities = [
             EntitySummary(

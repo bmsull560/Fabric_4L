@@ -202,6 +202,20 @@ class BackupRequest(BaseModel):
     storage_type: StorageType | None = Field(None, description="Override storage type")
     compression: bool | None = Field(None, description="Override compression setting")
     encryption: bool | None = Field(None, description="Override encryption setting")
+    tenant_id: str | None = Field(
+        None,
+        description=(
+            "Tenant scope for standard backups. Required unless running an "
+            "explicit platform-admin global backup."
+        ),
+    )
+    global_export: bool = Field(
+        default=False,
+        description=(
+            "When true, performs a cross-tenant export. Requires platform-admin "
+            "governance authorization and immutable audit emission."
+        ),
+    )
 
 
 class BackupResponse(BaseModel):
@@ -428,7 +442,13 @@ class LocalStorage(BackupStorage):
 class BackupManager:
     """Manages backup and restore operations."""
 
-    def __init__(self, config: BackupConfig, neo4j_driver=None):
+    def __init__(
+        self,
+        config: BackupConfig,
+        neo4j_driver=None,
+        global_backup_authorizer=None,
+        immutable_audit_logger=None,
+    ):
         """Initialize backup manager.
 
         Args:
@@ -438,6 +458,8 @@ class BackupManager:
         self.config = config
         self.storage = self._create_storage()
         self.neo4j_driver = neo4j_driver
+        self.global_backup_authorizer = global_backup_authorizer
+        self.immutable_audit_logger = immutable_audit_logger
         self.active_backups: dict[str, BackupMetadata] = {}
         self.backup_history: list[BackupMetadata] = []
         self._loaded_existing = False
@@ -552,7 +574,11 @@ class BackupManager:
 
         try:
             # Generate backup data
-            backup_data = await self._generate_backup_data(request.backup_type)
+            backup_data = await self._generate_backup_data(
+                backup_type=request.backup_type,
+                tenant_id=request.tenant_id,
+                global_export=request.global_export,
+            )
 
             # Compress if enabled
             if metadata.compression_algorithm != "none":
@@ -617,7 +643,12 @@ class BackupManager:
                 error=str(e),
             )
 
-    async def _generate_backup_data(self, backup_type: BackupType) -> bytes:
+    async def _generate_backup_data(
+        self,
+        backup_type: BackupType,
+        tenant_id: str | None = None,
+        global_export: bool = False,
+    ) -> bytes:
         """Generate backup data based on type from Neo4j.
 
         Args:
@@ -630,6 +661,16 @@ class BackupManager:
             raise RuntimeError("Neo4j driver required for backup generation")
 
         if backup_type == BackupType.FULL:
+            if global_export:
+                await self._authorize_global_backup()
+                await self._emit_immutable_global_backup_audit_event(
+                    backup_type=backup_type,
+                )
+            elif not tenant_id:
+                raise ValueError(
+                    "tenant_id is required for standard backup exports. "
+                    "Use explicit platform-admin global_export for cross-tenant export."
+                )
             # Export all entities and relationships from Neo4j
             entities = []
             relationships = []
@@ -637,11 +678,20 @@ class BackupManager:
 
             async with self.neo4j_driver.session() as session:
                 # Get all entities
-                entity_result = await session.run("""
+                entity_query = """
                     MATCH (n)
                     RETURN n, labels(n) as types, id(n) as node_id
                     LIMIT 10000
-                """)
+                """
+                entity_params = {}
+                if not global_export:
+                    entity_query = """
+                        MATCH (n {tenant_id: $tenant_id})
+                        RETURN n, labels(n) as types, id(n) as node_id
+                        LIMIT 10000
+                    """
+                    entity_params["tenant_id"] = tenant_id
+                entity_result = await session.run(entity_query, **entity_params)
                 async for record in entity_result:
                     node = record["n"]
                     node_data = dict(node)
@@ -653,12 +703,22 @@ class BackupManager:
                     })
 
                 # Get all relationships
-                rel_result = await session.run("""
+                relationship_query = """
                     MATCH (n)-[r]->(m)
                     RETURN n.id as source_id, m.id as target_id,
                            type(r) as rel_type, properties(r) as rel_props
                     LIMIT 50000
-                """)
+                """
+                relationship_params = {}
+                if not global_export:
+                    relationship_query = """
+                        MATCH (n {tenant_id: $tenant_id})-[r]->(m {tenant_id: $tenant_id})
+                        RETURN n.id as source_id, m.id as target_id,
+                               type(r) as rel_type, properties(r) as rel_props
+                        LIMIT 50000
+                    """
+                    relationship_params["tenant_id"] = tenant_id
+                rel_result = await session.run(relationship_query, **relationship_params)
                 async for record in rel_result:
                     if record["source_id"] and record["target_id"]:
                         relationships.append({
@@ -739,6 +799,33 @@ class BackupManager:
             raise ValueError(f"Unsupported backup type: {backup_type}")
 
         return json.dumps(backup_data, indent=2, default=str).encode("utf-8")
+
+    async def _authorize_global_backup(self) -> None:
+        """Enforce RBAC/governance authorization for global export."""
+        if self.global_backup_authorizer is None:
+            raise PermissionError(
+                "Global backup export requires platform-admin governance authorization."
+            )
+        is_allowed = await self.global_backup_authorizer()
+        if not is_allowed:
+            raise PermissionError(
+                "Caller is not authorized for platform-admin global backup export."
+            )
+
+    async def _emit_immutable_global_backup_audit_event(self, backup_type: BackupType) -> None:
+        """Emit immutable audit event for global exports."""
+        if self.immutable_audit_logger is None:
+            raise PermissionError(
+                "Global backup export requires immutable audit event emission."
+            )
+        await self.immutable_audit_logger(
+            {
+                "event_type": "platform_admin_global_backup_export",
+                "backup_type": backup_type.value,
+                "occurred_at": datetime.utcnow().isoformat(),
+                "immutability_required": True,
+            }
+        )
 
     def _get_last_full_backup_id(self) -> str | None:
         """Get the ID of the last full backup.

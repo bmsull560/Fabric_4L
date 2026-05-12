@@ -62,6 +62,13 @@ Authorization: Bearer <jwt_token>
 X-Tenant-ID: <tenant_uuid>
 ```
 
+## Backup export scope and governance
+
+- Backup generation defaults to **tenant-scoped exports** and requires a tenant identifier from authenticated context.
+- Tenant-scoped graph extraction applies tenant filters to both nodes and relationships.
+- Cross-tenant global exports are a separate **platform-admin only** mode and must pass governance/RBAC authorization.
+- Every global export must emit an immutable audit event before data extraction proceeds.
+
 ---
 
 ## Endpoints Overview

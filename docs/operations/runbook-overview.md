@@ -317,3 +317,8 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 **Version**: 1.0.0  
 **Owner**: Site Reliability Engineering  
 **Next Review**: 2026-07-15
+
+
+## Observability Contracts
+
+- Trace correlation normalization contract: `docs/contracts/trace-correlation-observability-contract.md`.

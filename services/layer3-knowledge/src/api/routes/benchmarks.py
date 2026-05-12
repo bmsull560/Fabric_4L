@@ -166,7 +166,7 @@ async def list_benchmark_policies(
     """
 
     async with await create_neo4j_tenant_session(tenant_id) as neo4j:
-        result = await neo4j.run(query)
+        result = await neo4j.run(query, tenant_id=tenant_id)
         records = await result.data()
 
         return [

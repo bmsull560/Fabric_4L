@@ -9,3 +9,11 @@ runner-specific path mutation.
 from __future__ import annotations
 
 __all__: list[str] = []
+
+import warnings
+
+warnings.warn(
+    "layer3_knowledge is deprecated; migrate imports to value_fabric.layer3 (compatibility shim scheduled for removal).",
+    DeprecationWarning,
+    stacklevel=2,
+)

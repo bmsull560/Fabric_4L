@@ -1,15 +1,3 @@
-"""Shared utilities for Layer 2 extraction pipeline.
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/shared/__init__.py`."""
 
-Provides:
-- LLMClient: Unified async LLM client with cost tracking
-- Cost tracking and monitoring utilities
-"""
-
-from .llm_client import PRICING, CostRecord, LLMClient, LLMProvider
-
-__all__ = [
-    "LLMClient",
-    "LLMProvider",
-    "CostRecord",
-    "PRICING",
-]
+from value_fabric.layer2.shared.__init__ import *  # noqa: F401,F403

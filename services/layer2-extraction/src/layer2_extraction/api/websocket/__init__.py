@@ -1,11 +1,3 @@
-"""WebSocket support for real-time pipeline streaming."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/api/websocket/__init__.py`."""
 
-from .manager import PipelineStage, PipelineWebSocketManager, get_pipeline_ws_manager
-from .routes import websocket_router
-
-__all__ = [
-    "PipelineWebSocketManager",
-    "get_pipeline_ws_manager",
-    "websocket_router",
-    "PipelineStage",
-]
+from value_fabric.layer2.api.websocket.__init__ import *  # noqa: F401,F403

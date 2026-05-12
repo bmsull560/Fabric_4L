@@ -1,7 +1,3 @@
-"""Layer 1: Intelligent Data Ingestion Service.
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer1/__init__.py`."""
 
-This package contains the web data ingestion service that crawls
-public enterprise data and converts it to structured Markdown.
-"""
-
-__version__ = "1.0.0"
+from value_fabric.layer1.__init__ import *  # noqa: F401,F403

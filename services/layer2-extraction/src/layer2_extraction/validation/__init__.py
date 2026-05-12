@@ -1,15 +1,3 @@
-"""Validation package for Value Fabric extraction pipeline."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/validation/__init__.py`."""
 
-from .entailment_validator import (
-    EntailmentValidator,
-    ValidationResult,
-    ValidationRule,
-    ValidationSeverity,
-)
-
-__all__ = [
-    "EntailmentValidator",
-    "ValidationRule",
-    "ValidationResult",
-    "ValidationSeverity",
-]
+from value_fabric.layer2.validation.__init__ import *  # noqa: F401,F403

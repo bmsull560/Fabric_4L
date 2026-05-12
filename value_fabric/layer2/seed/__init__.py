@@ -1,8 +1,3 @@
-"""Seed data for Layer 2 Extraction.
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/seed/__init__.py`."""
 
-Provides default ontology schema for new tenants.
-"""
-
-from .ontology_seed import get_default_ontology_schema, seed_default_ontology
-
-__all__ = ["seed_default_ontology", "get_default_ontology_schema"]
+from value_fabric.layer2.seed.__init__ import *  # noqa: F401,F403

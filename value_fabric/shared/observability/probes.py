@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+
+from .trace_context import canonical_trace_headers, resolve_trace_context
 
 logger = logging.getLogger("value_fabric.observability")
 
@@ -29,7 +30,9 @@ def configure_observability(
 
     @app.middleware("http")
     async def correlation_middleware(request: Request, call_next):
-        correlation_id = request.headers.get(correlation_header) or request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        trace_context = resolve_trace_context(request.headers)
+        correlation_id = trace_context.trace_id
+        request.state.trace_id = correlation_id
         request.state.correlation_id = correlation_id
         try:
             response = await call_next(request)
@@ -50,11 +53,11 @@ def configure_observability(
             return JSONResponse(
                 status_code=500,
                 content={"error": "internal_server_error", "correlation_id": correlation_id},
-                headers={correlation_header: correlation_id, "X-Request-ID": correlation_id},
+                headers=canonical_trace_headers(correlation_id),
             )
 
-        response.headers[correlation_header] = correlation_id
-        response.headers.setdefault("X-Request-ID", correlation_id)
+        for header, value in canonical_trace_headers(correlation_id).items():
+            response.headers[header] = value
         return response
 
     paths = {route.path for route in app.routes if hasattr(route, "path")}

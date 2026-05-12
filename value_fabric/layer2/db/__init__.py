@@ -1,17 +1,3 @@
-"""Database layer for Layer 2 Extraction.
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/db/__init__.py`."""
 
-Provides async PostgreSQL connection management and schema definitions
-for ontology management.
-"""
-
-from .config import DatabaseConfig, close_db_pool, get_db_config, get_db_pool
-from .connection import get_connection, init_db_pool
-
-__all__ = [
-    "DatabaseConfig",
-    "get_db_config",
-    "get_db_pool",
-    "close_db_pool",
-    "get_connection",
-    "init_db_pool",
-]
+from value_fabric.layer2.db.__init__ import *  # noqa: F401,F403

@@ -1,15 +1,3 @@
-"""Coreference resolution package for entity deduplication."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/coreference/__init__.py`."""
 
-from .coreference_resolver import (
-    CoreferenceCluster,
-    CoreferenceResolver,
-    CoreferenceRule,
-    ResolutionMethod,
-)
-
-__all__ = [
-    "CoreferenceResolver",
-    "CoreferenceCluster",
-    "CoreferenceRule",
-    "ResolutionMethod",
-]
+from value_fabric.layer2.coreference.__init__ import *  # noqa: F401,F403

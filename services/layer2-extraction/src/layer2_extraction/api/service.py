@@ -1,15 +1,3 @@
-"""Service-layer exports consumed by API route modules."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/api/service.py`."""
 
-from .main import (
-    ExtractAndIngestResponse,
-    ExtractRequest,
-    ExtractResponse,
-    ExtractionStatusResponse,
-    extract,
-    extract_and_ingest,
-    extract_batch,
-    get_extraction_status,
-    health_check,
-    metrics_endpoint,
-    stream_job_events,
-)
+from value_fabric.layer2.api.service import *  # noqa: F401,F403

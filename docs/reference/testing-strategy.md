@@ -67,7 +67,7 @@ This document defines the comprehensive testing strategy for the Value Fabric pl
 | Type | Location | Tool | Coverage |
 |------|----------|------|----------|
 | OpenAPI Schema | `tests/contract/` | schemathesis | All endpoints |
-| Response Models | `tests/contracts/` | pydantic | All responses |
+| Response Models | `tests/contract/` | pydantic | All responses |
 | Tool Manifests | `tests/contract/` | JSON Schema | All skills |
 
 ### 4. E2E Tests (10%)

@@ -10,6 +10,8 @@ def test_standard_observability_probes_and_correlation_header() -> None:
         response = client.get(path)
         assert response.status_code in {200, 401, 503}
 
-    correlation_id = "corr-l1-123"
-    health = client.get("/health", headers={"X-Correlation-ID": correlation_id})
-    assert health.headers.get("X-Correlation-ID") == correlation_id
+    trace_id = "trace-l1-123"
+    health = client.get("/health", headers={"X-Trace-ID": trace_id})
+    assert health.headers.get("X-Request-ID") == trace_id
+    assert health.headers.get("X-Correlation-ID") == trace_id
+    assert health.headers.get("X-Trace-ID") == trace_id

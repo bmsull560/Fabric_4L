@@ -1,5 +1,3 @@
-"""API package for Layer 2 Extraction Pipeline."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/api/__init__.py`."""
 
-from .main import app
-
-__all__ = ["app"]
+from value_fabric.layer2.api.__init__ import *  # noqa: F401,F403

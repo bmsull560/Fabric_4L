@@ -1,0 +1,112 @@
+from types import SimpleNamespace
+
+import pytest
+
+from src.api.routes.benchmarks import list_benchmark_policies
+
+
+class _Result:
+    def __init__(self, records):
+        self._records = records
+
+    async def data(self):
+        return self._records
+
+
+class _Neo4jSession:
+    def __init__(self, records, expected_tenant_id=None):
+        self.records = records
+        self.expected_tenant_id = expected_tenant_id
+        self.last_tenant_id = None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def run(self, query, *, tenant_id):
+        self.last_tenant_id = tenant_id
+        if self.expected_tenant_id is not None:
+            assert tenant_id == self.expected_tenant_id
+        tenant_scoped = [r for r in self.records if r["bp"].get("tenant_id") == tenant_id]
+        return _Result(tenant_scoped)
+
+
+@pytest.mark.asyncio
+async def test_list_benchmark_policies_returns_same_tenant_records(monkeypatch):
+    tenant_id = "tenant-a"
+    records = [
+        {
+            "bp": {
+                "id": "policy-1",
+                "policyType": "threshold",
+                "name": "A Policy",
+                "description": "desc",
+                "value": "10",
+                "isEnabled": True,
+                "scope": "tenant",
+                "tenant_id": tenant_id,
+            }
+        }
+    ]
+    session = _Neo4jSession(records=records, expected_tenant_id=tenant_id)
+
+    async def _session_factory(_tenant_id):
+        return session
+
+    monkeypatch.setattr("src.api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+
+    api_key = SimpleNamespace(tenant_id=tenant_id)
+    policies = await list_benchmark_policies(api_key=api_key)
+
+    assert len(policies) == 1
+    assert policies[0].id == "policy-1"
+    assert session.last_tenant_id == tenant_id
+
+
+@pytest.mark.asyncio
+async def test_list_benchmark_policies_returns_empty_for_cross_tenant_records(monkeypatch):
+    tenant_id = "tenant-a"
+    other_tenant_id = "tenant-b"
+    records = [
+        {
+            "bp": {
+                "id": "policy-foreign",
+                "policyType": "threshold",
+                "name": "Foreign Policy",
+                "value": "20",
+                "scope": "tenant",
+                "tenant_id": other_tenant_id,
+            }
+        }
+    ]
+    session = _Neo4jSession(records=records, expected_tenant_id=tenant_id)
+
+    async def _session_factory(_tenant_id):
+        return session
+
+    monkeypatch.setattr("src.api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+
+    api_key = SimpleNamespace(tenant_id=tenant_id)
+    policies = await list_benchmark_policies(api_key=api_key)
+
+    assert policies == []
+    assert session.last_tenant_id == tenant_id
+
+
+@pytest.mark.asyncio
+async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j(monkeypatch):
+    tenant_id = "tenant-a"
+    session = _Neo4jSession(records=[], expected_tenant_id=tenant_id)
+
+    async def _session_factory(_tenant_id):
+        return session
+
+    monkeypatch.setattr("src.api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+
+    api_key = SimpleNamespace(tenant_id=tenant_id)
+    result = await list_benchmark_policies(api_key=api_key)
+
+    assert result == []
+    assert session.last_tenant_id == tenant_id

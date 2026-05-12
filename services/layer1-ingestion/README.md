@@ -160,3 +160,10 @@ layer1-ingestion/
 ## License
 
 Internal Value Fabric Project
+
+## Runtime path governance (edit here vs consume there)
+
+- **Canonical runtime implementation (edit here):** `value_fabric/layer1/`
+- **Compatibility/service import surface (consume here):** `services/layer1-ingestion/src/`
+
+Files in `services/layer1-ingestion/src/` that mirror canonical modules are compatibility shims that re-export `value_fabric.layer1.*`. Keep business logic in `value_fabric/layer1/` and only keep service wrapper/bootstrap wiring in this service tree.

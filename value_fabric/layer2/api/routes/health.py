@@ -1,17 +1,3 @@
-"""Health and metrics routes for Layer 2 API."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/api/routes/health.py`."""
 
-from fastapi import APIRouter, Request
-
-from .. import service
-
-router = APIRouter(tags=["health"])
-
-
-@router.get("/health")
-async def health_check():
-    return await service.health_check()
-
-
-@router.get("/metrics")
-async def metrics_endpoint(request: Request):
-    return await service.metrics_endpoint(request)
+from value_fabric.layer2.api.routes.health import *  # noqa: F401,F403

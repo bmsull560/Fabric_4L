@@ -1,12 +1,3 @@
-"""Compliance package for data protection and ethical crawling."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer1/compliance/__init__.py`."""
 
-from .pii_scanner import PIIEntity, PIIScanner, PIIScanResult, get_scanner
-from .robots_checker import RobotsChecker
-
-__all__ = [
-    "RobotsChecker",
-    "PIIScanner",
-    "PIIEntity",
-    "PIIScanResult",
-    "get_scanner",
-]
+from value_fabric.layer1.compliance.__init__ import *  # noqa: F401,F403

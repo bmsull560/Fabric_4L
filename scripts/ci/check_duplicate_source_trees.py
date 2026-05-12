@@ -1,141 +1,98 @@
-"""Duplicate source-tree drift gate.
+"""Runtime source-tree shim drift gate.
 
-Scans ``value_fabric/layer*/`` for ``.py`` files that also exist under the
-corresponding ``services/layer*-*/src/`` tree.  Any duplicate file is a
-regression risk: a fix applied to one tree may not reach the other.
-
-Exit codes
-----------
-0  – no duplicates detected
-1  – one or more duplicate files found
+Ensures compatibility trees remain thin import/re-export shims and do not
+reintroduce duplicate logic across canonical/compatibility runtime paths.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-
-# Map value_fabric/layerN/ prefix -> services/layerN-foo/src/ prefix
-LAYER_MAP: dict[str, str] = {
-    "layer1": "services/layer1-ingestion/src",
-    "layer2": "services/layer2-extraction/src",
-    "layer3": "services/layer3-knowledge/src",
-    "layer4": "services/layer4-agents/src",
-}
-
-# __init__.py files under this size are considered redirect shims, not duplicates
-SHIM_MAX_BYTES: int = 1024
+SHIM_RE = re.compile(r"^\s*from\s+([\w\.]+)\s+import\s+\*", re.MULTILINE)
 
 
-def _files_equal(a: Path, b: Path) -> bool:
-    """Return True if two files have identical contents."""
-    try:
-        a_content = a.read_text(encoding="utf-8")
-        b_content = b.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        a_content = a.read_bytes()
-        b_content = b.read_bytes()
-    return a_content == b_content
+@dataclass(frozen=True)
+class LayerMap:
+    layer: str
+    canonical_root: Path
+    compat_root: Path
+    canonical_import_root: str
 
 
-def find_duplicates(
-    *, layer_map: dict[str, str] | None = None, strict: bool = False
-) -> list[tuple[Path, Path]]:
-    """Return list of (vf_path, svc_path) pairs that are duplicates."""
-    duplicates: list[tuple[Path, Path]] = []
-    layer_map = layer_map or LAYER_MAP
+LAYER_MAP: tuple[LayerMap, ...] = (
+    LayerMap("layer1", REPO_ROOT / "value_fabric/layer1", REPO_ROOT / "services/layer1-ingestion/src", "value_fabric.layer1"),
+    LayerMap("layer2", REPO_ROOT / "value_fabric/layer2", REPO_ROOT / "services/layer2-extraction/src/layer2_extraction", "value_fabric.layer2"),
+    LayerMap("layer3", REPO_ROOT / "value_fabric/layer3", REPO_ROOT / "services/layer3-knowledge/src", "value_fabric.layer3"),
+    LayerMap("layer4", REPO_ROOT / "value_fabric/layer4", REPO_ROOT / "services/layer4-agents/src", "value_fabric.layer4"),
+    LayerMap("layer5", REPO_ROOT / "services/layer5-ground-truth/src/layer5_ground_truth", REPO_ROOT / "value_fabric/layer5", "layer5_ground_truth"),
+    LayerMap("layer6", REPO_ROOT / "value_fabric/layer6", REPO_ROOT / "services/layer6-benchmarks/src", "value_fabric.layer6"),
+)
 
-    for layer_name, svc_rel in layer_map.items():
-        vf_dir = REPO_ROOT / "value_fabric" / layer_name
-        svc_dir = REPO_ROOT / svc_rel
 
-        if not vf_dir.exists() or not svc_dir.exists():
+def _expected_module(import_root: str, rel: Path) -> str:
+    suffix = ".".join(rel.with_suffix("").parts)
+    return f"{import_root}.{suffix}" if suffix else import_root
+
+
+def _is_valid_shim(path: Path, expected_module: str) -> bool:
+    text = path.read_text(encoding="utf-8")
+    if len(text) > 1600:
+        return False
+    match = SHIM_RE.search(text)
+    return bool(match and match.group(1) == expected_module)
+
+
+def _iter_py(root: Path) -> set[Path]:
+    return {p.relative_to(root) for p in root.rglob("*.py")}
+
+
+def find_violations(layers: set[str]) -> list[dict[str, str]]:
+    violations: list[dict[str, str]] = []
+    for m in LAYER_MAP:
+        if m.layer not in layers or not m.canonical_root.exists() or not m.compat_root.exists():
             continue
-
-        for vf_file in vf_dir.rglob("*.py"):
-            # Skip redirect-shim __init__.py files (single-file packages)
-            if vf_file.name == "__init__.py" and vf_file.stat().st_size < SHIM_MAX_BYTES:
-                continue
-
-            rel = vf_file.relative_to(vf_dir)
-            svc_file = svc_dir / rel
-
-            if svc_file.exists():
-                if strict:
-                    # In strict mode, any co-existing file is a violation
-                    duplicates.append((vf_file, svc_file))
-                elif _files_equal(vf_file, svc_file):
-                    duplicates.append((vf_file, svc_file))
-
-    return duplicates
+        canonical_files = _iter_py(m.canonical_root)
+        compat_files = _iter_py(m.compat_root)
+        shared = canonical_files & compat_files
+        for rel in sorted(shared):
+            compat_file = m.compat_root / rel
+            expected = _expected_module(m.canonical_import_root, rel)
+            if not _is_valid_shim(compat_file, expected):
+                violations.append(
+                    {
+                        "layer": m.layer,
+                        "canonical": str((m.canonical_root / rel).relative_to(REPO_ROOT).as_posix()),
+                        "compatibility": str(compat_file.relative_to(REPO_ROOT).as_posix()),
+                        "expected_import": expected,
+                    }
+                )
+    return violations
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="flag any co-existing file, even if contents differ",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="emit machine-readable JSON summary",
-    )
-    parser.add_argument(
-        "--layers",
-        nargs="+",
-        choices=list(LAYER_MAP.keys()),
-        default=list(LAYER_MAP.keys()),
-        help="which layers to scan (default: all layers)",
-    )
+    parser.add_argument("--json", action="store_true", help="emit machine-readable JSON summary")
+    parser.add_argument("--layers", nargs="+", choices=[m.layer for m in LAYER_MAP], default=[m.layer for m in LAYER_MAP])
     args = parser.parse_args(argv)
 
-    # Restrict scan to requested layers
-    layer_map = {k: v for k, v in LAYER_MAP.items() if k in args.layers}
-    duplicates = find_duplicates(layer_map=layer_map, strict=args.strict)
-
+    violations = find_violations(set(args.layers))
     if args.json:
-        import json
-
-        print(
-            json.dumps(
-                {
-                    "pass": len(duplicates) == 0,
-                    "violations": [
-                        {
-                            "value_fabric": str(d[0].relative_to(REPO_ROOT).as_posix()),
-                            "service": str(d[1].relative_to(REPO_ROOT).as_posix()),
-                        }
-                        for d in duplicates
-                    ],
-                }
-            )
-        )
+        print(json.dumps({"pass": not violations, "violations": violations}))
     else:
-        if duplicates:
-            print("ERROR: Duplicate source-tree files detected:", file=sys.stderr)
-            for vf_file, svc_file in duplicates:
-                print(
-                    f"  {vf_file.relative_to(REPO_ROOT)}"
-                    f"  ==  {svc_file.relative_to(REPO_ROOT)}",
-                    file=sys.stderr,
-                )
-            print(
-                f"\nFound {len(duplicates)} duplicate file(s). "
-                "Remove the copy under value_fabric/layer*/ and keep the canonical tree "
-                "under services/layer*-*/src/.",
-                file=sys.stderr,
-            )
+        if violations:
+            print("ERROR: Compatibility modules must be explicit shims.", file=sys.stderr)
+            for v in violations:
+                print(f"  [{v['layer']}] {v['compatibility']} (expected: from {v['expected_import']} import *)", file=sys.stderr)
         else:
-            print("No duplicate source-tree files detected.")
-
-    return 1 if duplicates else 0
+            print("No non-shim duplicate runtime modules detected.")
+    return 1 if violations else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

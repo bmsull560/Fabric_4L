@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TARGET = ROOT / "services" / "layer3-knowledge" / "src"
 SKIP_PARTS = {"migrations", "__pycache__"}
+APPROVED_ROUTE_MARKERS = ("TenantScopedCypher", "custom_tenant_query", "match_node_query", "ScopedQuery", "strict-scoped-query-execution")
 
 
 class Finding:
@@ -48,6 +49,8 @@ def scan_file(path: Path) -> list[Finding]:
     tree = ast.parse(source, filename=str(path))
     findings: list[Finding] = []
 
+    is_route_file = "api/routes" in path.as_posix()
+    source_lines = source.splitlines()
     for node in ast.walk(tree):
         if isinstance(node, ast.JoinedStr):
             rendered = _string_value(node)
@@ -68,6 +71,25 @@ def scan_file(path: Path) -> list[Finding]:
                 findings.append(
                     Finding(path, node.lineno, "session.run must not receive an inline f-string Cypher query")
                 )
+        if (
+            is_route_file
+            and isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and "MATCH (" in node.value
+            and (
+                lambda ln: not any(
+                    marker in "\n".join(source_lines[max(0, ln - 12) : min(len(source_lines), ln + 12)])
+                    for marker in APPROVED_ROUTE_MARKERS
+                )
+            )(node.lineno)
+        ):
+            findings.append(
+                Finding(
+                    path,
+                    node.lineno,
+                    "api/routes Cypher MATCH must be created via approved tenant-scoped helper",
+                )
+            )
 
     return findings
 

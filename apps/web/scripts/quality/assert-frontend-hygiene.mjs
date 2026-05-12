@@ -46,6 +46,33 @@ for (const filePath of walk(srcRoot, sourceExtensions)) {
   });
 }
 
+
+const forbiddenImportRoots = [
+  'prototypes/',
+  'docs/archive/',
+];
+
+const importStatementRegex = /(?:import|export)\s+(?:[^;]*?\s+from\s+)?["']([^"']+)["']/g;
+const dynamicImportRegex = /import\(\s*["']([^"']+)["']\s*\)/g;
+
+for (const filePath of walk(srcRoot, sourceExtensions)) {
+  const contents = readFileSync(filePath, 'utf8');
+  const lines = contents.split(/\r?\n/);
+
+  const checkMatches = (regex) => {
+    regex.lastIndex = 0;
+    let match;
+    while ((match = regex.exec(contents)) !== null) {
+      const specifier = match[1];
+      if (!forbiddenImportRoots.some((prefix) => specifier.includes(prefix))) continue;
+      const line = contents.slice(0, match.index).split(/\r?\n/).length;
+      addViolation(filePath, line, `forbidden cross-root import '${specifier}'`);
+    }
+  };
+
+  checkMatches(importStatementRegex);
+  checkMatches(dynamicImportRegex);
+}
 const routeConcatPatterns = [
   {
     regex: /(["'`])\/[A-Za-z0-9_\-/]*\1\s*\+\s*[A-Za-z$_({]/,

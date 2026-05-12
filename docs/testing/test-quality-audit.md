@@ -182,7 +182,7 @@
 ### Cross-Layer Tests
 
 #### Contract Tests (8 files)
-**Location:** `tests/contract/`, `tests/contracts/`
+**Location:** `tests/contract/`
 
 | File | Purpose | Status |
 |------|---------|--------|

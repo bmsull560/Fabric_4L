@@ -171,9 +171,9 @@
 | `tests/contract/test_l4_frontend_contract.py` | Frontend API | 4 | contract |
 | `tests/contract/test_l4_workflows_contract.py` | Workflow API | 5 | contract |
 | `tests/contract/test_tool_manifests.py` | Tool definitions | 8 | contract |
-| `tests/contracts/test_entity_contract.py` | Entity contracts | 6 | contract |
-| `tests/contracts/test_layer3_contract.py` | Layer 3 API | 8 | contract |
-| `tests/contracts/test_layer5_contract.py` | Layer 5 API | 5 | contract |
+| `tests/contract/test_entity_contract.py` | Entity contracts | 6 | contract |
+| `tests/contract/test_layer3_contract.py` | Layer 3 API | 8 | contract |
+| `tests/contract/test_layer5_contract.py` | Layer 5 API | 5 | contract |
 
 **Total Contract:** 12 files, ~67 tests
 
@@ -386,7 +386,7 @@
 | `services/layer4-agents/tests/conftest.py` | L4 fixtures |
 | `services/layer5-ground-truth/tests/conftest.py` | L5 fixtures |
 | `tests/security/conftest.py` | Security test fixtures |
-| `tests/contracts/conftest.py` | Contract test fixtures |
+| `tests/contract/conftest.py` | Contract test fixtures |
 | `tests/evals/conftest.py` | Eval test fixtures |
 
 ### Frontend Test Infrastructure

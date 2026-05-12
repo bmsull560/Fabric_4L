@@ -477,7 +477,7 @@ st run http://localhost:8003/openapi.json \
   --hypothesis-max-examples=100
 
 # Or via pytest
-python -m pytest tests/contracts/ -v
+python -m pytest tests/contract/ -v
 ```
 
 ### 5.3 Smoke Tests

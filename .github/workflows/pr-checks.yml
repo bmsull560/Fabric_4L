@@ -82,7 +82,7 @@ jobs:
         run: |
           mkdir -p artifacts
           set +e
-          python scripts/ci/check_duplicate_source_trees.py --strict --json | tee artifacts/duplicate-source-trees.json
+          python scripts/ci/check_duplicate_source_trees.py --layers layer1 layer2 --json | tee artifacts/duplicate-source-trees.json
           duplicate_status=${PIPESTATUS[0]}
           set -e
           if [ "$duplicate_status" -ne 0 ]; then
@@ -94,6 +94,9 @@ jobs:
           mkdir -p artifacts
           python scripts/ci/check_shared_imports.py --strict --scope runtime --json | tee artifacts/shared-imports-runtime.json
           exit ${PIPESTATUS[0]}
+
+      - name: Deprecated namespace import gate
+        run: python scripts/ci/check_deprecated_namespace_imports.py --strict --json
 
       - name: Run navigation pattern guardrail
         run: |

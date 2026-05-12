@@ -1,24 +1,3 @@
-"""Output package for Value Fabric."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/output/__init__.py`."""
 
-from .provenance import (
-    ExtractionActivity,
-    ExtractionStep,
-    LLMCall,
-    ProvenanceTracker,
-    SourceDocument,
-    create_llm_call_record,
-    get_provenance_tracker,
-)
-from .rdf_generator import RDFGenerator, generate_rdf
-
-__all__ = [
-    "RDFGenerator",
-    "generate_rdf",
-    "get_provenance_tracker",
-    "ExtractionActivity",
-    "ExtractionStep",
-    "SourceDocument",
-    "LLMCall",
-    "create_llm_call_record",
-    "ProvenanceTracker",
-]
+from value_fabric.layer2.output.__init__ import *  # noqa: F401,F403

@@ -59,7 +59,7 @@ controls:
       - ci: .github/workflows/audit-evidence.yml
       - process: docs/runbooks/compliance/quarterly-control-attestation.md
     test_cases:
-      - tests/contracts/test_retention_deletion_contract.py
+      - tests/contract/test_retention_deletion_contract.py
 
   - id: GDPR-RETENTION-DELETION-01
     framework: GDPR
@@ -82,7 +82,7 @@ controls:
       - ci: .github/workflows/pr-checks.yml
       - docs: docs/compliance/control-evidence-calendar.md
     test_cases:
-      - tests/contracts/test_retention_deletion_contract.py
+      - tests/contract/test_retention_deletion_contract.py
 
   - id: HIPAA-BAA-PHI-BOUNDARY-01
     framework: HIPAA

@@ -1,17 +1,3 @@
-"""Extraction package for Value Fabric."""
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/extraction/__init__.py`."""
 
-from .chunker import Chunk, SemanticChunker, chunk_markdown
-from .deduplicator import DeduplicationError, EntityDeduplicator, deduplicate_entities
-from .llm_extractor import EntityExtractor, LLMExtractionError, RelationshipExtractor
-
-__all__ = [
-    "chunk_markdown",
-    "SemanticChunker",
-    "Chunk",
-    "EntityExtractor",
-    "RelationshipExtractor",
-    "LLMExtractionError",
-    "EntityDeduplicator",
-    "deduplicate_entities",
-    "DeduplicationError",
-]
+from value_fabric.layer2.extraction.__init__ import *  # noqa: F401,F403

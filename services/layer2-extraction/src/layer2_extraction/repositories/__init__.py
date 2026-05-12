@@ -1,8 +1,3 @@
-"""Repository layer for Layer 2 Extraction.
+"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/repositories/__init__.py`."""
 
-Provides data access abstractions for database operations.
-"""
-
-from .ontology_schema_repository import OntologySchemaRepository
-
-__all__ = ["OntologySchemaRepository"]
+from value_fabric.layer2.repositories.__init__ import *  # noqa: F401,F403

@@ -228,3 +228,10 @@ Per the Value Fabric specification:
 3. Implement full APQC PCF mapping (currently basic mapping supported)
 4. Add monitoring (Prometheus metrics)
 5. Build ontology visualization tool
+
+## Runtime path governance (edit here vs consume there)
+
+- **Canonical runtime implementation (edit here):** `value_fabric/layer2/`
+- **Compatibility/service import surface (consume here):** `services/layer2-extraction/src/layer2_extraction/`
+
+Files in `services/layer2-extraction/src/layer2_extraction/` that overlap canonical modules are compatibility shims that re-export `value_fabric.layer2.*`. Keep extraction/business logic in `value_fabric/layer2/`; keep service-local code limited to wrapper/bootstrap responsibilities.

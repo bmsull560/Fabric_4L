@@ -10,3 +10,11 @@ of relying on ad hoc ``sys.path`` ordering.
 from __future__ import annotations
 
 __all__: list[str] = []
+
+import warnings
+
+warnings.warn(
+    "layer1_ingestion is deprecated; migrate imports to value_fabric.layer1 (compatibility shim scheduled for removal).",
+    DeprecationWarning,
+    stacklevel=2,
+)

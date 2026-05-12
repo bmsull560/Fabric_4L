@@ -400,7 +400,8 @@ async def list_evidence_links(
 ) -> dict[str, Any]:
     """Return all Evidence nodes linked to a given ValueDriver."""
     query = """
-    MATCH (d:ValueDriver {id: $driver_id, tenant_id: $tenant_id})-[:HAS_EVIDENCE]->(e:Evidence)
+    MATCH (d:ValueDriver {id: $driver_id, tenant_id: $tenant_id})-[:HAS_EVIDENCE]->(e:Evidence {tenant_id: $tenant_id})
+    WHERE e.tenant_id = $tenant_id
     RETURN e.id AS evidence_id, e.title AS evidence_title, e.evidence_type AS evidence_type
     """
     try:
@@ -421,4 +422,3 @@ async def list_evidence_links(
     except Exception as e:
         logger.error("Failed to list evidence links", error=str(e), tenant_id=tenant_id)
         raise HTTPException(status_code=500, detail=f"Link listing failed: {str(e)}")
-

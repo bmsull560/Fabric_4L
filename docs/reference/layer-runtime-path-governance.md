@@ -31,6 +31,22 @@ Use this before creating files so we avoid drift into archived, compatibility-on
 | Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal target review by **2026-09-30** |
 | Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility shims) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
 
+
+## Cross-root import policy (allowed vs forbidden)
+
+### Allowed imports in production/runtime code
+
+- Runtime-to-runtime imports within canonical roots (for example `value_fabric/layerX/*`, `value_fabric/shared/*`, and `services/layer5-ground-truth/src/layer5_ground_truth/*`).
+- Compatibility imports that remain inside approved compatibility wrappers documented in this matrix.
+
+### Forbidden imports in production/runtime code
+
+- Any import from `prototypes/`.
+- Any import from `docs/archive/`.
+- Any import from other non-runtime roots that are not canonical runtime or approved compatibility wrapper paths.
+
+These restrictions are enforced by architecture tests (`tests/arch/test_no_non_runtime_imports.py`) and frontend hygiene linting (`apps/web/scripts/quality/assert-frontend-hygiene.mjs`).
+
 ## Contributor checklist (required)
 
 Before opening a PR with backend runtime changes:
