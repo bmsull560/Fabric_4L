@@ -152,6 +152,22 @@ pytest -m unit
 pytest -m integration
 ```
 
+
+## Duplicate Module Guardrail (CI Required)
+
+Layer 5 enforces a CI guard that blocks duplicate package roots or same-named modules between:
+
+- `value_fabric/layer5` (canonical runtime source-of-truth)
+- `services/layer5-ground-truth/src/layer5_ground_truth` (service wrapper package)
+
+Run locally before tests:
+
+```bash
+python scripts/check_no_duplicate_modules.py
+```
+
+If the check fails, remove or rename the duplicate under `services/layer5-ground-truth/src/layer5_ground_truth` and keep the canonical implementation in `value_fabric/layer5`.
+
 ---
 
 ## Environment Variables

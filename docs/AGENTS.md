@@ -141,6 +141,21 @@ make test-layer4    # Layer 4 unit + integration tests
 make test-frontend  # Frontend unit + type-check
 ```
 
+### Layer 5 duplicate-module gate (required)
+
+Before running Layer 5 tests, run:
+
+```bash
+python services/layer5-ground-truth/scripts/check_no_duplicate_modules.py
+```
+
+This check fails if duplicate package roots or same-named Python modules exist across:
+
+- `value_fabric/layer5` (canonical source-of-truth)
+- `services/layer5-ground-truth/src/layer5_ground_truth` (service package)
+
+If it fails, keep `value_fabric/layer5` as canonical and remove/rename duplicates in the service wrapper tree.
+
 ---
 
 ## How to add a new agent skill
