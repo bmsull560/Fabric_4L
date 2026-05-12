@@ -42,7 +42,7 @@ jobs:
         run: make gates-validate-policy POLICY_FILE=${POLICY_FILE}
       - name: Validate policy enforcement matrix coverage
         run: python scripts/ci/validate_policy_enforcement_matrix.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: setup-artifacts
           path: artifacts/
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run architecture conformance gate
         run: make gate-arch PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: arch-artifacts
           path: artifacts/arch/
@@ -87,7 +87,7 @@ jobs:
           fi
 
           python -m pytest -v -m tenant_boundary "${TARGET_FILES[@]}" --maxfail=1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: security-artifacts
           path: artifacts/security/
@@ -100,7 +100,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run dependency chaos gate
         run: make gate-chaos PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: chaos-artifacts
           path: artifacts/chaos/
@@ -113,7 +113,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run cross-domain smoke gate
         run: make gate-smoke PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: smoke-artifacts
           path: artifacts/smoke/
@@ -125,7 +125,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run agent provenance gate
         run: make gate-agent PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: agent-artifacts
           path: artifacts/agent/
@@ -137,7 +137,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run state consistency gate
         run: make gate-state PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: state-artifacts
           path: artifacts/state/
@@ -150,7 +150,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run observability readiness gate
         run: make gate-obs PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: obs-artifacts
           path: artifacts/obs/
@@ -212,7 +212,7 @@ jobs:
       - name: Sign release manifest
         if: success() && needs.determine-profile.outputs.profile != 'pr-fast'
         run: make gates-sign-manifest
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-artifacts
           path: |

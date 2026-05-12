@@ -228,7 +228,7 @@ jobs:
           SKIP_BACKEND_TESTS: 'false'
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report
@@ -242,7 +242,7 @@ jobs:
           docker compose -f docker-compose.e2e.yml logs > artifacts/logs/e2e-services.log || true
 
       - name: Upload logs on failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-failure-logs
@@ -279,7 +279,7 @@ jobs:
         run: pytest -m performance --timeout=300 -v
 
       - name: Upload performance baseline
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: performance-baseline
           path: performance-baseline.txt

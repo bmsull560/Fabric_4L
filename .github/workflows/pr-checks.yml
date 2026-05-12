@@ -155,7 +155,7 @@ jobs:
 
       - name: Upload structural reports
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: structural-check-reports
           path: |
@@ -318,7 +318,7 @@ jobs:
 
       - name: Upload docs validation artifacts
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: docs-validation-evidence
           path: |
@@ -374,7 +374,7 @@ jobs:
 
       - name: Upload Layer 3 Cypher scope audit
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: layer3-cypher-scope-audit
           path: artifacts/layer3-cypher-scope-audit.json
@@ -382,7 +382,7 @@ jobs:
 
       - name: Upload Layer 3 query entrypoint matrix
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: layer3-query-entrypoint-matrix
           path: artifacts/layer3-query-entrypoint-matrix.json
@@ -397,7 +397,7 @@ jobs:
             --cov-fail-under=80
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-layer1-ingestion
@@ -470,7 +470,7 @@ jobs:
             --cov-fail-under=80
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-layer2-extraction
@@ -547,7 +547,7 @@ jobs:
           cp "${{ github.workspace }}/artifacts/layer3-query-entrypoint-matrix.json" artifacts/layer3-tenancy/query-entrypoint-matrix.json || true
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-layer3-knowledge
@@ -558,7 +558,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Layer 3 tenancy evidence artifacts
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: layer3-tenancy-evidence
@@ -618,7 +618,7 @@ jobs:
             --cov-fail-under=80
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-layer4-agents
@@ -684,7 +684,7 @@ jobs:
             --cov-fail-under=80
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-layer5-ground-truth
@@ -799,7 +799,7 @@ jobs:
 
       - name: Upload Layer 5 contract diff artifacts
         if: failure()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: layer5-contract-diff-artifacts
           path: services/layer5-ground-truth/contract-diff/
@@ -851,7 +851,7 @@ jobs:
             --cov-fail-under=80
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-layer6-benchmarks
@@ -974,7 +974,7 @@ jobs:
         run: pnpm run build:analyze
 
       - name: Upload bundle report
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: bundle-report
@@ -988,7 +988,7 @@ jobs:
         run: pnpm run test:coverage:critical
 
       - name: Upload test results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         if: always()
         with:
           name: test-results-frontend
@@ -1033,7 +1033,7 @@ jobs:
 
       - name: Upload build artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: frontend-build-failure
           path: apps/web/dist/public/
@@ -1152,7 +1152,7 @@ jobs:
 
       - name: Upload compatibility shim report
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: compatibility-shim-report
           path: artifacts/compatibility-debt/
@@ -1160,7 +1160,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: contract-test-results
           path: |
@@ -1243,7 +1243,7 @@ jobs:
 
       - name: Upload runtime contract artifacts
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: runtime-contract-test-results
           path: |
@@ -1298,7 +1298,7 @@ jobs:
 
       - name: Upload Schemathesis results
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: schemathesis-results
           path: |
@@ -1381,7 +1381,7 @@ jobs:
 
       - name: Upload smoke report
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: smoke-report-pr
           path: artifacts/smoke-report-*.json
@@ -1389,7 +1389,7 @@ jobs:
 
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: integration-logs
           path: artifacts/logs/
@@ -1430,7 +1430,7 @@ jobs:
 
       - name: Upload billing regression evidence
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: launch-checklist-billing-entitlements-evidence
           path: |
@@ -1463,7 +1463,7 @@ jobs:
 
       - name: Upload Docker Compose config artifacts
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: docker-compose-config-contract
           path: artifacts/docker-compose-config/**

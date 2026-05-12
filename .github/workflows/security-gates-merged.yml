@@ -36,7 +36,7 @@ jobs:
                  shared/ \
                  -f json -o bandit-report.json || true
       - name: Upload Bandit Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bandit-report
           path: bandit-report.json
@@ -133,7 +133,7 @@ jobs:
         run: |
           docker run --rm -v $(pwd):/project anchore/grype:latest dir:/project/services/${{ matrix.layer }} --output json > grype-${{ matrix.layer }}.json || true
       - name: Upload Grype Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: grype-${{ matrix.layer }}
           path: grype-${{ matrix.layer }}.json
@@ -153,7 +153,7 @@ jobs:
         run: |
           docker run --rm -v $(pwd):/project anchore/syft:latest dir:/project/services/${{ matrix.layer }} -o spdx-json > sbom-${{ matrix.layer }}.json
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-${{ matrix.layer }}
           path: sbom-${{ matrix.layer }}.json

@@ -142,7 +142,7 @@ jobs:
           pnpm exec eslint src/ server/ --ext .ts,.tsx
 
       - name: Upload lint results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: eslint-contract-violations
@@ -308,7 +308,7 @@ jobs:
         # NO continue-on-error: Tests must pass
 
       - name: Upload contract scan results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: python-contract-scan
@@ -383,7 +383,7 @@ jobs:
           "
 
       - name: Upload generated spec
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: generated-openapi-${{ matrix.layer }}
           path: services/${{ matrix.layer }}/generated-openapi.json
@@ -488,7 +488,7 @@ jobs:
           FAIL_ON_CONTRACT_VIOLATION: "true"
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: contract-test-results-${{ matrix.layer }}
@@ -582,14 +582,14 @@ jobs:
           python3 scripts/report_deprecation_debt.py             --mode enforce             --thresholds docs/governance/deprecation-debt-registry.json             --output deprecation-debt-report-enforced.json
 
       - name: Upload deprecation report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: deprecation-register
           path: docs/governance/deprecations.json
 
       - name: Upload deprecation debt reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: deprecation-debt-reports
@@ -624,7 +624,7 @@ jobs:
           echo "score=$(python -c 'import json; print(json.load(open("contract-scorecard.json"))["overall_score"])')" >> $GITHUB_OUTPUT
 
       - name: Upload scorecard
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: contract-scorecard
           path: contract-scorecard.json

@@ -95,7 +95,7 @@ jobs:
             --output-certificate sbom-${{ matrix.service }}.cdx.json.crt
 
       - name: Upload scan artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scan-${{ matrix.service }}
           path: |
@@ -134,7 +134,7 @@ jobs:
             --junitxml=prompt-injection-tests.xml
 
       - name: Upload SAST & test artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sast-and-tests
           path: |
@@ -165,7 +165,7 @@ jobs:
           cmd_options: '-a'
 
       - name: Upload live evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: live-evidence
           path: |
@@ -215,7 +215,7 @@ jobs:
 
       - name: Upload artifact (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: evidence-bundle-${{ inputs.tag }}
           path: evidence-bundle.tar.gz

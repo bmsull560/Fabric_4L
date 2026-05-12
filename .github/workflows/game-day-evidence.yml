@@ -48,7 +48,7 @@ jobs:
           python scripts/ci/stack_health_check.py --timeout 120 --output chaos-health.json
 
       - name: Upload chaos evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chaos-evidence-${{ inputs.scenario }}-${{ github.run_id }}
           path: chaos-health.json

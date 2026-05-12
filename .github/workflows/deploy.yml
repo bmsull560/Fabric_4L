@@ -205,7 +205,7 @@ jobs:
           cat deployment-record.json
 
       - name: Upload deployment record
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deployment-record-${{ env.ENVIRONMENT }}-${{ env.IMAGE_REF }}
           path: deployment-record.json
