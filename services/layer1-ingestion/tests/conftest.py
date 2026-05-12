@@ -31,6 +31,7 @@ _otel = sys.modules.get("opentelemetry") or _make_pkg("opentelemetry")
 if not hasattr(_otel, "trace"):
     _otel.trace = _make_pkg("opentelemetry.trace")
 _otel.trace.Span = getattr(_otel.trace, "Span", type("Span", (), {}))
+_otel.trace.SpanContext = getattr(_otel.trace, "SpanContext", type("SpanContext", (), {}))
 _otel.trace.Status = getattr(_otel.trace, "Status", type("Status", (), {}))
 _otel.trace.StatusCode = getattr(_otel.trace, "StatusCode", type("StatusCode", (), {}))
 

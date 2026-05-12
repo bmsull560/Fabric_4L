@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass, asdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 import requests
@@ -66,7 +66,7 @@ class ConnectionPoolAnalyzer:
         url = f"{self.prometheus_url}/api/v1/query"
         params = {
             "query": query,
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(UTC).isoformat(),
         }
         
         response = self.session.get(url, params=params, timeout=self.timeout)
@@ -126,7 +126,7 @@ class ConnectionPoolAnalyzer:
                 wait_time_avg=wait_time_p95 * 0.5,  # Estimate
                 wait_time_p95=wait_time_p95,
                 utilization_percent=utilization,
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
             )
         except Exception as e:
             print(f"Error querying metrics for {layer}: {e}", file=sys.stderr)
@@ -192,7 +192,7 @@ class ConnectionPoolAnalyzer:
     def analyze_all_layers(self, layers: list[str], duration: str = "30m") -> dict:
         """Analyze connection pools for all layers."""
         results = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "prometheus_url": self.prometheus_url,
             "analysis_duration": duration,
             "layers": {},

@@ -252,7 +252,7 @@ class ConversationService:
             "semanticContractValid": validation.valid,
             "semanticContractMode": validation.mode.value if hasattr(validation.mode, "value") else str(validation.mode),
             "semanticContractViolations": [
-                violation.dict() if hasattr(violation, "dict") else violation
+                violation.model_dump() if hasattr(violation, "model_dump") else violation
                 for violation in validation.violations
             ],
             "contractVersions": {

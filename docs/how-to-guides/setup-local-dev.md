@@ -126,6 +126,16 @@ docker compose up -d postgres neo4j redis minio
 ./scripts/wait-for-services.sh
 ```
 
+### Docker Base Image Override
+
+All Python service Dockerfiles default to a private GHCR base image. For local development, you can override this via the `BASE_IMAGE` environment variable (already set in `.env`):
+
+```bash
+BASE_IMAGE=python:3.11.11-slim-bookworm
+```
+
+When building services via Docker Compose, this override is automatically passed as a build argument. For Layer 3, you can also override the builder stage base image with `BUILDER_BASE_IMAGE`.
+
 ---
 
 ## Step 3: Configure Hot Reload

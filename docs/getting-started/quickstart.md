@@ -129,6 +129,22 @@ docker compose ps
 # Expected: All services show "healthy" or "running (0)"
 ```
 
+**Customizing the Docker Base Image (Optional):**
+
+By default, Dockerfiles use a private GHCR base image. To override this for local development (e.g., to use a public Python image), set `BASE_IMAGE` in your `.env`:
+
+```bash
+BASE_IMAGE=python:3.11.11-slim-bookworm
+```
+
+Then rebuild with the override:
+
+```bash
+docker compose up --build -d
+```
+
+This is already pre-configured in the provided `.env` and `.env.example` files.
+
 ---
 
 ## Step 3: Run Database Migrations

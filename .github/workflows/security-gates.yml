@@ -60,7 +60,11 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ matrix.layer }}:scan-target services/${{ matrix.layer }}
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            --build-arg BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-}" \
+            -t ${{ matrix.layer }}:scan-target \
+            services/${{ matrix.layer }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@8e6cbf1955f948b0b1f0f2f12f6ec2e5374c8c57 # v0.35.0
@@ -110,7 +114,11 @@ jobs:
 
       - name: Build image artifact
         run: |
-          docker build -t ${{ matrix.artifact.name }}:ci ${{ matrix.artifact.context }}
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            --build-arg BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-}" \
+            -t ${{ matrix.artifact.name }}:ci \
+            ${{ matrix.artifact.context }}
 
       - name: Generate CycloneDX SBOM (Trivy)
         uses: aquasecurity/trivy-action@8e6cbf1955f948b0b1f0f2f12f6ec2e5374c8c57 # v0.35.0
@@ -434,9 +442,16 @@ jobs:
         run: |
           # Build test images and verify user
           docker build -t test-frontend apps/web/
-          docker build -t test-layer3 services/layer3-knowledge/
-          docker build -t test-layer4 services/layer4-agents/
-          docker build -t test-layer6 services/layer6-benchmarks/
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            --build-arg BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-}" \
+            -t test-layer3 services/layer3-knowledge/
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            -t test-layer4 services/layer4-agents/
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            -t test-layer6 services/layer6-benchmarks/
 
           # Check running user (should not be root/0)
           for image in test-frontend test-layer3 test-layer4 test-layer6; do
@@ -535,6 +550,8 @@ jobs:
       - name: Build Docker image for SBOM
         run: |
           docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            --build-arg BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-}" \
             -t ${{ matrix.layer }}:sbom-target \
             ${{ matrix.layer == 'apps-web' && 'apps/web' || format('services/{0}', matrix.layer) }}
 

@@ -15,6 +15,7 @@ from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from value_fabric.shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
+from ..config import configure_settings
 from ..config.checkpoint import CheckpointConfig
 from ..database import close_db, db_session, db_session_for_context, init_db
 from ..engine.executor import OrchestrationController
@@ -24,7 +25,6 @@ from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_schedul
 from ..services.health_tracker import get_health_tracker
 from ..services.value_flow_facade import ValueFlowFacadeService
 from ..tools import create_default_registry
-from ..startup.dependency_verifier import verify_layer4_startup_dependencies
 from .websocket import get_ws_manager
 
 if TYPE_CHECKING:
@@ -85,7 +85,7 @@ def build_lifespan(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         validate_production_safety()
-        verify_layer4_startup_dependencies()
+        configure_settings()
         app.state.tracer_provider = init_telemetry()
         ws_manager = get_ws_manager()
         health_tracker = get_health_tracker()

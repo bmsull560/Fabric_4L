@@ -9,6 +9,9 @@
 #   make test-backend-integrated-validation
 # =============================================================================
 
+x-build-args: &build-args
+  BASE_IMAGE: ${BASE_IMAGE:-}
+
 services:
   # ---------------------------------------------------------------------------
   # Infrastructure
@@ -122,6 +125,7 @@ services:
       dockerfile: ./Dockerfile
       args:
         INSTALL_PLAYWRIGHT_BROWSERS: "false"
+        BASE_IMAGE: ${BASE_IMAGE:-}
     container_name: vf-bi-layer1
     ports:
       - "8001:8000"
@@ -165,6 +169,7 @@ services:
       dockerfile: ./Dockerfile
       args:
         INSTALL_PLAYWRIGHT_BROWSERS: "false"
+        BASE_IMAGE: ${BASE_IMAGE:-}
     container_name: vf-bi-layer1-worker
     command: celery -A src.shared.tasks worker --loglevel=info --concurrency=2
     environment:
@@ -195,6 +200,7 @@ services:
     build:
       context: ./services/layer2-extraction
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-bi-layer2
     ports:
       - "8002:8000"
@@ -246,6 +252,9 @@ services:
     build:
       context: ./services/layer3-knowledge
       dockerfile: ./Dockerfile
+      args:
+        <<: *build-args
+        BUILDER_BASE_IMAGE: ${BUILDER_BASE_IMAGE:-}
     container_name: vf-bi-layer3
     ports:
       - "8003:8001"
@@ -282,6 +291,7 @@ services:
     build:
       context: ./services/layer4-agents
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-bi-layer4
     ports:
       - "8004:8000"
@@ -348,6 +358,7 @@ services:
     build:
       context: ./services/layer5-ground-truth
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-bi-layer5
     ports:
       - "8005:8005"
@@ -393,6 +404,7 @@ services:
     build:
       context: ./services/layer5-ground-truth
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-bi-layer5-migrate
     command: alembic upgrade head
     environment:
@@ -419,6 +431,7 @@ services:
     build:
       context: ./services/layer6-benchmarks
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-bi-layer6
     ports:
       - "8006:8006"

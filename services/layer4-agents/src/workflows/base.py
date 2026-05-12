@@ -117,7 +117,7 @@ class BaseWorkflow(ABC):
                 graph.add_conditional_edges(
                     edge_config.source,
                     self._create_router(edge_config),
-                    {True: edge_config.target, False: self.config.entry_point},
+                    {"continue": edge_config.target, "retry": self.config.entry_point},
                 )
             else:
                 graph.add_edge(edge_config.source, edge_config.target)
@@ -252,14 +252,17 @@ class BaseWorkflow(ABC):
     def _create_router(self, edge_config: EdgeConfig) -> Callable:
         """Create a router function for conditional edges."""
 
-        def router(state: AgentState) -> bool:
-            """Route based on state."""
-            # Simple condition evaluation - can be extended
+        def router(state: AgentState) -> str:
+            """Route based on state.
+
+            Returns string keys to avoid serialization issues with booleans
+            in LangGraph conditional edges.
+            """
             if edge_config.condition == "results_valid":
-                return len(state.errors) == 0
+                return "continue" if len(state.errors) == 0 else "retry"
             elif edge_config.condition == "retry_needed":
-                return len(state.errors) > 0
-            return True
+                return "retry" if len(state.errors) > 0 else "continue"
+            return "continue"
 
         return router
 

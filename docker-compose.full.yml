@@ -16,12 +16,16 @@ x-process-hardening: &process-hardening
   security_opt:
     - no-new-privileges:true
 
+x-build-args: &build-args
+  BASE_IMAGE: ${BASE_IMAGE:-}
+
 services:
   # Layer 1: Data Ingestion Service
   layer1-ingestion:
     build:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
+      args: *build-args
     container_name: value-fabric-layer1
     <<: *app-hardening
     expose:
@@ -65,6 +69,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer2-extraction/Dockerfile.full
+      args: *build-args
     container_name: value-fabric-layer2
     <<: *app-hardening
     expose:
@@ -135,6 +140,9 @@ services:
     build:
       context: .
       dockerfile: ./services/layer3-knowledge/Dockerfile.full
+      args:
+        <<: *build-args
+        BUILDER_BASE_IMAGE: ${BUILDER_BASE_IMAGE:-}
     container_name: value-fabric-layer3
     <<: *app-hardening
     expose:
@@ -173,6 +181,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer4-agents/Dockerfile.full
+      args: *build-args
     container_name: value-fabric-layer4
     <<: *app-hardening
     ports:
@@ -231,6 +240,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer5-ground-truth/Dockerfile.full
+      args: *build-args
     container_name: value-fabric-layer5
     <<: *app-hardening
     expose:
@@ -278,6 +288,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer5-ground-truth/Dockerfile.full
+      args: *build-args
     container_name: value-fabric-layer5-migrate
     command: /app/.venv/bin/alembic upgrade head
     environment:
@@ -294,6 +305,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer6-benchmarks/Dockerfile.full
+      args: *build-args
     container_name: value-fabric-layer6
     <<: *app-hardening
     expose:
@@ -359,6 +371,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
+      args: *build-args
     container_name: value-fabric-layer1-celery-worker
     <<: *app-hardening
     command: celery -A src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
@@ -388,6 +401,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
+      args: *build-args
     container_name: value-fabric-layer1-celery-beat
     <<: *app-hardening
     command: celery -A src.shared.tasks beat --loglevel=info --schedule=/tmp/celerybeat-schedule
@@ -419,6 +433,7 @@ services:
     build:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
+      args: *build-args
     container_name: value-fabric-flower
     command: celery -A src.shared.tasks flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:?FLOWER_PASSWORD is required}
     environment:

@@ -42,6 +42,9 @@ x-python-healthcheck: &python-healthcheck
 x-shared-code-volumes: &shared-code-volumes
   - ./packages/shared/src/value_fabric/shared:/app/value_fabric/shared:ro
 
+x-build-args: &build-args
+  BASE_IMAGE: ${BASE_IMAGE:-}
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -98,6 +101,7 @@ services:
       dockerfile: Dockerfile
       args:
         INSTALL_PLAYWRIGHT_BROWSERS: "false"
+        BASE_IMAGE: ${BASE_IMAGE:-}
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/ingestion
@@ -132,6 +136,7 @@ services:
     build:
       context: ./services/layer2-extraction
       dockerfile: Dockerfile
+      args: *build-args
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/extraction
@@ -159,6 +164,9 @@ services:
     build:
       context: ./services/layer3-knowledge
       dockerfile: Dockerfile
+      args:
+        <<: *build-args
+        BUILDER_BASE_IMAGE: ${BUILDER_BASE_IMAGE:-}
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/valuefabric
@@ -187,6 +195,7 @@ services:
     build:
       context: ./services/layer5-ground-truth
       dockerfile: Dockerfile
+      args: *build-args
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/ground_truth
@@ -210,6 +219,7 @@ services:
     build:
       context: ./services/layer6-benchmarks
       dockerfile: Dockerfile
+      args: *build-args
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/benchmarks
@@ -238,6 +248,7 @@ services:
     build:
       context: ./services/layer4-agents
       dockerfile: Dockerfile
+      args: *build-args
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+asyncpg://release_smoke_app:release_smoke_strong_credential@postgres:5432/layer4_agents

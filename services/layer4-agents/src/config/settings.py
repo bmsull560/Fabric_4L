@@ -11,21 +11,55 @@ import secrets
 
 import logging
 
-from ..startup.dependency_verifier import verify_layer4_startup_dependencies
-
-verify_layer4_startup_dependencies()
-
-_secrets_module = importlib.import_module("value_fabric.shared.secrets") if importlib.util.find_spec("value_fabric.shared.secrets") else None
-load_infisical_secrets = getattr(_secrets_module, "load_infisical_secrets", None)
-if load_infisical_secrets is not None:
-    load_infisical_secrets()
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
+
+# Lazy initialization hooks — called explicitly during app lifespan startup
+# to avoid import-time side effects that break tests and tooling.
+_startup_dependencies_verified = False
+_infisical_secrets_loaded = False
+
+
+def _load_infisical_secrets_safe() -> None:
+    """Load Infisical secrets if configured; never raise on missing config."""
+    global _infisical_secrets_loaded
+    if _infisical_secrets_loaded:
+        return
+    _secrets_module = (
+        importlib.import_module("value_fabric.shared.secrets")
+        if importlib.util.find_spec("value_fabric.shared.secrets")
+        else None
+    )
+    load_fn = getattr(_secrets_module, "load_infisical_secrets", None)
+    if load_fn is not None:
+        try:
+            load_fn()
+        except Exception as exc:
+            # Non-fatal: Infisical is optional; pydantic-settings validators
+            # will catch genuinely missing production secrets at instantiation.
+            logger.warning("Infisical secrets load skipped: %s", exc)
+    _infisical_secrets_loaded = True
+
+
+def configure_settings() -> None:
+    """Run import-time side effects safely during app startup.
+
+    Separated from module import so tests and tooling can import Settings
+    without a full runtime environment.
+    """
+    global _startup_dependencies_verified
+    if not _startup_dependencies_verified:
+        from ..startup.dependency_verifier import verify_layer4_startup_dependencies
+
+        verify_layer4_startup_dependencies()
+        _startup_dependencies_verified = True
+    _load_infisical_secrets_safe()
+
 
 from pydantic import AliasChoices, Field, ValidationInfo, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from value_fabric.shared.security.neo4j import validate_neo4j_aura_config
-
-logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):

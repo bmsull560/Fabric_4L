@@ -120,6 +120,8 @@ async def _set_pipeline_job(
     entities_extracted: int | None = None,
     relationships_extracted: int | None = None,
     completed_at: datetime | None = None,
+    last_error: str | None = None,
+    next_retry_at: datetime | None = None,
 ) -> None:
     job = await job_store.get_job(job_id)
     if extraction_status is not None:
@@ -132,6 +134,10 @@ async def _set_pipeline_job(
         job.relationships_extracted = relationships_extracted
     if completed_at is not None:
         job.completed_at = completed_at
+    if last_error is not None:
+        job.last_error = last_error
+    if next_retry_at is not None:
+        job.next_retry_at = next_retry_at
     await job_store.set_job(job)
 
 

@@ -60,7 +60,7 @@ class StateManager:
         """
         self.redis = redis_client
         # P0-26: LRU cache with maxlen to prevent unbounded growth
-        self._memory_store: Ordereddict[str, dict] = OrderedDict()
+        self._memory_store: OrderedDict[str, dict] = OrderedDict()
         self._max_memory_entries = max_memory_entries
         self._ws_manager: WorkflowWebSocketManager | None = ws_manager
 

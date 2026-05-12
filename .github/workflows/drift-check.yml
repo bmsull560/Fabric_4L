@@ -48,6 +48,22 @@ jobs:
         run: |
           python3 services/layer3-knowledge/scripts/check_app_monolith_shim_drift.py
 
+      - name: Security regression drift
+        run: |
+          python3 scripts/ci/check_security_regressions.py --strict
+
+      - name: Deprecation drift
+        run: |
+          python3 scripts/ci/check_deprecation_drift.py --strict --use-baseline
+
+      - name: Migration safety drift
+        run: |
+          python3 scripts/ci/check_migration_safety.py --strict --use-baseline
+
+      - name: Production-readiness language drift
+        run: |
+          python3 scripts/ci/check_readiness_language.py --strict --use-baseline
+
       - name: Export current contracts
         run: |
           python scripts/export_openapi.py

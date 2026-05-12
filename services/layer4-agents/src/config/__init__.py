@@ -3,5 +3,6 @@
 from __future__ import annotations
 
 from .checkpoint import CheckpointConfig, get_checkpoint_saver
+from .settings import configure_settings
 
-__all__ = ["CheckpointConfig", "get_checkpoint_saver"]
+__all__ = ["CheckpointConfig", "get_checkpoint_saver", "configure_settings"]

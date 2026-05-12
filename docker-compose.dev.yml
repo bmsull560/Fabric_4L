@@ -17,6 +17,9 @@
 # pre-populated tenant/user context without needing a JWT.
 # =============================================================================
 
+x-build-args: &build-args
+  BASE_IMAGE: ${BASE_IMAGE:-}
+
 services:
   # ---------------------------------------------------------------------------
   # Infrastructure
@@ -117,6 +120,7 @@ services:
     build:
       context: ./services/layer4-agents
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-dev-layer4
     ports:
       - "8004:8000"

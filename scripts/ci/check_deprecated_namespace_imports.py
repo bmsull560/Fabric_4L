@@ -110,6 +110,44 @@ def _subtract_baseline(
     ]
 
 
+@dataclass(frozen=True)
+class ShimViolation:
+    path: str
+    line: int
+    category: str
+    message: str
+
+
+def _check_shim_violations(repo_root: Path) -> list[ShimViolation]:
+    """Detect service wrappers containing non-trivial domain logic."""
+    findings: list[ShimViolation] = []
+    wrapper_root = repo_root / "services" / "layer3-knowledge" / "src"
+    canonical_root = repo_root / "value_fabric" / "layer3"
+    if not wrapper_root.exists() or not canonical_root.exists():
+        return findings
+
+    # Map canonical files to wrapper files by relative path
+    canonical_files = {p.relative_to(canonical_root): p for p in canonical_root.rglob("*.py")}
+    for wrapper_file in wrapper_root.rglob("*.py"):
+        rel = wrapper_file.relative_to(wrapper_root)
+        if rel not in canonical_files:
+            continue
+        canonical_file = canonical_files[rel]
+        wrapper_src = wrapper_file.read_text(encoding="utf-8")
+        canonical_src = canonical_file.read_text(encoding="utf-8")
+        # If wrapper has more than just imports and re-exports, flag it
+        wrapper_lines = [l for l in wrapper_src.splitlines() if l.strip() and not l.strip().startswith("#")]
+        canonical_lines = [l for l in canonical_src.splitlines() if l.strip() and not l.strip().startswith("#")]
+        # Simple heuristic: wrapper should be mostly imports/re-exports; if it has >30% of canonical's non-trivial lines, flag
+        if len(wrapper_lines) > 5 and len(wrapper_lines) > len(canonical_lines) * 0.3:
+            findings.append(ShimViolation(
+                str(wrapper_file.relative_to(repo_root)), 1,
+                "shim_contains_logic",
+                f"wrapper file {rel} appears to contain duplicated domain logic (>30% of canonical size)"
+            ))
+    return findings
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=str(REPO_ROOT))
@@ -117,6 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--use-baseline", action="store_true")
     parser.add_argument("--baseline-path", default=str(BASELINE_PATH))
+    parser.add_argument("--check-shims", action="store_true", help="Also check for shim logic violations")
     args = parser.parse_args(argv)
 
     repo_root = Path(args.repo_root).resolve()
@@ -124,14 +163,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.use_baseline:
         baseline = _load_baseline(repo_root, Path(args.baseline_path))
         findings = _subtract_baseline(findings, baseline)
+
+    shim_findings = _check_shim_violations(repo_root) if args.check_shims else []
+
     if args.json:
-        print(json.dumps([asdict(item) for item in findings], indent=2))
+        out = {
+            "deprecated_imports": [asdict(item) for item in findings],
+            "shim_violations": [asdict(item) for item in shim_findings],
+        }
+        print(json.dumps(out, indent=2))
     else:
         print(f"Deprecated namespace import findings: {len(findings)}")
         for f in findings:
             print(f"{f.path}:{f.line} :: {f.statement} [{f.deprecated_namespace}]")
+        if shim_findings:
+            print(f"Shim logic violations: {len(shim_findings)}")
+            for f in shim_findings:
+                print(f"{f.path}:{f.line} :: [{f.category}] {f.message}")
 
-    return 1 if args.strict and findings else 0
+    has_issues = bool(findings) or bool(shim_findings)
+    return 1 if args.strict and has_issues else 0
 
 
 if __name__ == "__main__":

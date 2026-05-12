@@ -151,9 +151,9 @@ class StateSnapshotResponse(BaseModel):
 )
 async def list_checkpoints(
     workflow_id: str,
+    request: Request,
     limit: int = Query(50, ge=1, le=100, description="Maximum checkpoints to return"),
     include_state: bool = Query(False, description="Include full state in summary"),
-    request: Request | None = None,
     executor: OrchestrationController = Depends(get_executor),
     _ctx: RequestContext = Depends(require_authenticated),
 ) -> CheckpointListResponse:
@@ -191,7 +191,7 @@ async def list_checkpoints(
             status_code=503, detail="Checkpointing not configured - cannot retrieve checkpoints"
         )
 
-    request_id = get_request_id(request) if request is not None else None
+    request_id = get_request_id(request)
     try:
         # Query LangGraph's Postgres saver for checkpoints
         await _require_workflow_tenant_access(

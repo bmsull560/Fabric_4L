@@ -285,7 +285,7 @@ class BaseAgent(ABC):
         )
         validation = validate_agent_output(envelope, mode=mode)
         violations = [
-            violation.dict() if hasattr(violation, "dict") else violation
+            violation.model_dump() if hasattr(violation, "model_dump") else violation
             for violation in validation.violations
         ]
         validation_metadata = {

@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID, uuid4
-from observability import Layer4EventContext, Layer4LifecycleLogger
+from ..observability import Layer4EventContext, Layer4LifecycleLogger
 
 from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -317,7 +317,7 @@ class BaseTool(ABC):
         if hasattr(result, "model_dump"):
             result_data = result.model_dump()
         elif hasattr(result, "dict"):
-            result_data = result.dict()
+            result_data = result.model_dump()
         elif isinstance(result, dict):
             result_data = result
         else:

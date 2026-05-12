@@ -5,6 +5,9 @@
 # API layers (L3, L4, L5) and their required databases to reduce overhead.
 # =============================================================================
 
+x-build-args: &build-args
+  BASE_IMAGE: ${BASE_IMAGE:-}
+
 services:
   # ---------------------------------------------------------------------------
   # Infrastructure
@@ -77,6 +80,9 @@ services:
     build:
       context: ./services/layer3-knowledge
       dockerfile: ./Dockerfile
+      args:
+        <<: *build-args
+        BUILDER_BASE_IMAGE: ${BUILDER_BASE_IMAGE:-}
     container_name: vf-contract-layer3
     ports:
       - "8003:8001"
@@ -113,6 +119,7 @@ services:
     build:
       context: ./services/layer4-agents
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-contract-layer4
     ports:
       - "8004:8000"
@@ -172,6 +179,7 @@ services:
     build:
       context: ./services/layer5-ground-truth
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-contract-layer5
     ports:
       - "8005:8005"
@@ -213,6 +221,7 @@ services:
     build:
       context: ./services/layer5-ground-truth
       dockerfile: ./Dockerfile
+      args: *build-args
     container_name: vf-contract-layer5-migrate
     command: alembic upgrade head
     environment:

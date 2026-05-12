@@ -52,7 +52,11 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -t ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }} ./services/${{ matrix.service }}
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            --build-arg BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-}" \
+            -t ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }} \
+            ./services/${{ matrix.service }}
 
       - name: Log in to registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

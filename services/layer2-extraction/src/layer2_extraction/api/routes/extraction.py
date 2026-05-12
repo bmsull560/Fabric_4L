@@ -80,7 +80,9 @@ async def get_extraction_results(
         )
 
     artifacts = await store.get_artifacts(job_id, tenant_id=tenant_id)
-    if artifacts is None or artifacts.result is None:
+    if artifacts is None:
+        raise HTTPException(status_code=404, detail="No extraction artifacts found")
+    if artifacts.result is None:
         raise HTTPException(status_code=404, detail="No extraction artifacts found")
 
     raw_entities: list[Any] = []

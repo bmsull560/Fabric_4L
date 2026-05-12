@@ -1,0 +1,1421 @@
+{
+  "baseline_version": "1.0.0",
+  "created_at": "2026-05-12",
+  "check": "scripts/ci/check_migration_safety.py",
+  "description": "Known migration safety debt as of 2026-05-12. New violations outside this baseline must be fixed before merge.",
+  "summary": {
+    "total_baselines": 156,
+    "by_category": {
+      "missing_dry_run": 36,
+      "destructive_without_marker": 78,
+      "enterprise_no_fallback": 40,
+      "print_in_migration": 2
+    }
+  },
+  "findings": [
+    {
+      "path": "services/layer2-extraction/migrations/env.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20250418_0001_add_ontology_schema_tables.py",
+      "line": 119,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20250418_0001_add_ontology_schema_tables.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20250419_0001_add_pending_ingestions_table.py",
+      "line": 43,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20250419_0001_add_pending_ingestions_table.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 49,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 58,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 60,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 60,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 66,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 66,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer2-extraction/migrations/versions/20260503_0002_add_rls_policies.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer2",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/env.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/__init__.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/001_add_accounts_table.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/002_add_governance_tables.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/003_add_audit_events.py",
+      "line": 108,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/003_add_audit_events.py",
+      "line": 108,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/003_add_audit_events.py",
+      "line": 109,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/003_add_audit_events.py",
+      "line": 109,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/003_add_audit_events.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/004_add_oidc_sessions.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/005_add_model_registry.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/006_add_feature_flags.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 69,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 74,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 76,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 76,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 77,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 77,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/007_add_rls_policies.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/008_add_oidc_pkce.py",
+      "line": 34,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/008_add_oidc_pkce.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/009_add_billing_tables.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/010_add_integrations_table.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/011_add_region_segment_to_accounts.py",
+      "line": 44,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/011_add_region_segment_to_accounts.py",
+      "line": 48,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/011_add_region_segment_to_accounts.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/012_add_tenant_isolation_tier_history.py",
+      "line": 113,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/012_add_tenant_isolation_tier_history.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 77,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 82,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 84,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 84,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 85,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 85,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/013_add_missing_rls_policies.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 110,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 111,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 113,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 113,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 114,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 114,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 121,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 124,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/014_add_tenant_id_to_billing.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 135,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 136,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 137,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 137,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 138,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 138,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 144,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/015_add_usage_events_table.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/016_add_business_case_records_table.py",
+      "line": 52,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/016_add_business_case_records_table.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/017_add_tenant_lifecycle_columns.py",
+      "line": 54,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/017_add_tenant_lifecycle_columns.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 250,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 252,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 255,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 255,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 256,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 256,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 260,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_company_knowledge_tables.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py",
+      "line": 67,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py",
+      "line": 69,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py",
+      "line": 69,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py",
+      "line": 70,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py",
+      "line": 70,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/018_add_rls_to_billing_tables.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/019_add_account_enrichment_columns.py",
+      "line": 86,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/019_add_account_enrichment_columns.py",
+      "line": 86,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/019_add_account_enrichment_columns.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 36,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 36,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 39,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 39,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 49,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 49,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 60,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 60,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 69,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 69,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/020_tenant_safe_crm_sync_constraints.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/021_add_salesforce_oauth_fields.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 37,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 37,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 71,
+      "category": "print_in_migration",
+      "message": "print() in migration script; use structured logging",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 85,
+      "category": "print_in_migration",
+      "message": "print() in migration script; use structured logging",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 89,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 91,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 92,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 92,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 93,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 93,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 94,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 94,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/022_add_missing_foreign_key_constraints.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/023_add_covering_indexes.py",
+      "line": 90,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/023_add_covering_indexes.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/024_add_invoice_tables.py",
+      "line": 233,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/024_add_invoice_tables.py",
+      "line": 235,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/024_add_invoice_tables.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 78,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 81,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 81,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 115,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 118,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 118,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 145,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 145,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 148,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 148,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 164,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 164,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/025_fix_billing_rls_policies.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/026_fix_rls_null_tenant_policy.py",
+      "line": 85,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/026_fix_rls_null_tenant_policy.py",
+      "line": 87,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/026_fix_rls_null_tenant_policy.py",
+      "line": 87,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/026_fix_rls_null_tenant_policy.py",
+      "line": 112,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/026_fix_rls_null_tenant_policy.py",
+      "line": 112,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/026_fix_rls_null_tenant_policy.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 69,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 78,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 79,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 80,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 80,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 81,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 81,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 87,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 90,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/027_add_tenant_id_to_business_case_records.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 36,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 36,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 37,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 37,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 61,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 63,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 63,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 64,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 64,
+      "category": "enterprise_no_fallback",
+      "message": "Neo4j Enterprise-only constraint without Community fallback note",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/028_fix_remaining_rls_coverage.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/20260101_0000_a1b2c3d4e5f6_initial_layer4_schema.py",
+      "line": 380,
+      "category": "destructive_without_marker",
+      "message": "destructive Cypher without MIGRATION_REVIEW_REQUIRED marker",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    },
+    {
+      "path": "services/layer4-agents/migrations/versions/20260101_0000_a1b2c3d4e5f6_initial_layer4_schema.py",
+      "line": 1,
+      "category": "missing_dry_run",
+      "message": "migration script lacks dry_run parameter",
+      "reason": "Pre-existing migration script debt outside Layer 3 hardening scope.",
+      "owner": "layer4",
+      "removal_condition": "Migration scripts audited and corrected, or replaced with newer safe migrations."
+    }
+  ]
+}

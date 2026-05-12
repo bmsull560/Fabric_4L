@@ -1,0 +1,355 @@
+"""Robots.txt compliance checker.
+
+Fetches, caches, and enforces robots.txt rules for ethical web crawling.
+Uses Protego for fast parsing and respects crawl-delay directives.
+"""
+
+from datetime import UTC, datetime, timedelta
+from typing import Any
+from urllib.parse import urljoin, urlparse
+
+import httpx
+import structlog
+from protego import Protego
+from value_fabric.shared.models.typed_dict import TypedDictModel
+
+from ..shared.config import settings
+from ..shared.database import get_db_session
+from ..shared.models import RobotsTxtCache
+
+
+class RobotsChecker__get_robots_txtResult(TypedDictModel):
+    content: Any
+    http_status: Any
+    rules: Any
+
+class RobotsChecker__parse_robots_txtResult(TypedDictModel):
+    parse_error: Any
+
+class RobotsChecker__get_cached_robots_txtResult(TypedDictModel):
+    content: Any
+    expires_at: Any
+    fetched_at: Any
+    rules: Any
+
+logger = structlog.get_logger()
+
+
+class RobotsChecker:
+    """Checker for robots.txt compliance.
+
+    Handles fetching, caching, and parsing of robots.txt files
+    with proper rate limiting and TTL management.
+    """
+
+    def __init__(
+        self,
+        user_agent: str | None = None,
+        cache_ttl_hours: int | None = None,
+        respect_crawl_delay: bool = True,
+    ):
+        self.user_agent = user_agent or "ValueFabricBot/1.0"
+        self.cache_ttl_hours = cache_ttl_hours or settings.robots_txt_cache_hours
+        self.respect_crawl_delay = respect_crawl_delay
+        self._http_client: httpx.AsyncClient | None = None
+        self.logger = logger
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create HTTP client."""
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(
+                timeout=10.0, headers={"User-Agent": self.user_agent}, follow_redirects=True
+            )
+        return self._http_client
+
+    async def close(self):
+        """Close HTTP client."""
+        if self._http_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
+
+    async def check_url(
+        self, url: str, force_refresh: bool = False
+    ) -> tuple[bool, str | None, dict | None]:
+        """Check if a URL is allowed by robots.txt.
+
+        Args:
+            url: URL to check
+            force_refresh: Force refresh of robots.txt cache
+
+        Returns:
+            Tuple of (allowed: bool, reason: str, rules: dict)
+            - allowed: True if crawling is permitted
+            - reason: Human-readable explanation if blocked
+            - rules: Parsed robots.txt rules for this URL
+        """
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        robots_url = urljoin(f"{parsed.scheme}://{domain}", "/robots.txt")
+
+        # Get or fetch robots.txt
+        robots_data = await self._get_robots_txt(domain, robots_url, force_refresh)
+
+        if robots_data is None:
+            # No robots.txt found - assume allowed
+            return True, None, None
+
+        try:
+            # Parse robots.txt
+            rp = Protego.parse(robots_data.get("content", ""))
+
+            # Check if URL is allowed
+            path = parsed.path or "/"
+            allowed = rp.can_fetch(self.user_agent, path)
+
+            # Get crawl delay
+            crawl_delay = None
+            if self.respect_crawl_delay:
+                crawl_delay = rp.crawl_delay(self.user_agent)
+
+            rules = {
+                "allowed": allowed,
+                "crawl_delay": crawl_delay,
+                "domain": domain,
+                "robots_url": robots_url,
+            }
+
+            if not allowed:
+                reason = f"Disallowed by robots.txt for {self.user_agent}"
+                return False, reason, rules
+
+            if crawl_delay:
+                rules["crawl_delay"] = crawl_delay
+
+            return True, None, rules
+
+        except Exception as e:
+            self.logger.error("Failed to parse robots.txt", domain=domain, error=str(e))
+            # If parsing fails, allow but log
+            return True, None, {"parse_error": str(e)}
+
+    async def _get_robots_txt(
+        self, domain: str, robots_url: str, force_refresh: bool = False
+    ) -> dict[str, Any] | None:
+        """Get robots.txt content, using cache if available.
+
+        Args:
+            domain: Domain name
+            robots_url: URL to robots.txt
+            force_refresh: Force cache refresh
+
+        Returns:
+            Dict with content and metadata, or None if not available
+        """
+        # Check cache first
+        if not force_refresh:
+            cached = self._get_cached_robots_txt(domain)
+            if cached:
+                self.logger.debug("Using cached robots.txt", domain=domain)
+                return cached
+
+        # Fetch fresh robots.txt
+        try:
+            client = await self._get_client()
+            response = await client.get(robots_url)
+
+            if response.status_code == 404:
+                # No robots.txt - all allowed
+                self.logger.debug("No robots.txt found", domain=domain)
+                return None
+
+            response.raise_for_status()
+            content = response.text
+
+            # Parse and cache
+            parsed_rules = self._parse_robots_txt(content)
+
+            self._cache_robots_txt(
+                domain=domain,
+                url=robots_url,
+                content=content,
+                rules=parsed_rules,
+                http_status=response.status_code,
+            )
+
+            self.logger.info("Fetched and cached robots.txt", domain=domain, size=len(content))
+
+            return RobotsChecker__get_robots_txtResult.model_validate({"content": content, "rules": parsed_rules, "http_status": response.status_code})
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return None
+
+            self.logger.error(
+                "HTTP error fetching robots.txt", domain=domain, status=e.response.status_code
+            )
+
+            # Cache the error state
+            self._cache_robots_txt(
+                domain=domain,
+                url=robots_url,
+                content=None,
+                rules={},
+                http_status=e.response.status_code,
+                is_valid=False,
+                error=str(e),
+            )
+
+            # On error, be conservative and assume allowed
+            return None
+
+        except Exception as e:
+            self.logger.error("Failed to fetch robots.txt", domain=domain, error=str(e))
+            return None
+
+    def _get_cached_robots_txt(self, domain: str) -> dict[str, Any] | None:
+        """Get cached robots.txt from database.
+
+        Args:
+            domain: Domain name
+
+        Returns:
+            Cached robots.txt data or None if expired/not found
+        """
+        try:
+            # CONTRACT Â§2.2: System-level cache uses require_tenant=False (admin bypass)
+            with get_db_session(tenant_id=None, require_tenant=False) as session:
+                cache_entry = (
+                    session.query(RobotsTxtCache)
+                    .filter(
+                        RobotsTxtCache.domain == domain,
+                        RobotsTxtCache.expires_at > datetime.now(UTC),
+                    )
+                    .first()
+                )
+
+                if cache_entry:
+                    return RobotsChecker__get_cached_robots_txtResult.model_validate({
+                        "content": cache_entry.content,
+                        "rules": cache_entry.rules,
+                        "fetched_at": cache_entry.fetched_at,
+                        "expires_at": cache_entry.expires_at,
+                    })
+
+
+                return None
+
+        except Exception as e:
+            self.logger.error("Failed to get cached robots.txt", domain=domain, error=str(e))
+            return None
+
+    def _cache_robots_txt(
+        self,
+        domain: str,
+        url: str,
+        content: str | None,
+        rules: dict[str, Any],
+        http_status: int,
+        is_valid: bool = True,
+        error: str | None = None,
+    ):
+        """Cache robots.txt in database.
+
+        Args:
+            domain: Domain name
+            url: URL of robots.txt
+            content: Raw robots.txt content
+            rules: Parsed rules dict
+            http_status: HTTP status code
+            is_valid: Whether parsing succeeded
+            error: Error message if parsing failed
+        """
+        try:
+            # CONTRACT Â§2.2: System-level cache uses require_tenant=False (admin bypass)
+            with get_db_session(tenant_id=None, require_tenant=False) as session:
+                # Check if entry exists
+                existing = (
+                    session.query(RobotsTxtCache).filter(RobotsTxtCache.domain == domain).first()
+                )
+
+                now = datetime.now(UTC)
+                expires_at = now + timedelta(hours=self.cache_ttl_hours)
+
+                if existing:
+                    # Update existing
+                    existing.content = content
+                    existing.url = url
+                    existing.rules = rules
+                    existing.fetched_at = now
+                    existing.expires_at = expires_at
+                    existing.http_status = http_status
+                    existing.is_valid = is_valid
+                    existing.parse_error = error
+                else:
+                    # Create new
+                    cache_entry = RobotsTxtCache(
+                        domain=domain,
+                        content=content,
+                        url=url,
+                        rules=rules,
+                        fetched_at=now,
+                        expires_at=expires_at,
+                        http_status=http_status,
+                        is_valid=is_valid,
+                        parse_error=error,
+                    )
+                    session.add(cache_entry)
+
+                session.commit()
+
+        except Exception as e:
+            self.logger.error("Failed to cache robots.txt", domain=domain, error=str(e))
+
+    def _parse_robots_txt(self, content: str) -> dict[str, Any]:
+        """Parse robots.txt content into structured rules.
+
+        Args:
+            content: Raw robots.txt content
+
+        Returns:
+            Dict of user_agent -> rules
+        """
+        try:
+            rp = Protego.parse(content)
+
+            # Extract rules for common user agents
+            user_agents = ["*", "ValueFabricBot", "ValueFabricBot/1.0", "Googlebot"]
+            rules = {}
+
+            for ua in user_agents:
+                crawl_delay = rp.crawl_delay(ua)
+                request_rate = rp.request_rate(ua)
+
+                rules[ua] = {
+                    "crawl_delay": crawl_delay,
+                    "request_rate": str(request_rate) if request_rate else None,
+                }
+
+            return rules
+
+        except Exception as e:
+            self.logger.error("Failed to parse robots.txt content", error=str(e))
+            return RobotsChecker__parse_robots_txtResult.model_validate({"parse_error": str(e)})
+
+    async def get_crawl_delay(self, url: str) -> float | None:
+        """Get crawl-delay directive for a domain.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            Crawl delay in seconds or None
+        """
+        parsed = urlparse(url)
+        domain = parsed.netloc
+        robots_url = urljoin(f"{parsed.scheme}://{domain}", "/robots.txt")
+
+        robots_data = await self._get_robots_txt(domain, robots_url)
+
+        if not robots_data:
+            return None
+
+        try:
+            rp = Protego.parse(robots_data.get("content", ""))
+            return rp.crawl_delay(self.user_agent)
+        except Exception:
+            return None

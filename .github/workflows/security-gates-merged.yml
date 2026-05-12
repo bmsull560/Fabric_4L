@@ -100,7 +100,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Image
         run: |
-          docker build -f services/${{ matrix.layer }}/Dockerfile -t test-${{ matrix.layer }}:latest services/${{ matrix.layer }}/
+          docker build \
+            --build-arg BASE_IMAGE="${BASE_IMAGE:-}" \
+            --build-arg BUILDER_BASE_IMAGE="${BUILDER_BASE_IMAGE:-}" \
+            -f services/${{ matrix.layer }}/Dockerfile \
+            -t test-${{ matrix.layer }}:latest \
+            services/${{ matrix.layer }}/
       - name: Run Trivy
         uses: aquasecurity/trivy-action@master
         with:

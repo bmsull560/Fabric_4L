@@ -803,7 +803,7 @@ async def get_workflow_events(
                     ).model_dump(),
                 )
 
-                yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
+                yield f"event: workflow_event\ndata: {json.dumps(event.model_dump())}\n\n"
 
                 last_status = status
 
@@ -821,7 +821,7 @@ async def get_workflow_events(
                         progress=status.get("progress_percentage", 100.0),
                     ).model_dump(),
                 )
-                yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
+                yield f"event: workflow_event\ndata: {json.dumps(event.model_dump())}\n\n"
                 break
 
             # Wait before next poll

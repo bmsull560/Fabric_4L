@@ -1513,6 +1513,9 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BASE_IMAGE=${{ vars.BASE_IMAGE || '' }}
+            BUILDER_BASE_IMAGE=${{ vars.BUILDER_BASE_IMAGE || '' }}
 
       - name: Verify Dockerfile lint
         uses: hadolint/hadolint-action@9a9b4e40b6f6d0f6d8f7ecba674498b6ff157131 # v3.1.0

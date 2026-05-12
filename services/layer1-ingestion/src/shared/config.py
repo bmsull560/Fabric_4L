@@ -1,0 +1,234 @@
+"""Configuration management for Layer 1 Ingestion Service."""
+
+import logging
+import os
+from urllib.parse import urlparse
+
+from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic_settings import BaseSettings
+from value_fabric.shared.secrets import load_infisical_secrets
+
+logger = logging.getLogger(__name__)
+
+_DEV_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
+_PRODUCTION_ENVS = {"production", "prod", "staging"}
+_DEV_CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+_EXPLICIT_CORS_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+_EXPLICIT_CORS_HEADERS = ["Authorization", "Content-Type", "X-Request-ID", "X-Tenant-ID"]
+
+
+def detect_environment() -> str:
+    for key in ("ENVIRONMENT", "ENV", "APP_ENV"):
+        value = os.getenv(key, "").strip().lower()
+        if value:
+            return value
+    return "development"
+
+
+def is_production_like_environment(environment: str | None = None) -> bool:
+    """Check if the environment is production-like (requires strict security validation).
+
+    Explicitly listed production environments are treated as production-like.
+    Unknown/custom environments are also treated as production-like for security
+    (fail-safe: better to be too strict than too permissive).
+    Only known development environments are treated as non-production.
+    """
+    env = (environment or detect_environment()).strip().lower()
+    return env in _PRODUCTION_ENVS or env not in _DEV_ENVIRONMENTS
+
+
+def parse_cors_origins(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(origin).strip() for origin in value if str(origin).strip()]
+    raise TypeError(f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None.")
+
+
+def validate_exact_cors_origins(origins: list[str], *, production_like: bool) -> list[str]:
+    if production_like and not origins:
+        raise ValueError("CORS_ORIGINS must be set to at least one specific origin in production-like environments")
+
+    errors: list[str] = []
+    for origin in origins:
+        if origin == "*" or "*" in origin:
+            if production_like:
+                errors.append("Wildcard CORS origin not allowed in production-like environments")
+            continue
+        parsed = urlparse(origin)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            errors.append(f"CORS origin '{origin}' must be an explicit http(s) origin")
+        if origin.lower() in {"change_me", "changeme", "null"}:
+            errors.append(f"CORS origin '{origin}' is not a deployable origin")
+
+    if errors:
+        raise ValueError("; ".join(errors))
+    return origins
+
+
+def build_cors_policy(origins: list[str], *, production_like: bool) -> dict[str, object]:
+    safe_origins = validate_exact_cors_origins(origins, production_like=production_like)
+    return {
+        "allow_origins": safe_origins,
+        "allow_credentials": bool(safe_origins) and "*" not in safe_origins,
+        "allow_methods": _EXPLICIT_CORS_METHODS,
+        "allow_headers": _EXPLICIT_CORS_HEADERS,
+    }
+
+
+# Load secrets from Infisical if available (optional in dev, required in prod-like envs)
+try:
+    load_infisical_secrets()
+except Exception:
+    if is_production_like_environment():
+        raise RuntimeError("Failed to load Infisical secrets in production-like environment")
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables with security validation."""
+
+    # Application
+    environment: str = Field(default_factory=detect_environment, description="Runtime environment")
+    app_name: str = "layer1-ingestion"
+    app_version: str = "1.0.0"
+    debug: bool = Field(default=False, description="Enable debug mode")
+
+    # Database
+    database_url: str = Field(
+        default="postgresql://postgres:postgres@localhost:5432/layer1_ingestion",
+        description="PostgreSQL connection URL",
+    )
+
+    # JWT and Security
+    jwt_secret: str = Field(default="changeme", description="JWT signing secret")
+    cors_origins: list[str] = Field(default=[], description="CORS allowed origins")
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins_field(cls, v: object) -> object:
+        return parse_cors_origins(v)
+
+    @field_validator("environment")
+    @classmethod
+    def normalize_environment(cls, v: str) -> str:
+        return v.strip().lower()
+
+    @model_validator(mode="after")
+    def validate_production_safety(self) -> "Settings":
+        production_like = is_production_like_environment(self.environment)
+        errors: list[str] = []
+
+        if production_like:
+            if self.debug:
+                errors.append("Debug mode must be disabled in production-like environments")
+            insecure_defaults = ["changeme", "changeme-in-production", "valuefabric", "postgres", "secret", "password"]
+            if self.jwt_secret.lower() in insecure_defaults:
+                errors.append("Insecure default JWT secret detected in production-like environment")
+            if len(self.jwt_secret) < 32:
+                errors.append("JWT secret must be >= 32 characters in production-like environments")
+            if "postgres:postgres@" in self.database_url or "password" in self.database_url.lower():
+                errors.append("Database URL contains default/insecure credentials")
+
+        try:
+            validate_exact_cors_origins(self.cors_origins, production_like=production_like)
+        except ValueError as exc:
+            errors.append(str(exc))
+
+        if errors:
+            raise ValueError("Unsafe production configuration: " + "; ".join(errors))
+        return self
+
+    @property
+    def is_production_like(self) -> bool:
+        return is_production_like_environment(self.environment)
+
+    @property
+    def cors_policy(self) -> dict[str, object]:
+        origins = self.cors_origins
+        if not origins and not self.is_production_like:
+            logger.warning(
+                "CORS_ORIGINS not configured in non-production environment, "
+                f"falling back to dev defaults: {_DEV_CORS_ORIGINS}. "
+                "Set CORS_ORIGINS environment variable to avoid this warning."
+            )
+            origins = list(_DEV_CORS_ORIGINS)
+        return build_cors_policy(origins, production_like=self.is_production_like)
+
+    # Redis (Celery broker and cache)
+    redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
+
+    # Storage (MinIO/S3)
+    s3_endpoint: str = Field(default="http://localhost:9000", description="S3/MinIO endpoint")
+    s3_access_key: str = Field(default="minioadmin", description="S3 access key")
+    s3_secret_key: str = Field(default="minioadmin", description="S3 secret key")
+    s3_bucket: str = Field(default="layer1-raw-html", description="S3 bucket for raw HTML")
+    s3_region: str = Field(default="us-east-1", description="S3 region")
+
+    # Crawler settings
+    max_concurrent_pages: int = Field(default=5, description="Max concurrent pages per worker")
+    page_timeout_ms: int = Field(default=30000, description="Page load timeout in milliseconds")
+    navigation_timeout_ms: int = Field(default=10000, description="Navigation timeout in milliseconds")
+    default_crawl_depth: int = Field(default=2, description="Default crawl depth")
+    max_crawl_depth: int = Field(default=5, description="Maximum crawl depth")
+
+    # Rate limiting
+    global_requests_per_minute: int = Field(default=1000, description="Global rate limit")
+    per_domain_delay_seconds: float = Field(default=1.0, description="Delay between requests to same domain")
+    jitter_percent: float = Field(default=20.0, description="Random jitter percentage for delays")
+
+    # Queue settings
+    queue_batch_size: int = Field(default=100, description="Number of URLs to process in batch")
+    max_retries: int = Field(default=3, description="Max retries for failed URLs")
+    retry_delay_seconds: int = Field(default=60, description="Base retry delay")
+
+    # SEC EDGAR
+    sec_edgar_rate_limit: int = Field(default=10, description="Requests per second (SEC limit)")
+    sec_edgar_user_agent: str = Field(default="ValueFabric/1.0 (contact@valuefabric.io)")
+    sec_edgar_cache_ttl_hours: int = Field(default=24)
+
+    # USPTO Patents
+    uspto_api_key: str | None = Field(default=None)
+    uspto_rate_limit: int = Field(default=5, description="Requests per second")
+
+    # News sources
+    news_source: str = Field(default="gdelt", description="News source: 'gdelt' or 'newsapi'")
+    newsapi_key: str | None = Field(default=None)
+
+    # Compliance
+    retention_days: int = Field(default=30, description="Raw HTML retention period")
+    audit_log_retention_years: int = Field(default=7, description="Audit log retention")
+    pii_threshold_flag: float = Field(default=0.3, description="PII detection threshold for flagging")
+    pii_threshold_quarantine: float = Field(default=0.7, description="PII detection threshold for quarantine")
+    robots_txt_cache_hours: int = Field(default=24, description="robots.txt cache TTL")
+
+    # API settings
+    api_host: str = Field(default="0.0.0.0", description="API server host")
+    api_port: int = Field(default=8000, description="API server port")
+
+    # Layer 2 integration
+    layer2_api_url: str = Field(default="http://layer2-extraction:8000", description="Layer 2 extraction API URL")
+
+    # LLM Providers (for AI_LLM extraction method)
+    openai_api_key: str | None = Field(default=None, description="OpenAI API key")
+    openai_model: str = Field(default="gpt-4", description="OpenAI model for extraction")
+    openai_timeout_seconds: int = Field(default=60, description="OpenAI API timeout")
+
+    anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
+    anthropic_model: str = Field(default="claude-3-sonnet-20240229", description="Anthropic model")
+    anthropic_timeout_seconds: int = Field(default=60, description="Anthropic API timeout")
+
+    azure_openai_api_key: str | None = Field(default=None, description="Azure OpenAI API key")
+    azure_openai_endpoint: str | None = Field(default=None, description="Azure OpenAI endpoint")
+    azure_openai_deployment: str | None = Field(default=None, description="Azure OpenAI deployment name")
+
+    # Pipeline settings
+    pipeline_stage_timeout_seconds: int = Field(default=300, description="Timeout per pipeline stage")
+    max_pipeline_retries: int = Field(default=3, description="Max retries per pipeline stage")
+
+    model_config = ConfigDict(case_sensitive=False)
+
+
+# Global settings instance
+settings = Settings()
