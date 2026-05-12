@@ -249,6 +249,7 @@ test-layer2: ## Run Layer 2 tests
 	cd services/layer2-extraction && $(PYTEST) tests/
 
 test-layer3: ## Run Layer 3 tests
+	python scripts/ci/check_layer3_source_mirror.py
 	cd services/layer3-knowledge && $(PYTEST) tests/
 
 test-layer4: ## Run Layer 4 tests

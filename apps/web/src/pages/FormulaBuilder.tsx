@@ -290,7 +290,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         {
           onSuccess: (data) => {
             clearDraft(formulaId);
-            navigateTo('formula-builder', { formulaId: data.formula_id });
+            navigateTo('formula-builder', { formulaId: data.id ?? data.formula_id });
           },
         }
       );

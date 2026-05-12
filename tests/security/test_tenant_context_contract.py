@@ -13,7 +13,7 @@ Key invariants tested:
     5. The ``require_authenticated`` dependency raises 401 when context is None.
 
 Expected Initial State:
-    - test_no_l4_routes_use_deprecated_get_db:  FAIL (9 endpoints in accounts.py)
+    - test_no_l4_routes_use_deprecated_get_db:  PASS (deprecated usage removed from protected routes)
     - test_no_write_routes_use_optional_context: FAIL (export_business_case)
     - test_governance_middleware_resets_context:  PASS
     - test_require_authenticated_rejects_none:   PASS
@@ -227,7 +227,7 @@ class TestNoDeprecatedGetDb:
     def test_no_l4_routes_use_deprecated_get_db(self):
         """Scan all L4 route files for ``Depends(get_db)`` usage.
 
-        Expected initial state: FAIL — accounts.py has 9 endpoints using get_db.
+        Protected routes must remain free of deprecated get_db usage.
         """
         violations = []
 

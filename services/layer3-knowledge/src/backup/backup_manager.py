@@ -1,6 +1,3 @@
-"""Compatibility forwarder for Layer 3 backup manager.
+"""Compatibility shim for Layer 3 canonical runtime module."""
 
-Canonical implementation lives in ``value_fabric.layer3.backup.backup_manager``.
-"""
-
-from value_fabric.layer3.backup.backup_manager import *  # noqa: F403
+from value_fabric.layer3.backup.backup_manager import *  # noqa: F401,F403

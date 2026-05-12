@@ -1,0 +1,60 @@
+# Production Readiness Gate: Auth/Tenant Exceptions Register
+# =============================================================================
+# Status: OPEN — Release permitted only with unexpired approved exceptions.
+
+metadata:
+  gate_id: auth-tenant-exceptions
+  owner: platform-security
+  scope:
+    - identity
+    - audit-ledger
+    - retrieval-acl
+  last_reviewed: "2026-05-12"
+
+status:
+  overall: "OPEN_WITH_EXCEPTIONS"
+  reason: |
+    One pending identity durability item and one retrieval ACL hardening item
+    are explicitly time-bounded with owners and compensating controls.
+
+exceptions:
+  - id: SEC-4271
+    title: Persist and enforce X-Webhook-ID idempotency keys across instances
+    domain: identity
+    status: approved
+    risk_owner: Platform Identity
+    approved_on: "2026-05-12"
+    expires_on: "2026-10-31"
+    source:
+      - services/layer4-agents/src/tenants/api/routes/provisioning.py
+      - docs/operations/tenant-management-phase-2-provisioning.md
+    compensating_controls:
+      - HMAC webhook signature verification
+      - webhook timestamp replay-window enforcement
+      - process-local 24h dedupe cache
+      - tenant existence validation before provisioning
+
+  - id: SEC-4318
+    title: Retrieval-time ACL enforcement in phase 3.2 memory gateway
+    domain: retrieval-time-acl
+    status: approved
+    risk_owner: Layer 4 Agents
+    approved_on: "2026-05-12"
+    expires_on: "2027-03-31"
+    source:
+      - docs/gate-alignment/implementation-plan-phases-1-3.md
+    compensating_controls:
+      - tenant-scoped retrieval partitioning
+      - audit event emission for retrieval operations
+      - release note requirement until ACL enforcement lands
+
+implemented_items:
+  - id: SEC-4312
+    title: Redis-backed audit ledger chain-head persistence
+    domain: audit-ledger-persistence
+    status: implemented
+    owner: Platform Security
+    implemented_on: "2026-05-12"
+    evidence:
+      - packages/shared/src/value_fabric/shared/audit/ledger.py
+      - tests/shared/audit/test_ledger_chain.py

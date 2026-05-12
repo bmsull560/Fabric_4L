@@ -1,14 +1,3 @@
-"""Retrieval components for Layer 3 Knowledge Graph."""
+"""Compatibility shim for Layer 3 canonical runtime module."""
 
-from .graph_rag import GraphRAGEngine, GraphRAGResult
-from .hybrid_search import HybridSearch, HybridSearchResult
-from .vector_store import VectorStore, VectorStoreError
-
-__all__ = [
-    "GraphRAGEngine",
-    "GraphRAGResult",
-    "HybridSearch",
-    "HybridSearchResult",
-    "VectorStore",
-    "VectorStoreError",
-]
+from value_fabric.layer3.retrieval import *  # noqa: F401,F403

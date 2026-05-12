@@ -27,14 +27,14 @@ kubectl get events -n value-fabric --sort-by='.lastTimestamp' | tail -20
 
 1. **Acknowledge**: Page on-call engineer via PagerDuty
 2. **Assess**: Determine severity and scope
-3. **Assemble**: Create incident Slack channel (#incident-YYYY-MM-DD)
+3. **Assemble**: Start in `#incident-response`, then create a dated war-room channel `#inc-sev-<level>-YYYYMMDD` if dedicated coordination is required
 4. **Act**: Begin mitigation (preserve evidence for SEV-0/1)
 
 #### 3. Communication
 
 | Audience | Channel | Frequency |
 |----------|---------|-----------|
-| Response team | #incident-XXX | Real-time |
+| Response team | #incident-response (or `#inc-sev-<level>-YYYYMMDD` war room) | Real-time |
 | Engineering leads | #engineering-leads | Every 30 min |
 | Executives | Email | Every 2 hours |
 | Customers | Status page | As needed |
@@ -322,7 +322,7 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 
 ---
 
-**Last Updated**: 2026-04-15  
+**Last Updated**: 2026-05-12  
 **Version**: 1.0.0  
 **Owner**: Site Reliability Engineering  
 **Next Review**: 2026-07-01 (quarterly cadence)
@@ -331,3 +331,9 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 ## Observability Contracts
 
 - Trace correlation normalization contract: `docs/contracts/trace-correlation-observability-contract.md`.
+
+
+## Tabletop Drill Evidence
+
+- Latest cross-functional incident tabletop: `docs/operations/evidence/tabletop-drill-2026-05-12-servicedown.md`.
+- Scope covered PagerDuty service/schedule paths (`pagerduty-critical`, `engineering-lead-secondary`, `sre-secondary`) and Slack escalation channels (`#vf-alerts-critical`, `#incident-response`).

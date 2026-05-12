@@ -127,21 +127,21 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={() => formula.formula_id && navigateTo('formula-builder', { formulaId: formula.formula_id })}
+          onClick={() => navigateTo('formula-builder', { formulaId: formula.id })}
           className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
           title="Edit"
         >
           <Edit3 size={16} />
         </button>
         <button
-          onClick={() => formula.formula_id && onEdit(formula.formula_id)}
+          onClick={() => onEdit(formula.id)}
           className="p-2 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
           title="Test"
         >
           <Play size={16} />
         </button>
         <button
-          onClick={() => formula.formula_id && onDelete(formula.formula_id)}
+          onClick={() => onDelete(formula.id)}
           disabled={isDeleting}
           className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
           title="Delete"
@@ -298,15 +298,15 @@ export default function FormulaList() {
           <div className="space-y-2">
             {filteredFormulas.map((formula) => (
               <div
-                key={formula.formula_id}
-                onClick={() => formula.formula_id && navigateTo('formula-builder', { formulaId: formula.formula_id })}
+                key={formula.id}
+                onClick={() => navigateTo('formula-builder', { formulaId: formula.id })}
                 className="cursor-pointer"
               >
                 <FormulaRow
                   formula={formula}
                   onEdit={(id) => navigateTo('formula-builder', { formulaId: id })}
                   onDelete={(id) => setShowDeleteConfirm(id)}
-                  isDeleting={isDeleting && showDeleteConfirm === formula.formula_id}
+                  isDeleting={isDeleting && showDeleteConfirm === formula.id}
                 />
               </div>
             ))}

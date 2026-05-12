@@ -51,13 +51,13 @@ def create_app() -> FastAPI:
         FastAPIInstrumentor.instrument_app(app)
 
     app.state.metrics = initialize_metrics()
-    configure_middleware(app)
     configure_observability(
         app,
         service_name="layer4-agents",
         metrics_provider=lambda: app.state.metrics.get_metrics() if getattr(app.state, "metrics", None) else "",
         readiness_check=lambda: True,
     )
+    configure_middleware(app)
 
     from value_fabric.shared.identity.dev_bypass import maybe_install_dev_bypass
 

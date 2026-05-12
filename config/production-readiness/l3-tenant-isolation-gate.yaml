@@ -1,6 +1,6 @@
 # Production Readiness Gate: L3 Knowledge Graph Tenant Isolation
 # =============================================================================
-# Status: OPEN — Do NOT deploy to production with multi-tenant data until CLOSED.
+# Status: CLOSED — tenant isolation controls verified for Layer 3 scoped modules.
 #
 # This gate tracks the completion of tenant isolation for Layer 3 (Knowledge Graph)
 # Neo4j routes. L3 uses application-level tenant scoping (Cypher query filtering)

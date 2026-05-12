@@ -92,7 +92,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: neo4j-secret
-                  key: auth
+                  key: neo4j_password
             - name: RDF_OUTPUT_DIR
               value: "/app/rdf-output"
             - name: LOG_LEVEL

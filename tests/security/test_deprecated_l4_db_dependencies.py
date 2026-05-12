@@ -43,3 +43,22 @@ def test_protected_routes_disallow_deprecated_db_dependencies() -> None:
         "Use Depends(get_db_from_context) for tenant-isolated DB access.\n"
         + "\n".join(violations)
     )
+
+
+def test_deprecated_helpers_are_compatibility_guarded() -> None:
+    """Deprecated helpers must route through the compatibility-only runtime guard."""
+    database_py = PROJECT_ROOT / "services" / "layer4-agents" / "src" / "database.py"
+    source = database_py.read_text(encoding="utf-8")
+
+    required = [
+        '_allow_compat_only_db_dependency("get_db")',
+        '_allow_compat_only_db_dependency("get_db_with_tenant")',
+        '_allow_compat_only_db_dependency("get_db_with_optional_tenant")',
+        '_allow_compat_only_db_dependency("get_tiered_db_session")',
+        '_allow_compat_only_db_dependency("db_session")',
+    ]
+    missing = [marker for marker in required if marker not in source]
+    assert not missing, (
+        "Deprecated Layer 4 DB helpers must remain compatibility-only with a runtime guard. "
+        f"Missing guard invocation(s): {missing}"
+    )

@@ -224,10 +224,12 @@ curl -X POST https://api.valuefabric.io/v1/graph/query \
 | 15-30 min | Executive notification, war room activated |
 | 30+ min | Consider failover to DR region if configured |
 
-**Escalation Contacts:**
-- `#vf-platform-oncall` - Platform engineering
-- `#vf-sre-oncall` - Site reliability
-- `+1-XXX-XXX-XXXX` - VP Engineering (P0 only)
+**Escalation Endpoints (production):**
+- **Primary paging:** PagerDuty service `pagerduty-critical` (platform-engineering path)
+- **Primary responder channel:** Slack `#vf-alerts-critical`
+- **Secondary responder schedule:** PagerDuty schedule `sre-secondary`
+- **Incident command channel:** Slack `#incident-response`
+- **Executive escalation (SEV-0 / >15 min):** PagerDuty schedule `engineering-lead-secondary` and alias `@vf-eng-leadership`
 
 ## Prevention
 
@@ -244,3 +246,9 @@ curl -X POST https://api.valuefabric.io/v1/graph/query \
 - [Postgres Unreachable](postgres-unreachable.md)
 - [Redis Unreachable](redis-unreachable.md)
 - [High Error Rate](high-error-rate.md)
+
+
+## Tabletop Drill Evidence
+
+- Latest ServiceDown tabletop drill (SEV-0 outage simulation): `docs/operations/evidence/tabletop-drill-2026-05-12-servicedown.md`.
+- Drill ownership and quarterly cadence align to SRE responsibilities in `docs/reliability/dr-policy.md` and runbook ownership in `docs/operations/runbook-overview.md`.

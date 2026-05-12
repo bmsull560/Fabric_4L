@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from value_fabric.shared.error_handling import RequestIDMiddleware, register_exception_handlers
+from value_fabric.shared.error_handling import register_exception_handlers
 from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
@@ -43,5 +43,4 @@ def configure_middleware(app: FastAPI) -> None:
     )
     add_security_middleware(app, config=security_config)
     app.add_middleware(CORSMiddleware, **resolve_cors_policy().as_kwargs())
-    app.add_middleware(RequestIDMiddleware)
     register_exception_handlers(app)

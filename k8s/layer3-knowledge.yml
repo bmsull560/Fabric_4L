@@ -90,7 +90,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: neo4j-secret
-                  key: auth
+                  key: neo4j_password
             - name: REDIS_URL
               value: "redis://redis:6379/0"
             - name: PINECONE_API_KEY

@@ -12,13 +12,14 @@ import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { withApiError, FormulaVersionsApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import type { FormulaVersionStatus } from '@/api/statuses';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface FormulaVersion {
   version: string;
   formula_id: string;
-  status: 'draft' | 'under_review' | 'approved' | 'active' | 'deprecated' | 'retired';
+  status: FormulaVersionStatus;
   created_at: string;
   created_by: string;
   change_summary: string;

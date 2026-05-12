@@ -1241,16 +1241,35 @@ async def export_business_case(
     1. Truth-gating / blocking behavior
     2. Provenance manifest generation, storage upload, and audit events
     """
+    record = await db.get(BusinessCaseRecord, case_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+
+    try:
+        account = await _require_tenant_account(db, record.account_id, context)
+    except HTTPException as exc:
+        await emit_and_persist_audit(
+            action=AuditAction.EXPORT_REQUESTED,
+            context=context,
+            resource_type="BusinessCaseExport",
+            resource_id=case_id,
+            details={
+                "case_id": case_id,
+                "format": format,
+                "outcome": "denied",
+                "denied_reason": "tenant_access_denied",
+                "tenant_id": str(context.tenant_id),
+                "record_account_id": str(record.account_id),
+            },
+        )
+        raise exc
+
     result = await executor.get_result(case_id)
     if not result:
-        record = await db.get(BusinessCaseRecord, case_id)
-        if record:
-            await _require_tenant_account(db, record.account_id, context)
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Business case draft is not approved or document bytes unavailable",
-            )
-        raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Business case draft is not approved or document bytes unavailable",
+        )
 
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
@@ -1316,7 +1335,7 @@ async def export_business_case(
     )
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
 
-    base_prefix = f"exports/{context.tenant_id}/{case_id}/{export_id}"
+    base_prefix = f"exports/tenant_{context.tenant_id}/{case_id}/{export_id}"
     object_key = f"{base_prefix}/{filename}"
     manifest_key = f"{base_prefix}/{manifest_filename}"
     metadata = {
@@ -1324,6 +1343,10 @@ async def export_business_case(
         "workflow-id": workflow_id,
         "export-id": export_id,
         "tenant-id": str(context.tenant_id),
+        "tenant_id": str(context.tenant_id),
+        "actor-user-id": str(context.user_id or ""),
+        "actor-subject": str(context.subject or ""),
+        "account-id": str(account.id),
     }
 
     content_type = "application/pdf" if format == "pdf" else "application/octet-stream"

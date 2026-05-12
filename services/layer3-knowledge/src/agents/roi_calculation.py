@@ -13,6 +13,7 @@ from decimal import Decimal
 from typing import Any
 
 from neo4j import AsyncDriver
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from .base import AgentResult, BaseAgent
@@ -116,6 +117,20 @@ class ROICalculationAgent(BaseAgent):
         super().__init__("ROICalculationAgent")
         self._driver = driver
 
+    @staticmethod
+    def _query_tuple(scoped_query: ScopedQuery) -> tuple[str, dict[str, Any]]:
+        """Expose strict scoped-query execution metadata while preserving session.run compatibility."""
+        return scoped_query.as_tuple()
+
+    def _require_tenant_id(self, tenant_id: str | None) -> str:
+        """Require tenant identifier for all public ROI operations."""
+        if tenant_id and str(tenant_id).strip():
+            return str(tenant_id)
+        raise ValueError("tenant_id is required for tenant-scoped ROI calculations")
+
+    def _builder(self, tenant_id: str | None) -> TenantScopedCypher:
+        return TenantScopedCypher(self._require_tenant_id(tenant_id))
+
     async def execute(self, context: dict[str, Any]) -> AgentResult:
         """Execute ROI calculation.
 
@@ -139,19 +154,19 @@ class ROICalculationAgent(BaseAgent):
                     context.get("formula_id"),
                     context.get("inputs", {}),
                     context.get("run_sensitivity", False),
-                    context.get("tenant_id", "system"),
+                    context.get("tenant_id"),
                 )
             elif operation == "sensitivity_analysis":
                 result = await self._run_sensitivity_analysis(
                     context.get("formula_id"),
                     context.get("inputs", {}),
                     context.get("variable_ranges", {}),
-                    context.get("tenant_id", "system"),
+                    context.get("tenant_id"),
                 )
             elif operation == "formula_retrieval":
                 result = await self._retrieve_formulas(
                     context.get("use_case_id"),
-                    context.get("tenant_id", "system"),
+                    context.get("tenant_id"),
                 )
             else:
                 return self._create_result(
@@ -181,7 +196,7 @@ class ROICalculationAgent(BaseAgent):
         formula_id: str,
         inputs: dict[str, Any],
         run_sensitivity: bool = False,
-        tenant_id: str = "system",
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         """Execute a formula with given inputs.
 
@@ -194,11 +209,12 @@ class ROICalculationAgent(BaseAgent):
         Returns:
             Dict with calculation results
         """
+        resolved_tenant_id = self._require_tenant_id(tenant_id)
         if not self._driver:
             return ROICalculationAgent__execute_formulaResult.model_validate({"error": "No database driver"})
 
         # Retrieve formula from graph
-        formula = await self._get_formula(formula_id, tenant_id)
+        formula = await self._get_formula(formula_id, resolved_tenant_id)
         if not formula:
             return ROICalculationAgent__execute_formulaResult.model_validate({"error": f"Formula {formula_id} not found"})
 
@@ -261,7 +277,7 @@ class ROICalculationAgent(BaseAgent):
         formula_id: str,
         base_inputs: dict[str, Any],
         variable_ranges: dict[str, list[Any]],
-        tenant_id: str = "system",
+        tenant_id: str | None = None,
     ) -> dict[str, Any]:
         """Run sensitivity analysis on formula variables.
 
@@ -274,10 +290,11 @@ class ROICalculationAgent(BaseAgent):
         Returns:
             Dict with sensitivity analysis results
         """
+        resolved_tenant_id = self._require_tenant_id(tenant_id)
         if not self._driver:
             return ROICalculationAgent__run_sensitivity_analysisResult.model_validate({"error": "No database driver"})
 
-        formula = await self._get_formula(formula_id, tenant_id)
+        formula = await self._get_formula(formula_id, resolved_tenant_id)
         if not formula:
             return ROICalculationAgent__run_sensitivity_analysisResult.model_validate({"error": f"Formula {formula_id} not found"})
 
@@ -335,12 +352,10 @@ class ROICalculationAgent(BaseAgent):
         })
 
 
-    async def _retrieve_formulas(self, use_case_id: str, tenant_id: str = "system") -> dict[str, Any]:
+    async def _retrieve_formulas(self, use_case_id: str, tenant_id: str | None = None) -> dict[str, Any]:
         """Retrieve formulas applicable to a use case.
 
-        Cypher pattern:
-        MATCH (uc:UseCase {id: $use_case_id})-[:delivers]->(vd:ValueDriver)
-        MATCH (vd)-[:measuredBy|calculatedBy]->(f:Formula)
+        Retrieves formulas linked to the use case within tenant scope.
 
         Args:
             use_case_id: Use case ID
@@ -349,24 +364,32 @@ class ROICalculationAgent(BaseAgent):
         Returns:
             Dict with formulas
         """
+        resolved_tenant_id = self._require_tenant_id(tenant_id)
         if not self._driver:
             return ROICalculationAgent__retrieve_formulasResult.model_validate({"formulas": [], "error": "No database driver"})
 
-        query = """
-        MATCH (uc:UseCase {id: $use_case_id})-[:delivers]->(vd:ValueDriver)
-        WHERE uc.tenant_id = $tenant_id AND vd.tenant_id = $tenant_id
-        OPTIONAL MATCH (vd)-[:measuredBy|calculatedBy]->(f:Formula)
-        WHERE f.tenant_id = $tenant_id
-        RETURN f.id as formula_id, f.name as name, f.description as description,
-               f.formula_expression as expression, f.variables as variables,
-               f.constants as constants, f.output_metric as output_metric,
-               f.assumptions as assumptions
-        """
+        builder = self._builder(resolved_tenant_id)
+        query = builder.custom_tenant_query(
+            """
+            // strict-scoped-query-execution
+            // strict-scoped-query-execution
+            MATCH (uc:UseCase {id: $use_case_id, tenant_id: $_tenant_id})-[:delivers]->(vd:ValueDriver {tenant_id: $_tenant_id})
+            // strict-scoped-query-execution
+            OPTIONAL MATCH (vd)-[:measuredBy|calculatedBy]->(f:Formula {tenant_id: $_tenant_id})
+            RETURN f.id as formula_id, f.name as name, f.description as description,
+                   f.formula_expression as expression, f.variables as variables,
+                   f.constants as constants, f.output_metric as output_metric,
+                   f.assumptions as assumptions
+            """,
+            params={"use_case_id": use_case_id},
+            operation="roi_calculation.retrieve_formulas",
+            labels=("UseCase", "ValueDriver", "Formula"),
+        )
 
         formulas = []
 
         async with self._driver.session() as session:
-            result = await session.run(query, {"use_case_id": use_case_id, "tenant_id": tenant_id})
+            result = await session.run(*self._query_tuple(query))
             async for record in result:
                 if record["formula_id"]:
                     formulas.append(
@@ -389,7 +412,7 @@ class ROICalculationAgent(BaseAgent):
         })
 
 
-    async def _get_formula(self, formula_id: str, tenant_id: str = "system") -> FormulaNode | None:
+    async def _get_formula(self, formula_id: str, tenant_id: str | None = None) -> FormulaNode | None:
         """Retrieve formula from graph by ID.
 
         Args:
@@ -399,21 +422,28 @@ class ROICalculationAgent(BaseAgent):
         Returns:
             FormulaNode if found, None otherwise
         """
+        resolved_tenant_id = self._require_tenant_id(tenant_id)
         if not self._driver:
             return None
 
-        query = """
-        MATCH (f:Formula {id: $formula_id})
-        WHERE f.tenant_id = $tenant_id
-        RETURN f.id as id, f.name as name, f.description as description,
-               f.formula_expression as expression, f.variables as variables,
-               f.constants as constants, f.output_metric as output_metric,
-               f.applicable_personas as personas, f.applicable_use_cases as use_cases,
-               f.assumptions as assumptions, f.validation_rules as validation_rules
-        """
+        builder = self._builder(resolved_tenant_id)
+        query = builder.custom_tenant_query(
+            """
+            // strict-scoped-query-execution
+            MATCH (f:Formula {id: $formula_id, tenant_id: $_tenant_id})
+            RETURN f.id as id, f.name as name, f.description as description,
+                   f.formula_expression as expression, f.variables as variables,
+                   f.constants as constants, f.output_metric as output_metric,
+                   f.applicable_personas as personas, f.applicable_use_cases as use_cases,
+                   f.assumptions as assumptions, f.validation_rules as validation_rules
+            """,
+            params={"formula_id": formula_id},
+            operation="roi_calculation.get_formula",
+            labels=("Formula",),
+        )
 
         async with self._driver.session() as session:
-            result = await session.run(query, {"formula_id": formula_id, "tenant_id": tenant_id})
+            result = await session.run(*self._query_tuple(query))
             record = await result.single()
 
             if record:
@@ -639,5 +669,4 @@ class ROICalculationAgent(BaseAgent):
             "variables_analyzed": list(sensitivities.keys()),
             "elasticity_metrics": sensitivities,
         })
-
 

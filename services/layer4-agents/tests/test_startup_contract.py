@@ -1,3 +1,4 @@
+from fastapi.testclient import TestClient
 import pytest
 
 from value_fabric.layer4.api.app_factory import create_app
@@ -52,3 +53,18 @@ def test_route_table_integrity_after_refactor():
     assert "/health" in paths
     assert "/metrics" in paths
     assert any(p.startswith("/v1/workflows") for p in paths)
+
+
+def test_request_id_middleware_contract_is_canonical_and_stable():
+    app = create_app()
+
+    middleware_names = [mw.cls.__name__ for mw in app.user_middleware]
+    assert middleware_names.count("BaseHTTPMiddleware") == 1
+
+    with TestClient(app) as client:
+        response = client.get("/health", headers={"X-Correlation-ID": "corr-layer4-1"})
+
+    assert response.status_code == 200
+    assert response.headers.get("X-Request-ID") == "corr-layer4-1"
+    assert response.headers.get("X-Correlation-ID") == "corr-layer4-1"
+    assert response.headers.get("X-Trace-ID") == "corr-layer4-1"

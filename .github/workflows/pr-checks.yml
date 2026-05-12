@@ -311,12 +311,24 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: python scripts/ci/check_layer3_cypher_scope.py services/layer3-knowledge/src --report-json artifacts/layer3-cypher-scope-audit.json
 
+      - name: Run Layer 3 query entrypoint matrix gate
+        working-directory: ${{ github.workspace }}
+        run: python scripts/ci/check_layer3_query_entrypoints.py services/layer3-knowledge/src --report-json artifacts/layer3-query-entrypoint-matrix.json
+
       - name: Upload Layer 3 Cypher scope audit
         if: always()
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: layer3-cypher-scope-audit
           path: artifacts/layer3-cypher-scope-audit.json
+          if-no-files-found: ignore
+
+      - name: Upload Layer 3 query entrypoint matrix
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: layer3-query-entrypoint-matrix
+          path: artifacts/layer3-query-entrypoint-matrix.json
           if-no-files-found: ignore
 
       - name: Run tests with coverage
@@ -475,6 +487,7 @@ jobs:
         run: |
           mkdir -p artifacts/layer3-tenancy
           cp "${{ github.workspace }}/artifacts/layer3-cypher-scope-audit.json" artifacts/layer3-tenancy/cypher-scope-report.json || true
+          cp "${{ github.workspace }}/artifacts/layer3-query-entrypoint-matrix.json" artifacts/layer3-tenancy/query-entrypoint-matrix.json || true
 
       - name: Upload test results
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4

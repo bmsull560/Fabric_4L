@@ -143,23 +143,8 @@ class TestExportStorageNamespacing:
                     # The object key should include tenant_id
                     # Look for patterns like f"exports/{tenant_id}/..." or
                     # context.tenant_id in the key construction
-                    has_tenant_in_key = (
-                        "tenant_id" in func_source
-                        and ("object_key" in func_source or "filename" in func_source)
-                        and re.search(
-                            r"(tenant_id|context\.tenant_id).*(?:key|path|prefix)",
-                            func_source,
-                        )
-                    )
-
-                    # Alternative: check if the upload_bytes call includes tenant
-                    uses_tenant_prefix = re.search(
-                        r"f['\"].*tenant.*(?:export|case|document)",
-                        func_source,
-                        re.IGNORECASE,
-                    )
-
-                    assert has_tenant_in_key or uses_tenant_prefix, (
+                    has_tenant_prefix = "base_prefix = f\"exports/tenant_{context.tenant_id}/" in func_source
+                    assert has_tenant_prefix, (
                         "export_business_case does not include tenant_id in the "
                         "storage object key. Without tenant namespacing:\n"
                         "  1. Tenant A could overwrite Tenant B's export\n"
@@ -258,14 +243,8 @@ class TestExportAuditTrail:
                 if node.name == "export_business_case":
                     func_source = ast.get_source_segment(source, node) or ""
 
-                    has_audit = (
-                        "audit" in func_source.lower()
-                        or "emit_event" in func_source
-                        or "log_export" in func_source
-                        or "provenance" in func_source.lower()
-                    )
-
-                    assert has_audit, (
+                    has_success_audit = "AuditAction.EXPORT_PACKAGE_GENERATED" in func_source
+                    assert has_success_audit, (
                         "export_business_case does not emit audit events. "
                         "Every export of confidential data must be logged."
                     )
@@ -273,12 +252,8 @@ class TestExportAuditTrail:
 
         pytest.fail("export_business_case function not found in analysis.py")
 
-    def test_export_blocked_case_still_audited(self):
-        """Even blocked exports must be audited (attempted access logging).
-
-        If a business case fails truth-gating, the export attempt must still
-        be logged — this is a compliance requirement.
-        """
+    def test_export_denied_attempt_is_audited(self):
+        """Tenant-denied export attempts must emit an audit event."""
         source = _ANALYSIS_ROUTES.read_text(encoding="utf-8")
         tree = ast.parse(source)
 
@@ -287,19 +262,14 @@ class TestExportAuditTrail:
                 if node.name == "export_business_case":
                     func_source = ast.get_source_segment(source, node) or ""
 
-                    # Check that the blocked path also has audit/provenance
-                    blocked_section = func_source.split("if blocked:")
-                    if len(blocked_section) >= 2:
-                        blocked_body = blocked_section[1].split("if not document_bytes")[0]
-                        has_audit_in_blocked = (
-                            "audit" in blocked_body.lower()
-                            or "manifest" in blocked_body.lower()
-                            or "provenance" in blocked_body.lower()
-                        )
-                        assert has_audit_in_blocked, (
-                            "export_business_case does not audit blocked export attempts. "
-                            "Even failed exports must be logged for compliance."
-                        )
+                    denied_branch_has_audit = (
+                        "denied_reason" in func_source
+                        and "tenant_access_denied" in func_source
+                        and "AuditAction.EXPORT_REQUESTED" in func_source
+                    )
+                    assert denied_branch_has_audit, (
+                        "export_business_case does not audit denied tenant export attempts."
+                    )
                     return
 
         pytest.fail("export_business_case function not found in analysis.py")

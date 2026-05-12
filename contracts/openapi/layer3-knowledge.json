@@ -10876,7 +10876,10 @@
               }
             ],
             "title": "Formula Id",
-            "description": "Alias for id (frontend compatibility)"
+            "description": "Deprecated alias of id. Removal target: v2.5 (2026-10-01).",
+            "deprecated": true,
+            "x-deprecation-target-version": "v2.5",
+            "x-deprecation-target-date": "2026-10-01"
           },
           "name": {
             "type": "string",
@@ -10989,7 +10992,7 @@
           "output_unit"
         ],
         "title": "FormulaMetadata",
-        "description": "Metadata for a registered formula."
+        "description": "Metadata for a registered formula.\n\nVersioned policy:\n- v2.3 and earlier: emit canonical 'id' plus deprecated alias 'formula_id'.\n- v2.4 warning window: alias remains deprecated and monitored.\n- v2.5 and later: remove 'formula_id' alias and keep only 'id'."
       },
       "FormulaSummary": {
         "properties": {

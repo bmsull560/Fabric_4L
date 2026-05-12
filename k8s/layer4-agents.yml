@@ -83,7 +83,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: neo4j-secret
-                  key: auth
+                  key: neo4j_password
             - name: LAYER1_API_URL
               value: "https://layer1-ingestion.value-fabric.svc.cluster.local:8000"
             - name: LAYER2_API_URL

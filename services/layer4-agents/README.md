@@ -110,6 +110,16 @@ When a company profile is approved, Layer 4 sync uses the canonical Layer 3 `POS
 - Tenant and auth headers (`X-Tenant-ID`, `Authorization`, `X-Service-Auth`) are passed through unchanged into the ingestion call.
 - Contract mismatch responses are treated as sync failures and surfaced for retry/triage.
 
+
+## Middleware Order Contract
+
+Layer 4 installs middleware in a deterministic, contract-checked order:
+
+1. `configure_observability(...)` installs the canonical correlation middleware (single source for request ID/trace headers).
+2. `configure_middleware(...)` installs governance, security, and CORS middleware.
+
+Request/correlation IDs are intentionally sourced once from the shared observability middleware. All responses must expose stable trace headers (`X-Request-ID`, `X-Correlation-ID`, `X-Trace-ID`) with the same value for a given request. Startup contract tests assert this behavior to prevent middleware drift.
+
 ## Database Migrations
 
 Layer 4 uses Alembic for database schema management.

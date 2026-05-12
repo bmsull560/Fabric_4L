@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { apiGet, apiPost } from '@/api/typedClient';
 import type { l3 } from '@/api/generated';
+import type { L3EntityStatus } from '@/api/statuses';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 import { EntityListResponseSchema, validateOrThrow, validateObject } from '@/lib/validation/schemas';
@@ -18,7 +19,7 @@ export interface Entity {
   name: string;
   type: 'Capability' | 'UseCase' | 'Persona' | 'ValueDriver' | 'KPI';
   domain: string | null;
-  status: 'validated' | 'pending' | 'draft' | 'deprecated';
+  status: L3EntityStatus;
   confidence: number;  // 0.0 to 1.0
   confidenceLabel: 'high' | 'medium' | 'low';
   description?: string;
@@ -109,7 +110,7 @@ export interface EntityFilters {
   searchText?: string;
   entityTypes?: string[];
   domains?: string[];
-  statuses?: ('validated' | 'pending' | 'draft' | 'deprecated')[];
+  statuses?: L3EntityStatus[];
   minConfidence?: number;  // 0.0 to 1.0
   maxConfidence?: number;  // 0.0 to 1.0
   limit?: number;

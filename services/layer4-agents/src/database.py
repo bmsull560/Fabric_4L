@@ -220,6 +220,27 @@ def _is_test_environment() -> bool:
         or app_env in {"test", "testing"}
     )
 
+
+def _allow_compat_only_db_dependency(dep_name: str) -> None:
+    """Compatibility-only gate for deprecated DB dependencies.
+
+    Deprecated dependencies remain for legacy integration points and tests,
+    but new route usage is forbidden. Runtime blocks production usage unless
+    explicit compatibility override is configured.
+    """
+    if _is_test_environment():
+        return
+
+    allow_compat = os.getenv("L4_ALLOW_DEPRECATED_DB_DEPENDENCIES", "").strip().lower()
+    if allow_compat in {"1", "true", "yes"}:
+        return
+
+    raise RuntimeError(
+        f"Deprecated compatibility dependency {dep_name}() is disabled. "
+        "Use get_db_from_context() for tenant-scoped routes. "
+        "Set L4_ALLOW_DEPRECATED_DB_DEPENDENCIES=true only for temporary compatibility migration."
+    )
+
 # Try to import shared tenant validation
 try:
     from value_fabric.shared.database import (
@@ -353,11 +374,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     SECURITY: Use only for health checks or admin operations with proper
     role authentication. All production endpoints should use get_db_from_context.
     """
-    if not _is_test_environment():
-        raise RuntimeError(
-            "Deprecated dependency get_db() is disabled outside test environments. "
-            "Use get_db_from_context() for tenant-scoped routes."
-        )
+    _allow_compat_only_db_dependency("get_db")
     warnings.warn(
         "get_db() is deprecated. Use get_db_from_context() for proper tenant isolation.",
         DeprecationWarning,
@@ -400,11 +417,7 @@ async def get_db_with_tenant(
     Raises:
         HTTPException: 400 if X-Tenant-ID header is missing or invalid
     """
-    if not _is_test_environment():
-        raise RuntimeError(
-            "Deprecated dependency get_db_with_tenant() is disabled outside test environments. "
-            "Use get_db_from_context() for tenant-scoped routes."
-        )
+    _allow_compat_only_db_dependency("get_db_with_tenant")
     warnings.warn(
         "get_db_with_tenant() is deprecated. Use get_db_from_context() for proper tenant context propagation.",
         DeprecationWarning,
@@ -522,6 +535,7 @@ async def get_db_with_optional_tenant(
     Raises:
         HTTPException: 400 if non-super-admin tries to use without tenant context
     """
+    _allow_compat_only_db_dependency("get_db_with_optional_tenant")
     warnings.warn(
         "get_db_with_optional_tenant() is deprecated. Use get_db_from_context() for consistency.",
         DeprecationWarning,
@@ -606,6 +620,7 @@ async def get_tiered_db_session(
         HTTPException: 501 if unimplemented tier requested
         TenantContextError: If tenant_id is invalid
     """
+    _allow_compat_only_db_dependency("get_tiered_db_session")
     warnings.warn(
         "get_tiered_db_session() is deprecated. Use get_db_from_context() for consistency.",
         DeprecationWarning,
@@ -684,6 +699,7 @@ async def db_session(
     Raises:
         TenantContextError: If tenant_id is missing/invalid and require_tenant=True
     """
+    _allow_compat_only_db_dependency("db_session")
     warnings.warn(
         "db_session() is deprecated. Use get_db_from_context() for consistency.",
         DeprecationWarning,

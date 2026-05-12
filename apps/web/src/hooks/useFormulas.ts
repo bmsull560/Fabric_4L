@@ -297,7 +297,7 @@ export function useUpdateFormula() {
       });
       
       // Optimistically update formula in list
-      // Note: Formula objects may use either 'id' or 'formula_id' as the primary key
+      // Compatibility window: accept formula_id until alias removal date, but prefer canonical id
       queryClient.setQueryData<Formula[]>(QK.formulas.list({}), (old) => {
         return (old || []).map(f => 
           f.id === formulaId || f.formula_id === formulaId 

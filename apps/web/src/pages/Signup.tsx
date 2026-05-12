@@ -85,8 +85,7 @@ export default function Signup() {
 
       if (canAutoLogin && response.access_token && response.user_id && response.email) {
         const tenantSlug = response.tenant_slug || 'default';
-        sessionService.persistSession(
-          response.access_token,
+        sessionService.persistSessionMeta(
           {
             id: response.user_id,
             email: response.email,

@@ -137,7 +137,7 @@ class TestAccountsRouteTenantEnforcement:
     def test_account_endpoint_uses_tenant_scoped_db(self, func_name: str, method: str):
         """Each accounts endpoint must use get_db_from_context (not get_db).
 
-        Expected initial state: FAIL for all 9 endpoints.
+        Protected accounts endpoints must depend on tenant-scoped DB context.
         """
         uses_scoped = _route_uses_get_db_from_context(self.ACCOUNTS_FILE, func_name)
         assert uses_scoped, (
@@ -317,7 +317,7 @@ class TestTenantAdminRouteTenantEnforcement:
     def test_admin_routes_use_tenant_scoped_db(self):
         """Admin routes must use get_db_from_context.
 
-        Expected initial state: FAIL — admin.py has 5 get_db usages.
+        Protected admin endpoints must not use deprecated get_db.
         """
         count = self._count_get_db_usages(self.ADMIN_FILE)
         assert count == 0, (
@@ -329,7 +329,7 @@ class TestTenantAdminRouteTenantEnforcement:
     def test_users_routes_use_tenant_scoped_db(self):
         """User management routes must use get_db_from_context.
 
-        Expected initial state: FAIL — users.py has 5 get_db usages.
+        Protected users endpoints must not use deprecated get_db.
         """
         count = self._count_get_db_usages(self.USERS_FILE)
         assert count == 0, (
@@ -340,7 +340,7 @@ class TestTenantAdminRouteTenantEnforcement:
     def test_api_keys_routes_use_tenant_scoped_db(self):
         """API key management routes must use get_db_from_context.
 
-        Expected initial state: FAIL — api_keys.py has 3 get_db usages.
+        Protected API key endpoints must not use deprecated get_db.
         """
         count = self._count_get_db_usages(self.API_KEYS_FILE)
         assert count == 0, (
@@ -421,10 +421,10 @@ class TestAggregateDepAudit:
         uses the deprecated dependency.
         """
         route_dirs = [
-            _PROJECT_ROOT / "value_fabric" / "layer4" / "api" / "routes",
-            _PROJECT_ROOT / "value_fabric" / "layer4" / "tenants" / "api" / "routes",
-            _PROJECT_ROOT / "value_fabric" / "layer4" / "feature_flags" / "api",
-            _PROJECT_ROOT / "value_fabric" / "layer4" / "registry" / "api",
+            _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "api" / "routes",
+            _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "tenants" / "api" / "routes",
+            _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "feature_flags" / "api",
+            _PROJECT_ROOT / "services" / "layer4-agents" / "src" / "registry" / "api",
         ]
 
         total = 0

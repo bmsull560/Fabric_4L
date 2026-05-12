@@ -262,10 +262,12 @@ class SimilarityAnalyzer:
                   AND e2.id = $id2 AND e2.tenant_id = $_tenant_id
                   AND common.tenant_id = $_tenant_id
                 WITH count(DISTINCT common) as common_count
+                // strict-scoped-query-execution
                 MATCH (e1)-[:ENABLES|BENEFITS|DRIVES]-(all1)
                 WHERE e1.id = $id1 AND e1.tenant_id = $_tenant_id
                   AND all1.tenant_id = $_tenant_id
                 WITH common_count, count(DISTINCT all1) as e1_neighbors
+                // strict-scoped-query-execution
                 MATCH (e2)-[:ENABLES|BENEFITS|DRIVES]-(all2)
                 WHERE e2.id = $id2 AND e2.tenant_id = $_tenant_id
                   AND all2.tenant_id = $_tenant_id
@@ -352,6 +354,7 @@ class SimilarityAnalyzer:
                   AND neighbor.tenant_id = $_tenant_id
                 WITH source, collect(DISTINCT neighbor) as source_neighbors, count(neighbor) as source_count
                 // Find other entities with shared neighbors
+                // strict-scoped-query-execution
                 MATCH (other)-[:ENABLES|BENEFITS|DRIVES]-(shared)
                 WHERE other.id <> $entity_id
                   AND other.tenant_id = $_tenant_id
@@ -361,6 +364,7 @@ class SimilarityAnalyzer:
                      collect(DISTINCT shared) as shared_neighbors,
                      count(DISTINCT shared) as shared_count
                 // Calculate Jaccard
+                // strict-scoped-query-execution
                 MATCH (other)-[:ENABLES|BENEFITS|DRIVES]-(other_neighbor)
                 WHERE other_neighbor.tenant_id = $_tenant_id
                 WITH other, shared_neighbors, shared_count,

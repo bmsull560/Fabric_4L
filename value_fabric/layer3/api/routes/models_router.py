@@ -40,7 +40,11 @@ FOLDER_SHARED = "shared"
 FOLDER_FAVORITES = "favorites"
 
 VALID_FOLDERS = {FOLDER_ALL, FOLDER_MY_MODELS, FOLDER_SHARED, FOLDER_FAVORITES}
-VALID_SORT_FIELDS = {"name", "updated_at", "created_at"}
+ALLOWED_SORT_FIELD_MAP = {
+    "name": "m.name",
+    "updated_at": "m.updated_at",
+    "created_at": "m.created_at",
+}
 VALID_SORT_DIRS = {"asc", "desc"}
 
 
@@ -217,7 +221,7 @@ async def list_models(
         # Validate parameters
         if folder not in VALID_FOLDERS:
             raise HTTPException(status_code=400, detail=f"Invalid folder: {folder}")
-        if sort_by not in VALID_SORT_FIELDS:
+        if sort_by not in ALLOWED_SORT_FIELD_MAP:
             raise HTTPException(status_code=400, detail=f"Invalid sort_by: {sort_by}")
         if sort_dir not in VALID_SORT_DIRS:
             raise HTTPException(status_code=400, detail=f"Invalid sort_dir: {sort_dir}")
@@ -263,7 +267,7 @@ async def list_models(
             extra_where = "AND " + " AND ".join(extra_clauses)
         
         # Sorting
-        sort_field = sort_by
+        sort_field = ALLOWED_SORT_FIELD_MAP[sort_by]
         sort_direction = "DESC" if sort_dir == "desc" else "ASC"
         
         # Count query
@@ -280,7 +284,7 @@ async def list_models(
         WHERE m.tenant_id = $tenant_id
         {extra_where}
         RETURN m
-        ORDER BY m.{sort_field} {sort_direction}
+        ORDER BY {sort_field} {sort_direction}
         SKIP $offset
         LIMIT $limit
         """

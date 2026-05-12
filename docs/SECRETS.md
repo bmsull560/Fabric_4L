@@ -107,6 +107,13 @@ For variable classification and file layout, see [ENVIRONMENT.md](./ENVIRONMENT.
 3. Restart affected services
 4. Verify connectivity
 
+#### Neo4j Secret Contract (required)
+
+- **Application workloads (L2/L3/L4 and other Neo4j clients)** must source `NEO4J_USER` and `NEO4J_PASSWORD` from dedicated keys (`neo4j_user` and `neo4j_password`, or equivalent dedicated key names).
+- **Application workloads must not** source `NEO4J_PASSWORD` from `auth`/`NEO4J_AUTH` keys.
+- `NEO4J_AUTH` should be used only by the Neo4j server container bootstrap path where Neo4j expects `user/password` format.
+- CI enforces this via `python3 scripts/ci/check_neo4j_secret_key_mappings.py`.
+
 ---
 
 ## CI/CD Secrets

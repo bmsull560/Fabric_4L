@@ -4,12 +4,13 @@ import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import { createFeatureLogger } from '@/lib/telemetry';
 import type { BenchmarkDatasetSummary } from '@/api/types';
+import type { L3BenchmarkStatus } from '@/api/statuses';
 
 const log = createFeatureLogger('useBenchmarks');
 
 
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
-export type BenchmarkStatus = 'active' | 'draft' | 'deprecated';
+export type BenchmarkStatus = L3BenchmarkStatus;
 
 export interface Benchmark {
   id: string;
