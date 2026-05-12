@@ -195,3 +195,34 @@ def make_source_payload(**overrides) -> dict:
     }
     base.update(overrides)
     return base
+
+
+@pytest_asyncio.fixture
+async def tenant_aware_client(db) -> AsyncGenerator[AsyncClient, None]:
+    """Client fixture that allows per-request tenant switching via X-Test-Tenant."""
+    from layer5_ground_truth.api.auth import TokenClaims, get_current_user
+    from layer5_ground_truth.database import get_db_from_context
+
+    app = create_app()
+
+    async def override_get_db_from_context():
+        yield db
+
+    async def override_get_current_user(request):
+        tenant_raw = request.headers.get("X-Test-Tenant", str(TEST_ORG_ID))
+        return TokenClaims(
+            tenant_id=uuid.UUID(tenant_raw),
+            user_id=request.headers.get("X-Test-Actor", "test-user"),
+            roles=["admin"],
+        )
+
+    app.dependency_overrides[get_db_from_context] = override_get_db_from_context
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()

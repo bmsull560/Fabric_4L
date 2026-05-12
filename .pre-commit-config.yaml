@@ -194,6 +194,13 @@ repos:
         language: system
         files: .
         pass_filenames: true
+      - id: package-manager-and-lockfile-policy
+        name: Enforce package manager + lockfile policy
+        entry: node scripts/ci/check_package_manager_policy.mjs --staged
+        language: system
+        files: .
+        pass_filenames: false
+        always_run: true
       - id: contract-drift-check
         name: Check for OpenAPI/Schema drift
         entry: python scripts/check_contract_drift.py
