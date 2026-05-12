@@ -1,3 +1,3 @@
-"""Compatibility shim; canonical implementation lives in services/layer5-ground-truth/src/layer5_ground_truth."""
+"""Compatibility shim for canonical layer5_ground_truth.services.freshness_monitor."""
 
 from layer5_ground_truth.services.freshness_monitor import *  # noqa: F401,F403

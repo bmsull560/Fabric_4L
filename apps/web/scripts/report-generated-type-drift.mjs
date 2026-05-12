@@ -6,6 +6,7 @@ import path from 'node:path';
 const GENERATED_ROOTS = [
   'packages/platform-contract/src/typescript/generated',
   'apps/web/src/api/generated',
+  'apps/web/src/types',
 ];
 
 const OUTPUT_TO_SPEC = new Map([
@@ -46,10 +47,10 @@ const OUTPUT_TO_SPEC = new Map([
 ]);
 
 function run(cmd) {
-  return execSync(cmd, { encoding: 'utf-8' }).trim();
+  return execSync(cmd, { cwd: repoRoot, encoding: 'utf-8' }).trim();
 }
 
-const repoRoot = run('git rev-parse --show-toplevel');
+const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
 const changedFilesRaw = run(`git diff --name-only -- ${GENERATED_ROOTS.join(' ')}`);
 const changedFiles = changedFilesRaw
   .split('\n')
@@ -69,6 +70,8 @@ for (const file of changedFiles) {
 
   if (spec) {
     console.error(`  • ${spec} -> ${normalized}`);
+  } else if (normalized.startsWith('apps/web/src/types/')) {
+    console.error(`  • generated schema consumption surface changed -> ${normalized}`);
   } else if (normalized.endsWith('/index.ts')) {
     console.error(`  • (barrel export) -> ${normalized}`);
   } else {
@@ -86,5 +89,5 @@ for (const file of changedFiles) {
 
 console.error(`\nTo fix locally from ${repoRoot}:`);
 console.error('  pnpm run generate:api');
-console.error('  git add packages/platform-contract/src/typescript/generated apps/web/src/api/generated');
+console.error('  git add packages/platform-contract/src/typescript/generated apps/web/src/api/generated apps/web/src/types');
 console.error('  git commit');

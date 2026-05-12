@@ -44,6 +44,7 @@ from ..models import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+SYSTEM_HEALTH_RESPONSES = {200: {"description": "Service health payload"}, 503: {"description": "Service unavailable"}}
 
 # Import shared metrics helpers from a non-route module to avoid circular imports.
 from ..metrics_state import get_system_metrics, set_app_metrics
@@ -184,7 +185,13 @@ async def get_metrics(request: Request) -> Response:
         )
 
 
-@router.get("/health", response_model=HealthResponse, tags=["Health"], summary="Basic Health Check")
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["Health"],
+    summary="Basic Health Check",
+    responses=SYSTEM_HEALTH_RESPONSES,
+)
 async def health_check(
     request: Request,
     schema_initializer: Any = Depends(get_schema_initializer),
@@ -235,6 +242,11 @@ async def health_check(
 
     return {
         "status": overall_status,
+        "service": "layer3-knowledge",
+        "readiness": {
+            "is_ready": overall_status in {"healthy", "degraded"},
+            "reason": "dependencies_available" if overall_status in {"healthy", "degraded"} else "dependencies_unavailable",
+        },
         "version": "1.0.0",
         "timestamp": datetime.now(UTC),
         "uptime_seconds": metrics.uptime_seconds,

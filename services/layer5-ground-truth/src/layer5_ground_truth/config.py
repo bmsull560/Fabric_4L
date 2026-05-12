@@ -1,14 +1,14 @@
-"""Layer 5 service configuration."""
+"""Configuration for Layer 5 Ground Truth service."""
+
 from functools import lru_cache
 import logging
 from typing import ClassVar
 from urllib.parse import urlparse
 
 from pydantic import Field, field_validator, model_validator
-
-from .runtime_mode import is_production_like_mode, normalize_environment
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
 LOCALHOST_HOSTS = {"localhost", "127.0.0.1", "::1"}
 WEAK_JWT_SECRETS = {
     "changeme-in-production",
@@ -28,6 +28,16 @@ WEAK_JWT_SECRETS = {
     "qwerty",
     "abc123",
 }
+
+
+def _normalize_environment(value: str | None) -> str:
+    """Normalize an environment name for production-policy decisions."""
+    return (value or "development").strip().lower()
+
+
+def is_production_like_environment(value: str | None) -> bool:
+    """Return whether a runtime environment must fail closed on unsafe config."""
+    return _normalize_environment(value) in PRODUCTION_LIKE_ENVIRONMENTS
 
 
 def _parse_cors_origins(raw: str) -> list[str]:
@@ -200,12 +210,12 @@ class Settings(BaseSettings):
     @property
     def effective_environment(self) -> str:
         """Return the environment value used for production-like policy checks."""
-        return normalize_environment(self.app_env or self.environment)
+        return _normalize_environment(self.app_env or self.environment)
 
     @property
     def is_production_like(self) -> bool:
         """Whether this settings object represents a production-like runtime."""
-        return is_production_like_mode(self.environment, self.app_env)
+        return is_production_like_environment(self.effective_environment)
 
     @property
     def cors_origin_list(self) -> list[str]:

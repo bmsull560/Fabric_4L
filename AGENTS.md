@@ -82,7 +82,7 @@ value_fabric/layer1/
 value_fabric/layer2/
 value_fabric/layer3/
 value_fabric/layer4/
-value_fabric/layer5/
+services/layer5-ground-truth/src/layer5_ground_truth/
 value_fabric/layer6/
 value_fabric/shared/
 ```
@@ -93,7 +93,7 @@ value_fabric/shared/
 value_fabric/layer1/api/routes/
 value_fabric/layer2/api/routes/
 value_fabric/layer3/api/routes/
-value_fabric/layer5/api/
+services/layer5-ground-truth/src/layer5_ground_truth/api/
 value_fabric/layer6/api/routes/
 ```
 

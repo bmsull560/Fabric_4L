@@ -58,6 +58,8 @@ class HealthResponse(BaseModel):
     status: Literal["healthy", "unhealthy", "degraded"] = Field(
         ..., description="Overall service status"
     )
+    service: str = Field(..., min_length=1, description="Service name")
+    readiness: dict[str, Any] = Field(..., description="Readiness envelope")
     version: str = Field(..., min_length=1, max_length=20, description="API version")
     timestamp: datetime = Field(
         default_factory=datetime.utcnow, description="Health check timestamp"

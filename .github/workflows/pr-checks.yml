@@ -485,7 +485,7 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
 
-      - name: Enforce no duplicate Layer 5 modules
+      - name: Enforce Layer 5 source contract
         run: python scripts/check_no_duplicate_modules.py
 
       - name: Run tests with coverage
@@ -515,8 +515,8 @@ jobs:
           uv run pip-audit --severity high --exit-code 1
 
 
-  layer5-duplicate-module-detection:
-    name: Layer 5 - Duplicate Module Detection
+  layer5-source-contract:
+    name: Layer 5 - Source Contract
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -531,7 +531,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Detect duplicate modules in Layer 5 runtime trees
+      - name: Enforce Layer 5 source contract
         run: python scripts/check_no_duplicate_modules.py
 
   layer5-tenant-isolation-regression:

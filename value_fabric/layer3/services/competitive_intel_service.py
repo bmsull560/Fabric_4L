@@ -36,6 +36,7 @@ from typing import Any
 
 import structlog
 from neo4j import AsyncDriver
+from value_fabric.layer3.services.cypher_scope_guard import validate_tenant_scoped_cypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
@@ -76,6 +77,7 @@ except ImportError:
     require_context = None
 
 logger = structlog.get_logger()
+_TENANT_OWNED_LABELS = {"Competitor", "Product", "Battlecard"}
 
 
 def _get_tenant_id() -> str:
@@ -148,6 +150,14 @@ class CompetitiveIntelService:
     def __init__(self, driver: AsyncDriver):
         self._driver = driver
 
+    @staticmethod
+    def _validate_query_scope(query: str) -> None:
+        validate_tenant_scoped_cypher(
+            query,
+            tenant_owned_labels=_TENANT_OWNED_LABELS,
+            query_name="CompetitiveIntelService",
+        )
+
     # ------------------------------------------------------------------
     # Competitor CRUD
     # ------------------------------------------------------------------
@@ -218,12 +228,13 @@ class CompetitiveIntelService:
             tenant_id = str(tenant_or_competitor_id)
         query = """
         MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
-        OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)
+        OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[cw:COMPETES_WITH]->(c)
         OPTIONAL MATCH (bc:Battlecard {competitor_id: $competitor_id, tenant_id: $tenant_id})
         RETURN c {.*} AS competitor,
                collect(DISTINCT p {.id, .name, overlap_score: cw.overlap_score}) AS competing_products,
                collect(DISTINCT bc {.id, .product_id, .positioning}) AS battlecards
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             result = await session.run(query, {
                 "competitor_id": competitor_id,
@@ -266,13 +277,17 @@ class CompetitiveIntelService:
 
         count_query = f"MATCH (c:Competitor) WHERE {where} RETURN count(c) AS total"
         list_query = f"""
+        // strict-scoped-query-execution: where includes c.tenant_id = $tenant_id
         MATCH (c:Competitor) WHERE {where}
-        OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)
+        OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[cw:COMPETES_WITH]->(c)
         RETURN c {{.*}} AS competitor,
                count(DISTINCT p) AS product_overlap_count
         ORDER BY c.name
         SKIP $skip LIMIT $limit
         """
+
+        self._validate_query_scope(count_query)
+        self._validate_query_scope(list_query)
 
         async with self._driver.session() as session:
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
@@ -442,10 +457,12 @@ class CompetitiveIntelService:
         where = " AND ".join(where_clauses)
 
         query = f"""
+        // strict-scoped-query-execution: where includes bc.tenant_id = $tenant_id
         MATCH (bc:Battlecard) WHERE {where}
         RETURN bc {{.*}} AS battlecard
         ORDER BY bc.updated_at DESC
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             # strict-scoped-query-execution: query parameters include tenant_id
             result = await session.run(query, params)
@@ -520,14 +537,15 @@ class CompetitiveIntelService:
         params: dict[str, Any] = {"tenant_id": tenant_id}
 
         if product_id:
-            product_match = "MATCH (p:Product {id: $product_id})-[cw:COMPETES_WITH]->(c)"
+            product_match = "MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})-[cw:COMPETES_WITH]->(c)"
             params["product_id"] = product_id
         else:
-            product_match = "OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)"
+            product_match = "OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[cw:COMPETES_WITH]->(c)"
 
         where = " AND ".join(where_parts)
 
         query = f"""
+        // strict-scoped-query-execution: where includes c.tenant_id = $tenant_id
         MATCH (c:Competitor) WHERE {where}
         {product_match}
         OPTIONAL MATCH (p2:Product)-[won:WON_AGAINST]->(c)
@@ -541,6 +559,7 @@ class CompetitiveIntelService:
                COALESCE(cw.overlap_score, 0) AS overlap_score
         ORDER BY (count(DISTINCT won) + count(DISTINCT lost)) DESC
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             # strict-scoped-query-execution: query parameters include tenant_id
             result = await session.run(query, params)
@@ -601,6 +620,7 @@ class CompetitiveIntelService:
                wins, losses, won_revenue, lost_revenue
         ORDER BY (wins + losses) DESC
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             result = await session.run(query, {"tenant_id": tenant_id})
             records = [record async for record in result]

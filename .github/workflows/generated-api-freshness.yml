@@ -11,6 +11,7 @@ on:
       - 'services/**/src/**/routes/**'
       - 'contracts/openapi/**'
       - 'apps/web/src/api/**'
+      - 'apps/web/src/types/**'
       - 'apps/web/scripts/generate-api-types.ts'
       - 'packages/platform-contract/src/typescript/generated/**'
       - 'packages/platform-contract/scripts/generate-openapi-types.mjs'
@@ -23,6 +24,7 @@ on:
       - 'services/**/src/**/routes/**'
       - 'contracts/openapi/**'
       - 'apps/web/src/api/**'
+      - 'apps/web/src/types/**'
       - 'apps/web/scripts/generate-api-types.ts'
       - 'packages/platform-contract/src/typescript/generated/**'
       - 'packages/platform-contract/scripts/generate-openapi-types.mjs'
@@ -68,12 +70,12 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter ./apps/web run check:no-server-dto-interfaces
-          if ! git diff --quiet packages/platform-contract/src/typescript/generated/; then
-            echo "::error::Generated platform contract type files are stale."
+          if ! git diff --quiet packages/platform-contract/src/typescript/generated/ apps/web/src/api/generated/ apps/web/src/types/; then
+            echo "::error::Generated API and DTO-consumption files are stale."
             echo ""
             echo "To fix locally, run:"
             echo "  pnpm run generate:api"
-            echo "  git add packages/platform-contract/src/typescript/generated"
+            echo "  git add packages/platform-contract/src/typescript/generated apps/web/src/api/generated apps/web/src/types"
             echo "  git commit"
             echo ""
             node apps/web/scripts/report-generated-type-drift.mjs

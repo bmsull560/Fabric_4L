@@ -28,7 +28,7 @@ Use this before creating files so we avoid drift into archived, compatibility-on
 | Layer 2 — Extraction | `value_fabric/layer2/` | `services/layer2-extraction/src/` (legacy service-local module path) | `value_fabric/layer2/` | Layer 2 Maintainers — target review by **2026-09-30** |
 | Layer 3 — Knowledge Graph | `value_fabric/layer3/` | `services/layer3-knowledge/src/` (deployable wrapper + compatibility imports) | `value_fabric/layer3/` | Layer 3 Maintainers — target review by **2026-09-30** |
 | Layer 4 — Agents | `value_fabric/layer4/` | `services/layer4-agents/src/` (service bootstrap and compatibility surface) | `value_fabric/layer4/` | Layer 4 Maintainers — target review by **2026-09-30** |
-| Layer 5 — Ground Truth | `value_fabric/layer5/` | `services/layer5-ground-truth/src/` (service entrypoint + migration shims) | `value_fabric/layer5/` | Layer 5 Maintainers — target review by **2026-09-30** |
+| Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal target review by **2026-09-30** |
 | Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility shims) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
 
 ## Contributor checklist (required)

@@ -18,6 +18,7 @@ from typing import Any
 
 import structlog
 from neo4j import AsyncDriver
+from value_fabric.layer3.services.cypher_scope_guard import validate_tenant_scoped_cypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
@@ -55,6 +56,7 @@ except ImportError:
     require_context = None
 
 logger = structlog.get_logger()
+_TENANT_OWNED_LABELS = {"Product", "Feature", "Capability", "PainSignal"}
 
 
 def _get_tenant_id() -> str:
@@ -121,6 +123,14 @@ class ProductService:
 
     def __init__(self, driver: AsyncDriver):
         self._driver = driver
+
+    @staticmethod
+    def _validate_query_scope(query: str) -> None:
+        validate_tenant_scoped_cypher(
+            query,
+            tenant_owned_labels=_TENANT_OWNED_LABELS,
+            query_name="ProductService",
+        )
 
     # ------------------------------------------------------------------
     # Product CRUD
@@ -197,14 +207,15 @@ class ProductService:
             tenant_id = str(tenant_or_product_id)
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
-        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
-        OPTIONAL MATCH (p)-[:ENABLES_CAPABILITY]->(c:Capability)
+        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
+        OPTIONAL MATCH (p)-[:ENABLES_CAPABILITY]->(c:Capability {tenant_id: $tenant_id})
         RETURN p {.id, .name, .description, .category, .sku,
                    .pricing_model, .target_personas, .industries,
                    .created_at, .updated_at} AS product,
                collect(DISTINCT f {.id, .name, .feature_type, .maturity}) AS features,
                collect(DISTINCT c {.id, .name}) AS capabilities
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             result = await session.run(
                 query,
@@ -262,6 +273,9 @@ class ProductService:
         ORDER BY p.name
         SKIP $skip LIMIT $limit
         """
+
+        self._validate_query_scope(count_query)
+        self._validate_query_scope(list_query)
 
         async with self._driver.session() as session:
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
@@ -328,8 +342,8 @@ class ProductService:
             tenant_id = str(tenant_or_product_id)
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
-        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
-        WHERE NOT exists { (f)<-[:HAS_FEATURE]-(:Product) WHERE NOT (f)<-[:HAS_FEATURE]-(p) }
+        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
+        WHERE NOT exists { (f)<-[:HAS_FEATURE]-(other:Product) WHERE other.tenant_id = $tenant_id AND NOT (f)<-[:HAS_FEATURE]-(p) }
         DETACH DELETE p, f
         RETURN count(p) AS deleted
         """
@@ -401,6 +415,7 @@ class ProductService:
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
               -[r:HAS_FEATURE]->(f:Feature {id: $feature_id})
+        WHERE f.tenant_id = $tenant_id
         DELETE r
         WITH f
         WHERE NOT exists { (f)<-[:HAS_FEATURE]-(:Product) }
@@ -466,6 +481,7 @@ class ProductService:
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
               -[r:ENABLES_CAPABILITY]->(c:Capability {id: $capability_id})
+        WHERE c.tenant_id = $tenant_id
         DELETE r
         RETURN true AS removed
         """
@@ -508,8 +524,9 @@ class ProductService:
         where = " AND ".join(where_clauses)
 
         query = f"""
+        // strict-scoped-query-execution: where includes ps.tenant_id = $tenant_id
         MATCH (ps:PainSignal)-[:INDICATES_NEED_FOR]->(c:Capability)<-[ec:ENABLES_CAPABILITY]-(p:Product)
-        WHERE {where} AND p.tenant_id = $tenant_id
+        WHERE {where} AND p.tenant_id = $tenant_id AND (c.tenant_id = $tenant_id OR c.tenant_id IS NULL)
         WITH p, ps, c,
              ps.confidence_score * COALESCE(ec.strength, 1.0) AS match_score
         ORDER BY match_score DESC
@@ -530,6 +547,7 @@ class ProductService:
         ORDER BY total_score DESC
         """
 
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             # strict-scoped-query-execution: query parameters include tenant_id
             result = await session.run(query, params)
@@ -553,8 +571,8 @@ class ProductService:
         tenant_id = tenant_id or _get_tenant_id()
         query = """
         MATCH (p:Product {tenant_id: $tenant_id})
-        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
-        OPTIONAL MATCH (p)-[:ENABLES_CAPABILITY]->(c:Capability)
+        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
+        OPTIONAL MATCH (p)-[:ENABLES_CAPABILITY]->(c:Capability {tenant_id: $tenant_id})
         WITH p, count(DISTINCT f) AS features, count(DISTINCT c) AS capabilities
         RETURN count(p) AS total_products,
                sum(features) AS total_features,
@@ -563,6 +581,7 @@ class ProductService:
                avg(features) AS avg_features_per_product,
                avg(capabilities) AS avg_capabilities_per_product
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             result = await session.run(query, {"tenant_id": tenant_id})
             record = await result.single()
@@ -599,6 +618,7 @@ class ProductService:
                CASE WHEN count(p) > 0 THEN 'covered' ELSE 'gap' END AS status
         ORDER BY signal_demand DESC
         """
+        self._validate_query_scope(query)
         async with self._driver.session() as session:
             result = await session.run(query, {"tenant_id": tenant_id})
             records = [record async for record in result]

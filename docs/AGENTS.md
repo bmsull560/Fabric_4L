@@ -141,7 +141,7 @@ make test-layer4    # Layer 4 unit + integration tests
 make test-frontend  # Frontend unit + type-check
 ```
 
-### Layer 5 duplicate-module gate (required)
+### Layer 5 source-contract gate (required)
 
 Before running Layer 5 tests, run:
 
@@ -149,12 +149,12 @@ Before running Layer 5 tests, run:
 python services/layer5-ground-truth/scripts/check_no_duplicate_modules.py
 ```
 
-This check fails if duplicate package roots or same-named Python modules exist across:
+This check fails if the canonical Layer 5 tree contains self-recursive shims, mutates `sys.path`, or if the compatibility tree drifts from thin re-export shims:
 
-- `value_fabric/layer5` (canonical source-of-truth)
-- `services/layer5-ground-truth/src/layer5_ground_truth` (service package)
+- `services/layer5-ground-truth/src/layer5_ground_truth` (canonical source-of-truth)
+- `value_fabric/layer5` (compatibility shims only)
 
-If it fails, keep `value_fabric/layer5` as canonical and remove/rename duplicates in the service wrapper tree.
+If it fails, keep the canonical implementation in `services/layer5-ground-truth/src/layer5_ground_truth` and update `value_fabric/layer5` to thin compatibility shims.
 
 ---
 

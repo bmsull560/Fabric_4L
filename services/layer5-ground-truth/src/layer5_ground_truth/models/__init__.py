@@ -1,3 +1,43 @@
-"""Compatibility shim; canonical implementation lives in services/layer5-ground-truth/src/layer5_ground_truth."""
+"""Layer 5 Ground Truth — SQLAlchemy models."""
 
-from layer5_ground_truth.models.__init__ import *  # noqa: F401,F403
+from .model_registry import (
+    DeploymentEnvironment,
+    DeploymentStatus,
+    ModelCapability,
+    ModelDeployment,
+    ModelEvaluation,
+    ModelProvider,
+    ModelVersion,
+)
+from .truth_object import (
+    Base,
+    ClaimType,
+    DisputeReason,
+    MaturityHistory,
+    MaturityLevel,
+    SourceType,
+    TruthObject,
+    TruthSource,
+    TruthStatus,
+    ValidationEvent,
+)
+
+__all__ = [
+    "Base",
+    "ClaimType",
+    "DeploymentEnvironment",
+    "DeploymentStatus",
+    "DisputeReason",
+    "MaturityHistory",
+    "MaturityLevel",
+    "ModelCapability",
+    "ModelDeployment",
+    "ModelEvaluation",
+    "ModelProvider",
+    "ModelVersion",
+    "SourceType",
+    "TruthObject",
+    "TruthSource",
+    "TruthStatus",
+    "ValidationEvent",
+]

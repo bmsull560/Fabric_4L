@@ -3,27 +3,25 @@
 
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
 
 
+_CHECK_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "services"
+    / "layer5-ground-truth"
+    / "scripts"
+    / "check_no_duplicate_modules.py"
+)
+_SPEC = importlib.util.spec_from_file_location("layer5_source_contract", _CHECK_PATH)
+assert _SPEC is not None and _SPEC.loader is not None
+_layer5_source_contract = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_layer5_source_contract)
+
+
 def main() -> int:
-    root = Path(__file__).resolve().parents[2]
-    shim_root = root / "value_fabric" / "layer5"
-    violations: list[str] = []
-
-    for py_file in shim_root.rglob("*.py"):
-        text = py_file.read_text(encoding="utf-8")
-        if "from layer5_ground_truth" not in text:
-            violations.append(str(py_file.relative_to(root)))
-
-    if violations:
-        print("ERROR: Layer 5 compatibility tree contains non-shim modules:")
-        for v in violations:
-            print(f" - {v}")
-        return 1
-
-    print("OK: Layer 5 compatibility tree is shim-only.")
-    return 0
+    return _layer5_source_contract.main()
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ jobs:
             "contract-compliance"
             "p0-e2e-gate"
             "prod-readiness"
-            "Layer 5 - Duplicate Module Detection"
+            "Layer 5 - Source Contract"
             "Layer 5 - Tenant Isolation Regression"
             "Layer 5 - Contract Shape Regression"
           )

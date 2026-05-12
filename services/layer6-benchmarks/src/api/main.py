@@ -251,6 +251,7 @@ from .schemas import (
 class health_checkResult(TypedDictModel):
     datasets_loaded: Any
     dependencies: Any
+    readiness: dict[str, Any]
     response_time_ms: Any
     service: str
     status: Any
@@ -327,6 +328,10 @@ async def health_check(request: Request):
         response_time_ms=response_time_ms,
         datasets_loaded=dataset_count,
         dependencies=dependencies,
+        readiness={
+            "is_ready": overall_status in {"healthy", "degraded"},
+            "reason": "dependencies_available" if overall_status in {"healthy", "degraded"} else "dependencies_unavailable",
+        },
         system={
             "memory_usage_mb": round(memory_info.used / (1024 * 1024), 2),
             "memory_percent": memory_info.percent,

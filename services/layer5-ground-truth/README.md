@@ -1,7 +1,7 @@
 # Layer 5 — Ground Truth
 > Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
-> Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
+> Runtime path governance: net-new Layer 5 logic must go to `services/layer5-ground-truth/src/layer5_ground_truth`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
 
 > **Evidence-backed, CFO-defensible facts for the Value Fabric platform.**
 
@@ -145,7 +145,7 @@ Layer 5 now includes dedicated required CI jobs in `PR Checks`:
 
 | Job name | Scope | Command(s) | Typical runtime |
 |---|---|---|---|
-| `Layer 5 - Duplicate Module Detection` | Prevent duplicate runtime module drift in Layer 5 trees | `python scripts/check_no_duplicate_modules.py` | ~1 minute |
+| `Layer 5 - Source Contract` | Prevent Layer 5 source-of-truth and shim drift | `python scripts/check_no_duplicate_modules.py` | ~1 minute |
 | `Layer 5 - Tenant Isolation Regression` | Tenant invariants and hostile cross-tenant access regression | `uv run pytest -v --tb=short tests/test_tenant_id_consistency.py tests/test_api.py::TestGetTruth::test_org_isolation` | ~2-4 minutes |
 | `Layer 5 - Contract Shape Regression` | Model registry and state transition contract-shape coverage | `uv run pytest -v --tb=short tests/test_model_registry.py tests/test_state_machine.py` | ~2-4 minutes |
 
@@ -168,12 +168,12 @@ pytest -m integration
 ```
 
 
-## Duplicate Module Guardrail (CI Required)
+## Source Contract Guardrail (CI Required)
 
-Layer 5 enforces a CI guard that blocks duplicate package roots or same-named modules between:
+Layer 5 enforces a CI guard that blocks source-of-truth drift between:
 
-- `value_fabric/layer5` (canonical runtime source-of-truth)
-- `services/layer5-ground-truth/src/layer5_ground_truth` (service wrapper package)
+- `services/layer5-ground-truth/src/layer5_ground_truth` (canonical runtime source-of-truth)
+- `value_fabric/layer5` (compatibility shim package)
 
 Run locally before tests:
 
@@ -181,7 +181,7 @@ Run locally before tests:
 python scripts/check_no_duplicate_modules.py
 ```
 
-If the check fails, remove or rename the duplicate under `services/layer5-ground-truth/src/layer5_ground_truth` and keep the canonical implementation in `value_fabric/layer5`.
+If the check fails, keep the canonical implementation in `services/layer5-ground-truth/src/layer5_ground_truth` and update `value_fabric/layer5` to thin compatibility shims.
 
 ---
 
@@ -267,6 +267,8 @@ layer5-ground-truth/
 
 ## Source ownership
 
-Canonical runtime package: `value_fabric/layer5`.
+Canonical runtime package: `services/layer5-ground-truth/src/layer5_ground_truth`.
 
-`services/layer5-ground-truth/` owns deployment and operational wrapper concerns. Prefer canonical imports (`value_fabric.layer5.*`) for runtime modules.
+`value_fabric/layer5` is compatibility-only. Prefer canonical imports (`layer5_ground_truth.*`) for Layer 5 runtime modules.
+
+`services/layer5-ground-truth/` owns deployment and operational wrapper concerns.

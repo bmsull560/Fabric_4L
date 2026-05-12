@@ -1829,6 +1829,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/integrations/salesforce/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Salesforce Oauth
+         * @description Generate the Salesforce OAuth authorize URL for the current tenant.
+         */
+        post: operations["start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Context
+         * @description Return the canonical authenticated tenant context.
+         *
+         *     This endpoint exposes the validated request context together with the
+         *     current tenant metadata needed by onboarding and settings workflows.
+         */
+        get: operations["get_tenant_context_v1_tenant_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tenants/current/settings": {
         parameters: {
             query?: never;
@@ -3493,6 +3536,223 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/company-knowledge/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Profile
+         * @description Create a new draft company knowledge profile.
+         */
+        post: operations["create_profile_v1_company_knowledge_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/profiles/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Profile
+         * @description Get the current tenant's active or latest draft profile.
+         */
+        get: operations["get_current_profile_v1_company_knowledge_profiles_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Profile
+         * @description Get a company knowledge profile by ID.
+         */
+        get: operations["get_profile_v1_company_knowledge_profiles__profile_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Profile
+         * @description Update sections of a company knowledge profile.
+         */
+        patch: operations["update_profile_v1_company_knowledge_profiles__profile_id__patch"];
+        trace?: never;
+    };
+    "/v1/company-knowledge/profiles/{profile_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Profile
+         * @description Approve a draft company knowledge profile.
+         *
+         *     After approval, syncs the profile entities to Layer 3 Knowledge Graph
+         *     as a background task.
+         */
+        post: operations["approve_profile_v1_company_knowledge_profiles__profile_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Knowledge Sources
+         * @description List knowledge sources for the tenant.
+         */
+        get: operations["list_knowledge_sources_v1_company_knowledge_sources_get"];
+        put?: never;
+        /**
+         * Add Knowledge Source
+         * @description Add a knowledge source to a profile.
+         *
+         *     For website sources, triggers a background crawl via Layer 1.
+         */
+        post: operations["add_knowledge_source_v1_company_knowledge_sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Extraction Records
+         * @description List value extraction records with filtering.
+         */
+        get: operations["list_extraction_records_v1_company_knowledge_extractions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/extractions/{record_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Review Extraction Record
+         * @description Review an extraction record: accept, reject, or modify.
+         */
+        post: operations["review_extraction_record_v1_company_knowledge_extractions__record_id__review_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/icp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Icp For Current Profile
+         * @description Get the ICP profile for the current tenant's active knowledge profile.
+         */
+        get: operations["get_icp_for_current_profile_v1_company_knowledge_icp_get"];
+        put?: never;
+        /**
+         * Create Icp Profile
+         * @description Create an ICP profile linked to a company knowledge profile.
+         */
+        post: operations["create_icp_profile_v1_company_knowledge_icp_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/company-knowledge/icp/{icp_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Icp Profile
+         * @description Update an ICP profile.
+         */
+        patch: operations["update_icp_profile_v1_company_knowledge_icp__icp_id__patch"];
+        trace?: never;
+    };
+    "/v1/company-knowledge/onboarding-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Onboarding Status
+         * @description Get aggregated onboarding progress for the current tenant.
+         */
+        get: operations["get_onboarding_status_v1_company_knowledge_onboarding_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3836,6 +4096,19 @@ export interface components {
             /** Outcome */
             outcome?: string | null;
         };
+        /** ActorSummary */
+        ActorSummary: {
+            /** User Id */
+            user_id: string | null;
+            /** Roles */
+            roles: string[];
+            /** Permissions */
+            permissions: string[];
+            /** Api Key Id */
+            api_key_id: string | null;
+            /** Service Account Id */
+            service_account_id: string | null;
+        };
         /**
          * AgentGovernanceMetadata
          * @description Governance metadata surfaced to RightRail and trace/audit views.
@@ -4062,6 +4335,12 @@ export interface components {
             /** Permissions */
             permissions: string[];
         };
+        /**
+         * AuthorityWeight
+         * @description How authoritative this source is considered.
+         * @enum {string}
+         */
+        AuthorityWeight: "high" | "medium" | "low";
         /** BatchEnrichRequest */
         BatchEnrichRequest: {
             /**
@@ -4390,6 +4669,136 @@ export interface components {
             current_checkpoint_id?: string | null;
         };
         /**
+         * CompanyKnowledgeProfileCreateRequest
+         * @description Request to create a draft company knowledge profile.
+         */
+        CompanyKnowledgeProfileCreateRequest: {
+            /** Company Name */
+            company_name: string;
+            /** Website */
+            website?: string | null;
+        };
+        /**
+         * CompanyKnowledgeProfileResponse
+         * @description Full company knowledge profile response.
+         */
+        CompanyKnowledgeProfileResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Website */
+            website?: string | null;
+            status: components["schemas"]["ProfileStatus"];
+            /** Version */
+            version: number;
+            /** Confidence Score */
+            confidence_score?: number | null;
+            /** Identity */
+            identity?: {
+                [key: string]: unknown;
+            } | null;
+            /** Product Catalog */
+            product_catalog?: {
+                [key: string]: unknown;
+            } | null;
+            /** Target Customer */
+            target_customer?: {
+                [key: string]: unknown;
+            } | null;
+            /** Personas */
+            personas?: {
+                [key: string]: unknown;
+            } | null;
+            /** Use Cases */
+            use_cases?: {
+                [key: string]: unknown;
+            } | null;
+            /** Value Drivers */
+            value_drivers?: {
+                [key: string]: unknown;
+            } | null;
+            /** Proof Points */
+            proof_points?: {
+                [key: string]: unknown;
+            } | null;
+            /** Trust Commercial */
+            trust_commercial?: {
+                [key: string]: unknown;
+            } | null;
+            /** Active Source Ids */
+            active_source_ids: string[];
+            /** Review Status */
+            review_status?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Approved At */
+            approved_at?: string | null;
+            /** Approved By */
+            approved_by?: string | null;
+        };
+        /**
+         * CompanyKnowledgeProfileUpdateRequest
+         * @description Request to update profile sections.
+         */
+        CompanyKnowledgeProfileUpdateRequest: {
+            /** Company Name */
+            company_name?: string | null;
+            /** Website */
+            website?: string | null;
+            /** Identity */
+            identity?: {
+                [key: string]: unknown;
+            } | null;
+            /** Product Catalog */
+            product_catalog?: {
+                [key: string]: unknown;
+            } | null;
+            /** Target Customer */
+            target_customer?: {
+                [key: string]: unknown;
+            } | null;
+            /** Personas */
+            personas?: {
+                [key: string]: unknown;
+            } | null;
+            /** Use Cases */
+            use_cases?: {
+                [key: string]: unknown;
+            } | null;
+            /** Value Drivers */
+            value_drivers?: {
+                [key: string]: unknown;
+            } | null;
+            /** Proof Points */
+            proof_points?: {
+                [key: string]: unknown;
+            } | null;
+            /** Trust Commercial */
+            trust_commercial?: {
+                [key: string]: unknown;
+            } | null;
+            /** Review Status */
+            review_status?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
          * ComponentHealthInfo
          * @description Health information for a single component.
          */
@@ -4494,6 +4903,12 @@ export interface components {
             /** Source */
             source: string;
         };
+        /**
+         * CrawlStatus
+         * @description Progress of a website crawl job.
+         * @enum {string}
+         */
+        CrawlStatus: "pending" | "in_progress" | "complete" | "failed";
         /**
          * CreateAccountRequest
          * @description Account creation request.
@@ -5042,6 +5457,157 @@ export interface components {
             healthy_components: string[];
         };
         /**
+         * ICPProfileCreateRequest
+         * @description Request to create an ICP profile.
+         */
+        ICPProfileCreateRequest: {
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Industries */
+            industries?: string[];
+            /** Company Size */
+            company_size?: string[];
+            /** Buyer Personas */
+            buyer_personas?: {
+                [key: string]: unknown;
+            }[];
+            /** User Personas */
+            user_personas?: {
+                [key: string]: unknown;
+            }[];
+            /** Pain Points */
+            pain_points?: string[];
+            /** Trigger Events */
+            trigger_events?: string[];
+            /** Qualification Criteria */
+            qualification_criteria?: string[];
+            /** Disqualification Criteria */
+            disqualification_criteria?: string[];
+            /** Competitive Context */
+            competitive_context?: {
+                [key: string]: unknown;
+            } | null;
+            /** Buying Committee Structure */
+            buying_committee_structure?: {
+                [key: string]: unknown;
+            } | null;
+            /** Typical Sales Motion */
+            typical_sales_motion?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            /** @default manual */
+            source_type: components["schemas"]["ICPSourceType"];
+        };
+        /**
+         * ICPProfileResponse
+         * @description ICP profile in API responses.
+         */
+        ICPProfileResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            /** Industries */
+            industries: string[];
+            /** Company Size */
+            company_size: string[];
+            /** Buyer Personas */
+            buyer_personas: {
+                [key: string]: unknown;
+            }[];
+            /** User Personas */
+            user_personas: {
+                [key: string]: unknown;
+            }[];
+            /** Pain Points */
+            pain_points: string[];
+            /** Trigger Events */
+            trigger_events: string[];
+            /** Qualification Criteria */
+            qualification_criteria: string[];
+            /** Disqualification Criteria */
+            disqualification_criteria: string[];
+            /** Competitive Context */
+            competitive_context?: {
+                [key: string]: unknown;
+            } | null;
+            /** Buying Committee Structure */
+            buying_committee_structure?: {
+                [key: string]: unknown;
+            } | null;
+            /** Typical Sales Motion */
+            typical_sales_motion?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            source_type: components["schemas"]["ICPSourceType"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ICPProfileUpdateRequest
+         * @description Request to update an ICP profile.
+         */
+        ICPProfileUpdateRequest: {
+            /** Industries */
+            industries?: string[] | null;
+            /** Company Size */
+            company_size?: string[] | null;
+            /** Buyer Personas */
+            buyer_personas?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** User Personas */
+            user_personas?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Pain Points */
+            pain_points?: string[] | null;
+            /** Trigger Events */
+            trigger_events?: string[] | null;
+            /** Qualification Criteria */
+            qualification_criteria?: string[] | null;
+            /** Disqualification Criteria */
+            disqualification_criteria?: string[] | null;
+            /** Competitive Context */
+            competitive_context?: {
+                [key: string]: unknown;
+            } | null;
+            /** Buying Committee Structure */
+            buying_committee_structure?: {
+                [key: string]: unknown;
+            } | null;
+            /** Typical Sales Motion */
+            typical_sales_motion?: string | null;
+            /** Confidence */
+            confidence?: number | null;
+            source_type?: components["schemas"]["ICPSourceType"] | null;
+        };
+        /**
+         * ICPSourceType
+         * @description How the ICP was provided.
+         * @enum {string}
+         */
+        ICPSourceType: "upload" | "paste" | "generated_from_website" | "manual";
+        /**
          * IntegrationCreateRequest
          * @description Request to create/update an integration.
          *
@@ -5175,6 +5741,93 @@ export interface components {
             /** Created At */
             created_at: string;
             /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * KnowledgeSourceCreateRequest
+         * @description Request to add a new knowledge source.
+         */
+        KnowledgeSourceCreateRequest: {
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            source_type: components["schemas"]["SourceType"];
+            /** Source Url */
+            source_url?: string | null;
+            /** Document Name */
+            document_name?: string | null;
+            /** Content Hash */
+            content_hash?: string | null;
+            /** Raw Storage Path */
+            raw_storage_path?: string | null;
+            /** @default medium */
+            authority_weight: components["schemas"]["AuthorityWeight"];
+            page_type?: components["schemas"]["PageType"] | null;
+            /** Extra Metadata */
+            extra_metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * KnowledgeSourceListResponse
+         * @description Paginated knowledge sources.
+         */
+        KnowledgeSourceListResponse: {
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["KnowledgeSourceResponse"][];
+        };
+        /**
+         * KnowledgeSourceResponse
+         * @description Knowledge source item in API responses.
+         */
+        KnowledgeSourceResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            source_type: components["schemas"]["SourceType"];
+            /** Source Url */
+            source_url?: string | null;
+            /** Document Name */
+            document_name?: string | null;
+            /** Content Hash */
+            content_hash?: string | null;
+            /** Raw Storage Path */
+            raw_storage_path?: string | null;
+            crawl_status: components["schemas"]["CrawlStatus"];
+            authority_weight: components["schemas"]["AuthorityWeight"];
+            page_type?: components["schemas"]["PageType"] | null;
+            /** Extra Metadata */
+            extra_metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
             updated_at: string;
         };
         /**
@@ -5406,6 +6059,42 @@ export interface components {
             success_rate: number;
         };
         /**
+         * OnboardingStatusResponse
+         * @description Aggregated onboarding progress for a tenant.
+         */
+        OnboardingStatusResponse: {
+            /** Tenant Id */
+            tenant_id: string;
+            /** Profile Id */
+            profile_id?: string | null;
+            profile_status?: components["schemas"]["ProfileStatus"] | null;
+            /** Company Name */
+            company_name?: string | null;
+            /** Website */
+            website?: string | null;
+            /** Sources Count */
+            sources_count: number;
+            /** Extractions Count */
+            extractions_count: number;
+            /** Extractions Pending Review */
+            extractions_pending_review: number;
+            /** Extractions Accepted */
+            extractions_accepted: number;
+            /** Extractions Rejected */
+            extractions_rejected: number;
+            /** Average Confidence */
+            average_confidence?: number | null;
+            /** Icp Present */
+            icp_present: boolean;
+            /** Has Approved Profile */
+            has_approved_profile: boolean;
+            /**
+             * Next Step
+             * @description Human-readable next action for the onboarding flow
+             */
+            next_step: string;
+        };
+        /**
          * OpportunitySchema
          * @description Opportunity data embedded in account detail response.
          */
@@ -5458,6 +6147,12 @@ export interface components {
             /** Large Data Keys */
             large_data_keys: string[];
         };
+        /**
+         * PageType
+         * @description Classification of a crawled / extracted page.
+         * @enum {string}
+         */
+        PageType: "product" | "use_case" | "case_study" | "pricing" | "trust" | "blog" | "homepage" | "other";
         /**
          * PerformanceMetricsResponse
          * @description Performance metrics for workflow execution.
@@ -5523,6 +6218,23 @@ export interface components {
              */
             trace_id: string;
         };
+        /**
+         * ProfileApproveRequest
+         * @description Request to approve a draft profile.
+         */
+        ProfileApproveRequest: {
+            /**
+             * Approved By
+             * Format: uuid
+             */
+            approved_by: string;
+        };
+        /**
+         * ProfileStatus
+         * @description Lifecycle status of a company knowledge profile.
+         * @enum {string}
+         */
+        ProfileStatus: "draft" | "needs_review" | "approved" | "archived";
         /**
          * PromoteSignalRequest
          * @description Request to promote a pain signal to a value hypothesis.
@@ -5919,6 +6631,15 @@ export interface components {
              */
             _locked: boolean;
         };
+        /** RequestSummary */
+        RequestSummary: {
+            /** Request Id */
+            request_id: string | null;
+            /** Auth Source */
+            auth_source: string;
+            /** Isolation Tier */
+            isolation_tier: string;
+        };
         /**
          * ResumeFromCheckpointRequest
          * @description Request to resume from a specific checkpoint.
@@ -6002,6 +6723,12 @@ export interface components {
             immutable_audit_hash?: string | null;
         };
         /**
+         * ReviewStatus
+         * @description Human review state of an extraction record.
+         * @enum {string}
+         */
+        ReviewStatus: "pending" | "accepted" | "rejected" | "modified";
+        /**
          * Role
          * @description Business roles used across all layers.
          *
@@ -6012,6 +6739,25 @@ export interface components {
          * @enum {string}
          */
         Role: "super_admin" | "tenant_admin" | "content_admin" | "analyst" | "read_only" | "system";
+        /**
+         * SalesforceOAuthAuthorizeRequest
+         * @description Request to start Salesforce OAuth.
+         */
+        SalesforceOAuthAuthorizeRequest: {
+            /**
+             * Return To
+             * @description Relative frontend path to return to after OAuth completes
+             * @default /context/integrations?provider=salesforce
+             */
+            return_to: string;
+        };
+        /** SalesforceOAuthAuthorizeResponse */
+        SalesforceOAuthAuthorizeResponse: {
+            /** Authorize Url */
+            authorize_url: string;
+            /** State Expires At */
+            state_expires_at: string;
+        };
         /**
          * SaveScenarioRequest
          * @description Persist a business-case what-if scenario.
@@ -6119,6 +6865,12 @@ export interface components {
             /** Decision Note */
             decision_note?: string | null;
         };
+        /**
+         * SourceType
+         * @description Origin of a knowledge source.
+         * @enum {string}
+         */
+        SourceType: "website" | "icp" | "upload" | "manual";
         /**
          * StartAnalysisRequest
          * @description Request to start prospect analysis workflow.
@@ -6476,6 +7228,12 @@ export interface components {
             /** Queued At */
             queued_at?: string | null;
         };
+        /** TenantContextResponse */
+        TenantContextResponse: {
+            tenant: components["schemas"]["TenantSummary"];
+            actor: components["schemas"]["ActorSummary"];
+            request: components["schemas"]["RequestSummary"];
+        };
         /**
          * TenantCreateRequest
          * @description Payload to create a new tenant (super_admin only).
@@ -6553,6 +7311,23 @@ export interface components {
          * @enum {string}
          */
         TenantStatus: "active" | "suspended" | "deleted";
+        /** TenantSummary */
+        TenantSummary: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Tier Id */
+            tier_id: string;
+            /** Settings */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
         /**
          * TenantUpdateRequest
          * @description Payload to update tenant metadata.
@@ -6867,6 +7642,92 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * ValueExtractionRecordListResponse
+         * @description Paginated extraction records.
+         */
+        ValueExtractionRecordListResponse: {
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Has More */
+            has_more: boolean;
+            /** Items */
+            items: components["schemas"]["ValueExtractionRecordResponse"][];
+        };
+        /**
+         * ValueExtractionRecordResponse
+         * @description Extraction record in API responses.
+         */
+        ValueExtractionRecordResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /**
+             * Profile Id
+             * Format: uuid
+             */
+            profile_id: string;
+            page_type?: components["schemas"]["PageType"] | null;
+            /** Extracted */
+            extracted: {
+                [key: string]: unknown;
+            };
+            /** Confidence */
+            confidence?: number | null;
+            /** Requires Review */
+            requires_review: boolean;
+            review_status: components["schemas"]["ReviewStatus"];
+            /** Reviewed By */
+            reviewed_by?: string | null;
+            /** Reviewed At */
+            reviewed_at?: string | null;
+            /** Extraction Version */
+            extraction_version?: string | null;
+            /** Llm Model */
+            llm_model?: string | null;
+            /** Trace Span Id */
+            trace_span_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ValueExtractionReviewRequest
+         * @description Request to review an extraction record.
+         */
+        ValueExtractionReviewRequest: {
+            /** @description accepted | rejected | modified */
+            action: components["schemas"]["ReviewStatus"];
+            /**
+             * User Edits
+             * @description Modified extracted fields when action=modified
+             */
+            user_edits?: {
+                [key: string]: unknown;
+            } | null;
+            /** Notes */
+            notes?: string | null;
         };
         /**
          * VerifyEmailRequest
@@ -9922,6 +10783,59 @@ export interface operations {
             };
         };
     };
+    start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tenant_context_v1_tenant_context_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantContextResponse"];
+                };
+            };
+        };
+    };
     api_get_current_tenant_settings_v1_tenants_current_settings_get: {
         parameters: {
             query?: never;
@@ -12935,6 +13849,407 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_profile_v1_company_knowledge_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyKnowledgeProfileCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyKnowledgeProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_profile_v1_company_knowledge_profiles_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyKnowledgeProfileResponse"];
+                };
+            };
+        };
+    };
+    get_profile_v1_company_knowledge_profiles__profile_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyKnowledgeProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_v1_company_knowledge_profiles__profile_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompanyKnowledgeProfileUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyKnowledgeProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_profile_v1_company_knowledge_profiles__profile_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileApproveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyKnowledgeProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_knowledge_sources_v1_company_knowledge_sources_get: {
+        parameters: {
+            query?: {
+                profile_id?: string | null;
+                source_type?: components["schemas"]["SourceType"] | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_knowledge_source_v1_company_knowledge_sources_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeSourceCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeSourceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_extraction_records_v1_company_knowledge_extractions_get: {
+        parameters: {
+            query?: {
+                profile_id?: string | null;
+                source_id?: string | null;
+                min_confidence?: number | null;
+                requires_review?: boolean | null;
+                review_status?: components["schemas"]["ReviewStatus"] | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValueExtractionRecordListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    review_extraction_record_v1_company_knowledge_extractions__record_id__review_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                record_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValueExtractionReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValueExtractionRecordResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_icp_for_current_profile_v1_company_knowledge_icp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ICPProfileResponse"];
+                };
+            };
+        };
+    };
+    create_icp_profile_v1_company_knowledge_icp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ICPProfileCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ICPProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_icp_profile_v1_company_knowledge_icp__icp_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                icp_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ICPProfileUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ICPProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_onboarding_status_v1_company_knowledge_onboarding_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingStatusResponse"];
                 };
             };
         };
