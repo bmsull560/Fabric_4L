@@ -32,10 +32,10 @@ class TestL3ValueTreeContracts:
             "name": "Revenue Growth",
             "entity_type": "ValueDriver",
             "upstream": [
-                {"entity_id": "cap-1", "name": "Sales Automation", "entity_type": "Capability", "relationship_type": "ENABLES"},
+                {"entity_id": "cap-1", "name": "Sales Automation", "entity_type": "Capability", "type": "ENABLES"},
             ],
             "downstream": [
-                {"entity_id": "out-1", "name": "Increased Revenue", "entity_type": "Outcome", "relationship_type": "ACHIEVES"},
+                {"entity_id": "out-1", "name": "Increased Revenue", "entity_type": "Outcome", "type": "ACHIEVES"},
             ],
             "depth": 2,
             "total_nodes": 3,

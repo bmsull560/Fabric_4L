@@ -10,7 +10,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 try:
     from cryptography.fernet import Fernet
@@ -192,6 +192,27 @@ class BackupConfig(BaseModel):
     ftp_config: dict[str, Any] | None = Field(None, description="FTP configuration")
 
 
+
+
+class SignedAdminCapability(BaseModel):
+    """Signed entitlement proving platform-admin scope for global export."""
+
+    actor_id: str = Field(..., description="Authenticated caller principal ID")
+    role: str = Field(..., description="Caller role")
+    tenant_domain: str = Field(..., description="Tenant domain context for authorization")
+    platform_scope: bool = Field(..., description="True when entitlement is platform-global")
+    signature: str = Field(..., description="Detached signature or token hash")
+    reason_code: str = Field(..., description="Governance-approved reason code")
+    ticket_reference: str = Field(..., description="Change/ticket reference")
+    correlation_id: str = Field(..., description="Request correlation ID")
+
+    @model_validator(mode="after")
+    def _validate_platform_scope(self):
+        if not self.platform_scope:
+            raise ValueError("Global export requires platform_scope entitlement")
+        return self
+
+
 class BackupRequest(BaseModel):
     """Backup operation request."""
 
@@ -214,6 +235,12 @@ class BackupRequest(BaseModel):
         description=(
             "When true, performs a cross-tenant export. Requires platform-admin "
             "governance authorization and immutable audit emission."
+        ),
+    )
+    admin_capability: SignedAdminCapability | None = Field(
+        default=None,
+        description=(
+            "Signed platform-admin entitlement payload required for global_export."
         ),
     )
 
@@ -573,11 +600,15 @@ class BackupManager:
         self.active_backups[backup_id] = metadata
 
         try:
+            if request.global_export:
+                await self._authorize_global_backup(admin_capability=request.admin_capability)
+
             # Generate backup data
             backup_data = await self._generate_backup_data(
                 backup_type=request.backup_type,
                 tenant_id=request.tenant_id,
                 global_export=request.global_export,
+                admin_capability=request.admin_capability,
             )
 
             # Compress if enabled
@@ -648,6 +679,7 @@ class BackupManager:
         backup_type: BackupType,
         tenant_id: str | None = None,
         global_export: bool = False,
+        admin_capability: SignedAdminCapability | None = None,
     ) -> bytes:
         """Generate backup data based on type from Neo4j.
 
@@ -662,9 +694,11 @@ class BackupManager:
 
         if backup_type == BackupType.FULL:
             if global_export:
-                await self._authorize_global_backup()
+                await self._authorize_global_backup(admin_capability=admin_capability)
                 await self._emit_immutable_global_backup_audit_event(
                     backup_type=backup_type,
+                    stage="before",
+                    admin_capability=admin_capability,
                 )
             elif not tenant_id:
                 raise ValueError(
@@ -757,6 +791,12 @@ class BackupManager:
                     "relationship_count": len(relationships),
                 },
             }
+            if global_export:
+                await self._emit_immutable_global_backup_audit_event(
+                    backup_type=backup_type,
+                    stage="after",
+                    admin_capability=admin_capability,
+                )
         elif backup_type == BackupType.INCREMENTAL:
             # Incremental backup - changes since last backup
             last_backup = self._get_last_full_backup_id()
@@ -800,30 +840,50 @@ class BackupManager:
 
         return json.dumps(backup_data, indent=2, default=str).encode("utf-8")
 
-    async def _authorize_global_backup(self) -> None:
+    async def _authorize_global_backup(
+        self, admin_capability: SignedAdminCapability | None
+    ) -> None:
         """Enforce RBAC/governance authorization for global export."""
+        if admin_capability is None:
+            raise PermissionError("Signed admin capability is required for global export.")
+        if admin_capability.role != "platform_admin" or admin_capability.tenant_domain != "platform":
+            raise PermissionError(
+                "Global backup export requires platform_admin role in platform tenant domain."
+            )
         if self.global_backup_authorizer is None:
             raise PermissionError(
                 "Global backup export requires platform-admin governance authorization."
             )
-        is_allowed = await self.global_backup_authorizer()
+        is_allowed = await self.global_backup_authorizer(admin_capability)
         if not is_allowed:
             raise PermissionError(
                 "Caller is not authorized for platform-admin global backup export."
             )
 
-    async def _emit_immutable_global_backup_audit_event(self, backup_type: BackupType) -> None:
+    async def _emit_immutable_global_backup_audit_event(
+        self,
+        backup_type: BackupType,
+        stage: str,
+        admin_capability: SignedAdminCapability | None,
+    ) -> None:
         """Emit immutable audit event for global exports."""
         if self.immutable_audit_logger is None:
             raise PermissionError(
                 "Global backup export requires immutable audit event emission."
             )
+        if admin_capability is None:
+            raise PermissionError("Signed admin capability is required for immutable audit logging.")
         await self.immutable_audit_logger(
             {
                 "event_type": "platform_admin_global_backup_export",
+                "stage": stage,
                 "backup_type": backup_type.value,
                 "occurred_at": datetime.utcnow().isoformat(),
                 "immutability_required": True,
+                "actor_id": admin_capability.actor_id,
+                "reason_code": admin_capability.reason_code,
+                "ticket_reference": admin_capability.ticket_reference,
+                "correlation_id": admin_capability.correlation_id,
             }
         )
 

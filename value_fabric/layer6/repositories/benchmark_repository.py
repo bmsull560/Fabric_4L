@@ -116,19 +116,17 @@ class BenchmarkRepository:
     ) -> list[BenchmarkDataset]:
         query = """
             MATCH (d:BenchmarkDataset)
+            WHERE d.tenant_id = $tenant_id
+        """
+        if industry:
+            query += "\n            AND d.industry = $industry"
+        if segment:
+            query += "\n            AND d.segment = $segment"
+
+        query += """
             OPTIONAL MATCH (d)-[:HAS_METRIC]->(m:BenchmarkMetric)
             RETURN d, collect(m) AS metrics
         """
-        conditions = ["d.tenant_id = $tenant_id"]
-        if industry:
-            conditions.append("d.industry = $industry")
-        if segment:
-            conditions.append("d.segment = $segment")
-        if conditions:
-            query = query.replace(
-                "MATCH (d:BenchmarkDataset)",
-                "MATCH (d:BenchmarkDataset) WHERE " + " AND ".join(conditions),
-            )
 
         records = await tx.run(query, industry=industry, segment=segment, tenant_id=tenant_id)
         datasets = []

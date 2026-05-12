@@ -22,6 +22,18 @@
 | React Context for server state | TanStack Query hooks | 2026-06-15 | Billing/Auth contexts excepted |
 | `{"detail": ...}` error-only HTTP payloads | Canonical error envelope: `{"message","code","trace_id"}` | 2026-06-15 | Layer 1 keeps temporary `error=authentication_required` compatibility field for legacy clients |
 
+## Layer 3 API Alias Deprecation Governance (Contract Council Tracked)
+
+| Alias Field | Canonical Field | Contract Location | Target Removal Date | Owner | Migration Status | Contract Council Approval |
+|---|---|---|---|---|---|---|
+| `GraphNode.label` | `GraphNode.name` | `contracts/openapi/layer3-knowledge.json#/components/schemas/GraphNode` | 2026-07-01 | Layer 3 Knowledge Team | In progress — compatibility still active, consumers migrating | Pending |
+| `GraphNode.type` | `GraphNode.entity_type` | `contracts/openapi/layer3-knowledge.json#/components/schemas/GraphNode` | 2026-07-01 | Layer 3 Knowledge Team | In progress — compatibility still active, consumers migrating | Pending |
+| `GraphNode.confidence` | `GraphNode.confidence_score` | `contracts/openapi/layer3-knowledge.json#/components/schemas/GraphNode` | 2026-07-01 | Layer 3 Knowledge Team | In progress — compatibility still active, consumers migrating | Pending |
+| `GraphEdge.relationship_type` | `GraphEdge.type` | `contracts/openapi/layer3-knowledge.json#/components/schemas/GraphEdge` | 2026-07-01 | Layer 3 Knowledge Team | In progress — compatibility still active, consumers migrating | Pending |
+| `FormulaMetadata.formula_id` | `FormulaMetadata.id` | `contracts/openapi/layer3-knowledge.json#/components/schemas/FormulaMetadata` | TBD (compatibility alias, not yet date-bound) | Layer 3 Knowledge Team + UI Platform | Not started — no date set in OpenAPI yet | Pending |
+
+**Removal rule:** aliases above must not be deleted before (1) the listed target date has passed, and (2) Contract Council approval is explicitly recorded in this table.
+
 ## Recommendation Guardrail: Layer 3 + Layer 4 Agent Consolidation
 
 Use this wording by default in architecture recommendations:

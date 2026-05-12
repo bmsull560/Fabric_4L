@@ -75,6 +75,7 @@ jobs:
             tests/security/test_tenant_boundary_fails_closed.py
             tests/security/test_tenant_mismatch.py
             tests/security/test_privileged_audit.py
+            tests/security/test_layer3_ingest_tenant_hint_hostile.py
           )
 
           expected=$(python -m pytest --collect-only -q "${TARGET_FILES[@]}" | rg -c "::")

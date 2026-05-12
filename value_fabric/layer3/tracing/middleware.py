@@ -6,6 +6,7 @@ from typing import Any, Optional
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import StreamingResponse
+from value_fabric.shared.observability.trace_context import canonical_trace_headers
 
 from ..logging_config import get_logger
 from .tracer import (
@@ -115,7 +116,8 @@ class TracingMiddleware(BaseHTTPMiddleware):
             trace_context: Trace context
         """
         headers = response.headers
-        headers["X-Trace-Id"] = trace_context.trace_id
+        for header, value in canonical_trace_headers(trace_context.trace_id).items():
+            headers[header] = value
         headers["X-Span-Id"] = trace_context.span_id
 
         if trace_context.parent_span_id:

@@ -778,3 +778,4 @@ For full details, see:
 - [Frontend Governance Contract](DESIGN.md) - required reading before modifying `apps/web/`
 - [Layer 4 Agents Service](services/layer4-agents/README.md)
 - [ADR-001: Six-Layer Architecture](docs/explanations/adr/ADR-001-six-layer-architecture.md)
+- [Compatibility Debt Registry](docs/governance/compatibility-debt-registry.md)

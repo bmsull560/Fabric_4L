@@ -108,6 +108,7 @@ Key files:
 - packages/platform-contract/src/python/canonical/ — reference Python signatures
 - packages/platform-contract/src/typescript/ — reference TypeScript types
 - docs/platform-contract/DEPRECATION_MAP.md — what not to use and when it becomes an error
+- docs/governance/compatibility-debt-registry.md — active compatibility wrappers/shims and removal targets
 
 ## Required verification steps
 

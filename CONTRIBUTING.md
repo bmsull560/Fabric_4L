@@ -53,6 +53,8 @@ The monorepo defaults are scoped to **canonical production roots only**:
 
 Directories such as `archive/` and `prototypes/` are treated as **experimental/non-canonical** and are intentionally excluded from default workspace commands. If you need to work there, invoke those paths explicitly instead of relying on root scripts.
 
+Before adding compatibility wrappers or legacy aliases in runtime code, add/update an entry in `docs/governance/compatibility-debt-registry.md` (owner, reason, target removal date).
+
 Before opening a PR, run:
 
 ```bash

@@ -6,7 +6,7 @@ from value_fabric.layer3.api.models import (
 
 
 def test_graph_node_contract_includes_legacy_and_canonical_fields() -> None:
-    node = GraphNode(id="n1", label="Node", type="Capability", confidence=0.9)
+    node = GraphNode(id="n1", name="Node", entity_type="Capability", confidence_score=0.9)
     payload = node.model_dump()
 
     assert payload["label"] == "Node"
@@ -39,3 +39,11 @@ def test_deprecated_field_usage_counters_increment_for_request_and_response() ->
     assert after["graph_edge_request_legacy_fields"] >= before["graph_edge_request_legacy_fields"] + 1
     assert after["graph_node_response_legacy_fields"] >= before["graph_node_response_legacy_fields"] + 1
     assert after["graph_edge_response_legacy_fields"] >= before["graph_edge_response_legacy_fields"] + 1
+
+
+def test_layer3_contract_fixtures_prefer_canonical_fields() -> None:
+    """Regression guard: tests that represent consumers should not drift back to legacy aliases."""
+    sample = GraphNode(id="n4", name="Canonical", entity_type="Capability", confidence_score=0.8).model_dump()
+    assert sample["name"] == "Canonical"
+    assert sample["entity_type"] == "Capability"
+    assert sample["confidence_score"] == 0.8

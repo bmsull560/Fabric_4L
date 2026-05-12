@@ -40,7 +40,7 @@ def resolve_trace_context(headers) -> CanonicalTraceContext:
 
 
 def canonical_trace_headers(trace_id: str) -> dict[str, str]:
-    return {header: trace_id for header in ALL_TRACE_HEADERS}
+    return {CANONICAL_TRACE_HEADER: trace_id}
 
 
 def _new_trace_id(generator: Callable | None) -> str:

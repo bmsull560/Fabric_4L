@@ -110,6 +110,47 @@ async def test_repository_list_datasets_isolation(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("industry", "segment"),
+    [
+        (None, None),
+        ("Retail", None),
+        (None, "Enterprise"),
+        ("Retail", "Enterprise"),
+    ],
+)
+async def test_repository_list_datasets_query_always_contains_tenant_predicate(
+    repo: BenchmarkRepository,
+    industry: str | None,
+    segment: str | None,
+):
+    """Verify all list filter combinations include tenant isolation in Cypher."""
+    mock_tx = AsyncMock()
+    mock_tx.run = AsyncMock(return_value=AsyncMock())
+    mock_tx.run.return_value.__aiter__.return_value = []
+
+    await repo._tx_list_datasets(
+        mock_tx,
+        industry=industry,
+        segment=segment,
+        tenant_id="tenant-isolated",
+    )
+
+    mock_tx.run.assert_called_once()
+    (query,), call_kwargs = mock_tx.run.call_args
+    assert "WHERE d.tenant_id = $tenant_id" in query
+    if industry:
+        assert "AND d.industry = $industry" in query
+    else:
+        assert "d.industry = $industry" not in query
+    if segment:
+        assert "AND d.segment = $segment" in query
+    else:
+        assert "d.segment = $segment" not in query
+    assert call_kwargs["tenant_id"] == "tenant-isolated"
+
+
+@pytest.mark.asyncio
 async def test_repository_delete_dataset_isolation(
     repo: BenchmarkRepository,
     mock_driver: AsyncMock,
