@@ -3,7 +3,6 @@
 from collections import Counter
 from datetime import datetime
 
-from collections import Counter
 import os
 from enum import Enum
 from typing import Annotated, Any, Literal
@@ -22,18 +21,6 @@ from value_fabric.shared.contracts.layer3_statuses import (
     IngestStatus,
     SyncStatus,
 )
-
-_DEPRECATED_FIELD_USAGE_COUNTERS: Counter[str] = Counter()
-
-
-def _increment_deprecated_field_usage(metric: str) -> None:
-    _DEPRECATED_FIELD_USAGE_COUNTERS[metric] += 1
-
-
-def get_deprecated_field_usage_counters() -> dict[str, int]:
-    """Expose deprecated field counters for contract tests and diagnostics."""
-    return dict(_DEPRECATED_FIELD_USAGE_COUNTERS)
-
 
 # Health Check
 class DependencyStatus(BaseModel):
@@ -1013,6 +1000,10 @@ GRAPH_FIELD_ALIAS_REMOVAL_VERSION = "v2.5"
 _DEPRECATED_FIELD_USAGE_COUNTERS: Counter[str] = Counter()
 
 
+def _increment_deprecated_field_usage(metric: str) -> None:
+    _DEPRECATED_FIELD_USAGE_COUNTERS[metric] += 1
+
+
 def get_deprecated_field_usage_counters() -> dict[str, int]:
     """Return cumulative legacy field usage counters for deprecation telemetry."""
     return {
@@ -1065,6 +1056,7 @@ class GraphNode(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
                 _increment_deprecated_field_usage("graph_node_request_legacy_fields")
 =======
                 _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
@@ -1080,6 +1072,9 @@ class GraphNode(BaseModel):
 >>>>>>> theirs
 =======
                 _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_request_legacy_fields"] += 1
+>>>>>>> theirs
+=======
+                _increment_deprecated_field_usage("graph_node_request_legacy_fields")
 >>>>>>> theirs
                 data[canonical] = data[alias]
         return data
@@ -1134,6 +1129,7 @@ class GraphNode(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
             _increment_deprecated_field_usage("graph_node_response_legacy_fields")
 =======
             _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
@@ -1149,6 +1145,9 @@ class GraphNode(BaseModel):
 >>>>>>> theirs
 =======
             _DEPRECATED_FIELD_USAGE_COUNTERS["graph_node_response_legacy_fields"] += 1
+>>>>>>> theirs
+=======
+            _increment_deprecated_field_usage("graph_node_response_legacy_fields")
 >>>>>>> theirs
             data[alias] = getattr(self, alias)
         return data
@@ -1196,9 +1195,12 @@ class GraphEdge(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
+=======
+>>>>>>> theirs
     @model_validator(mode="before")
     @classmethod
-    def normalize_legacy_request_aliases(cls, data: Any) -> Any:
+    def normalize_and_validate_legacy_aliases(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
         for alias, canonical in GraphEdgeAliasMap.items():
@@ -1209,6 +1211,7 @@ class GraphEdge(BaseModel):
             if canonical not in data and alias in data:
                 _increment_deprecated_field_usage("graph_edge_request_legacy_fields")
                 data[canonical] = data[alias]
+<<<<<<< ours
 =======
 =======
 >>>>>>> theirs
@@ -1231,6 +1234,8 @@ class GraphEdge(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+>>>>>>> theirs
+=======
 >>>>>>> theirs
 =======
 >>>>>>> theirs
@@ -1270,6 +1275,7 @@ class GraphEdge(BaseModel):
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
+<<<<<<< ours
             _increment_deprecated_field_usage("graph_edge_response_legacy_fields")
 =======
             _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
@@ -1285,6 +1291,9 @@ class GraphEdge(BaseModel):
 >>>>>>> theirs
 =======
             _DEPRECATED_FIELD_USAGE_COUNTERS["graph_edge_response_legacy_fields"] += 1
+>>>>>>> theirs
+=======
+            _increment_deprecated_field_usage("graph_edge_response_legacy_fields")
 >>>>>>> theirs
             data[alias] = getattr(self, alias)
         return data

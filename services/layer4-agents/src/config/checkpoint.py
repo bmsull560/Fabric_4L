@@ -73,7 +73,12 @@ class CheckpointConfig:
         """
         # Remove any driver suffix after postgresql+ (e.g., +asyncpg, +psycopg2, +pg8000)
         # Pattern matches postgresql+driver:// and replaces with postgresql://
-        cleaned = re.sub(r"postgresql\+[^/]+://", "postgresql://", url)
+        cleaned = re.sub(
+            r"^postgresql\+[^/]+://",
+            "postgresql://",
+            url.strip(),
+            flags=re.IGNORECASE,
+        )
         return cleaned
 
     @classmethod

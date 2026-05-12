@@ -230,7 +230,9 @@ class TestCheckpointConfiguration:
         test_cases = [
             ("postgresql+asyncpg://user:pass@host/db", "postgresql://user:pass@host/db"),
             ("postgresql+psycopg2://user:pass@host/db", "postgresql://user:pass@host/db"),
+            ("  PostgreSQL+PG8000://user:pass@host/db  ", "postgresql://user:pass@host/db"),
             ("postgresql://user:pass@host/db", "postgresql://user:pass@host/db"),
+            ("mysql+pymysql://user:pass@host/db", "mysql+pymysql://user:pass@host/db"),
         ]
         
         for input_url, expected in test_cases:

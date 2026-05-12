@@ -351,3 +351,24 @@ python scripts/ci/check_deprecations.py --format markdown
 - [CONTRACT.md](./contract.md) - Canonical Platform Contract
 - [/examples/canonical/](./examples/canonical/) - Reference Implementation
 - [Architecture Decision Records](./docs/ADRs/) - Historical context
+
+## Layer 3 Graph Compatibility Removal Gates (Added 2026-05-12)
+
+### Compatibility surfaces
+- Route aliases: `value_fabric/layer3/api/routes/compat_aliases.py` (`/v1/graphrag`, `/v1/query`, `/v1/query/graph/stream`, `/v1/search`, `/v1/search/hybrid`, `/v1/query/search`).
+- Route shim: `value_fabric/layer3/api/routes/entity_compat.py` forwarding legacy entity imports.
+- Legacy graph field aliases in `value_fabric/layer3/api/models.py` and `contracts/openapi/layer3-knowledge.json`:
+  - GraphNode: `label`, `type`, `confidence` (canonical: `name`, `entity_type`, `confidence_score`)
+  - GraphEdge: `relationship_type` (canonical: `type`)
+
+### Telemetry thresholds before hard removal
+Hard removal is only allowed after **28 consecutive days** where all thresholds hold in production:
+- `layer3_deprecated_route_hits_total` == 0 for each legacy alias route.
+- `layer3_legacy_field_usage_total` == 0 for each legacy request field marker.
+- Model counters (`graph_node_*_legacy_fields`, `graph_edge_*_legacy_fields`) remain at 0 for new traffic windows.
+- No active frontend/API consumer references to `/v1/graphrag`, `/v1/query`, `/v1/search*`, or legacy GraphNode/GraphEdge fields.
+
+### Phased deprecation states
+- `warning_only` (default): aliases and fields work; counters increment.
+- `disable_non_prod`: aliases return 410 in non-production; production remains available.
+- `removed`: aliases return 410 everywhere; graph field aliases are excluded from serialization.

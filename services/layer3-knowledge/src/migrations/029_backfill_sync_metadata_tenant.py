@@ -1,10 +1,10 @@
-"""Backfill tenant_id on SyncMetadata nodes using trusted source ownership mapping.
+"""Allowed service-local exception for Layer 3 service wrapper.
 
-Trusted ownership precedence:
-1. :Source {id = source_id, tenant_id}
-2. :Source {source_id = source_id, tenant_id}
-3. Existing :SyncMetadata.tenant_id fallback to DEFAULT_TENANT
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Service-wrapper-only logic permitted by runtime path governance.
 """
+
 
 from __future__ import annotations
 

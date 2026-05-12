@@ -1,50 +1,74 @@
 """Tests for Layer 6 Benchmark Service API."""
 
+from decimal import Decimal
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.api.main import app
 import src.api.main as main_module
-from unittest.mock import AsyncMock, MagicMock
+from src.api.main import app
+from src.models.benchmark_dataset import BenchmarkDataset, BenchmarkMetric, StatisticalProfile
+
 
 @pytest.fixture(autouse=True)
 def setup_mock_repo(monkeypatch):
-    """Setup mock repository before each test."""
+    """Set up a deterministic benchmark repository for API tests."""
     mock_repo = AsyncMock()
-    mock_dataset = MagicMock()
-    mock_dataset.dataset_id = "manufacturing-efficiency-2024"
-    mock_dataset.industry = "manufacturing"
-    mock_dataset.segment = "default"
-    mock_dataset.version = "1.0.0"
-    mock_dataset.name = "Manufacturing Efficiency"
-    mock_dataset.description = "desc"
-    mock_dataset.geography = "global"
-    mock_dataset.data_source = "source"
-    mock_dataset.metrics = {
-        "oee_overall_equipment_effectiveness": MagicMock(
-            name="oee",
-            profile=MagicMock(p10=60, p25=70, p50=80, p75=90, p90=95, mean=80, std_dev=5, sample_size=1000)
-        ),
-        "defect_rate_percent": MagicMock(
-            name="defect",
-            profile=MagicMock(p10=1, p25=2, p50=3, p75=4, p90=5, mean=3, std_dev=1, sample_size=1000)
-        ),
-        "production_cycle_time_minutes": MagicMock(
-            name="cycle_time",
-            profile=MagicMock(p10=10, p25=20, p50=30, p75=40, p90=50, mean=30, std_dev=10, sample_size=1000)
+
+    dataset = BenchmarkDataset(
+        dataset_id="manufacturing-efficiency-2024",
+        tenant_id="system",
+        name="Manufacturing Efficiency",
+        description="desc",
+        industry="manufacturing",
+        segment="default",
+        geography="global",
+        version="1.0.0",
+        data_source="source",
+    )
+    dataset.add_metric(
+        BenchmarkMetric(
+            name="oee_overall_equipment_effectiveness",
+            unit="percent",
+            description="oee",
+            profile=StatisticalProfile(
+                p10=Decimal("60"),
+                p25=Decimal("70"),
+                p50=Decimal("80"),
+                p75=Decimal("90"),
+                p90=Decimal("95"),
+                mean=Decimal("80"),
+                std_dev=Decimal("5"),
+                sample_size=1000,
+            ),
         )
-    }
-    
-    mock_dataset.get_metric = lambda m: mock_dataset.metrics.get(m)
-    
-    mock_repo.list_datasets.return_value = [mock_dataset]
-    
+    )
+    dataset.add_metric(
+        BenchmarkMetric(
+            name="defect_rate_percent",
+            unit="percent",
+            description="defect",
+            profile=StatisticalProfile(
+                p10=Decimal("1"),
+                p25=Decimal("2"),
+                p50=Decimal("3"),
+                p75=Decimal("4"),
+                p90=Decimal("5"),
+                mean=Decimal("3"),
+                std_dev=Decimal("1"),
+                sample_size=1000,
+            ),
+        )
+    )
+
+    mock_repo.list_datasets.return_value = [dataset]
+
     async def get_dataset(dataset_id, tenant_id="system"):
         if dataset_id == "manufacturing-efficiency-2024":
-            return mock_dataset
+            return dataset
         return None
-        
+
     mock_repo.get_dataset = AsyncMock(side_effect=get_dataset)
     monkeypatch.setattr(main_module, "_benchmark_repo", mock_repo)
     yield mock_repo
@@ -53,16 +77,12 @@ def setup_mock_repo(monkeypatch):
 @pytest.fixture
 async def client():
     """Create async test client."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 
 @pytest.mark.asyncio
 async def test_health_check(client: AsyncClient):
-    """Test health endpoint."""
     response = await client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -72,7 +92,6 @@ async def test_health_check(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_ready_check(client: AsyncClient):
-    """Test readiness endpoint standard contract."""
     response = await client.get("/ready")
     assert response.status_code == 200
     assert response.json() == {"status": "ready"}
@@ -80,7 +99,6 @@ async def test_ready_check(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_datasets(client: AsyncClient):
-    """Test listing datasets."""
     response = await client.get("/v1/benchmarks/datasets")
     assert response.status_code == 200
     data = response.json()
@@ -90,8 +108,15 @@ async def test_list_datasets(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_list_datasets_passes_tenant_id(client: AsyncClient, setup_mock_repo: AsyncMock):
+    response = await client.get("/v1/benchmarks/datasets")
+    assert response.status_code == 200
+    _, kwargs = setup_mock_repo.list_datasets.call_args
+    assert kwargs["tenant_id"] == "system"
+
+
+@pytest.mark.asyncio
 async def test_get_dataset(client: AsyncClient):
-    """Test getting dataset by ID."""
     response = await client.get("/v1/benchmarks/datasets/manufacturing-efficiency-2024")
     assert response.status_code == 200
     data = response.json()
@@ -102,14 +127,12 @@ async def test_get_dataset(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_dataset_not_found(client: AsyncClient):
-    """Test getting non-existent dataset."""
     response = await client.get("/v1/benchmarks/datasets/non-existent")
     assert response.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_compare(client: AsyncClient):
-    """Test peer comparison."""
     payload = {
         "dataset_id": "manufacturing-efficiency-2024",
         "metric": "oee_overall_equipment_effectiveness",
@@ -127,7 +150,6 @@ async def test_compare(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_validate(client: AsyncClient):
-    """Test range validation."""
     payload = {
         "dataset_id": "manufacturing-efficiency-2024",
         "metric": "defect_rate_percent",
@@ -144,9 +166,35 @@ async def test_validate(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_industries(client: AsyncClient):
-    """Test listing industries."""
     response = await client.get("/v1/benchmarks/industries")
     assert response.status_code == 200
     data = response.json()
     assert "industries" in data
     assert "manufacturing" in data["industries"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method,path,payload",
+    [
+        ("GET", "/v1/benchmarks/datasets", None),
+        ("GET", "/v1/benchmarks/datasets/manufacturing-efficiency-2024", None),
+        (
+            "POST",
+            "/v1/benchmarks/compare",
+            {
+                "dataset_id": "manufacturing-efficiency-2024",
+                "metric": "oee_overall_equipment_effectiveness",
+                "company_value": "72.5",
+                "industry": "manufacturing",
+            },
+        ),
+    ],
+)
+async def test_returns_503_when_repo_is_unavailable(
+    client: AsyncClient, monkeypatch, method: str, path: str, payload: dict | None
+):
+    monkeypatch.setattr(main_module, "_benchmark_repo", None)
+    response = await client.request(method, path, json=payload)
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Benchmark store not initialized"

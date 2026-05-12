@@ -226,6 +226,9 @@ async def add_source(
     """
     Add a TruthSource to a TruthObject and optionally trigger auto-advance.
     """
+    if truth_object.tenant_id != tenant_id:
+        raise ValueError("tenant_id does not match TruthObject tenant")
+
     source = TruthSource(
         truth_object_id=truth_object.id,
         tenant_id=tenant_id,

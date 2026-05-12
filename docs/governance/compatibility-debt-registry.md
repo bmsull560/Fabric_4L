@@ -11,7 +11,7 @@ This registry tracks **runtime** compatibility wrappers/shims that exist to pres
 ## Review Cadence
 
 - **Last reviewed:** 2026-05-12 (updated for Layer 3 shim-only inventory and exception audit)
-- **Next review due:** 2026-06-12
+- **Next review due:** 2026-07-12
 - **Review owner:** Platform Architecture
 
 ## Registry
@@ -21,7 +21,7 @@ This registry tracks **runtime** compatibility wrappers/shims that exist to pres
 | COMPAT-L1-001 | `value_fabric/layer1/api/routes/compatibility.py` | Route wrapper | layer1-ingestion | Maintains legacy ingestion route aliases while clients move to canonical route modules. | 2026-08-31 |
 | COMPAT-L3-001 | `value_fabric/layer3/api/routes/compat_aliases.py` | Route wrapper | layer3-knowledge | Keeps compatibility aliases for route naming transitions in Layer 3 APIs. | 2026-08-31 |
 | COMPAT-L3-002 | `value_fabric/layer3/api/routes/entity_compat.py` | Route shim | layer3-knowledge | Supports older entity endpoint patterns while frontend and SDK consumers migrate. | 2026-08-31 |
-| COMPAT-L3-003 | `services/layer3-knowledge/src/` (mirrored dirs only) | Package shim tree | layer3-knowledge + Platform Architecture | Compatibility re-export tree for mirrored runtime modules; canonical implementation now lives in `value_fabric/layer3` and is enforced by `scripts/ci/check_layer3_source_mirror.py`. Service-local exceptions (`api/`, `agents/`, `cache/`, `docs/`, `metrics/`, top-level `config.py`, migrations) are intentionally non-shim and tracked in `docs/governance/layer3-service-source-inventory.md` with removal/migration target. | 2026-09-30 |
+| COMPAT-L3-003 | `services/layer3-knowledge/src/` (mirrored dirs only) | Package shim tree | layer3-knowledge (primary) + Platform Architecture | Compatibility re-export tree for mirrored runtime modules; canonical implementation now lives in `value_fabric/layer3` and is enforced by `scripts/ci/check_layer3_source_mirror.py`. Service-local exceptions (`api/`, `agents/`, `cache/`, `docs/`, `metrics/`, top-level `config.py`, migrations) are intentionally non-shim and tracked in `docs/governance/layer3-service-source-inventory.md` with owner/date reaffirmed in the 2026-05-12 inventory sweep. | 2026-10-31 |
 | COMPAT-L5-001 | `value_fabric/layer5/` | Package shim tree | layer5-ground-truth | Compatibility re-export tree that delegates to canonical `services/layer5-ground-truth/src/layer5_ground_truth`. | 2026-09-30 |
 | COMPAT-WEB-001 | `apps/web/src/api/legacy.ts` | Frontend API shim | web-platform | Legacy web API adapter maintained during phased migration to canonical API clients. | 2026-07-31 |
 | COMPAT-L4-001 | `services/layer4-agents/src/api/routes/frontend_compat.py` | Route shim | layer4-agents | Preserves historical frontend contract during workflow API consolidation. | 2026-08-31 |

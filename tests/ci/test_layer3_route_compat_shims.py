@@ -49,3 +49,10 @@ def test_compat_router_registration_does_not_shadow_canonical_mounts() -> None:
     # Compatibility aliases remain separately mounted and must not replace canonical mounts.
     assert "RouterMount(compat_aliases.router)" in source
     assert source.count("RouterMount(compat_aliases.router)") == 1
+
+
+def test_no_merge_conflict_markers_in_compat_aliases() -> None:
+    source = COMPAT_ALIASES.read_text(encoding="utf-8")
+    assert "<<<<<<<" not in source
+    assert "=======" not in source
+    assert ">>>>>>>" not in source

@@ -31,6 +31,11 @@ MIRRORED_DIRS = (
 )
 MIRRORED_FILES = ("__init__.py", "logging_config.py")
 
+EXCEPTION_DIRS = ("api", "agents", "cache", "docs", "metrics", "migrations")
+EXCEPTION_FILES = ("config.py",)
+EXCEPTION_OWNER = "Owner: layer3-knowledge"
+EXCEPTION_TARGET = "Removal/migration target: 2026-09-30"
+
 
 def _py_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.py") if "__pycache__" not in path.parts)
@@ -74,6 +79,21 @@ def _is_thin_shim(path: Path, expected_module: str) -> bool:
     )
 
 
+
+def _is_exception_path(rel: Path) -> bool:
+    return rel.as_posix() in EXCEPTION_FILES or (rel.parts and rel.parts[0] in EXCEPTION_DIRS)
+
+
+def _has_exception_docstring(path: Path) -> bool:
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except SyntaxError:
+        return False
+    doc = ast.get_docstring(tree)
+    if not doc:
+        return False
+    return "Allowed service-local exception" in doc and EXCEPTION_OWNER in doc and EXCEPTION_TARGET in doc
+
 def _violations() -> list[str]:
     violations: list[str] = []
     canonical_files = {path.relative_to(CANONICAL_ROOT) for path in _py_files(CANONICAL_ROOT)}
@@ -96,6 +116,15 @@ def _violations() -> list[str]:
             violations.append(
                 "non-shim implementation in compatibility tree: "
                 f"services/layer3-knowledge/src/{rel.as_posix()} must re-export {expected_module}"
+            )
+
+    for rel in sorted(compat_files):
+        if not _is_exception_path(rel):
+            continue
+        if not _has_exception_docstring(COMPAT_ROOT / rel):
+            violations.append(
+                "service-local exception missing required governance docstring: "
+                f"services/layer3-knowledge/src/{rel.as_posix()}"
             )
 
     for path in _py_files(CANONICAL_ROOT):

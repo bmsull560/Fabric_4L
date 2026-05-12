@@ -1,5 +1,6 @@
-"""Compatibility wrapper for ``value_fabric.layer3.analytics.communities``.
+"""Compatibility shim for `analytics/communities.py`.
 
+<<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
 <<<<<<< ours
@@ -26,3 +27,9 @@ per ``docs/reference/layer-runtime-path-governance.md``.
 =======
 >>>>>>> theirs
 from value_fabric.layer3.analytics.communities import *  # noqa: F401,F403
+=======
+Canonical implementation lives in ``value_fabric.layer3.analytics.communities``.
+"""
+
+from value_fabric.layer3.analytics.communities import *  # noqa: F403
+>>>>>>> theirs

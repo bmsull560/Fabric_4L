@@ -61,7 +61,6 @@ def mock_artifacts():
 async def test_get_extraction_results_success(mock_job, mock_artifacts):
     """Test successful retrieval of extraction entities."""
     from layer2_extraction.api.routes.extraction import get_extraction_results
-    from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
     request = Mock()
@@ -89,13 +88,14 @@ async def test_get_extraction_results_success(mock_job, mock_artifacts):
         assert response.entities[0].source_span is not None
         assert response.entities[0].provenance is not None
         assert response.entities[0].provenance.extraction_job_id == mock_job.job_id
+        job_store.get_job.assert_awaited_once_with(mock_job.job_id, tenant_id=request.state.governance_context.tenant_id)
+        job_store.get_artifacts.assert_awaited_once_with(mock_job.job_id, tenant_id=request.state.governance_context.tenant_id)
 
 
 @pytest.mark.asyncio
 async def test_get_extraction_results_empty_result(mock_job):
     """Test retrieval when no entities are extracted."""
     from layer2_extraction.api.routes.extraction import get_extraction_results
-    from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
     request = Mock()
@@ -127,7 +127,6 @@ async def test_get_extraction_results_empty_result(mock_job):
 async def test_get_extraction_results_incomplete_job(mock_job):
     """Test retrieval when extraction is not complete."""
     from layer2_extraction.api.routes.extraction import get_extraction_results
-    from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
     request = Mock()
@@ -156,7 +155,6 @@ async def test_get_extraction_results_incomplete_job(mock_job):
 async def test_get_extraction_results_missing_job():
     """Test retrieval when job does not exist."""
     from layer2_extraction.api.routes.extraction import get_extraction_results
-    from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
     request = Mock()
@@ -184,7 +182,6 @@ async def test_get_extraction_results_missing_job():
 async def test_get_extraction_results_cross_tenant_access_denied(mock_job):
     """Test that cross-tenant access is denied."""
     from layer2_extraction.api.routes.extraction import get_extraction_results
-    from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
     request = Mock()
@@ -208,13 +205,13 @@ async def test_get_extraction_results_cross_tenant_access_denied(mock_job):
         
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
+        job_store.get_job.assert_awaited_once_with(mock_job.job_id, tenant_id=tenant_id)
 
 
 @pytest.mark.asyncio
 async def test_get_extraction_results_no_artifacts(mock_job):
     """Test retrieval when no artifacts exist."""
     from layer2_extraction.api.routes.extraction import get_extraction_results
-    from layer2_extraction.integration.job_store import build_job_store
     
     # Mock request with governance context
     request = Mock()
