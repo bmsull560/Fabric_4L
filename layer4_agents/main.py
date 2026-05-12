@@ -1,18 +1,23 @@
-"""Compatibility entrypoint for repository-level startup validation tests."""
+"""Deprecated compatibility entrypoint for Layer 4 startup tests.
+
+Canonical app import path: ``value_fabric.layer4.api.main:app``.
+This shim remains only for legacy callers during the deprecation window.
+"""
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+import warnings
 
 from value_fabric.shared.security.config import validate_all_controls
 
 validate_all_controls()
 
-_SERVICE_SRC = Path(__file__).resolve().parents[1] / "services" / "layer4-agents" / "src"
-if str(_SERVICE_SRC) not in sys.path:
-    sys.path.insert(0, str(_SERVICE_SRC))
+warnings.warn(
+    "'layer4_agents.main' is deprecated; import 'value_fabric.layer4.api.main' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-from api.main import app
+from value_fabric.layer4.api.main import app
 
 __all__ = ["app"]

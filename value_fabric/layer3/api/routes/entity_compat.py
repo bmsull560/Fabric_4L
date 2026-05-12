@@ -1,3 +1,4 @@
+<<<<<<< ours
 """Compatibility implementations extracted from app_monolith entity endpoints.
 
 These functions contain the former monolith business logic so app_monolith
@@ -116,3 +117,17 @@ async def list_entities_impl(request: Any, search_text: str | None, entity_types
 
 async def query_entities_impl(request: EntityFilterRequest, fastapi_request: Any, neo4j_driver: Any, list_entities_callable: Any) -> EntityListResponse:
     return await list_entities_callable(request=fastapi_request, search_text=request.search_text, entity_types=[str(entity_type) for entity_type in request.entity_types] if request.entity_types else None, domains=request.domains, statuses=[str(status) for status in request.statuses] if request.statuses else None, min_confidence=request.min_confidence, max_confidence=request.max_confidence, limit=request.limit, offset=request.offset, sort_by=request.sort_by, sort_order=request.sort_order, neo4j_driver=neo4j_driver)
+=======
+"""Compatibility shim for legacy Layer 3 entity route imports.
+
+Canonical implementation lives in ``value_fabric.layer3.api.routes.entities``.
+
+Deprecated:
+    This shim is temporary for compatibility consumers and is scheduled for
+    removal after the v2.7 release window (target: 2026-12-31).
+"""
+
+from value_fabric.layer3.api.routes.entities import router
+
+__all__ = ["router"]
+>>>>>>> theirs

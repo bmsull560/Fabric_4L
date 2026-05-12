@@ -1,3 +1,4 @@
+<<<<<<< ours
 """Compatibility alias endpoints delegating to canonical route implementations."""
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ async def graph_rag_query_stream_alias(
 
 @router.post("/search/hybrid", response_model=SearchResponse, deprecated=True)
 @router.post("/search", response_model=SearchResponse, deprecated=True)
+@router.post("/query/search", response_model=SearchResponse)
 async def hybrid_search_aliases(
     request: SearchRequest,
     http_request: Request,
@@ -50,3 +52,17 @@ async def hybrid_search_aliases(
     ctx: RequestContext = Depends(require_authenticated),
 ):
     return await query_search.hybrid_search_impl(request, hybrid_search, ctx=ctx, http_request=http_request)
+=======
+"""Compatibility shim for legacy Layer 3 query/search alias route imports.
+
+Canonical implementation lives in ``value_fabric.layer3.api.routes.query_search``.
+
+Deprecated:
+    This shim is temporary for compatibility consumers and is scheduled for
+    removal after the v2.7 release window (target: 2026-12-31).
+"""
+
+from value_fabric.layer3.api.routes.query_search import router
+
+__all__ = ["router"]
+>>>>>>> theirs

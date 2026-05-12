@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "current_contract_version": "v2.4",
+  "entries": [
+    {
+      "key": "layer3-knowledge.json:components.schemas.GraphEdge.properties.relationship_type",
+      "introduced_in": "v2.3",
+      "removal_target": "v2.5",
+      "replacement_field": "type"
+    },
+    {
+      "key": "layer3-knowledge.json:components.schemas.GraphNode.properties.label",
+      "introduced_in": "v2.3",
+      "removal_target": "v2.5",
+      "replacement_field": "name"
+    },
+    {
+      "key": "layer3-knowledge.json:components.schemas.GraphNode.properties.type",
+      "introduced_in": "v2.3",
+      "removal_target": "v2.5",
+      "replacement_field": "entity_type"
+    },
+    {
+      "key": "layer3-knowledge.json:components.schemas.GraphNode.properties.confidence",
+      "introduced_in": "v2.3",
+      "removal_target": "v2.5",
+      "replacement_field": "confidence_score"
+    }
+  ]
+}

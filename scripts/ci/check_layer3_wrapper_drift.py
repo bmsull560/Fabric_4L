@@ -13,7 +13,11 @@ CANONICAL_SRC = ROOT / "value_fabric/layer3"
 
 def _is_wrapper(text: str, module_path: str) -> bool:
     expected = f'"""Compatibility wrapper for {module_path}."""\n\nfrom {module_path} import *  # noqa: F401,F403\n'
+<<<<<<< ours
+    return text.replace("\r\n", "\n") == expected
+=======
     return text == expected
+>>>>>>> theirs
 
 
 def main() -> int:
@@ -26,7 +30,11 @@ def main() -> int:
         module_path = "value_fabric.layer3." + ".".join(rel.with_suffix("").parts)
         if any(part and part[0].isdigit() for part in rel.with_suffix("").parts):
             continue
+<<<<<<< ours
         content = service_file.read_text(encoding="utf-8")
+=======
+        content = service_file.read_text()
+>>>>>>> theirs
         if not _is_wrapper(content, module_path):
             violations.append(str(rel))
 

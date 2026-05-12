@@ -66,6 +66,10 @@ def test_query_templates_are_tenant_scoped(relative_path: str) -> None:
     content = Path(relative_path).read_text(encoding="utf-8")
     queries = [query for query in _QUERY_BLOCK.findall(content) if "MATCH" in query.upper()]
 
+    if not queries and "Compatibility wrapper for value_fabric.layer3.services." in content:
+        assert "from value_fabric.layer3.services." in content
+        return
+
     assert queries, f"No query templates found in {relative_path}"
     for idx, query in enumerate(queries):
         validate_tenant_scoped_cypher(

@@ -1,5 +1,8 @@
-"""GraphRAG retrieval engine for multi-hop traversal."""
+"""Compatibility wrapper for value_fabric.layer3.retrieval.graph_rag."""
 
+<<<<<<< ours
+from value_fabric.layer3.retrieval.graph_rag import *  # noqa: F401,F403
+=======
 import logging
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -13,8 +16,14 @@ from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCyph
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
+from .types import (
+    EntityContextResult,
+    ExpandedContextResult,
+    SerializedRelationship,
+    TraverseValueTreeResult,
+    ValueTreePath,
+)
 from ..db.driver import get_driver
-from ..db.query_execution import run_scoped_query
 from ..schema.constraints import get_entity_types, get_relationship_types
 from .vector_store import VectorStore
 
@@ -49,6 +58,7 @@ _ALLOWED_RELATIONSHIP_TYPES = frozenset(get_relationship_types()) | {
     rel.upper() for rel in get_relationship_types()
 }
 _ALLOWED_ENTITY_TYPES = frozenset(get_entity_types())
+GRAPH_FIELD_ALIAS_REMOVAL_VERSION = "v2.5"
 
 
 def _validate_hops(hops: int, *, max_hops: int = 5) -> int:
@@ -94,7 +104,12 @@ def _serialize_neo4j_value(value: Any) -> Any:
     return value
 
 
-def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
+def _include_legacy_graph_aliases(api_version: str = "v2.3") -> bool:
+    """Return True while legacy graph aliases are still part of the contract."""
+    return api_version < GRAPH_FIELD_ALIAS_REMOVAL_VERSION
+
+
+def _serialize_entity(entity: dict[str, Any], *, api_version: str = "v2.3") -> dict[str, Any]:
     """Serialize an entity dict, converting Neo4j temporal types to strings.
 
     Adds backward-compatible alias fields for frontend contract alignment:
@@ -111,33 +126,37 @@ def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
     # Base serialization of Neo4j values
     serialized = {k: _serialize_neo4j_value(v) for k, v in entity.items()}
 
-    # ═════════════════════════════════════════════════════════════════════════
-    # Backward-compatible alias fields for frontend contract alignment
-    # ═════════════════════════════════════════════════════════════════════════
+    include_legacy_aliases = _include_legacy_graph_aliases(api_version)
 
-    # Add 'name' alias (prefer 'label', fallback to 'name')
+    # Canonical node contract fields.
     if "name" not in serialized:
         if "label" in serialized:
             serialized["name"] = serialized["label"]
         elif "name" in entity:
             serialized["name"] = entity["name"]
 
-    # Add 'entity_type' alias (prefer 'type', fallback to first label)
+    # Canonical node contract fields.
     if "entity_type" not in serialized:
         if "type" in serialized:
             serialized["entity_type"] = serialized["type"]
         elif "labels" in serialized and serialized["labels"]:
-            # Use first label as entity type
             serialized["entity_type"] = serialized["labels"][0]
 
-    # Add 'confidence_score' alias (from 'confidence')
+    # Canonical node contract fields.
     if "confidence_score" not in serialized and "confidence" in serialized:
         serialized["confidence_score"] = serialized["confidence"]
+
+    if not include_legacy_aliases:
+        serialized.pop("label", None)
+        serialized.pop("type", None)
+        serialized.pop("confidence", None)
 
     return serialized
 
 
-def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0) -> dict[str, Any]:
+def _serialize_relationship(
+    rel: Any, include_hops: bool = False, hops: int = 0, *, api_version: str = "v2.3"
+) -> SerializedRelationship:
     """Serialize a Neo4j relationship with alias fields.
 
     Centralizes relationship serialization to ensure consistent alias field
@@ -153,11 +172,12 @@ def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0)
     """
     data: dict[str, Any] = {
         "type": rel.type,
-        "relationship_type": rel.type,  # Frontend alias
         "source": rel.start_node["id"],
         "target": rel.end_node["id"],
         "properties": _serialize_entity(dict(rel)),
     }
+    if _include_legacy_graph_aliases(api_version):
+        data["relationship_type"] = rel.type
     if include_hops:
         data["hops"] = hops
     return data
@@ -288,7 +308,7 @@ class GraphRAGEngine:
         tenant_id: str,
         hops: int = 2,
         relationship_types: list[str] | None = None,
-    ) -> dict[str, Any]:
+    ) -> EntityContextResult:
         """Retrieve N-hop neighborhood around an entity with tenant filtering.
 
         Args:
@@ -370,7 +390,7 @@ class GraphRAGEngine:
         start_entity_id: str,
         tenant_id: str,
         direction: str = "both",  # up, down, both
-    ) -> dict[str, Any]:
+    ) -> TraverseValueTreeResult:
         """Traverse the 4-layer value tree from a starting entity with tenant filtering.
 
         Args:
@@ -437,7 +457,8 @@ class GraphRAGEngine:
                 for rel in rels:
                     relationships.append(_serialize_relationship(rel))
 
-                paths.append({"nodes": nodes, "relationships": relationships})
+                path: ValueTreePath = {"nodes": nodes, "relationships": relationships}
+                paths.append(path)
 
             return GraphRAGEngine_traverse_value_treeResult.model_validate({
                 "start_entity_id": start_entity_id,
@@ -582,7 +603,7 @@ class GraphRAGEngine:
         max_hops: int,
         min_confidence: float,
         tenant_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> ExpandedContextResult:
         """Expand context via graph traversal from seed entities."""
         driver = await self._get_driver()
         max_hops = _validate_hops(max_hops, max_hops=5)
@@ -908,3 +929,4 @@ class GraphRAGEngine:
             },
             "progress_percent": self._PROGRESS_COMPLETE,
         }
+>>>>>>> theirs

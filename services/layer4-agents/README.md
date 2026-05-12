@@ -44,6 +44,14 @@ pytest tests/ -v
 uvicorn src.api.main:app --reload
 ```
 
+
+## Canonical namespace and compatibility timeline
+
+- Runtime/deployment entrypoint remains `uvicorn src.api.main:app` (from `services/layer4-agents/src/api/main.py`).
+- Canonical Python import namespace for Layer 4 is `value_fabric.layer4.*`.
+- `layer4_agents/*` at repo root is a deprecated compatibility shim only (deprecated on **2026-05-12**; removal review by **2026-09-30**).
+- New code must not import `layer4_agents.*`; CI enforces this via `scripts/ci/check_layer4_canonical_imports.py`.
+
 ## Architecture
 
 ```

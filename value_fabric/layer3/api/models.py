@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from value_fabric.shared.contracts.layer3_statuses import (
+    BenchmarkStatus,
     EntityStatus,
     HealthStatus,
     IngestStatus,

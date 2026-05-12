@@ -698,6 +698,9 @@ include_router_mounts(
         RouterMount(calculators.router, prefix="/v1"),
         RouterMount(system.router),
         RouterMount(compat_aliases.router),
+        RouterMount(system.router, prefix="/api/v1/system"),
+        RouterMount(entities.router, prefix="/api"),
+        RouterMount(compat_aliases.router, prefix="/api"),
     ],
 )
 

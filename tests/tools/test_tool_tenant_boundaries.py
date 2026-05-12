@@ -173,7 +173,7 @@ class TestToolInvocationIsolation:
         
         Attack scenario: Tenant A tries to delete tenant B's entity.
         """
-        from layer4_agents.tools.knowledge import delete_entity
+        from value_fabric.layer4.tools.knowledge import delete_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -415,7 +415,7 @@ class TestToolAuditLogging:
         
         Rationale: Failed attempts may indicate attack.
         """
-        from layer4_agents.tools.knowledge import delete_entity
+        from value_fabric.layer4.tools.knowledge import delete_entity
         
         tenant_a = uuid4()
         tenant_b = uuid4()
@@ -482,7 +482,7 @@ class TestToolPermissionEnforcement:
         
         Rationale: Write permission should not grant delete access.
         """
-        from layer4_agents.tools.knowledge import delete_entity
+        from value_fabric.layer4.tools.knowledge import delete_entity
         
         # Context with read and write, but not delete
         context = RequestContext(

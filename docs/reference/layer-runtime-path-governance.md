@@ -27,7 +27,7 @@ Use this before creating files so we avoid drift into archived, compatibility-on
 | Layer 1 — Ingestion | `value_fabric/layer1/` | `services/layer1-ingestion/src/` (service wrapper + compatibility glue) | `value_fabric/layer1/` | Layer 1 Maintainers — target review by **2026-09-30** |
 | Layer 2 — Extraction | `value_fabric/layer2/` | `services/layer2-extraction/src/` (legacy service-local module path) | `value_fabric/layer2/` | Layer 2 Maintainers — target review by **2026-09-30** |
 | Layer 3 — Knowledge Graph | `value_fabric/layer3/` | `services/layer3-knowledge/src/` (deployable wrapper + compatibility imports) | `value_fabric/layer3/` | Layer 3 Maintainers — target review by **2026-09-30** |
-| Layer 4 — Agents | `value_fabric/layer4/` | `services/layer4-agents/src/` (service bootstrap and compatibility surface) | `value_fabric/layer4/` | Layer 4 Maintainers — target review by **2026-09-30** |
+| Layer 4 — Agents | `value_fabric/layer4/` (canonical runtime namespace; resolves into `services/layer4-agents/src/`) | `layer4_agents/` (deprecated compatibility shim), `services/layer4-agents/src/` (deployable source tree) | `value_fabric/layer4/` | Layer 4 Maintainers — `layer4_agents/` deprecation started **2026-05-12**, removal review by **2026-09-30** |
 | Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal target review by **2026-09-30** |
 | Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility shims) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
 
@@ -74,6 +74,23 @@ Before opening a PR with backend runtime changes:
 - Compatibility wrappers only: `services/layer3-knowledge/src/backup/`.
 - CI guardrail: `services/layer3-knowledge/scripts/check_backup_shim_drift.py` (fails when compatibility wrappers diverge from explicit forwarders).
 
+
+## Required parity checkpoints (CI-enforced)
+
+The CI suite validates canonical/runtime parity for each layer (`layer1`–`layer6`) across these checkpoints:
+
+- **Route module parity:** maintained service route modules must re-export canonical route modules (shim-only behavior).
+- **Service entrypoint parity:** maintained service entrypoints must expose `app` and serve non-empty OpenAPI contracts at `/openapi.json`.
+- **Middleware chain anchor parity:** each layer declares a canonical middleware anchor module that must remain present.
+- **Service/repository interface parity:** each layer declares canonical service and repository interface anchor files that must remain present and referenced by parity rules.
+
+These checkpoints are asserted by:
+
+- `tests/contract/test_layer_runtime_parity.py`
+- `tests/contract/test_layer_service_entrypoint_smoke.py`
+
+When adding or moving canonical modules, update parity rules in these tests in the same change to avoid drift.
+
 ## Related documentation
 
 - [Repository Agent Rules (root)](../../AGENTS.md)
@@ -94,3 +111,10 @@ When adding a new sentinel:
 4. If a compatibility module temporarily needs local logic, document the migration exception in the test file with owner and removal date before merging.
 
 Avoid adding low-value or highly volatile modules to keep this guardrail low-noise.
+
+
+## Layer 4 namespace policy
+
+- **Authoritative import namespace:** `value_fabric.layer4.*`.
+- **Deprecated compatibility namespace:** `layer4_agents.*` (shims only; no net-new imports).
+- **CI guardrail:** `scripts/ci/check_layer4_canonical_imports.py` with test coverage in `tests/ci/test_check_layer4_canonical_imports.py`.

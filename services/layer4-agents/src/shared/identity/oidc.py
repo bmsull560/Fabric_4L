@@ -419,6 +419,32 @@ class OIDCClient:
             raise OIDCValidationError("oidc.id_token.missing_kid", "invalid_id_token: missing kid")
 
         jwks = await self._load_jwks_for_validation()
+=======
+    async def validate_id_token(
+        self,
+        id_token: str,
+        *,
+        expected_nonce: str | None = None,
+        callback_state: str | None = None,
+        stored_state: str | None = None,
+        max_iat_age_seconds: int = 600,
+    ) -> OIDCClaims:
+        """Validate OIDC ID token and extract claims with strict contract checks."""
+        try:
+            header = jwt.get_unverified_header(id_token)
+        except jwt.PyJWTError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_format", "Invalid ID token format") from exc
+
+        alg = header.get("alg")
+        if alg not in self._allowed_algorithms:
+            raise OIDCValidationError("oidc.id_token.invalid_alg", f"ID token algorithm '{alg}' is not allowed")
+
+        kid = header.get("kid")
+        if not kid:
+            raise OIDCValidationError("oidc.id_token.missing_kid", "ID token header is missing kid")
+
+        jwks = await self._fetch_jwks()
+>>>>>>> theirs
         keys = {key.get("kid"): key for key in jwks.get("keys", []) if key.get("kid")}
         if kid not in keys:
             self._jwks_cache = None
@@ -435,6 +461,50 @@ class OIDCClient:
             public_key = self._public_key_from_jwk(alg, keys[kid])
         except Exception as exc:
             raise OIDCValidationError("oidc.id_token.invalid_jwk", "invalid_id_token: invalid JWK") from exc
+            jwks = await self._fetch_jwks()
+            keys = {key.get("kid"): key for key in jwks.get("keys", []) if key.get("kid")}
+            if kid not in keys:
+                raise OIDCValidationError("oidc.id_token.stale_jwks", "JWKS cache is stale or key id is unknown")
+
+    async def validate_id_token(
+        self,
+        id_token: str,
+        *,
+        expected_nonce: str | None = None,
+        callback_state: str | None = None,
+        stored_state: str | None = None,
+        max_iat_age_seconds: int = 600,
+    ) -> OIDCClaims:
+        """Validate OIDC ID token and extract claims with strict contract checks."""
+        try:
+            header = jwt.get_unverified_header(id_token)
+        except jwt.PyJWTError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_format", "Invalid ID token format") from exc
+
+        alg = header.get("alg")
+        if alg not in self._allowed_algorithms:
+            raise OIDCValidationError("oidc.id_token.invalid_alg", f"ID token algorithm '{alg}' is not allowed")
+
+        kid = header.get("kid")
+        if not kid:
+            raise OIDCValidationError("oidc.id_token.missing_kid", "ID token header is missing kid")
+
+        jwks = await self._fetch_jwks()
+        keys = {key.get("kid"): key for key in jwks.get("keys", []) if key.get("kid")}
+        if kid not in keys:
+            self._jwks_cache = None
+            self._jwks_cache_expiry = None
+            jwks = await self._fetch_jwks()
+            keys = {key.get("kid"): key for key in jwks.get("keys", []) if key.get("kid")}
+            if kid not in keys:
+                raise OIDCValidationError("oidc.id_token.stale_jwks", "JWKS cache is stale or key id is unknown")
+
+        try:
+            public_key = jwt.algorithms.RSAAlgorithm.from_jwk(str(keys[kid]))
+        except Exception as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_jwk", "Failed to parse JWK for token validation") from exc
+<<<<<<< ours
+>>>>>>> theirs
 
         try:
             payload_data = jwt.decode(
@@ -446,6 +516,8 @@ class OIDCClient:
                 options={"require": ["exp", "iat", "iss", "aud", "sub"]},
             )
         except jwt.ExpiredSignatureError as exc:
+<<<<<<< ours
+<<<<<<< ours
             raise OIDCValidationError("oidc.id_token.expired", "invalid_id_token: expired_token") from exc
         except jwt.InvalidAudienceError as exc:
             raise OIDCValidationError("oidc.id_token.invalid_aud", "invalid_id_token: audience mismatch") from exc
@@ -456,13 +528,33 @@ class OIDCClient:
                 "oidc.id_token.invalid_signature",
                 "invalid_id_token: signature validation failed",
             ) from exc
+=======
+=======
+            raise OIDCValidationError("oidc.id_token.expired", "ID token is expired") from exc
+        except jwt.InvalidAudienceError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_aud", "ID token audience mismatch") from exc
+        except jwt.InvalidIssuerError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_iss", "ID token issuer mismatch") from exc
+        except jwt.PyJWTError as exc:
+            raise OIDCValidationError("oidc.id_token.invalid_signature", "ID token signature validation failed") from exc
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 
         now = datetime.now(UTC)
         iat_dt = datetime.fromtimestamp(payload_data["iat"], tz=UTC)
         if iat_dt > now + timedelta(seconds=30):
+<<<<<<< ours
             raise OIDCValidationError("oidc.id_token.invalid_iat", "invalid_id_token: iat is in the future")
         if iat_dt < now - timedelta(seconds=max_iat_age_seconds):
             raise OIDCValidationError("oidc.id_token.stale_iat", "invalid_id_token: iat is too old")
+=======
+            raise OIDCValidationError("oidc.id_token.invalid_iat", "ID token iat is in the future")
+        if iat_dt < now - timedelta(seconds=max_iat_age_seconds):
+            raise OIDCValidationError("oidc.id_token.stale_iat", "ID token iat is too old")
+            raise OIDCValidationError("oidc.id_token.invalid_iat", "ID token iat is in the future")
+        if iat_dt < now - timedelta(seconds=max_iat_age_seconds):
+            raise OIDCValidationError("oidc.id_token.stale_iat", "ID token iat is too old")
 
         if expected_nonce is not None and payload_data.get("nonce") != expected_nonce:
             raise OIDCValidationError("oidc.id_token.invalid_nonce", "ID token nonce mismatch")
@@ -541,6 +633,8 @@ class OIDCClient:
 
 class OIDCStateStoreProtocol(Protocol):
     """Protocol for storing and consuming OIDC state and PKCE verifiers."""
+<<<<<<< ours
+<<<<<<< ours
 
     def store(self, state: str, code_verifier: str) -> None:
         """Store the verifier with strict TTL semantics."""
@@ -566,6 +660,7 @@ class InMemoryOIDCStateStore(OIDCStateStoreProtocol):
         self._lock = Lock()
 
     def store(self, state: str, code_verifier: str) -> None:
+<<<<<<< ours
         expiry = datetime.now(UTC) + timedelta(seconds=self._ttl)
         with self._lock:
             self._store[state] = (code_verifier, expiry)
@@ -614,6 +709,141 @@ class RedisOIDCStateStore(OIDCStateStoreProtocol):
                 key,
             )
 
+=======
+
+    def store(self, state: str, code_verifier: str) -> None:
+        """Store the verifier with strict TTL semantics."""
+
+    def validate_and_consume(self, state: str) -> str | None:
+        """Atomically validate and consume state for single-use semantics."""
+
+
+class InMemoryOIDCStateStore(OIDCStateStoreProtocol):
+    """In-memory store for tests/development only.
+
+    This store is explicitly non-production and guarded by ``allow_non_production``.
+    """
+
+    def __init__(self, ttl_seconds: int = 300, *, allow_non_production: bool = False) -> None:
+        if not allow_non_production:
+            raise RuntimeError(
+                "InMemoryOIDCStateStore is for tests/development only. "
+                "Use RedisOIDCStateStore in production."
+            )
+        self._store: dict[str, tuple[str, datetime]] = {}
+        self._ttl = ttl_seconds
+        self._lock = Lock()
+
+    def store(self, state: str, code_verifier: str) -> None:
+        expiry = datetime.utcnow() + timedelta(seconds=self._ttl)
+        with self._lock:
+            self._store[state] = (code_verifier, expiry)
+        logger.debug("oidc_state_stored_memory", state_prefix=state[:8], ttl=self._ttl)
+
+    def validate_and_consume(self, state: str) -> str | None:
+        now = datetime.utcnow()
+        with self._lock:
+            record = self._store.get(state)
+            if record is None:
+                logger.warning("oidc_state_not_found_memory", state_prefix=state[:8])
+                return None
+            code_verifier, expiry = record
+            if now > expiry:
+                del self._store[state]
+                logger.warning("oidc_state_expired_memory", state_prefix=state[:8])
+                return None
+            del self._store[state]
+        logger.debug("oidc_state_consumed_memory", state_prefix=state[:8])
+        return code_verifier
+
+
+class RedisOIDCStateStore(OIDCStateStoreProtocol):
+    """Redis-backed OIDC state store with atomic consume semantics."""
+
+    def __init__(self, redis_client: Any, ttl_seconds: int = 300, *, key_prefix: str = "oidc:state") -> None:
+        self._redis = redis_client
+        self._ttl = ttl_seconds
+        self._key_prefix = key_prefix
+
+    def _key(self, state: str) -> str:
+        return f"{self._key_prefix}:{state}"
+
+=======
+
+    def store(self, state: str, code_verifier: str) -> None:
+        """Store the verifier with strict TTL semantics."""
+
+    def validate_and_consume(self, state: str) -> str | None:
+        """Atomically validate and consume state for single-use semantics."""
+
+
+class InMemoryOIDCStateStore(OIDCStateStoreProtocol):
+    """In-memory store for tests/development only.
+
+    This store is explicitly non-production and guarded by ``allow_non_production``.
+    """
+
+    def __init__(self, ttl_seconds: int = 300, *, allow_non_production: bool = False) -> None:
+        if not allow_non_production:
+            raise RuntimeError(
+                "InMemoryOIDCStateStore is for tests/development only. "
+                "Use RedisOIDCStateStore in production."
+            )
+        self._store: dict[str, tuple[str, datetime]] = {}
+        self._ttl = ttl_seconds
+        self._lock = Lock()
+
+    def store(self, state: str, code_verifier: str) -> None:
+        expiry = datetime.utcnow() + timedelta(seconds=self._ttl)
+        with self._lock:
+            self._store[state] = (code_verifier, expiry)
+        logger.debug("oidc_state_stored_memory", state_prefix=state[:8], ttl=self._ttl)
+
+    def validate_and_consume(self, state: str) -> str | None:
+        now = datetime.utcnow()
+        with self._lock:
+            record = self._store.get(state)
+            if record is None:
+                logger.warning("oidc_state_not_found_memory", state_prefix=state[:8])
+                return None
+            code_verifier, expiry = record
+            if now > expiry:
+                del self._store[state]
+                logger.warning("oidc_state_expired_memory", state_prefix=state[:8])
+                return None
+            del self._store[state]
+        logger.debug("oidc_state_consumed_memory", state_prefix=state[:8])
+        return code_verifier
+
+
+class RedisOIDCStateStore(OIDCStateStoreProtocol):
+    """Redis-backed OIDC state store with atomic consume semantics."""
+
+    def __init__(self, redis_client: Any, ttl_seconds: int = 300, *, key_prefix: str = "oidc:state") -> None:
+        self._redis = redis_client
+        self._ttl = ttl_seconds
+        self._key_prefix = key_prefix
+
+    def _key(self, state: str) -> str:
+        return f"{self._key_prefix}:{state}"
+
+>>>>>>> theirs
+    def store(self, state: str, code_verifier: str) -> None:
+        self._redis.set(self._key(state), code_verifier, ex=self._ttl)
+        logger.debug("oidc_state_stored_redis", state_prefix=state[:8], ttl=self._ttl)
+
+    def validate_and_consume(self, state: str) -> str | None:
+        key = self._key(state)
+        try:
+            verifier = self._redis.getdel(key)
+        except AttributeError:
+            verifier = self._redis.eval(
+                "local v = redis.call('GET', KEYS[1]); if v then redis.call('DEL', KEYS[1]); end; return v",
+                1,
+                key,
+            )
+
+>>>>>>> theirs
         if verifier is None:
             logger.warning("oidc_state_not_found_or_expired_redis", state_prefix=state[:8])
             return None
@@ -627,6 +857,8 @@ class RedisOIDCStateStore(OIDCStateStoreProtocol):
 
 class OIDCStateStore(RedisOIDCStateStore):
     """Default production OIDC state store implementation (Redis-backed)."""
+
+
 
 
 def create_oidc_state_store(
@@ -652,6 +884,33 @@ def create_oidc_state_store(
         raise RuntimeError("OIDC state store requires Redis client when backend=redis")
 
     return RedisOIDCStateStore(redis_client=redis_client, ttl_seconds=ttl_seconds)
+<<<<<<< ours
+<<<<<<< ours
+
+
+def validate_tenant_oidc_provider_mapping(
+    *,
+    tenant_id: str,
+    expected_issuer: str,
+    expected_client_id: str,
+    provider_config: OIDCProviderConfig,
+) -> None:
+    """Prevent cross-tenant OIDC provider config bleed by strict equality checks."""
+    if provider_config.issuer != expected_issuer:
+        raise OIDCValidationError(
+            "oidc.tenant.invalid_issuer_mapping",
+            f"Tenant {tenant_id} issuer mapping mismatch",
+        )
+    if provider_config.client_id != expected_client_id:
+        raise OIDCValidationError(
+            "oidc.tenant.invalid_client_mapping",
+            f"Tenant {tenant_id} client_id mapping mismatch",
+        )
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+
 
 
 def validate_tenant_oidc_provider_mapping(
@@ -673,6 +932,25 @@ def validate_tenant_oidc_provider_mapping(
             f"Tenant {tenant_id} client_id mapping mismatch",
         )
 
+
+def validate_tenant_oidc_provider_mapping(
+    *,
+    tenant_id: str,
+    expected_issuer: str,
+    expected_client_id: str,
+    provider_config: OIDCProviderConfig,
+) -> None:
+    """Prevent cross-tenant OIDC provider config bleed by strict equality checks."""
+    if provider_config.issuer != expected_issuer:
+        raise OIDCValidationError(
+            "oidc.tenant.invalid_issuer_mapping",
+            f"Tenant {tenant_id} issuer mapping mismatch",
+        )
+    if provider_config.client_id != expected_client_id:
+        raise OIDCValidationError(
+            "oidc.tenant.invalid_client_mapping",
+            f"Tenant {tenant_id} client_id mapping mismatch",
+        )
 
 def create_oidc_config_from_tenant_settings(settings: dict[str, Any]) -> OIDCProviderConfig:
     """Create OIDC config from tenant settings JSONB.
