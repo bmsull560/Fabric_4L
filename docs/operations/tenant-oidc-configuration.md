@@ -6,7 +6,11 @@ This document explains how to configure OIDC-based single sign-on for tenants in
 
 ## 1. Overview
 
-Fabric 4L authenticates tenant users via the OpenID Connect protocol. Each tenant can bring its own OIDC-compliant identity provider (IdP). The platform does not automate IdP realm creation; instead, tenant administrators configure their IdP independently and register the OIDC settings through the provisioning pipeline or admin API.
+Fabric 4L authenticates tenant users via the OpenID Connect protocol. Each tenant can bring its own OIDC-compliant identity provider (IdP).
+
+**Recommended default:** [Keycloak](./keycloak-integration.md) — self-hosted, enterprise-ready, supports identity brokering for Google/Apple/Entra ID.
+
+The platform does not automate IdP realm creation; instead, tenant administrators configure their IdP independently and register the OIDC settings through the provisioning pipeline or admin API.
 
 ### Supported Identity Providers
 
