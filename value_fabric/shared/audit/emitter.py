@@ -103,6 +103,35 @@ async def emit_audit_event(
     return payload
 
 
+class AuditEmitter:
+    """Compatibility writer used by Layer 4 background audit tasks."""
+
+    @staticmethod
+    async def write_to_db(event: Any, db_session_factory: Any) -> None:
+        payload = await _maybe_await(event)
+        session_source = db_session_factory
+        if callable(db_session_factory):
+            session_source = db_session_factory()
+
+        if hasattr(session_source, "__aenter__"):
+            async with session_source as session:
+                await AuditEmitter._persist(session, payload)
+            return
+
+        await AuditEmitter._persist(session_source, payload)
+
+    @staticmethod
+    async def _persist(session: Any, payload: Any) -> None:
+        if session is None:
+            return
+        add = getattr(session, "add", None)
+        commit = getattr(session, "commit", None)
+        if callable(add):
+            add(payload)
+        if callable(commit):
+            await _maybe_await(commit())
+
+
 def emitted_events() -> list[dict[str, Any]]:
     """Return a copy of locally captured audit events for deterministic tests."""
 

@@ -181,6 +181,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/layer4_agents
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - API_KEY_HMAC_SECRET=${API_KEY_HMAC_SECRET:?API_KEY_HMAC_SECRET is required}
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?SERVICE_AUTH_SECRET is required}
+      - ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true
       - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
@@ -564,7 +569,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - POSTGRES_DB=ingestion
       # POSTGRES_MULTIPLE_DATABASES is consumed by init-multiple-dbs.sh
-      - POSTGRES_MULTIPLE_DATABASES=ingestion,extraction,ground_truth,layer6_benchmarks
+      - POSTGRES_MULTIPLE_DATABASES=ingestion,extraction,ground_truth,layer4_agents,layer6_benchmarks
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh

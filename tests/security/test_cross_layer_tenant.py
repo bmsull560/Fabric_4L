@@ -109,7 +109,7 @@ class TestLayerSpecificEnforcement:
     def test_layer_5_uses_async_context(self):
         """Layer 5 (ground-truth) uses async SQLAlchemy with context."""
         try:
-            from value_fabric.layer5.database import (
+            from layer5_ground_truth.database import (
                 get_db_from_context,
                 get_db_with_optional_tenant,
             )

@@ -1,1 +1,3 @@
-"""Layer 5 Ground Truth — FastAPI application."""
+"""Compatibility shim; canonical implementation lives in services/layer5-ground-truth/src/layer5_ground_truth."""
+
+from layer5_ground_truth.api.__init__ import *  # noqa: F401,F403

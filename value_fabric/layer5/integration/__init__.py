@@ -1,5 +1,3 @@
-"""Layer 5 Ground Truth — external integration clients."""
+"""Compatibility shim; canonical implementation lives in services/layer5-ground-truth/src/layer5_ground_truth."""
 
-from .layer3_client import Layer3Client, get_layer3_client
-
-__all__ = ["Layer3Client", "get_layer3_client"]
+from layer5_ground_truth.integration.__init__ import *  # noqa: F401,F403

@@ -17,8 +17,15 @@ import types
 from typing import Any, Callable, Optional
 
 try:  # pragma: no cover - FastAPI is available in CI, but keep import safe.
-    from fastapi import HTTPException, Request, status
+    from fastapi import Depends, HTTPException, Request, status
+    from fastapi.params import Depends as DependsParam
 except Exception:  # pragma: no cover
+    def Depends(dependency: object = None) -> object:  # type: ignore[no-redef]
+        return dependency
+
+    class DependsParam:  # type: ignore[no-redef]
+        pass
+
     class HTTPException(Exception):
         def __init__(self, status_code: int, detail: object | None = None, headers: dict[str, str] | None = None) -> None:
             super().__init__(detail)
@@ -86,7 +93,7 @@ def _header_value(request: Any, header_name: str) -> str | None:
     return None
 
 
-async def get_current_context(request: Request | None = None) -> Optional[RequestContext]:
+async def get_current_context(request: Request) -> Optional[RequestContext]:
     """Return the current request context, checking request.state then ContextVar."""
 
     if request is not None:
@@ -97,16 +104,33 @@ async def get_current_context(request: Request | None = None) -> Optional[Reques
     return get_request_context()
 
 
-async def get_optional_context(request: Request | None = None) -> Optional[RequestContext]:
+async def get_optional_context(request: Request) -> Optional[RequestContext]:
     """Alias documenting optional request-context use at call sites."""
 
     return await get_current_context(request)
 
 
-async def require_authenticated(context: RequestContext | None = None) -> RequestContext:
+def _no_explicit_context() -> Optional[RequestContext]:
+    """Prevent FastAPI from treating direct-call context overrides as body fields."""
+
+    return None
+
+
+async def require_authenticated(
+    ctx: Optional[RequestContext] = Depends(get_current_context),
+    *,
+    context: Optional[RequestContext] = Depends(_no_explicit_context),
+) -> RequestContext:
     """Require an authenticated context with a valid, non-unknown auth source."""
 
-    ctx = context or await get_current_context()
+    if isinstance(ctx, DependsParam):
+        ctx = None
+    if isinstance(context, DependsParam):
+        context = None
+    if context is not None:
+        ctx = context
+    if ctx is None:
+        ctx = get_request_context()
     if ctx is None:
         raise _unauthorized("Authentication context is required")
     errors = ctx.validate()
