@@ -227,7 +227,46 @@ class TestRelationships:
                 evidence_text="Evidence",
                 source_url="https://example.com"
             )
-    
+
+    def test_relationship_constructs_with_canonical_fields_only(self):
+        """Regression: subject_id/object_id must backfill source_id/target_id."""
+        rel = Relationship(
+            subject_id="entity-a",
+            object_id="entity-b",
+            predicate=PredicateType.ENABLES,
+        )
+        assert rel.source_id == "entity-a"
+        assert rel.target_id == "entity-b"
+        assert rel.predicate == PredicateType.ENABLES
+
+    def test_relationship_preserves_explicit_predicate(self):
+        """Regression: canonical_predicate default must not stomp explicit predicate."""
+        rel = Relationship(
+            source_id="entity-a",
+            target_id="entity-b",
+            predicate=PredicateType.ENABLES,
+        )
+        assert rel.predicate == PredicateType.ENABLES
+        assert rel.canonical_predicate == PredicateType.ENABLES
+
+    def test_relationship_backfills_canonical_from_predicate(self):
+        """predicate should backfill canonical_predicate when canonical is absent."""
+        rel = Relationship(
+            source_id="entity-a",
+            target_id="entity-b",
+            predicate=PredicateType.REQUIRES,
+        )
+        assert rel.canonical_predicate == PredicateType.REQUIRES
+
+    def test_relationship_canonical_backfills_predicate_when_absent(self):
+        """canonical_predicate should backfill predicate when predicate is absent."""
+        rel = Relationship(
+            source_id="entity-a",
+            target_id="entity-b",
+            canonical_predicate=PredicateType.DRIVES,
+        )
+        assert rel.predicate == PredicateType.DRIVES
+
     def test_relationship_graph(self):
         """Test RelationshipGraph operations."""
         from value_fabric.layer2.models import RelationshipGraph

@@ -21,6 +21,7 @@ class PrometheusMetrics:
     def __init__(self, config: MetricsConfig | None = None) -> None:
         self.config = config or MetricsConfig()
         self._accumulated_costs: dict[tuple[str, str, str], float] = {}
+        self._token_counts: dict[tuple[str, str, str], int] = {}
 
     def record_llm_cost(
         self,
@@ -46,7 +47,6 @@ class PrometheusMetrics:
     ) -> None:
         """Record LLM token count for a provider/model/token_type combination."""
         key = (provider, model, token_type)
-        self._token_counts: dict[tuple[str, str, str], int] = getattr(self, "_token_counts", {})
         self._token_counts[key] = self._token_counts.get(key, 0) + count
 
     def get_metrics(self) -> str:
@@ -56,8 +56,7 @@ class PrometheusMetrics:
             lines.append(
                 f'vf_llm_cost_usd_total{{provider="{provider}",model="{model}",tenant_id="{tenant_id}"}} {cost}'
             )
-        token_counts: dict[tuple[str, str, str], int] = getattr(self, "_token_counts", {})
-        for (provider, model, token_type), count in token_counts.items():
+        for (provider, model, token_type), count in self._token_counts.items():
             lines.append(
                 f'vf_llm_tokens_total{{provider="{provider}",model="{model}",token_type="{token_type}"}} {count}'
             )

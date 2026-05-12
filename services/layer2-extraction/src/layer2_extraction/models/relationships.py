@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import uuid
 from enum import Enum
 from typing import Any
 
@@ -54,6 +56,24 @@ class Relationship(BaseModel):
     influence_weight: float | None = None
 
     @model_validator(mode="after")
+    def _sync_alias_fields(self) -> "Relationship":
+        if self.source_id and not self.subject_id:
+            self.subject_id = self.source_id
+        if self.target_id and not self.object_id:
+            self.object_id = self.target_id
+        canonical_set = "canonical_predicate" in self.model_fields_set
+        predicate_set = "predicate" in self.model_fields_set
+        if canonical_set and not predicate_set:
+            self.predicate = self.canonical_predicate
+        elif predicate_set and not canonical_set:
+            self.canonical_predicate = self.predicate
+        if self.subject_id and not self.source_id:
+            self.source_id = self.subject_id
+        if self.object_id and not self.target_id:
+            self.target_id = self.object_id
+        return self
+
+    @model_validator(mode="after")
     def _validate_not_empty(self) -> "Relationship":
         if not self.source_id or not self.source_id.strip():
             raise ValueError("source_id cannot be empty")
@@ -62,19 +82,15 @@ class Relationship(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _sync_alias_fields(self) -> "Relationship":
-        if self.source_id and not self.subject_id:
-            self.subject_id = self.source_id
-        if self.target_id and not self.object_id:
-            self.object_id = self.target_id
-        if self.canonical_predicate:
-            self.predicate = self.canonical_predicate
-        elif self.predicate:
-            self.canonical_predicate = self.predicate
-        if self.subject_id and not self.source_id:
-            self.source_id = self.subject_id
-        if self.object_id and not self.target_id:
-            self.target_id = self.object_id
+    def _validate_source_id_format(self) -> "Relationship":
+        if self.source_id:
+            hyphen_count = self.source_id.count("-")
+            if hyphen_count >= 2 and not re.match(
+                r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                self.source_id,
+                re.IGNORECASE,
+            ):
+                raise ValueError("source_id must be a valid UUID")
         return self
 
     def get_inverse(self) -> Relationship:
@@ -138,6 +154,12 @@ class RelationshipGraph(BaseModel):
 
     def get_by_predicate(self, predicate: PredicateType) -> list[Relationship]:
         return [r for r in self.relationships if r.predicate == predicate]
+
+    def get_outgoing(self, entity_id: str) -> list[Relationship]:
+        return [r for r in self.relationships if r.source_id == entity_id]
+
+    def get_incoming(self, entity_id: str) -> list[Relationship]:
+        return [r for r in self.relationships if r.target_id == entity_id]
 
     def to_dict(self) -> dict[str, Any]:
         return {"relationships": [r.model_dump() for r in self.relationships]}

@@ -80,6 +80,17 @@ class TestLayer2ProductionPersistenceFailClosed:
         with pytest.raises(RuntimeError, match="refusing SQLite URL"):
             build_pending_ingestion_store()
 
+    def test_production_with_valid_postgres_url_raises_not_implemented(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _clear_layer2_env(monkeypatch)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("LAYER2_DATABASE_URL", "postgresql://user:pass@db.internal:5432/layer2")
+
+        with pytest.raises(RuntimeError, match="production PostgreSQL pending ingestion store is not implemented"):
+            build_pending_ingestion_store()
+
     def test_development_keeps_sqlite_pending_ingestion_fallback(
         self,
         monkeypatch: pytest.MonkeyPatch,

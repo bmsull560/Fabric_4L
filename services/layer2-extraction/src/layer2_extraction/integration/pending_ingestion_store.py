@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -22,7 +22,7 @@ class PendingIngestionRecord(BaseModel):
     max_retries: int = 3
     next_retry_at: datetime | None = None
     last_error: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PendingIngestionStore(ABC):
@@ -131,7 +131,7 @@ class SqlitePendingIngestionStore(PendingIngestionStore):
                         retry_count=data.get("retry_count", 0),
                         next_retry_at=datetime.fromisoformat(data["next_retry_at"]) if data.get("next_retry_at") else None,
                         last_error=data.get("last_error"),
-                        created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.utcnow(),
+                        created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else datetime.now(UTC),
                     )
                 )
             return records
@@ -218,9 +218,9 @@ def build_pending_ingestion_store() -> PendingIngestionStore:
             raise RuntimeError("LAYER2_DATABASE_URL/DATABASE_URL must point to PostgreSQL in production/staging")
         if "sqlite" in db_url.lower():
             raise RuntimeError("refusing SQLite URL in production/staging for pending ingestion store")
-        return SqlitePendingIngestionStore()
+        raise RuntimeError("production PostgreSQL pending ingestion store is not implemented")
 
     sqlite_path = os.environ.get("PENDING_INGESTION_SQLITE_PATH")
     if sqlite_path:
         return SqlitePendingIngestionStore(sqlite_path)
-    return SqlitePendingIngestionStore()
+    return InMemoryPendingIngestionStore()
