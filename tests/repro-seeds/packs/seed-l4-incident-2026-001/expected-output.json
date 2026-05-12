@@ -1,0 +1,17 @@
+{
+  "_repro": {
+    "migration_revision": "layer4_20260421_add_checkpoint_index",
+    "nonce": 541630163,
+    "seed_id": "seed-l4-incident-2026-001"
+  },
+  "records": [
+    {
+      "email": "email_1@example.invalid",
+      "org": "org_1",
+      "owner": "person_1",
+      "record_id": "rec_1"
+    }
+  ],
+  "tenant_id": "tenant_alpha",
+  "workflow": "roi_pipeline"
+}

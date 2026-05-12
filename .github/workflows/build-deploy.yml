@@ -98,6 +98,7 @@ jobs:
           echo "sha_tag=${sha_tag}" >> "$GITHUB_OUTPUT"
 
           tags="${sha_tag}"
+          published_tag="sha-${GITHUB_SHA}"
           if [ -n "${RELEASE_TAG}" ]; then
             if ! [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
               echo "Release tag '${RELEASE_TAG}' is not semantic version-like"
@@ -105,7 +106,10 @@ jobs:
             fi
             tags="${tags}\n${image_base}:${RELEASE_TAG}"
             echo "release_tag=${image_base}:${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+            published_tag="${RELEASE_TAG}"
           fi
+
+          echo "published_tag=${published_tag}" >> "$GITHUB_OUTPUT"
 
           {
             echo "image_tags<<EOF"
@@ -196,20 +200,24 @@ jobs:
       - name: Emit build metadata artifact
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-          PUBLISHED_TAG: sha-${{ steps.sha.outputs.short }}
+<<<<<<< ours
+          PUBLISHED_REF: sha-${{ github.sha }}
+=======
+          PUBLISHED_TAG: ${{ steps.tags.outputs.published_tag }}
+>>>>>>> theirs
         run: |
           mkdir -p artifacts/build-metadata
           cat > "artifacts/build-metadata/${{ matrix.layer }}.json" <<JSON
           {
             "layer": "${{ matrix.layer }}",
             "image_digest": "${IMAGE_DIGEST}",
-            "published_tag": "${PUBLISHED_TAG}",
+            "published_ref": "${PUBLISHED_REF}",
             "source_commit_sha": "${{ github.sha }}"
           }
           JSON
 
       - name: Upload build metadata artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
         with:
           name: build-metadata-${{ matrix.layer }}
           path: artifacts/build-metadata/${{ matrix.layer }}.json

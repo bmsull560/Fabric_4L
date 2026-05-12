@@ -190,3 +190,7 @@ cosign download attestation \
 - [CycloneDX](https://cyclonedx.org/)
 - [SPDX](https://spdx.dev/)
 - [Kyverno](https://kyverno.io/)
+
+## Build/Promotion Metadata Contract Guard
+
+CI enforces a shared build metadata schema between `.github/workflows/build-deploy.yml` and `.github/workflows/environment-promotion.yml` via `scripts/ci/validate_promotion_artifact_contract.py` and `tests/ci/test_build_promotion_artifact_contract.py`. This prevents promotion tag/digest format drift by requiring the emitted `layer`, `image_digest`, `published_tag`, and `source_commit_sha` keys and by verifying promotion consumes digest references from the build artifact contract.

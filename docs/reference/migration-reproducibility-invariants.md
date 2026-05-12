@@ -163,7 +163,7 @@ Use this checklist during schema incidents, failed deploy rollback, or historica
    - `services/layer4-agents/migrations/versions/`
    - `services/layer5-ground-truth/src/layer5_ground_truth/migrations/versions/`
    - `services/layer6-benchmarks/migrations/versions/`
-5. Execute revision-history command for service (Alembic history or scripted inventory command).
+5. Execute revision-history command for service (Alembic `history`/`heads` or scripted inventory command).
 6. Determine target revision `X` and document rationale.
 7. Execute rollback/forward to `X` using service migration entrypoint.
 8. Run mandatory baseline rehydration/backfill for affected tables/entities.
@@ -187,3 +187,17 @@ This check verifies each maintained layer service exposes:
 - revision-history command coverage.
 
 Integrate this check in local verification and CI gates where reproducibility assurance is required.
+
+## 5. Service migration entrypoint and history command matrix
+
+Use these canonical commands for reproducibility checks and incident prep:
+
+| Service | Entrypoint check | Revision history check |
+|---|---|---|
+| Layer 1 (`services/layer1-ingestion`) | `alembic -c alembic.ini current --help` | `alembic -c alembic.ini history` and `alembic -c alembic.ini heads` |
+| Layer 2 (`services/layer2-extraction`) | `alembic -c alembic.ini current --help` | `alembic -c alembic.ini history` and `alembic -c alembic.ini heads` |
+| Layer 3 (`services/layer3-knowledge`) | migration scripts directory exists at `src/migrations/` | `python -c "from pathlib import Path; p=Path('src/migrations'); print(len([x for x in p.iterdir() if x.is_file()]))"` |
+| Layer 4 (`services/layer4-agents`) | `alembic -c alembic.ini current --help` | `alembic -c alembic.ini history` and `alembic -c alembic.ini heads` |
+| Layer 5 (`services/layer5-ground-truth`) | `alembic -c alembic.ini current --help` | `alembic -c alembic.ini history` and `alembic -c alembic.ini heads` |
+| Layer 6 (`services/layer6-benchmarks`) | migration scripts directory exists at `migrations/versions/` | `python -c "from pathlib import Path; p=Path('migrations/versions'); print(len([x for x in p.iterdir() if x.is_file()]))"` |
+

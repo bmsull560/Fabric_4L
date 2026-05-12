@@ -21,7 +21,19 @@
 - ⚠️ Route auth inventory script crashes due to syntax error in `checkpoints.py` (merge conflict).
 - ⚠️ Persistent: ~449 active deprecation/contract violations per `reports/CONTRACT_AUDIT_REPORT.md` (canonical compliance ~58%).
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 - ✅ Frontend remains stable: `apps/web` Vitest suite **118 files / 1,424 tests / 0 failures**.
+=======
+- 📌 Contract debt concentration is uneven: tenant-context propagation (~200) and UI-state progression (~90) account for ~65% of known violations; prioritize these two tracks first to move compliance efficiently toward the ≥85% target.
+>>>>>>> theirs
+=======
+- 📌 Contract debt concentration is uneven: tenant-context propagation (~200) and UI-state progression (~90) account for ~65% of known violations; prioritize these two tracks first to move compliance efficiently toward the ≥85% target.
+>>>>>>> theirs
+=======
+- 📌 Contract debt concentration is uneven: tenant-context propagation (~200) and UI-state progression (~90) account for ~65% of known violations; prioritize these two tracks first to move compliance efficiently toward the ≥85% target.
+>>>>>>> theirs
 =======
 - 📌 Contract debt concentration is uneven: tenant-context propagation (~200) and UI-state progression (~90) account for ~65% of known violations; prioritize these two tracks first to move compliance efficiently toward the ≥85% target.
 >>>>>>> theirs
@@ -36,8 +48,23 @@
 | CI/CD Enforcement | 🟡 | 51 workflows present; `prod-readiness.yml` profiles wired. `mandatory-security-regression` not yet a required status check; only 2 `continue-on-error: true` instances (1 advisory deprecation scan, 1 kind-cluster retry — acceptable). |
 | Infrastructure / K8s | 🟡 | H-08 hardening complete on 10 deployments; **image digest pinning still open** (uses `:latest` w/ `imagePullPolicy: Always`). |
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
 | Testing & Quality | � | Frontend 1,424/1,424 ✅; arch suite **5 failures** (was 3); Redis cache suite **14 failures (fixture bug)**; merge markers in `tests/contract/conftest.py` block contract tests. |
 | Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations. |
+=======
+| Testing & Quality | 🟡 | Frontend 1,424/1,424 ✅; arch suite **3 failures**; Redis cache suite **14 failures (fixture bug)**; contract layer tests skip-by-default without live services. |
+| Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations (highest debt: tenant-context ~200, UI-state ~90, tool-boundary ~46, DB isolation ~43, middleware/auth ~42). |
+>>>>>>> theirs
+=======
+| Testing & Quality | 🟡 | Frontend 1,424/1,424 ✅; arch suite **3 failures**; Redis cache suite **14 failures (fixture bug)**; contract layer tests skip-by-default without live services. |
+| Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations (highest debt: tenant-context ~200, UI-state ~90, tool-boundary ~46, DB isolation ~43, middleware/auth ~42). |
+>>>>>>> theirs
+=======
+| Testing & Quality | 🟡 | Frontend 1,424/1,424 ✅; arch suite **3 failures**; Redis cache suite **14 failures (fixture bug)**; contract layer tests skip-by-default without live services. |
+| Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations (highest debt: tenant-context ~200, UI-state ~90, tool-boundary ~46, DB isolation ~43, middleware/auth ~42). |
+>>>>>>> theirs
 =======
 | Testing & Quality | 🟡 | Frontend 1,424/1,424 ✅; arch suite **3 failures**; Redis cache suite **14 failures (fixture bug)**; contract layer tests skip-by-default without live services. |
 | Contracts | 🟡 | OpenAPI specs valid (7/7); 12 ESLint rules at `error`; canonical contract compliance ~58%; ~449 tracked violations (highest debt: tenant-context ~200, UI-state ~90, tool-boundary ~46, DB isolation ~43, middleware/auth ~42). |

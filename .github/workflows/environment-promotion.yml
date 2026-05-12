@@ -46,15 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
     outputs:
-<<<<<<< ours
-<<<<<<< ours
-      image_ref: ${{ steps.extract-tag.outputs.image_ref }}
-=======
-      image_tag: ${{ steps.metadata.outputs.image_tag }}
->>>>>>> theirs
-=======
-      image_tag: ${{ steps.metadata.outputs.image_tag }}
->>>>>>> theirs
+      image_ref: ${{ steps.metadata.outputs.image_ref }}
       can_promote: ${{ steps.check-promotion.outputs.can_promote }}
     steps:
       - name: Download build metadata artifacts
@@ -70,69 +62,65 @@ jobs:
       - name: Resolve promotion metadata
         id: metadata
         run: |
+          set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ref="${{ github.event.inputs.image_ref }}"
 <<<<<<< ours
-<<<<<<< ours
-            echo "image_ref=${{ github.event.inputs.image_ref }}" >> $GITHUB_OUTPUT
             echo "Promoting manually to ${{ github.event.inputs.environment }}"
           else
-            # Extract from triggering workflow
-            echo "image_ref=sha-${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
-            echo "Auto-promoting build sha-${{ github.event.workflow_run.head_sha }}"
+            test -d artifacts/build-metadata
+            python3 scripts/ci/validate_promotion_artifact_contract.py               --build-workflow .github/workflows/build-deploy.yml               --promotion-workflow .github/workflows/environment-promotion.yml               --metadata-dir artifacts/build-metadata
+            first_file=$(find artifacts/build-metadata -name '*.json' | sort | head -n1)
+            ref=$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d.get("published_ref",""))' "$first_file")
+            if [ -z "$ref" ]; then
+              ref="sha-${{ github.event.workflow_run.head_sha }}"
+            fi
+            echo "Auto-promoting build ${ref}"
           fi
+
+=======
+            echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
+            echo "Promoting manually to ${{ github.event.inputs.environment }} using ${ref}"
+            exit 0
+          fi
+
+          test -d artifacts/build-metadata
+          python3 scripts/ci/validate_promotion_artifact_contract.py             --build-workflow .github/workflows/build-deploy.yml             --promotion-workflow .github/workflows/environment-promotion.yml             --metadata-dir artifacts/build-metadata
+          first_file=$(find artifacts/build-metadata -name '*.json' | sort | head -n1)
+          ref=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["published_tag"])' "$first_file")
+          echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
+          echo "Auto-promoting immutable tag ${ref} from build metadata artifacts"
 
       - name: Validate immutable image reference
         run: |
           set -euo pipefail
-          ref="${{ steps.extract-tag.outputs.image_ref }}"
+          ref="${{ steps.metadata.outputs.image_ref }}"
+>>>>>>> theirs
           if [[ "$ref" == "latest" ]] || [[ "$ref" =~ ^(main|master|develop|dev|staging|production|stable|edge|nightly)$ ]]; then
             echo "Mutable image reference is forbidden: $ref"
             exit 1
           fi
-          if [[ ! "$ref" =~ ^sha-[0-9a-f]{40}$ ]] && [[ ! "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] && [[ ! "$ref" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "Image reference must be sha-<40>, semver release tag, or sha256:<64>: $ref"
+          if [[ ! "$ref" =~ ^sha-[0-9a-f]{40}$ ]] && [[ ! "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Image reference must be immutable (sha-<40> or semver release tag): $ref"
             exit 1
-=======
-            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-            exit 0
->>>>>>> theirs
-=======
-            echo "image_tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
-            exit 0
->>>>>>> theirs
           fi
-          test -d artifacts/build-metadata
-          python3 scripts/ci/validate_promotion_artifact_contract.py \
-            --build-workflow .github/workflows/build-deploy.yml \
-            --promotion-workflow .github/workflows/environment-promotion.yml \
-            --metadata-dir artifacts/build-metadata
-          first_file=$(find artifacts/build-metadata -name '*.json' | sort | head -n1)
-          tag=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["published_tag"])' "$first_file")
-          echo "image_tag=${tag}" >> $GITHUB_OUTPUT
+<<<<<<< ours
+
+          echo "image_ref=$ref" >> $GITHUB_OUTPUT
+=======
+>>>>>>> theirs
 
       - name: Verify images exist in registry by digest
         if: github.event_name != 'workflow_dispatch'
         run: |
 <<<<<<< ours
-<<<<<<< ours
-          for layer in $LAYERS; do
-            ref="${{ steps.extract-tag.outputs.image_ref }}"
-            if [[ "$ref" == sha256:* ]]; then
-              image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}@${ref}"
-            else
-              image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:${ref}"
-            fi
 =======
-=======
+          set -euo pipefail
 >>>>>>> theirs
           for metadata_file in artifacts/build-metadata/*.json; do
             layer=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["layer"])' "$metadata_file")
             digest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["image_digest"])' "$metadata_file")
             image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}@${digest}"
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
             if ! docker manifest inspect "$image" > /dev/null 2>&1; then
               echo "❌ Image digest not found: $image"
               exit 1

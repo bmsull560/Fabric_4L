@@ -72,7 +72,7 @@ jobs:
             exit 1
           fi
           if [[ ! "$ref" =~ ^sha-[0-9a-f]{40}$ ]] && [[ ! "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] && [[ ! "$ref" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "Image reference must be sha-<40>, semver release tag, or sha256:<64>: $ref"
+            echo "Image reference must be sha256 digest, sha-<40>, or signed semver release tag: $ref"
             exit 1
           fi
 

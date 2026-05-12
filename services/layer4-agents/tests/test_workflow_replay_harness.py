@@ -20,6 +20,16 @@ class _AuditSink:
         self.records.append((action, details))
 
 
+class _InMemoryEventStream:
+    def __init__(self, events: list[ReplayEventEnvelopeV1]) -> None:
+        self._events = events
+        self.calls: list[tuple[str, str, str]] = []
+
+    def list_events(self, *, tenant_id: str, workflow_id: str, domain: str = "layer4.workflow_state") -> list[ReplayEventEnvelopeV1]:
+        self.calls.append((tenant_id, workflow_id, domain))
+        return list(self._events)
+
+
 def _evt(event_id: str, event_type: str, ts: int, payload: dict | None = None) -> ReplayEventEnvelopeV1:
     return ReplayEventEnvelopeV1(
         event_id=event_id,
@@ -71,3 +81,25 @@ def test_replay_rejects_cross_tenant_events() -> None:
 
     with pytest.raises(PermissionError, match="Cross-tenant replay"):
         harness.replay(workflow_id="wf-1", workflow_type=WorkflowType.ROI_CALCULATOR, events=[bad], authz=authz)
+
+
+def test_replay_from_stream_uses_tenant_scoped_query_and_is_deterministic() -> None:
+    sink = _AuditSink()
+    harness = Layer4WorkflowReplayHarness(sink)
+    authz = ReplayAuthorizationContext(
+        tenant_id="tenant-a", actor="replay-bot", roles=("replay:execute",), environment="test"
+    )
+    events = [
+        _evt("e2", "workflow.started", 2),
+        _evt("e1", "workflow.created", 1),
+        _evt("e3", "workflow.completed", 3, {"result": "ok"}),
+    ]
+    stream = _InMemoryEventStream(events)
+
+    result = harness.replay_from_stream(
+        workflow_id="wf-stream", workflow_type=WorkflowType.ROI_CALCULATOR, stream=stream, authz=authz
+    )
+
+    assert stream.calls == [("tenant-a", "wf-stream", "layer4.workflow_state")]
+    assert result.applied_event_ids == ["e1", "e2", "e3"]
+    assert result.state.status == WorkflowStatus.COMPLETED

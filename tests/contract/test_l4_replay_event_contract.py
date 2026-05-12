@@ -54,3 +54,23 @@ def test_replay_event_schema_version_is_backward_compatible_with_1x() -> None:
 
     errors = sorted(validator.iter_errors(event_v11), key=lambda e: e.path)
     assert not errors, f"Expected v1.1 event to be backward compatible, got: {[e.message for e in errors]}"
+
+
+def test_replay_event_schema_rejects_non_backward_compatible_major_version() -> None:
+    validator = _validator()
+    event_v2 = {
+        "event_id": "evt-2026-2001",
+        "tenant_id": "tenant-1",
+        "actor": "user:auditor",
+        "timestamp": "2026-02-01T12:00:00Z",
+        "correlation_id": "corr-abc",
+        "schema_version": "2.0",
+        "domain": "layer4.workflow_state",
+        "event_type": "workflow.started",
+        "payload_pointer": "vault://replay/evt-2026-2001",
+        "payload_checksum": "sha256:abcd",
+        "payload_redacted": {"current_node": "start"},
+    }
+
+    errors = sorted(validator.iter_errors(event_v2), key=lambda e: e.path)
+    assert errors

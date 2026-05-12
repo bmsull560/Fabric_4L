@@ -63,6 +63,20 @@ Initial harness implementation is provided at Layer 4 service boundary:
 - `services/layer4-agents/src/workflows/replay.py`
 
 It replays `layer4.workflow_state` events into `BaseAgentState` deterministically for non-production use.
+The harness now exposes a repository interface boundary (`ReplayEventStream`) via
+`replay_from_stream(...)` so service adapters can provide immutable event streams
+without coupling replay logic to one storage backend.
+
+### Storage / retention boundary matrix
+
+| Layer | Replayable domains | Primary retention boundary | Archive boundary |
+| --- | --- | --- | --- |
+| Layer 1 | `layer1.ingestion_job` (future) | 30-day hot retention for operational debugging | Cold archive per compliance profile |
+| Layer 2 | `layer2.extraction_batch` (future) | 60-day hot retention for extraction incident replay | Cold archive with provenance chain |
+| Layer 3 | `layer3.graph_mutation` (future) | 90-day hot retention for index/graph forensic replay | Cold archive with graph snapshot references |
+| Layer 4 | `layer4.workflow_state`, `layer4.business_object`, `layer4.integration_callback` | **Minimum 90-day hot retention** for operational replay | Cold archive with pointer/checksum integrity |
+| Layer 5 | `layer5.truth_object` | **Minimum 180-day hot retention** for audit validation windows | Cold archive for governance hold requirements |
+| Layer 6 | `layer6.benchmark_run` (future) | 90-day hot retention for benchmark replayability | Cold archive by dataset lineage policy |
 
 ### 5) Compatibility and deterministic replay testing
 

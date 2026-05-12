@@ -16,6 +16,7 @@ Required files:
 - `manifest.json`
 - `mapping.json`
 - `payload.json`
+- `expected-output.json`
 
 ## Step 2: Fill the manifest contract
 
@@ -40,7 +41,22 @@ Follow `scripts/repro-seeds/anonymization-contract.md`:
 - preserve relational integrity across joins/foreign keys
 - never include real tenant identifiers
 
-## Step 4: Verify deterministic replay and tenant safety
+## Step 4: Generate and pin expected output
+
+Run the runner once and copy the applied output into `expected-output.json`:
+
+```bash
+python scripts/repro-seeds/runner.py \
+  --pack-dir tests/repro-seeds/packs/<seed_id> \
+  --migration-revision <required_migration_revision> \
+  --output-dir /tmp/repro-seed-output
+cp /tmp/repro-seed-output/<seed_id>.applied.json \
+  tests/repro-seeds/packs/<seed_id>/expected-output.json
+```
+
+This creates a stable regression artifact used by CI drift checks.
+
+## Step 5: Verify deterministic replay and tenant safety
 
 Run:
 
@@ -48,9 +64,15 @@ Run:
 python scripts/repro-seeds/validate_seed_packs.py
 ```
 
-This enforces deterministic output and tenant-safety checks for all packs.
+This enforces:
 
-## Step 5: Replay one seed against a target migration revision
+- required manifest fields
+- deterministic output (hash stable across repeated runs)
+- exact expected-output match
+- tenant-scope assertions
+- payload scrub checks
+
+## Step 6: Replay one seed after migration to target revision
 
 Run:
 
@@ -58,10 +80,11 @@ Run:
 python scripts/repro-seeds/runner.py \
   --pack-dir tests/repro-seeds/packs/<seed_id> \
   --migration-revision <required_migration_revision> \
+  --migrate-cmd "alembic upgrade {revision}" \
   --output-dir /tmp/repro-seed-output
 ```
 
-If revision mismatches, runner fails closed.
+If revision mismatches, runner fails closed before applying payload.
 
 ## CI gate
 

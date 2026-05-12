@@ -189,17 +189,15 @@ jobs:
           done
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-          cache-dependency-path: apps/web/pnpm-lock.yaml
+        run: |
+          node --version
+          pnpm --version
 
       - name: Verify frontend lockfile and install from lock graph
         run: pnpm --dir apps/web install --frozen-lockfile
+
+      - name: Verify lockfile did not drift during install
+        run: git diff --exit-code -- apps/web/pnpm-lock.yaml
 
       - name: Compute frontend lockfile hash
         id: web_lock_hash
@@ -210,9 +208,25 @@ jobs:
       - name: Audit Node.js dependencies (pnpm)
         run: |
 <<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
           cd apps/web
           pnpm audit --json > ../frontend-audit.json || true
           cd ..
+=======
+          pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
+>>>>>>> theirs
+=======
+          pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
+>>>>>>> theirs
+=======
+          pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
+>>>>>>> theirs
+=======
+          pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
+>>>>>>> theirs
 =======
           pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
 >>>>>>> theirs

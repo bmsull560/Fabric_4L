@@ -16,7 +16,7 @@ class ServiceMigrationContract:
     service_dir: Path
     required_paths: tuple[Path, ...]
     entrypoint_command: tuple[str, ...]
-    history_command: tuple[str, ...]
+    history_commands: tuple[tuple[str, ...], ...]
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -27,28 +27,28 @@ CONTRACTS: tuple[ServiceMigrationContract, ...] = (
         service_dir=Path("services/layer1-ingestion"),
         required_paths=(Path("alembic.ini"), Path("migrations/env.py"), Path("migrations/versions")),
         entrypoint_command=("alembic", "-c", "alembic.ini", "current", "--help"),
-        history_command=("alembic", "-c", "alembic.ini", "history", "--help"),
+        history_commands=(("alembic", "-c", "alembic.ini", "history", "--help"), ("alembic", "-c", "alembic.ini", "heads", "--help")),
     ),
     ServiceMigrationContract(
         name="layer2-extraction",
         service_dir=Path("services/layer2-extraction"),
         required_paths=(Path("alembic.ini"), Path("migrations/env.py"), Path("migrations/versions")),
         entrypoint_command=("alembic", "-c", "alembic.ini", "current", "--help"),
-        history_command=("alembic", "-c", "alembic.ini", "history", "--help"),
+        history_commands=(("alembic", "-c", "alembic.ini", "history", "--help"), ("alembic", "-c", "alembic.ini", "heads", "--help")),
     ),
     ServiceMigrationContract(
         name="layer3-knowledge",
         service_dir=Path("services/layer3-knowledge"),
         required_paths=(Path("src/migrations"),),
         entrypoint_command=("python", "-m", "pip", "--version"),
-        history_command=("python", "-c", "from pathlib import Path; p=Path('src/migrations'); files=sorted(x.name for x in p.iterdir() if x.is_file()); print(len(files))"),
+        history_commands=(("python", "-c", "from pathlib import Path; p=Path('src/migrations'); files=sorted(x.name for x in p.iterdir() if x.is_file()); print(len(files))"),),
     ),
     ServiceMigrationContract(
         name="layer4-agents",
         service_dir=Path("services/layer4-agents"),
         required_paths=(Path("alembic.ini"), Path("migrations/env.py"), Path("migrations/versions")),
         entrypoint_command=("alembic", "-c", "alembic.ini", "current", "--help"),
-        history_command=("alembic", "-c", "alembic.ini", "history", "--help"),
+        history_commands=(("alembic", "-c", "alembic.ini", "history", "--help"), ("alembic", "-c", "alembic.ini", "heads", "--help")),
     ),
     ServiceMigrationContract(
         name="layer5-ground-truth",
@@ -59,14 +59,14 @@ CONTRACTS: tuple[ServiceMigrationContract, ...] = (
             Path("src/layer5_ground_truth/migrations/versions"),
         ),
         entrypoint_command=("alembic", "-c", "alembic.ini", "current", "--help"),
-        history_command=("alembic", "-c", "alembic.ini", "history", "--help"),
+        history_commands=(("alembic", "-c", "alembic.ini", "history", "--help"), ("alembic", "-c", "alembic.ini", "heads", "--help")),
     ),
     ServiceMigrationContract(
         name="layer6-benchmarks",
         service_dir=Path("services/layer6-benchmarks"),
         required_paths=(Path("migrations/versions"),),
         entrypoint_command=("python", "-m", "pip", "--version"),
-        history_command=("python", "-c", "from pathlib import Path; p=Path('migrations/versions'); files=sorted(x.name for x in p.iterdir() if x.is_file()); print(len(files))"),
+        history_commands=(("python", "-c", "from pathlib import Path; p=Path('migrations/versions'); files=sorted(x.name for x in p.iterdir() if x.is_file()); print(len(files))"),),
     ),
 )
 
@@ -110,15 +110,16 @@ def main() -> int:
                 f"stderr: {entrypoint_result.stderr.strip()}"
             )
 
-        history_result = _run_command(contract.history_command, service_root)
-        if history_result.returncode != 0:
-            errors.append(
-                f"{contract.name}: history command failed: {' '.join(contract.history_command)}\n"
-                f"stdout: {history_result.stdout.strip()}\n"
-                f"stderr: {history_result.stderr.strip()}"
-            )
-        elif not history_result.stdout.strip():
-            errors.append(f"{contract.name}: history command returned no migration revisions")
+        for history_command in contract.history_commands:
+            history_result = _run_command(history_command, service_root)
+            if history_result.returncode != 0:
+                errors.append(
+                    f"{contract.name}: history command failed: {' '.join(history_command)}\n"
+                    f"stdout: {history_result.stdout.strip()}\n"
+                    f"stderr: {history_result.stderr.strip()}"
+                )
+            elif not history_result.stdout.strip():
+                errors.append(f"{contract.name}: history command returned no migration revisions: {' '.join(history_command)}")
 
     if errors:
         print("❌ Migration entrypoint contract failed:\n")

@@ -9,6 +9,7 @@ const packageJsonPath = path.join(repoRoot, 'package.json');
 const lockfilePath = path.join(repoRoot, 'package-lock.json');
 const policyScanRoots = ['.github/workflows', 'Makefile', 'scripts'];
 const forbiddenPackageManagerPattern = /(?<!p)\bnpm\s+(?:ci|install)\b|\byarn\s+install\b/;
+const forbiddenWorkflowPackageManagerPattern = /\bnpm\b|\byarn\b/;
 
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
@@ -56,6 +57,13 @@ for (const root of policyScanRoots) {
     const text = fs.readFileSync(file, 'utf8');
     for (const [index, line] of text.split(/\r?\n/).entries()) {
       if (forbiddenPackageManagerPattern.test(line)) {
+        violations.push(`${relative}:${index + 1}: ${line.trim()}`);
+      }
+
+      const isWorkflowYaml =
+        relative.startsWith('.github/workflows/') &&
+        (relative.endsWith('.yml') || relative.endsWith('.yaml'));
+      if (isWorkflowYaml && forbiddenWorkflowPackageManagerPattern.test(line)) {
         violations.push(`${relative}:${index + 1}: ${line.trim()}`);
       }
     }

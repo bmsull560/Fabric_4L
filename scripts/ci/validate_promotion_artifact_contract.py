@@ -5,12 +5,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 REQUIRED_KEYS = {"layer", "image_digest", "published_tag", "source_commit_sha"}
-BUILD_MARKER = "build-metadata-${{ matrix.layer }}"
-PROMOTION_MARKER = "build-metadata-*"
+BUILD_MARKERS = (
+    "build-metadata-${{ matrix.layer }}",
+    '"image_digest"',
+    '"published_tag"',
+    '"source_commit_sha"',
+)
+PROMOTION_MARKERS = (
+    "pattern: build-metadata-*",
+    'json.load(open(sys.argv[1]))["image_digest"]',
+    'json.load(open(sys.argv[1]))["published_tag"]',
+)
+SEMVER_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,15 +37,21 @@ def fail(msg: str) -> None:
     raise SystemExit(1)
 
 
+def _published_tag_valid(value: str) -> bool:
+    return value.startswith("sha-") or bool(SEMVER_RE.match(value))
+
+
 def main() -> int:
     args = parse_args()
     build_text = args.build_workflow.read_text(encoding="utf-8")
     promo_text = args.promotion_workflow.read_text(encoding="utf-8")
 
-    if BUILD_MARKER not in build_text:
-        fail(f"Missing build artifact marker in {args.build_workflow}: {BUILD_MARKER}")
-    if PROMOTION_MARKER not in promo_text:
-        fail(f"Missing promotion artifact pattern in {args.promotion_workflow}: {PROMOTION_MARKER}")
+    for marker in BUILD_MARKERS:
+        if marker not in build_text:
+            fail(f"Missing build artifact contract marker in {args.build_workflow}: {marker}")
+    for marker in PROMOTION_MARKERS:
+        if marker not in promo_text:
+            fail(f"Missing promotion artifact contract marker in {args.promotion_workflow}: {marker}")
 
     if args.metadata_dir is not None:
         files = sorted(args.metadata_dir.glob("*.json"))
@@ -47,7 +64,7 @@ def main() -> int:
                 fail(f"{path} missing keys: {sorted(missing)}")
             if not str(payload["image_digest"]).startswith("sha256:"):
                 fail(f"{path} has invalid image_digest {payload['image_digest']!r}")
-            if not str(payload["published_tag"]).startswith("sha-"):
+            if not _published_tag_valid(str(payload["published_tag"])):
                 fail(f"{path} has invalid published_tag {payload['published_tag']!r}")
             if len(str(payload["source_commit_sha"])) != 40:
                 fail(f"{path} has invalid source_commit_sha length")

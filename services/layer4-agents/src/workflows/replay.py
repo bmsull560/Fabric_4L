@@ -50,6 +50,15 @@ class ReplayAuditSink(Protocol):
         """Record an auditable replay activity entry."""
 
 
+class ReplayEventStream(Protocol):
+    """Repository boundary for replay event retrieval."""
+
+    def list_events(
+        self, *, tenant_id: str, workflow_id: str, domain: str = "layer4.workflow_state"
+    ) -> list[ReplayEventEnvelopeV1]:
+        """Return immutable replay events for the requested tenant/workflow/domain."""
+
+
 @dataclass(frozen=True)
 class ReplayResult:
     state: BaseAgentState
@@ -100,6 +109,19 @@ class Layer4WorkflowReplayHarness:
             },
         )
         return ReplayResult(state=state, applied_event_ids=applied)
+
+    def replay_from_stream(
+        self,
+        *,
+        workflow_id: str,
+        workflow_type: WorkflowType,
+        stream: ReplayEventStream,
+        authz: ReplayAuthorizationContext,
+        domain: str = "layer4.workflow_state",
+    ) -> ReplayResult:
+        """Rebuild state from the service-boundary event stream interface."""
+        events = stream.list_events(tenant_id=authz.tenant_id, workflow_id=workflow_id, domain=domain)
+        return self.replay(workflow_id=workflow_id, workflow_type=workflow_type, events=events, authz=authz)
 
     def _authorize(self, *, authz: ReplayAuthorizationContext) -> None:
         if authz.environment not in self.ALLOWED_ENVIRONMENTS:
