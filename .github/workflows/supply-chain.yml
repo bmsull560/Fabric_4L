@@ -71,7 +71,7 @@ jobs:
         # Never exemptible: Security scans must not soft-fail
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sbom-${{ matrix.layer }}-${{ env.IMAGE_TAG }}
           path: |
@@ -129,7 +129,7 @@ jobs:
           path: "${{ matrix.layer }}-subject.txt"
 
       - name: Upload provenance
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: provenance-${{ matrix.layer }}-${{ env.IMAGE_TAG }}
           path: "*.intoto.jsonl"
@@ -216,7 +216,7 @@ jobs:
           pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
 
       - name: Upload audit results
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: dependency-audit-${{ github.sha }}-${{ steps.web_lock_hash.outputs.lock_hash }}
           path: "*-audit.json"
@@ -306,7 +306,7 @@ jobs:
           cat supply-chain-report.md
 
       - name: Upload report
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: supply-chain-report-${{ env.IMAGE_TAG }}
           path: supply-chain-report.md

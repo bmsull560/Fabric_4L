@@ -222,7 +222,7 @@ jobs:
             --timeout=120
 
       - name: Upload smoke test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: security-smoke-results
@@ -364,7 +364,7 @@ jobs:
             || true
 
       - name: Upload full test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: security-full-results

@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload smoke report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-report-${{ github.run_id }}
           path: ${{ github.workspace }}/artifacts/smoke-report-*.json
@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: integration-failure-logs-${{ github.run_id }}
           path: ${{ github.workspace }}/artifacts/logs/
@@ -177,7 +177,7 @@ jobs:
 
       - name: Upload E2E results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-backend-integrated-results-${{ github.run_id }}
           path: |

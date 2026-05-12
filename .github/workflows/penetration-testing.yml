@@ -101,7 +101,7 @@ jobs:
             --use-docker || true
 
       - name: Upload ZAP results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zap-scan-results
           path: |
@@ -152,7 +152,7 @@ jobs:
             --timeout 1200 || true
 
       - name: Upload Nikto results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nikto-scan-results
           path: |
@@ -214,7 +214,7 @@ jobs:
           EOF
 
       - name: Upload consolidated report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: penetration-test-report-${{ github.run_id }}
           path: |

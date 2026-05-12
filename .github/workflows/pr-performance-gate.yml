@@ -133,7 +133,7 @@ jobs:
             tests/performance/k6/l2_l3_l4_critical_paths.js
 
       - name: Upload PR results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pr-performance-results
           path: artifacts/performance/pr-summary.json
@@ -244,7 +244,7 @@ jobs:
           path: new-baseline/
 
       - name: Update baseline artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: baseline-performance
           path: new-baseline/pr-summary.json

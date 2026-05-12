@@ -97,7 +97,7 @@ jobs:
           EOF
       
       - name: Upload baseline
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pre-chaos-health
           path: chaos-results/pre-chaos-health.json
@@ -141,7 +141,7 @@ jobs:
           kubectl describe chaosengine pod-delete-all-layers -n ${{ env.TARGET_NAMESPACE }} > chaos-results/pod-delete/engine-describe.txt || true
       
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chaos-pod-delete-results
           path: chaos-results/pod-delete/
@@ -173,7 +173,7 @@ jobs:
           kubectl get chaosresults -n ${{ env.TARGET_NAMESPACE }} -o yaml > chaos-results/network-partition/chaosresults.yaml || true
       
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chaos-network-partition-results
           path: chaos-results/network-partition/
@@ -215,7 +215,7 @@ jobs:
           kubectl get chaosresults -n ${{ env.TARGET_NAMESPACE }} -o yaml > chaos-results/${{ matrix.stress_type }}-stress/chaosresults.yaml || true
       
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chaos-${{ matrix.stress_type }}-stress-results
           path: chaos-results/${{ matrix.stress_type }}-stress/
@@ -248,7 +248,7 @@ jobs:
           kubectl get hpa -n ${{ env.TARGET_NAMESPACE }} > chaos-results/autoscaler/hpa-status.txt || true
       
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chaos-autoscaler-results
           path: chaos-results/autoscaler/
@@ -305,7 +305,7 @@ jobs:
           EOF
       
       - name: Upload validation results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chaos-validation-report
           path: chaos-results/

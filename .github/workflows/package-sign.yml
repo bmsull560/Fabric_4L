@@ -148,7 +148,7 @@ jobs:
           echo "SPDX SBOM generated: $OUTPUT"
 
       - name: Upload SBOM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-${{ matrix.layer }}
           path: |
@@ -204,7 +204,7 @@ jobs:
           ls -la *.intoto.jsonl || echo "Provenance files in directory"
 
       - name: Upload provenance artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: provenance-${{ matrix.layer }}
           path: |
@@ -247,7 +247,7 @@ jobs:
           cosign sign-blob --yes "$BUNDLE" --output-signature="$BUNDLE.sig"
 
       - name: Upload signed bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: attestations-${{ env.IMAGE_TAG }}
           path: |

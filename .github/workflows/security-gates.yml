@@ -148,7 +148,7 @@ jobs:
 
       - name: Upload SBOM and policy artifacts
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: sbom-${{ matrix.artifact.name }}
           path: |
@@ -229,7 +229,7 @@ jobs:
 
       - name: Upload DAST evidence artifacts
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: dast-zap-reports
           path: zap-reports/
@@ -285,7 +285,7 @@ jobs:
 
       - name: Upload bandit report
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: bandit-report-${{ matrix.layer }}
           path: services/${{ matrix.layer }}/bandit-report.json
@@ -322,7 +322,7 @@ jobs:
 
       - name: Upload pip-audit report
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: pip-audit-report-${{ matrix.layer }}
           path: services/${{ matrix.layer }}/pip-audit-report.json
@@ -388,7 +388,7 @@ jobs:
 
       - name: Upload audit report
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: frontend-security-audit
           path: apps/web/pnpm-audit-report.json
@@ -512,7 +512,7 @@ jobs:
           } > security-evidence/SECURITY_EVIDENCE_MANIFEST.md
 
       - name: Upload release evidence artifact
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: release-security-evidence-${{ github.sha }}
           path: security-evidence/
@@ -567,7 +567,7 @@ jobs:
           test -s sbom-${{ matrix.layer }}.cdx.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: sbom-${{ matrix.layer }}
           path: sbom-${{ matrix.layer }}.cdx.json
@@ -642,7 +642,7 @@ jobs:
 
       - name: Upload mandatory security evidence
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: mandatory-security-regression-${{ github.sha }}
           path: |
