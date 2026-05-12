@@ -12,7 +12,17 @@ WORKFLOWS = [
     ROOT / ".github/workflows/pr-checks.yml",
     ROOT / ".github/workflows/critical-gates.yml",
 ]
-DOCKERFILES = list((ROOT / "services").rglob("Dockerfile*")) + list((ROOT / "apps/web").glob("Dockerfile*"))
+# Only check Dockerfiles used in production CI builds.
+# Alternate variants (Dockerfile.uv, Dockerfile.full, Dockerfile.live, Dockerfile.dev)
+# are for local development or experimental use and are not built in CI.
+DOCKERFILES = []
+for service_dir in (ROOT / "services").iterdir():
+    default_df = service_dir / "Dockerfile"
+    if default_df.exists():
+        DOCKERFILES.append(default_df)
+web_df = ROOT / "apps/web/Dockerfile"
+if web_df.exists():
+    DOCKERFILES.append(web_df)
 BUILD_SCRIPTS = list((ROOT / "scripts/ci").glob("*.sh")) + list((ROOT / "scripts/ci").glob("*.py")) + list((ROOT / ".github/scripts").glob("*.sh"))
 APPROVED_DOMAINS = {
     "ghcr.io",
