@@ -20,7 +20,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-<<<<<<< ours
           REQUIRED_CHECKS=(
             "mandatory-security-regression"
             "contract-compliance"
@@ -78,16 +77,3 @@ jobs:
 
             echo "✅ Branch protection checks verified for $BRANCH"
           done
-=======
-          BRANCH="main"
-          REPO="${{ github.repository }}"
-          RESPONSE_FILE=$(mktemp)
-
-          curl -fsSL -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/$REPO/branches/$BRANCH/protection" \
-            -o "$RESPONSE_FILE"
-
-          python scripts/ci/validate_branch_protection_checks.py \
-            --config config/ci/required-status-checks.json \
-            --api-response-file "$RESPONSE_FILE"
->>>>>>> theirs

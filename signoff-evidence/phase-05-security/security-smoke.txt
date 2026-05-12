@@ -1,0 +1,45 @@
+EXIT_CODE: 0
+STDOUT:
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default'
+Using --randomly-seed=296183761
+rootdir: C:\Users\BBB\Fabric_4L
+configfile: pytest.ini
+plugins: anyio-4.13.0, Faker-40.15.0, hypothesis-6.152.4, langsmith-0.8.0, asyncio-1.3.0, cov-7.1.0, randomly-4.1.0, timeout-2.4.0, xdist-3.8.0, respx-0.23.1, schemathesis-4.17.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 60.0s
+timeout method: thread
+timeout func_only: False
+collecting ... collected 14 items
+
+tests/security/test_security_smoke.py::TestCriticalAccessControl::test_mass_assignment_blocked SKIPPED [  7%]
+tests/security/test_security_smoke.py::TestCriticalAccessControl::test_read_only_cannot_write SKIPPED [ 14%]
+tests/security/test_security_smoke.py::TestCriticalRBAC::test_standard_user_blocked_from_admin_endpoint SKIPPED [ 21%]
+tests/security/test_security_smoke.py::TestCriticalRBAC::test_jwt_tampering_rejected SKIPPED [ 28%]
+tests/security/test_security_smoke.py::TestCriticalRBAC::test_admin_user_can_access_admin_endpoints SKIPPED [ 35%]
+tests/security/test_security_smoke.py::TestCriticalTenantIsolation::test_idor_blocked_basic SKIPPED [ 42%]
+tests/security/test_security_smoke.py::TestCriticalTenantIsolation::test_user_cannot_spoof_tenant_header SKIPPED [ 50%]
+tests/security/test_security_smoke.py::TestCriticalMisconfiguration::test_debug_endpoints_not_exposed SKIPPED [ 57%]
+tests/security/test_security_smoke.py::TestCriticalMisconfiguration::test_error_no_stack_traces SKIPPED [ 64%]
+tests/security/test_security_smoke.py::TestCriticalMisconfiguration::test_security_headers_present SKIPPED [ 71%]
+tests/security/test_security_smoke.py::TestCriticalCryptographic::test_expired_token_rejected SKIPPED [ 78%]
+tests/security/test_security_smoke.py::TestCriticalCryptographic::test_jwt_uses_secure_algorithm SKIPPED [ 85%]
+tests/security/test_security_smoke.py::TestCriticalInjection::test_xss_payloads_sanitized SKIPPED [ 92%]
+tests/security/test_security_smoke.py::TestCriticalInjection::test_sql_injection_blocked_in_query_params SKIPPED [100%]
+
+============================== warnings summary ===============================
+..\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263
+  C:\Users\BBB\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+..\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263
+  C:\Users\BBB\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 14 skipped, 2 warnings in 0.63s =======================
+
+STDERR:
+

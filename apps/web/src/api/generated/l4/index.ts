@@ -229,7 +229,6 @@ export interface paths {
          *     Example:
          *         POST /v1/workflows/wf-123/resume
          *         {
-         *             "user_id": "user-001",
          *             "resume_data": {"approved": true, "notes": "Proceed with ROI calc"}
          *         }
          *
@@ -1537,7 +1536,6 @@ export interface paths {
          *         POST /v1/workflows/wf-123/resume-from-checkpoint
          *         {
          *             "checkpoint_id": "chk-002",
-         *             "user_id": "user-001",
          *             "resume_data": {"approved": true},
          *             "skip_nodes": ["validation_node"]
          *         }
@@ -7038,11 +7036,6 @@ export interface components {
              * @description Checkpoint to resume from
              */
             checkpoint_id: string;
-            /**
-             * User Id
-             * @description User initiating resume
-             */
-            user_id: string;
             /**
              * Resume Data
              * @description Optional modifications to state before resume

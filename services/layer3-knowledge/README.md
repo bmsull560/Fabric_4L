@@ -27,15 +27,9 @@ Primary responsibilities:
 
 Wrapper responsibilities:
 
-<<<<<<< ours
 - Service entrypoint/wiring for deployment packaging.
 - Compatibility re-exports/shims that forward to canonical runtime modules.
 - Environment/bootstrap glue needed to run Layer 3 in service form.
-=======
-# 4. Verify health
-curl http://localhost:8003/health
-```
->>>>>>> theirs
 
 Contributor rule of thumb:
 
@@ -46,33 +40,16 @@ Contributor rule of thumb:
 
 ### Prerequisites
 
-<<<<<<< ours
 - Python environment with project dependencies.
 - Neo4j 5.x reachable by Layer 3.
 - Optional vector backend credentials if semantic vector search is enabled.
-=======
-```bash
-curl -X POST http://localhost:8003/v1/ingest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "rdf_data": "@prefix vf: <https://valuefabric.io/ontology/> . vf:cap-1 a vf:Capability ; vf:name \"Real-Time Data Ingestion\" .",
-    "source_id": "doc-001",
-    "extraction_job_id": "job-123"
-  }'
-```
->>>>>>> theirs
 
 ### Run the Layer 3 service wrapper locally
 
 ```bash
-<<<<<<< ours
-<<<<<<< ours
 # from repository root
 cd services/layer3-knowledge
 python -m uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
-=======
-=======
->>>>>>> theirs
 curl -X POST http://localhost:8003/v1/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -81,7 +58,6 @@ curl -X POST http://localhost:8003/v1/query \
     "max_hops": 3,
     "max_results": 10
   }'
->>>>>>> theirs
 ```
 
 Layer 3 canonical external port in the routing matrix is **8001**.
@@ -89,14 +65,9 @@ Layer 3 canonical external port in the routing matrix is **8001**.
 ### Smoke-check core health routes
 
 ```bash
-<<<<<<< ours
-<<<<<<< ours
 curl http://localhost:8001/health
 curl http://localhost:8001/ready
 curl http://localhost:8001/metrics
-=======
-=======
->>>>>>> theirs
 curl -X POST http://localhost:8003/v1/search \
   -H "Content-Type: application/json" \
   -d '{
@@ -104,64 +75,18 @@ curl -X POST http://localhost:8003/v1/search \
     "search_type": "hybrid",
     "top_k": 10
   }'
->>>>>>> theirs
 ```
 
 ## API surface reconciliation notes
 
-<<<<<<< ours
 The prior README examples used outdated routes/ports (for example `:8001/v1/query`, `:8001/v1/search`, and older analytics endpoints).
 
 For current behavior, use the OpenAPI contract as source of truth:
-=======
-```bash
-curl -X POST http://localhost:8003/v1/analytics/communities \
-  -H "Content-Type: application/json" \
-  -d '{
-    "algorithm": "louvain",
-    "entity_types": ["Persona", "UseCase"],
-    "min_community_size": 3
-  }'
-```
-
-## Canonical Runtime vs Wrapper Ownership
-
-Layer 3 runtime implementation is canonical in `value_fabric/layer3/`.
-`services/layer3-knowledge/src/` is a deployable compatibility/wrapper tree and should remain thin forwarding shims unless a governance-approved exception exists.
-
-Before adding or modifying logic:
-- Prefer editing `value_fabric/layer3/` first.
-- Keep wrapper modules as import-forwarders/delegators where possible.
-- Run shim-drift checks to prevent mirror divergence:
-
-```bash
-python services/layer3-knowledge/scripts/check_runtime_shim_drift.py
-python services/layer3-knowledge/scripts/check_app_monolith_shim_drift.py
-python services/layer3-knowledge/scripts/check_backup_shim_drift.py
-```
-
-Compatibility exceptions must be tracked in `docs/governance/compatibility-debt-registry.md`.
-
-## Configuration
->>>>>>> theirs
 
 - Contract file: `contracts/openapi/layer3-knowledge.json`
 - Runtime route modules: `value_fabric/layer3/api/routes/`
 
-<<<<<<< ours
 ### Current route families (by canonical module)
-=======
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `NEO4J_URI` | `bolt://localhost:7687` | Neo4j connection URI |
-| `NEO4J_USER` | `neo4j` | Neo4j username |
-| `NEO4J_PASSWORD` | `password` | Neo4j password |
-| `PINECONE_API_KEY` | - | Pinecone API key (optional) |
-| `API_PORT` | `8003` | API server port |
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
 
 - System/ops: `system.py` (`/health`, `/ready`, `/metrics`, detailed health variants)
 - Value trees and graph traversal: `value_trees.py`
@@ -170,7 +95,6 @@ Compatibility exceptions must be tracked in `docs/governance/compatibility-debt-
 - Formulas/calculators/ROI/value packs: `formulas.py`, `formula_governance.py`, `calculators.py`, `roi_calculator.py`, `value_packs.py`, `variables.py`, `models.py`, `products.py`, `benchmarks.py`, `competitive_intel.py`
 - Compatibility aliases and tenant helpers: `compat_aliases.py`, `tenant_resolution.py`
 
-<<<<<<< ours
 ### Versioning/prefix notes
 
 - Most Layer 3 functional endpoints are mounted under `/v1`.
@@ -178,18 +102,6 @@ Compatibility exceptions must be tracked in `docs/governance/compatibility-debt-
 - Some compatibility paths exist for backward compatibility and should not be treated as net-new API design targets.
 
 ## Contract-first changes (Layer 3 contributor checklist)
-=======
-```bash
-# Install dependencies
-uv sync --locked --all-extras
-
-# Run tests
-pytest services/layer3-knowledge/tests -v
-
-# Code quality
-ruff check value_fabric/layer3 services/layer3-knowledge/src && ruff format --check value_fabric/layer3 services/layer3-knowledge/src
-```
->>>>>>> theirs
 
 Before changing Layer 3 APIs, models, or endpoint semantics:
 

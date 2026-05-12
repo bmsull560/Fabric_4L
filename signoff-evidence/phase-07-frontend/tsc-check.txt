@@ -1,0 +1,14 @@
+EXIT_CODE: 2
+STDOUT:
+
+> value-fabric-wireframes@1.0.0 check C:\Users\BBB\Fabric_4L\apps\web
+> tsc --noEmit
+
+src/api/statuses.ts(7,55): error TS2339: Property 'Entity' does not exist on type '{ ActivateRequest: { version: string; requested_by: string; justification: string; effective_date?: string | null | undefined; }; ApprovalQueueItem: { id: string; formula_id: string; formula_name: string; ... 4 more ...; status: "pending" | ... 1 more ... | "rejected"; }; ... 180 more ...; layer3_knowledge__api__rou...'.
+src/api/statuses.ts(16,77): error TS2339: Property 'status' does not exist on type '{ id: string; policy_type: "override" | "fallback" | "threshold" | "cadence"; name: string; description: string; value: string; is_enabled: boolean; scope: "tenant" | "pack" | "formula"; }'.
+src/features/graph/domain/graph.mapper.ts(259,30): error TS2339: Property 'EntityContextResponse' does not exist on type '{ ActivateRequest: { version: string; requested_by: string; justification: string; effective_date?: string | null | undefined; }; ApprovalQueueItem: { id: string; formula_id: string; formula_name: string; ... 4 more ...; status: "pending" | ... 1 more ... | "rejected"; }; ... 180 more ...; layer3_knowledge__api__rou...'.
+src/hooks/useGraphQuery.ts(144,62): error TS2339: Property 'EntityContextResponse' does not exist on type '{ ActivateRequest: { version: string; requested_by: string; justification: string; effective_date?: string | null | undefined; }; ApprovalQueueItem: { id: string; formula_id: string; formula_name: string; ... 4 more ...; status: "pending" | ... 1 more ... | "rejected"; }; ... 180 more ...; layer3_knowledge__api__rou...'.
+ ELIFECYCLE  Command failed with exit code 2.
+
+STDERR:
+

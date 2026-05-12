@@ -1,0 +1,6 @@
+EXIT_CODE: 0
+STDOUT:
+make: 'contracts' is up to date.
+
+STDERR:
+

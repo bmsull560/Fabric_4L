@@ -1,0 +1,6 @@
+EXIT_CODE: 0
+STDOUT:
+/usr/bin/bash: line 1: gitleaks: command not found
+
+STDERR:
+

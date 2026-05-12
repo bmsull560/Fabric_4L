@@ -1,0 +1,28 @@
+EXIT_CODE: 2
+STDOUT:
+cd apps/web && pnpm run build
+
+> value-fabric-wireframes@1.0.0 build C:\Users\BBB\Fabric_4L\apps\web
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+
+[36mvite v7.3.2 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 3815 modules transformed.
+ ELIFECYCLE  Command failed with exit code 1.
+
+STDERR:
+[31m✗[39m Build failed in 15.20s
+[31merror during build:
+[31m[vite:prepare-out-dir] EPERM, Permission denied: \\?\C:\Users\BBB\Fabric_4L\apps\web\dist\public\assets '\\?\C:\Users\BBB\Fabric_4L\apps\web\dist\public\assets'[31m
+    at Object.rmSync (node:fs:1221:18)
+    at emptyDir (file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/vite@7.3.2_@types+node@24.1_6089fab1ac64afa58ac2559ce50819c2/node_modules/vite/dist/node/chunks/config.js:2167:11)
+    at prepareOutDir (file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/vite@7.3.2_@types+node@24.1_6089fab1ac64afa58ac2559ce50819c2/node_modules/vite/dist/node/chunks/config.js:33329:55)
+    at Object.handler (file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/vite@7.3.2_@types+node@24.1_6089fab1ac64afa58ac2559ce50819c2/node_modules/vite/dist/node/chunks/config.js:33319:6)
+    at Object.handler (file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/vite@7.3.2_@types+node@24.1_6089fab1ac64afa58ac2559ce50819c2/node_modules/vite/dist/node/chunks/config.js:33747:13)
+    at file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/rollup@4.60.2/node_modules/rollup/dist/es/shared/node-entry.js:22981:40
+    at async Promise.all (index 0)
+    at async PluginDriver.hookParallel (file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/rollup@4.60.2/node_modules/rollup/dist/es/shared/node-entry.js:22891:9)
+    at async Bundle.generate (file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/rollup@4.60.2/node_modules/rollup/dist/es/shared/node-entry.js:21005:13)
+    at async file:///C:/Users/BBB/Fabric_4L/node_modules/.pnpm/rollup@4.60.2/node_modules/rollup/dist/es/shared/node-entry.js:23968:27[39m
+make: *** [Makefile:342: build] Error 1
+

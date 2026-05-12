@@ -207,29 +207,13 @@ jobs:
 
       - name: Audit Node.js dependencies (pnpm)
         run: |
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
           cd apps/web
           pnpm audit --json > ../frontend-audit.json || true
           cd ..
-=======
           pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
->>>>>>> theirs
-=======
           pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
->>>>>>> theirs
-=======
           pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
->>>>>>> theirs
-=======
           pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
->>>>>>> theirs
-=======
-          pnpm --dir apps/web audit --audit-level high --json > frontend-audit.json || true
->>>>>>> theirs
 
       - name: Upload audit results
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808

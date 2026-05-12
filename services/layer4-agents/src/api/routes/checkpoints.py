@@ -13,21 +13,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
-=======
-from value_fabric.shared.error_handling.middleware import get_request_id
->>>>>>> theirs
-=======
-from value_fabric.shared.error_handling.middleware import get_request_id
->>>>>>> theirs
-=======
-from value_fabric.shared.identity.context import RequestContext
-from value_fabric.shared.identity.dependencies import require_authenticated
->>>>>>> theirs
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...engine.executor import OrchestrationController
@@ -204,22 +191,12 @@ async def list_checkpoints(
 
     request_id = get_request_id(request) if request is not None else None
     try:
-<<<<<<< ours
-<<<<<<< ours
         # Query LangGraph's Postgres saver for checkpoints
         await _require_workflow_tenant_access(
             executor=executor, workflow_id=workflow_id, tenant_id=_ctx.tenant_id
         )
         checkpoints = await _query_checkpoints(
-            executor.checkpoint_saver, workflow_id, _ctx.tenant_id, limit
-=======
-        checkpoints = await _query_checkpoints(
             executor.checkpoint_saver, workflow_id, limit, request_id=request_id
->>>>>>> theirs
-=======
-        checkpoints = await _query_checkpoints(
-            executor.checkpoint_saver, workflow_id, limit, request_id=request_id
->>>>>>> theirs
         )
 
         return CheckpointListResponse(
@@ -397,15 +374,7 @@ async def resume_from_checkpoint(
     workflow_id: str,
     request: ResumeFromCheckpointRequest,
     executor: OrchestrationController = Depends(get_executor),
-<<<<<<< ours
-<<<<<<< ours
     _ctx: RequestContext = Depends(require_authenticated),
-=======
-    context: RequestContext = Depends(require_authenticated),
->>>>>>> theirs
-=======
-    context: RequestContext = Depends(require_authenticated),
->>>>>>> theirs
 ) -> ResumeFromCheckpointResponse:
     """Resume workflow from a specific checkpoint.
 
@@ -471,15 +440,7 @@ async def resume_from_checkpoint(
 
 
 async def _query_checkpoints(
-<<<<<<< ours
-<<<<<<< ours
-    checkpoint_saver, thread_id: str, tenant_id: str, limit: int = 50
-=======
     checkpoint_saver, thread_id: str, limit: int = 50, *, request_id: str | None = None
->>>>>>> theirs
-=======
-    checkpoint_saver, thread_id: str, limit: int = 50, *, request_id: str | None = None
->>>>>>> theirs
 ) -> list[CheckpointInfo]:
     """Query checkpoints from LangGraph Postgres saver.
 

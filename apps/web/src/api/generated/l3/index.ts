@@ -4214,6 +4214,11 @@ export interface components {
         /**
          * FormulaMetadata
          * @description Metadata for a registered formula.
+         *
+         *     Versioned policy:
+         *     - v2.3 and earlier: emit canonical 'id' plus deprecated alias 'formula_id'.
+         *     - v2.4 warning window: alias remains deprecated and monitored.
+         *     - v2.5 and later: remove 'formula_id' alias and keep only 'id'.
          */
         FormulaMetadata: {
             /**
@@ -4223,7 +4228,8 @@ export interface components {
             id: string;
             /**
              * Formula Id
-             * @description Alias for id (frontend compatibility)
+             * @deprecated
+             * @description Deprecated alias of id. Removal target: v2.5 (2026-10-01).
              */
             formula_id?: string | null;
             /**

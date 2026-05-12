@@ -1,0 +1,9 @@
+EXIT_CODE: 0
+STDOUT:
+
+> value-fabric-wireframes@1.0.0 check C:\Users\BBB\Fabric_4L\apps\web
+> tsc --noEmit
+
+
+STDERR:
+

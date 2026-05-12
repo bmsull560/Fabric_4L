@@ -65,7 +65,6 @@ jobs:
           set -euo pipefail
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             ref="${{ github.event.inputs.image_ref }}"
-<<<<<<< ours
             echo "Promoting manually to ${{ github.event.inputs.environment }}"
           else
             test -d artifacts/build-metadata
@@ -78,24 +77,6 @@ jobs:
             echo "Auto-promoting build ${ref}"
           fi
 
-=======
-            echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
-            echo "Promoting manually to ${{ github.event.inputs.environment }} using ${ref}"
-            exit 0
-          fi
-
-          test -d artifacts/build-metadata
-          python3 scripts/ci/validate_promotion_artifact_contract.py             --build-workflow .github/workflows/build-deploy.yml             --promotion-workflow .github/workflows/environment-promotion.yml             --metadata-dir artifacts/build-metadata
-          first_file=$(find artifacts/build-metadata -name '*.json' | sort | head -n1)
-          ref=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["published_tag"])' "$first_file")
-          echo "image_ref=${ref}" >> "$GITHUB_OUTPUT"
-          echo "Auto-promoting immutable tag ${ref} from build metadata artifacts"
-
-      - name: Validate immutable image reference
-        run: |
-          set -euo pipefail
-          ref="${{ steps.metadata.outputs.image_ref }}"
->>>>>>> theirs
           if [[ "$ref" == "latest" ]] || [[ "$ref" =~ ^(main|master|develop|dev|staging|production|stable|edge|nightly)$ ]]; then
             echo "Mutable image reference is forbidden: $ref"
             exit 1
@@ -104,19 +85,12 @@ jobs:
             echo "Image reference must be immutable (sha-<40> or semver release tag): $ref"
             exit 1
           fi
-<<<<<<< ours
 
           echo "image_ref=$ref" >> $GITHUB_OUTPUT
-=======
->>>>>>> theirs
 
       - name: Verify images exist in registry by digest
         if: github.event_name != 'workflow_dispatch'
         run: |
-<<<<<<< ours
-=======
-          set -euo pipefail
->>>>>>> theirs
           for metadata_file in artifacts/build-metadata/*.json; do
             layer=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["layer"])' "$metadata_file")
             digest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["image_digest"])' "$metadata_file")

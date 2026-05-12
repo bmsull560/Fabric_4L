@@ -1,0 +1,6 @@
+EXIT_CODE: 0
+STDOUT:
+error while interpolating services.grafana.environment.[]: required variable GRAFANA_ADMIN_PASSWORD is missing a value: GRAFANA_ADMIN_PASSWORD is required
+
+STDERR:
+

@@ -1,0 +1,88 @@
+EXIT_CODE: 2
+STDOUT:
+============================= test session starts =============================
+platform win32 -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0
+Using --randomly-seed=296183761
+rootdir: C:\Users\BBB\Fabric_4L
+configfile: pytest.ini
+plugins: anyio-4.13.0, Faker-40.15.0, hypothesis-6.152.4, langsmith-0.8.0, asyncio-1.3.0, cov-7.1.0, randomly-4.1.0, timeout-2.4.0, xdist-3.8.0, respx-0.23.1, schemathesis-4.17.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+timeout: 60.0s
+timeout method: thread
+timeout func_only: False
+collected 380 items / 4 errors / 3 deselected / 377 selected
+
+=================================== ERRORS ====================================
+________ ERROR collecting tests/contract/test_l3_route_alias_parity.py ________
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\tests\contract\test_l3_route_alias_parity.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+tests\contract\test_l3_route_alias_parity.py:3: in <module>
+    from value_fabric.layer3.api.app_monolith import app
+value_fabric\layer3\api\app_monolith.py:663: in <module>
+    from .routes import (
+value_fabric\layer3\api\routes\compat_aliases.py:10: in <module>
+    from ..services.compat_metrics import record_deprecated_legacy_field_usage, record_deprecated_route_hit
+E   ModuleNotFoundError: No module named 'value_fabric.layer3.api.services.compat_metrics'
+____ ERROR collecting tests/contract/test_l3_route_contract_regression.py _____
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\tests\contract\test_l3_route_contract_regression.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+tests\contract\test_l3_route_contract_regression.py:6: in <module>
+    from value_fabric.layer3.api.app_monolith import app
+value_fabric\layer3\api\app_monolith.py:663: in <module>
+    from .routes import (
+value_fabric\layer3\api\routes\compat_aliases.py:10: in <module>
+    from ..services.compat_metrics import record_deprecated_legacy_field_usage, record_deprecated_route_hit
+E   ModuleNotFoundError: No module named 'value_fabric.layer3.api.services.compat_metrics'
+__ ERROR collecting tests/contract/test_layer3_graph_deprecation_contract.py __
+ImportError while importing test module 'C:\Users\BBB\Fabric_4L\tests\contract\test_layer3_graph_deprecation_contract.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+tests\contract\test_layer3_graph_deprecation_contract.py:7: in <module>
+    from value_fabric.layer3.api.main import app
+value_fabric\layer3\api\main.py:15: in <module>
+    from .app_monolith import (
+value_fabric\layer3\api\app_monolith.py:663: in <module>
+    from .routes import (
+value_fabric\layer3\api\routes\compat_aliases.py:10: in <module>
+    from ..services.compat_metrics import record_deprecated_legacy_field_usage, record_deprecated_route_hit
+E   ModuleNotFoundError: No module named 'value_fabric.layer3.api.services.compat_metrics'
+____ ERROR collecting tests/contract/test_state_inspector_auth_contract.py ____
+tests\contract\test_state_inspector_auth_contract.py:9: in <module>
+    from value_fabric.layer4.api.routes import state_inspector
+services\layer4-agents\src\api\routes\__init__.py:3: in <module>
+    from . import analysis, c1, tools, workflows
+services\layer4-agents\src\api\routes\analysis.py:20: in <module>
+    from ...config.settings import settings
+services\layer4-agents\src\config\settings.py:573: in <module>
+    settings = Settings()
+               ^^^^^^^^^^
+..\AppData\Roaming\Python\Python314\site-packages\pydantic_settings\main.py:247: in __init__
+    super().__init__(**__pydantic_self__.__class__._settings_build_values(sources, init_kwargs))
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for Settings
+E   layer5_api_url
+E     Value error, FATAL: LAYER5_API_URL is required. Configure an explicit service endpoint. [type=value_error, input_value='', input_type=str]
+E       For further information visit https://errors.pydantic.dev/2.13/v/value_error
+============================== warnings summary ===============================
+..\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263
+..\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263
+  C:\Users\BBB\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+..\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263
+..\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263
+  C:\Users\BBB\AppData\Roaming\Python\Python314\site-packages\pydantic\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+ERROR tests/contract/test_l3_route_alias_parity.py
+ERROR tests/contract/test_l3_route_contract_regression.py
+ERROR tests/contract/test_layer3_graph_deprecation_contract.py
+ERROR tests/contract/test_state_inspector_auth_contract.py - pydantic_core._p...
+!!!!!!!!!!!!!!!!!!! Interrupted: 4 errors during collection !!!!!!!!!!!!!!!!!!!
+================= 3 deselected, 4 warnings, 4 errors in 3.81s =================
+
+STDERR:
+

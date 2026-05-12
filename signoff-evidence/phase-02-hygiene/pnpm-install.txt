@@ -1,0 +1,23 @@
+EXIT_CODE: 0
+STDOUT:
+apps/web                                 |  WARN  The field "pnpm.overrides" was found in C:\Users\BBB\Fabric_4L\apps\web/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+apps/web                                 |  WARN  The field "pnpm.onlyBuiltDependencies" was found in C:\Users\BBB\Fabric_4L\apps\web/package.json. This will not take effect. You should configure "pnpm.onlyBuiltDependencies" at the root of the workspace instead.
+Scope: all 5 workspace projects
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+. preinstall$ node scripts/enforce-package-manager.cjs
+packages/eslint-plugin-fabric-contracts prepare$ npm run build
+. preinstall: Done
+packages/eslint-plugin-fabric-contracts prepare: npm warn Unknown env config "package-manager". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+packages/eslint-plugin-fabric-contracts prepare: npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+packages/eslint-plugin-fabric-contracts prepare: npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+packages/eslint-plugin-fabric-contracts prepare: > eslint-plugin-fabric-contracts@1.0.0 build
+packages/eslint-plugin-fabric-contracts prepare: > tsc
+packages/eslint-plugin-fabric-contracts prepare: Done
+apps/web preinstall$ node ./scripts/enforce-package-manager.cjs
+apps/web preinstall: Done
+Done in 5.1s using pnpm v10.18.1
+
+STDERR:
+

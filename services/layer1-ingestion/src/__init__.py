@@ -1,3 +1,13 @@
-"""Compatibility shim; canonical implementation lives in `value_fabric/layer1/__init__.py`."""
+"""Namespace bridge to the Layer 1 ingestion service ``src`` package.
 
-from value_fabric.layer1.__init__ import *  # noqa: F401,F403
+All submodule lookups under ``value_fabric.layer1`` resolve to
+``services/layer1-ingestion/src/`` so the canonical namespace stays in sync
+with the maintained service tree.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+_SERVICE_SRC = Path(__file__).resolve().parents[2] / "services" / "layer1-ingestion" / "src"
+__path__ = [str(_SERVICE_SRC)]

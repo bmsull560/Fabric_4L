@@ -1573,7 +1573,9 @@
           },
           "confidence": {
             "title": "Confidence",
-            "type": "number"
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           },
           "created_at": {
             "format": "date-time",
@@ -1788,7 +1790,9 @@
           },
           "confidence": {
             "title": "Confidence",
-            "type": "number"
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
           },
           "created_at": {
             "format": "date-time",

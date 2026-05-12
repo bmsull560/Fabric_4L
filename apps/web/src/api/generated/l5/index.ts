@@ -7,361 +7,6 @@
  */
 
 export interface paths {
-    "/api/v1/truths": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List TruthObjects
-         * @description Paginated, filterable list of TruthObjects for the organization.
-         */
-        get: operations["list_truths_api_v1_truths_get"];
-        put?: never;
-        /**
-         * Create a new TruthObject
-         * @description Create a new evidence-backed factual claim in EXTRACTED state. If sources are provided and confidence meets the threshold, the object will automatically advance to SUPPORTED or CORROBORATED.
-         */
-        post: operations["create_truth_api_v1_truths_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/{truth_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a TruthObject
-         * @description Retrieve a single TruthObject with full detail, sources, and audit trail.
-         */
-        get: operations["get_truth_api_v1_truths__truth_id__get"];
-        put?: never;
-        post?: never;
-        /**
-         * Soft-delete a TruthObject
-         * @description Marks a TruthObject as deleted. Records are never hard-deleted.
-         */
-        delete: operations["delete_truth_api_v1_truths__truth_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/{truth_id}/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Apply a validation state transition
-         * @description Trigger a named validation action on a TruthObject. Actions: advance_supported | advance_corroborated | approve | dispute | resolve_dispute | operationalize
-         */
-        post: operations["validate_truth_api_v1_truths__truth_id__validate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/{truth_id}/sources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Add an evidence source
-         * @description Attach a new evidence source to an existing TruthObject. Adding a source may trigger automatic status advancement.
-         */
-        post: operations["add_truth_source_api_v1_truths__truth_id__sources_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/{truth_id}/audit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get validation audit trail
-         * @description Returns the full immutable audit log of all state transitions for a TruthObject.
-         */
-        get: operations["get_audit_trail_api_v1_truths__truth_id__audit_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/sync-kg": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sync approved TruthObjects to Layer 3 Knowledge Graph
-         * @description Triggers a bulk sync of all APPROVED TruthObjects that have not yet been synced to the Layer 3 Knowledge Graph.
-         */
-        post: operations["sync_to_kg_api_v1_truths_sync_kg_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/maturity-ladder": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get maturity ladder definition
-         * @description Returns the full 0–5 maturity ladder with descriptions and advancement criteria.
-         */
-        get: operations["wrapper_api_v1_maturity_ladder_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/check-stale": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger freshness check for stale truths
-         * @description Manually trigger the freshness monitor to check for and mark expired TruthObjects as stale. Can be run in dry-run mode to preview.
-         */
-        post: operations["check_stale_api_v1_truths_check_stale_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/stale": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List stale TruthObjects
-         * @description Returns all TruthObjects marked as stale for the organization.
-         */
-        get: operations["list_stale_api_v1_truths_stale_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/truths/freshness-summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get freshness status summary
-         * @description Returns counts of stale, fresh, and expiring-soon TruthObjects.
-         */
-        get: operations["freshness_summary_api_v1_truths_freshness_summary_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Health check
-         * @description Public health check - returns minimal safe information only.
-         *
-         *     Note: This is a liveness check only. It does not check database or Layer 3 connectivity
-         *     to avoid requiring tenant context headers.
-         */
-        get: operations["health_check_api_v1_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/models": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List ModelVersions
-         * @description Paginated, filterable list of model versions for the organization.
-         */
-        get: operations["list_model_versions_api_v1_models_get"];
-        put?: never;
-        /**
-         * Register a new ModelVersion
-         * @description Register a new LLM model version with cost tracking and capabilities.
-         */
-        post: operations["create_model_version_api_v1_models_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/models/{model_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a ModelVersion
-         * @description Retrieve a single ModelVersion with full details.
-         */
-        get: operations["get_model_version_api_v1_models__model_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/models/{model_id}/deprecate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Deprecate a ModelVersion
-         * @description Mark a model version as deprecated (soft delete).
-         */
-        post: operations["deprecate_model_version_api_v1_models__model_id__deprecate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/models/{model_id}/set-default": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Set as default model
-         * @description Set this model version as the default for its provider.
-         */
-        post: operations["set_default_model_version_api_v1_models__model_id__set_default_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/models/{model_id}/promote": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Promote model to environment
-         * @description Deploy or update a model version in a specific environment.
-         */
-        post: operations["promote_model_api_v1_models__model_id__promote_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/models/{model_id}/deployments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get model deployments
-         * @description Get all deployments for a specific model version.
-         */
-        get: operations["get_model_deployments_api_v1_models__model_id__deployments_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/deployments": {
         parameters: {
             query?: never;
@@ -426,6 +71,133 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Health check
+         * @description Public health check - returns minimal safe information only.
+         *
+         *     Note: This is a liveness check only. It does not check database or Layer 3 connectivity
+         *     to avoid requiring tenant context headers.
+         */
+        get: operations["health_check_api_v1_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/maturity-ladder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get maturity ladder definition
+         * @description Returns the full 0–5 maturity ladder with descriptions and advancement criteria.
+         */
+        get: operations["wrapper_api_v1_maturity_ladder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List ModelVersions
+         * @description Paginated, filterable list of model versions for the organization.
+         */
+        get: operations["list_model_versions_api_v1_models_get"];
+        put?: never;
+        /**
+         * Register a new ModelVersion
+         * @description Register a new LLM model version with cost tracking and capabilities.
+         */
+        post: operations["create_model_version_api_v1_models_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a ModelVersion
+         * @description Retrieve a single ModelVersion with full details.
+         */
+        get: operations["get_model_version_api_v1_models__model_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get model deployments
+         * @description Get all deployments for a specific model version.
+         */
+        get: operations["get_model_deployments_api_v1_models__model_id__deployments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/deprecate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deprecate a ModelVersion
+         * @description Mark a model version as deprecated (soft delete).
+         */
+        post: operations["deprecate_model_version_api_v1_models__model_id__deprecate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/models/{model_id}/evaluations": {
         parameters: {
             query?: never;
@@ -446,6 +218,234 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/models/{model_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote model to environment
+         * @description Deploy or update a model version in a specific environment.
+         */
+        post: operations["promote_model_api_v1_models__model_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/models/{model_id}/set-default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set as default model
+         * @description Set this model version as the default for its provider.
+         */
+        post: operations["set_default_model_version_api_v1_models__model_id__set_default_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List TruthObjects
+         * @description Paginated, filterable list of TruthObjects for the organization.
+         */
+        get: operations["list_truths_api_v1_truths_get"];
+        put?: never;
+        /**
+         * Create a new TruthObject
+         * @description Create a new evidence-backed factual claim in EXTRACTED state. If sources are provided and confidence meets the threshold, the object will automatically advance to SUPPORTED or CORROBORATED.
+         */
+        post: operations["create_truth_api_v1_truths_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/check-stale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger freshness check for stale truths
+         * @description Manually trigger the freshness monitor to check for and mark expired TruthObjects as stale. Can be run in dry-run mode to preview.
+         */
+        post: operations["check_stale_api_v1_truths_check_stale_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/freshness-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get freshness status summary
+         * @description Returns counts of stale, fresh, and expiring-soon TruthObjects.
+         */
+        get: operations["freshness_summary_api_v1_truths_freshness_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/stale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List stale TruthObjects
+         * @description Returns all TruthObjects marked as stale for the organization.
+         */
+        get: operations["list_stale_api_v1_truths_stale_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/sync-kg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync approved TruthObjects to Layer 3 Knowledge Graph
+         * @description Triggers a bulk sync of all APPROVED TruthObjects that have not yet been synced to the Layer 3 Knowledge Graph.
+         */
+        post: operations["sync_to_kg_api_v1_truths_sync_kg_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/{truth_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a TruthObject
+         * @description Retrieve a single TruthObject with full detail, sources, and audit trail.
+         */
+        get: operations["get_truth_api_v1_truths__truth_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Soft-delete a TruthObject
+         * @description Marks a TruthObject as deleted. Records are never hard-deleted.
+         */
+        delete: operations["delete_truth_api_v1_truths__truth_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/{truth_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get validation audit trail
+         * @description Returns the full immutable audit log of all state transitions for a TruthObject.
+         */
+        get: operations["get_audit_trail_api_v1_truths__truth_id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/{truth_id}/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add an evidence source
+         * @description Attach a new evidence source to an existing TruthObject. Adding a source may trigger automatic status advancement.
+         */
+        post: operations["add_truth_source_api_v1_truths__truth_id__sources_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/truths/{truth_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply a validation state transition
+         * @description Trigger a named validation action on a TruthObject. Actions: advance_supported | advance_corroborated | approve | dispute | resolve_dispute | operationalize
+         */
+        post: operations["validate_truth_api_v1_truths__truth_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -456,15 +456,30 @@ export interface components {
          */
         AddSourceRequest: {
             /**
-             * @description Category of evidence
-             * @default other
+             * Confidence Contribution
+             * @description Contribution to overall confidence (0.0–1.0)
+             * @default 0
              */
-            source_type: components["schemas"]["SourceType"];
+            confidence_contribution: number;
             /**
-             * Source Url
-             * @description URL or URI of the source document
+             * Excerpt
+             * @description Verbatim excerpt supporting the claim
              */
-            source_url?: string | null;
+            excerpt?: string | null;
+            /**
+             * Excerpt Location
+             * @description Location within source, e.g. "page 3, paragraph 2"
+             */
+            excerpt_location?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Source Date
+             * @description Date the source was published or captured
+             */
+            source_date?: string | null;
             /**
              * Source Id
              * @description Internal document / asset ID
@@ -476,30 +491,15 @@ export interface components {
              */
             source_title?: string | null;
             /**
-             * Excerpt
-             * @description Verbatim excerpt supporting the claim
+             * @description Category of evidence
+             * @default other
              */
-            excerpt?: string | null;
+            source_type: components["schemas"]["SourceType"];
             /**
-             * Excerpt Location
-             * @description Location within source, e.g. "page 3, paragraph 2"
+             * Source Url
+             * @description URL or URI of the source document
              */
-            excerpt_location?: string | null;
-            /**
-             * Confidence Contribution
-             * @description Contribution to overall confidence (0.0–1.0)
-             * @default 0
-             */
-            confidence_contribution: number;
-            /**
-             * Source Date
-             * @description Date the source was published or captured
-             */
-            source_date?: string | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
+            source_url?: string | null;
         };
         /**
          * ClaimType
@@ -519,70 +519,83 @@ export interface components {
          * @enum {string}
          */
         DisputeReason: "conflicting_sources" | "stale_data" | "methodology_flaw" | "out_of_scope" | "superseded" | "other";
+        /** ErrorResponse */
+        ErrorResponse: {
+            /** @description Machine-readable error code */
+            code: string;
+            /** @description Optional sanitized error details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
+        };
         /**
          * HTTPValidationError
          * @description Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients.
          */
         HTTPValidationError: {
-            /** @description Human-readable error message */
-            message: string;
             /** @description Machine-readable error code */
             code: string;
-            /** @description Request trace ID for support correlation */
-            trace_id: string;
             /** @description Optional sanitized error details */
             details?: {
                 [key: string]: unknown;
             } | null;
+            /** @description Human-readable error message */
+            message: string;
+            /** @description Request trace ID for support correlation */
+            trace_id: string;
         };
         /**
          * HealthResponse
          * @description Health check response - public endpoint returns only safe fields.
          */
         HealthResponse: {
-            /** Status */
-            status: string;
-            /** Version */
-            version: string;
-            /**
-             * Timestamp
-             * Format: date-time
-             */
-            timestamp: string;
             /** Database */
             database?: string | null;
             /** Layer3 Connected */
             layer3_connected?: boolean | null;
             /** Layer3 Url */
             layer3_url?: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Version */
+            version: string;
         };
         /**
          * MaturityHistoryResponse
          * @description Schema for a MaturityHistory entry in API responses.
          */
         MaturityHistoryResponse: {
+            /** Context */
+            context?: {
+                [key: string]: unknown;
+            } | null;
+            /** From Level */
+            from_level?: number | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
-            /** From Level */
-            from_level?: number | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
             /** To Level */
             to_level: number;
             /** Trigger */
             trigger?: string | null;
             /** Triggered By */
             triggered_by?: string | null;
-            /** Context */
-            context?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * Recorded At
-             * Format: date-time
-             */
-            recorded_at: string;
         };
         /**
          * MaturityLadderResponse
@@ -594,16 +607,16 @@ export interface components {
         };
         /** MaturityLevelDetail */
         MaturityLevelDetail: {
+            /** Advancement Trigger */
+            advancement_trigger: string;
+            /** Description */
+            description: string;
             /** Level */
             level: number;
             /** Name */
             name: string;
-            /** Description */
-            description: string;
             /** Required Status */
             required_status: string;
-            /** Advancement Trigger */
-            advancement_trigger: string;
         };
         /**
          * ModelCapability
@@ -627,47 +640,47 @@ export interface components {
          */
         ModelDeploymentResponse: {
             /**
-             * Id
-             * Format: uuid
+             * Created At
+             * Format: date-time
              */
-            id: string;
-            /**
-             * Tenant Id
-             * Format: uuid
-             */
-            tenant_id: string;
-            /**
-             * Model Version Id
-             * Format: uuid
-             */
-            model_version_id: string;
-            /** Environment */
-            environment: string;
-            /** Status */
-            status: string;
-            /** Traffic Percentage */
-            traffic_percentage: number;
-            /** Is Default For Env */
-            is_default_for_env: boolean;
+            created_at: string;
             /** Deployed At */
             deployed_at: string | null;
             /** Deployed By */
             deployed_by: string | null;
             /** Deployment Notes */
             deployment_notes: string | null;
+            /** Environment */
+            environment: string;
             /** Error Rate 5M */
             error_rate_5m: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Default For Env */
+            is_default_for_env: boolean;
+            /** Last Health Check */
+            last_health_check: string | null;
             /** Latency P50 Ms */
             latency_p50_ms: number | null;
             /** Latency P99 Ms */
             latency_p99_ms: number | null;
-            /** Last Health Check */
-            last_health_check: string | null;
             /**
-             * Created At
-             * Format: date-time
+             * Model Version Id
+             * Format: uuid
              */
-            created_at: string;
+            model_version_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Traffic Percentage */
+            traffic_percentage: number;
             /**
              * Updated At
              * Format: date-time
@@ -680,11 +693,10 @@ export interface components {
          */
         ModelEvaluationCreate: {
             /**
-             * Model Version Id
-             * Format: uuid
-             * @description ID of the evaluated model version
+             * Artifact Urls
+             * @description Links to evaluation artifacts
              */
-            model_version_id: string;
+            artifact_urls?: string[];
             /**
              * Benchmark Name
              * @description Name of the benchmark
@@ -695,23 +707,6 @@ export interface components {
              * @description Version of the benchmark dataset
              */
             benchmark_version?: string | null;
-            /**
-             * Score
-             * @description Primary score (0.0-1.0)
-             */
-            score: number;
-            /**
-             * Score Details
-             * @description Detailed scores by category
-             */
-            score_details?: {
-                [key: string]: unknown;
-            };
-            /**
-             * Sample Size
-             * @description Number of samples evaluated
-             */
-            sample_size?: number | null;
             /**
              * Cost Usd
              * @description Total cost of evaluation in USD
@@ -730,15 +725,33 @@ export interface components {
                 [key: string]: unknown;
             };
             /**
+             * Model Version Id
+             * Format: uuid
+             * @description ID of the evaluated model version
+             */
+            model_version_id: string;
+            /**
              * Notes
              * @description Human notes about the evaluation
              */
             notes?: string | null;
             /**
-             * Artifact Urls
-             * @description Links to evaluation artifacts
+             * Sample Size
+             * @description Number of samples evaluated
              */
-            artifact_urls?: string[];
+            sample_size?: number | null;
+            /**
+             * Score
+             * @description Primary score (0.0-1.0)
+             */
+            score: number;
+            /**
+             * Score Details
+             * @description Detailed scores by category
+             */
+            score_details?: {
+                [key: string]: unknown;
+            };
         };
         /**
          * ModelEvaluationListResponse
@@ -755,35 +768,17 @@ export interface components {
          * @description Schema for a ModelEvaluation in API responses.
          */
         ModelEvaluationResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Tenant Id
-             * Format: uuid
-             */
-            tenant_id: string;
-            /**
-             * Model Version Id
-             * Format: uuid
-             */
-            model_version_id: string;
             /** Benchmark Name */
             benchmark_name: string;
             /** Benchmark Version */
             benchmark_version: string | null;
-            /** Score */
-            score: number;
-            /** Score Details */
-            score_details: {
-                [key: string]: unknown;
-            };
-            /** Sample Size */
-            sample_size: number | null;
             /** Cost Usd */
             cost_usd: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
             /** Duration Seconds */
             duration_seconds: number | null;
             /**
@@ -793,13 +788,31 @@ export interface components {
             evaluated_at: string;
             /** Evaluated By */
             evaluated_by: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Model Version Id
+             * Format: uuid
+             */
+            model_version_id: string;
             /** Notes */
             notes: string | null;
+            /** Sample Size */
+            sample_size: number | null;
+            /** Score */
+            score: number;
+            /** Score Details */
+            score_details: {
+                [key: string]: unknown;
+            };
             /**
-             * Created At
-             * Format: date-time
+             * Tenant Id
+             * Format: uuid
              */
-            created_at: string;
+            tenant_id: string;
         };
         /**
          * ModelProvider
@@ -813,23 +826,6 @@ export interface components {
          */
         ModelVersionCreate: {
             /**
-             * Name
-             * @description Model name, e.g., 'gpt-4-turbo'
-             */
-            name: string;
-            /** @description LLM provider */
-            provider: components["schemas"]["ModelProvider"];
-            /**
-             * Version
-             * @description Semver or provider version string
-             */
-            version: string;
-            /**
-             * Model Identifier
-             * @description Provider's API identifier
-             */
-            model_identifier: string;
-            /**
              * Capabilities
              * @description List of supported capabilities
              */
@@ -841,10 +837,10 @@ export interface components {
              */
             context_window: number;
             /**
-             * Max Output Tokens
-             * @description Maximum output tokens
+             * Cost Per 1K Cached
+             * @description Cost per 1,000 cached tokens
              */
-            max_output_tokens?: number | null;
+            cost_per_1k_cached?: number | null;
             /**
              * Cost Per 1K Input
              * @description Cost per 1,000 input tokens in USD
@@ -857,11 +853,6 @@ export interface components {
              * @default 0
              */
             cost_per_1k_output: number;
-            /**
-             * Cost Per 1K Cached
-             * @description Cost per 1,000 cached tokens
-             */
-            cost_per_1k_cached?: number | null;
             /**
              * Description
              * @description Human-readable description
@@ -880,101 +871,108 @@ export interface components {
              * @default false
              */
             is_default: boolean;
+            /**
+             * Max Output Tokens
+             * @description Maximum output tokens
+             */
+            max_output_tokens?: number | null;
+            /**
+             * Model Identifier
+             * @description Provider's API identifier
+             */
+            model_identifier: string;
+            /**
+             * Name
+             * @description Model name, e.g., 'gpt-4-turbo'
+             */
+            name: string;
+            /** @description LLM provider */
+            provider: components["schemas"]["ModelProvider"];
+            /**
+             * Version
+             * @description Semver or provider version string
+             */
+            version: string;
         };
         /**
          * ModelVersionListResponse
          * @description Paginated list of ModelVersions.
          */
         ModelVersionListResponse: {
+            /** Has More */
+            has_more: boolean;
             /** Items */
             items: components["schemas"]["ModelVersionSummary"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
-            /** Has More */
-            has_more: boolean;
+            /** Total */
+            total: number;
         };
         /**
          * ModelVersionResponse
          * @description Schema for a ModelVersion in API responses.
          */
         ModelVersionResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Tenant Id
-             * Format: uuid
-             */
-            tenant_id: string;
-            /** Name */
-            name: string;
-            /** Provider */
-            provider: string;
-            /** Version */
-            version: string;
-            /** Model Identifier */
-            model_identifier: string;
             /** Capabilities */
             capabilities: string[];
             /** Context Window */
             context_window: number;
-            /** Max Output Tokens */
-            max_output_tokens: number | null;
+            /** Cost Per 1K Cached */
+            cost_per_1k_cached: number | null;
             /** Cost Per 1K Input */
             cost_per_1k_input: number;
             /** Cost Per 1K Output */
             cost_per_1k_output: number;
-            /** Cost Per 1K Cached */
-            cost_per_1k_cached: number | null;
-            /** Is Active */
-            is_active: boolean;
-            /** Is Default */
-            is_default: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
             /** Description */
             description: string | null;
             /** Extra Metadata */
             extra_metadata: {
                 [key: string]: unknown;
             };
-            /** Created By */
-            created_by: string | null;
             /**
-             * Created At
-             * Format: date-time
+             * Id
+             * Format: uuid
              */
-            created_at: string;
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Max Output Tokens */
+            max_output_tokens: number | null;
+            /** Model Identifier */
+            model_identifier: string;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
             /**
              * Updated At
              * Format: date-time
              */
             updated_at: string;
+            /** Version */
+            version: string;
         };
         /**
          * ModelVersionSummary
          * @description Summary view of a ModelVersion for list responses.
          */
         ModelVersionSummary: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-            /** Provider */
-            provider: string;
-            /** Version */
-            version: string;
-            /** Is Active */
-            is_active: boolean;
-            /** Is Default */
-            is_default: boolean;
             /** Cost Per 1K Input */
             cost_per_1k_input: number;
             /** Cost Per 1K Output */
@@ -984,6 +982,21 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Version */
+            version: string;
         };
         /**
          * PromoteModelRequest
@@ -993,17 +1006,17 @@ export interface components {
             /** @description Target environment */
             environment: components["schemas"]["DeploymentEnvironment"];
             /**
-             * Traffic Percentage
-             * @description Traffic percentage (0-100)
-             * @default 100
-             */
-            traffic_percentage: number;
-            /**
              * Make Default
              * @description Whether to make this the default model for the environment
              * @default false
              */
             make_default: boolean;
+            /**
+             * Traffic Percentage
+             * @description Traffic percentage (0-100)
+             * @default 100
+             */
+            traffic_percentage: number;
         };
         /**
          * PromoteModelResponse
@@ -1011,30 +1024,30 @@ export interface components {
          */
         PromoteModelResponse: {
             /**
+             * Deployed At
+             * Format: date-time
+             */
+            deployed_at: string;
+            /**
              * Deployment Id
              * Format: uuid
              */
             deployment_id: string;
+            /** Environment */
+            environment: string;
+            /** Is Default For Env */
+            is_default_for_env: boolean;
+            /** Message */
+            message: string;
             /**
              * Model Version Id
              * Format: uuid
              */
             model_version_id: string;
-            /** Environment */
-            environment: string;
             /** Status */
             status: string;
             /** Traffic Percentage */
             traffic_percentage: number;
-            /** Is Default For Env */
-            is_default_for_env: boolean;
-            /**
-             * Deployed At
-             * Format: date-time
-             */
-            deployed_at: string;
-            /** Message */
-            message: string;
         };
         /**
          * RollbackModelRequest
@@ -1057,17 +1070,17 @@ export interface components {
              * Format: uuid
              */
             deployment_id: string;
-            /** Previous Status */
-            previous_status: string;
+            /** Message */
+            message: string;
             /** New Status */
             new_status: string;
+            /** Previous Status */
+            previous_status: string;
             /**
              * Rolled Back At
              * Format: date-time
              */
             rolled_back_at: string;
-            /** Message */
-            message: string;
         };
         /**
          * SourceType
@@ -1083,6 +1096,17 @@ export interface components {
          *     it is not accepted from the request body.
          */
         TruthObjectCreate: {
+            /**
+             * Applies To
+             * @description Scope: {opportunity_id, account_id, industry, product_line, geography}
+             * @example {
+             *       "account_id": "acct-456",
+             *       "opportunity_id": "opp-123"
+             *     }
+             */
+            applies_to?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Claim
              * @description Natural-language claim, e.g. "20 hrs/month reconciling invoices"
@@ -1100,29 +1124,6 @@ export interface components {
              * @example 0.82
              */
             confidence: number;
-            /**
-             * Value
-             * @description Structured value: {amount, unit, currency, period} e.g. {amount: 20, unit: 'hours', period: 'month'}
-             * @example {
-             *       "amount": 20,
-             *       "period": "month",
-             *       "unit": "hours"
-             *     }
-             */
-            value?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * Applies To
-             * @description Scope: {opportunity_id, account_id, industry, product_line, geography}
-             * @example {
-             *       "account_id": "acct-456",
-             *       "opportunity_id": "opp-123"
-             *     }
-             */
-            applies_to?: {
-                [key: string]: unknown;
-            } | null;
             /**
              * Extraction Job Id
              * @description Layer 2 extraction job that produced this claim
@@ -1145,143 +1146,155 @@ export interface components {
              * @description Initial evidence sources (optional — can be added later via POST /truths/{id}/sources)
              */
             sources?: components["schemas"]["TruthSourceCreate"][];
+            /**
+             * Value
+             * @description Structured value: {amount, unit, currency, period} e.g. {amount: 20, unit: 'hours', period: 'month'}
+             * @example {
+             *       "amount": 20,
+             *       "period": "month",
+             *       "unit": "hours"
+             *     }
+             */
+            value?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * TruthObjectListResponse
          * @description Paginated list of TruthObjects.
          */
         TruthObjectListResponse: {
+            /** Has More */
+            has_more: boolean;
             /** Items */
             items: components["schemas"]["TruthObjectSummary"][];
-            /** Total */
-            total: number;
             /** Limit */
             limit: number;
             /** Offset */
             offset: number;
-            /** Has More */
-            has_more: boolean;
+            /** Total */
+            total: number;
         };
         /**
          * TruthObjectResponse
          * @description Full TruthObject response including related sources and audit trail.
          */
         TruthObjectResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Tenant Id
-             * Format: uuid
-             */
-            tenant_id: string;
-            /** Claim */
-            claim: string;
-            /** Claim Type */
-            claim_type: string;
-            /** Value */
-            value?: {
-                [key: string]: unknown;
-            } | null;
-            /** Confidence */
-            confidence: number;
-            /** Status */
-            status: string;
-            /** Maturity Level */
-            maturity_level: number;
-            /** Approved By */
-            approved_by?: string | null;
-            /** Approved At */
-            approved_at?: string | null;
-            /** Approval Notes */
-            approval_notes?: string | null;
-            /**
-             * Freshness
-             * Format: date-time
-             */
-            freshness: string;
-            /** Expires At */
-            expires_at?: string | null;
-            /** Is Stale */
-            is_stale: boolean;
             /** Applies To */
             applies_to?: {
                 [key: string]: unknown;
             } | null;
-            /** Dispute Reason */
-            dispute_reason?: string | null;
-            /** Dispute Notes */
-            dispute_notes?: string | null;
-            /** Disputed By */
-            disputed_by?: string | null;
-            /** Disputed At */
-            disputed_at?: string | null;
-            /** Kg Node Id */
-            kg_node_id?: string | null;
-            /** Kg Synced At */
-            kg_synced_at?: string | null;
-            /** Extraction Job Id */
-            extraction_job_id?: string | null;
-            /** Extraction Model */
-            extraction_model?: string | null;
+            /** Approval Notes */
+            approval_notes?: string | null;
+            /** Approved At */
+            approved_at?: string | null;
+            /** Approved By */
+            approved_by?: string | null;
+            /** Claim */
+            claim: string;
+            /** Claim Type */
+            claim_type: string;
+            /** Confidence */
+            confidence: number;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
+            /** Dispute Notes */
+            dispute_notes?: string | null;
+            /** Dispute Reason */
+            dispute_reason?: string | null;
+            /** Disputed At */
+            disputed_at?: string | null;
+            /** Disputed By */
+            disputed_by?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+            /** Extraction Job Id */
+            extraction_job_id?: string | null;
+            /** Extraction Model */
+            extraction_model?: string | null;
+            /**
+             * Freshness
+             * Format: date-time
+             */
+            freshness: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Stale */
+            is_stale: boolean;
+            /** Kg Node Id */
+            kg_node_id?: string | null;
+            /** Kg Synced At */
+            kg_synced_at?: string | null;
+            /** Maturity History */
+            maturity_history?: components["schemas"]["MaturityHistoryResponse"][];
+            /** Maturity Level */
+            maturity_level: number;
+            /** Sources */
+            sources?: components["schemas"]["TruthSourceResponse"][];
+            /** Status */
+            status: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
             /**
              * Updated At
              * Format: date-time
              */
             updated_at: string;
-            /** Sources */
-            sources?: components["schemas"]["TruthSourceResponse"][];
             /** Validation Events */
             validation_events?: components["schemas"]["ValidationEventResponse"][];
-            /** Maturity History */
-            maturity_history?: components["schemas"]["MaturityHistoryResponse"][];
+            /** Value */
+            value?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * TruthObjectSummary
          * @description Lightweight summary for list responses.
          */
         TruthObjectSummary: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
+            /** Approved By */
+            approved_by?: string | null;
             /** Claim */
             claim: string;
             /** Claim Type */
             claim_type: string;
             /** Confidence */
             confidence: number;
-            /** Status */
-            status: string;
-            /** Maturity Level */
-            maturity_level: number;
-            /** Is Stale */
-            is_stale: boolean;
             /**
-             * Source Count
-             * @default 0
+             * Created At
+             * Format: date-time
              */
-            source_count: number;
-            /** Approved By */
-            approved_by?: string | null;
+            created_at: string;
             /**
              * Freshness
              * Format: date-time
              */
             freshness: string;
             /**
-             * Created At
-             * Format: date-time
+             * Id
+             * Format: uuid
              */
-            created_at: string;
+            id: string;
+            /** Is Stale */
+            is_stale: boolean;
+            /** Maturity Level */
+            maturity_level: number;
+            /**
+             * Source Count
+             * @default 0
+             */
+            source_count: number;
+            /** Status */
+            status: string;
         };
         /**
          * TruthSourceCreate
@@ -1289,15 +1302,30 @@ export interface components {
          */
         TruthSourceCreate: {
             /**
-             * @description Category of evidence
-             * @default other
+             * Confidence Contribution
+             * @description Contribution to overall confidence (0.0–1.0)
+             * @default 0
              */
-            source_type: components["schemas"]["SourceType"];
+            confidence_contribution: number;
             /**
-             * Source Url
-             * @description URL or URI of the source document
+             * Excerpt
+             * @description Verbatim excerpt supporting the claim
              */
-            source_url?: string | null;
+            excerpt?: string | null;
+            /**
+             * Excerpt Location
+             * @description Location within source, e.g. "page 3, paragraph 2"
+             */
+            excerpt_location?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Source Date
+             * @description Date the source was published or captured
+             */
+            source_date?: string | null;
             /**
              * Source Id
              * @description Internal document / asset ID
@@ -1309,30 +1337,15 @@ export interface components {
              */
             source_title?: string | null;
             /**
-             * Excerpt
-             * @description Verbatim excerpt supporting the claim
+             * @description Category of evidence
+             * @default other
              */
-            excerpt?: string | null;
+            source_type: components["schemas"]["SourceType"];
             /**
-             * Excerpt Location
-             * @description Location within source, e.g. "page 3, paragraph 2"
+             * Source Url
+             * @description URL or URI of the source document
              */
-            excerpt_location?: string | null;
-            /**
-             * Confidence Contribution
-             * @description Contribution to overall confidence (0.0–1.0)
-             * @default 0
-             */
-            confidence_contribution: number;
-            /**
-             * Source Date
-             * @description Date the source was published or captured
-             */
-            source_date?: string | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
+            source_url?: string | null;
         };
         /**
          * TruthSourceResponse
@@ -1340,25 +1353,18 @@ export interface components {
          */
         TruthSourceResponse: {
             /**
-             * @description Category of evidence
-             * @default other
+             * Confidence Contribution
+             * @description Contribution to overall confidence (0.0–1.0)
+             * @default 0
              */
-            source_type: components["schemas"]["SourceType"];
+            confidence_contribution: number;
             /**
-             * Source Url
-             * @description URL or URI of the source document
+             * Created At
+             * Format: date-time
              */
-            source_url?: string | null;
-            /**
-             * Source Id
-             * @description Internal document / asset ID
-             */
-            source_id?: string | null;
-            /**
-             * Source Title
-             * @description Human-readable title of the source
-             */
-            source_title?: string | null;
+            created_at: string;
+            /** Created By */
+            created_by?: string | null;
             /**
              * Excerpt
              * @description Verbatim excerpt supporting the claim
@@ -1369,17 +1375,6 @@ export interface components {
              * @description Location within source, e.g. "page 3, paragraph 2"
              */
             excerpt_location?: string | null;
-            /**
-             * Confidence Contribution
-             * @description Contribution to overall confidence (0.0–1.0)
-             * @default 0
-             */
-            confidence_contribution: number;
-            /**
-             * Source Date
-             * @description Date the source was published or captured
-             */
-            source_date?: string | null;
             /** Extra Metadata */
             extra_metadata?: {
                 [key: string]: unknown;
@@ -1390,22 +1385,40 @@ export interface components {
              */
             id: string;
             /**
-             * Truth Object Id
-             * Format: uuid
+             * Source Date
+             * @description Date the source was published or captured
              */
-            truth_object_id: string;
+            source_date?: string | null;
+            /**
+             * Source Id
+             * @description Internal document / asset ID
+             */
+            source_id?: string | null;
+            /**
+             * Source Title
+             * @description Human-readable title of the source
+             */
+            source_title?: string | null;
+            /**
+             * @description Category of evidence
+             * @default other
+             */
+            source_type: components["schemas"]["SourceType"];
+            /**
+             * Source Url
+             * @description URL or URI of the source document
+             */
+            source_url?: string | null;
             /**
              * Tenant Id
              * Format: uuid
              */
             tenant_id: string;
             /**
-             * Created At
-             * Format: date-time
+             * Truth Object Id
+             * Format: uuid
              */
-            created_at: string;
-            /** Created By */
-            created_by?: string | null;
+            truth_object_id: string;
         };
         /**
          * TruthStatus
@@ -1448,101 +1461,88 @@ export interface components {
              * @default human
              */
             actor_type: string;
+            /** @description Required when action == 'dispute' */
+            dispute_reason?: components["schemas"]["DisputeReason"] | null;
             /**
              * Notes
              * @description Optional notes for the audit trail
              */
             notes?: string | null;
-            /** @description Required when action == 'dispute' */
-            dispute_reason?: components["schemas"]["DisputeReason"] | null;
         };
         /**
          * ValidateResponse
          * @description Response after a validation action.
          */
         ValidateResponse: {
-            /**
-             * Truth Object Id
-             * Format: uuid
-             */
-            truth_object_id: string;
-            /** Previous Status */
-            previous_status: string;
+            /** Actor */
+            actor: string;
+            /** Message */
+            message: string;
+            /** New Maturity */
+            new_maturity: number;
             /** New Status */
             new_status: string;
             /** Previous Maturity */
             previous_maturity: number;
-            /** New Maturity */
-            new_maturity: number;
-            /** Actor */
-            actor: string;
+            /** Previous Status */
+            previous_status: string;
             /**
              * Transition Allowed
              * @default true
              */
             transition_allowed: boolean;
-            /** Message */
-            message: string;
+            /**
+             * Truth Object Id
+             * Format: uuid
+             */
+            truth_object_id: string;
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
             msg: string;
             /** Error Type */
             type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
         };
         /**
          * ValidationEventResponse
          * @description Schema for a ValidationEvent in API responses.
          */
         ValidationEventResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** From Status */
-            from_status?: string | null;
-            /** To Status */
-            to_status: string;
-            /** From Maturity */
-            from_maturity?: number | null;
-            /** To Maturity */
-            to_maturity: number;
             /** Actor */
             actor?: string | null;
             /** Actor Type */
             actor_type: string;
             /** Confidence At Transition */
             confidence_at_transition?: number | null;
-            /** Source Count At Transition */
-            source_count_at_transition?: number | null;
-            /** Notes */
-            notes?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at: string;
-        };
-        /** ErrorResponse */
-        ErrorResponse: {
-            /** @description Human-readable error message */
-            message: string;
-            /** @description Machine-readable error code */
-            code: string;
-            /** @description Request trace ID for support correlation */
-            trace_id: string;
-            /** @description Optional sanitized error details */
-            details?: {
-                [key: string]: unknown;
-            } | null;
+            /** From Maturity */
+            from_maturity?: number | null;
+            /** From Status */
+            from_status?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Notes */
+            notes?: string | null;
+            /** Source Count At Transition */
+            source_count_at_transition?: number | null;
+            /** To Maturity */
+            to_maturity: number;
+            /** To Status */
+            to_status: string;
         };
     };
     responses: never;
@@ -1553,788 +1553,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list_truths_api_v1_truths_get: {
-        parameters: {
-            query?: {
-                /** @description Filter by validation status */
-                status?: components["schemas"]["TruthStatus"] | null;
-                /** @description Filter by claim type */
-                claim_type?: components["schemas"]["ClaimType"] | null;
-                /** @description Minimum maturity level (0–5) */
-                min_maturity?: number | null;
-                /** @description Minimum confidence score */
-                min_confidence?: number | null;
-                /** @description Filter by staleness */
-                is_stale?: boolean | null;
-                /** @description Filter by opportunity_id in applies_to */
-                applies_to_opportunity?: string | null;
-                limit?: number;
-                offset?: number;
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TruthObjectListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_truth_api_v1_truths_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TruthObjectCreate"];
-            };
-        };
-        responses: {
-            /** @description TruthObject created successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TruthObjectResponse"];
-                };
-            };
-            /** @description Validation error in request body */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    get_truth_api_v1_truths__truth_id__get: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                truth_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description TruthObject found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TruthObjectResponse"];
-                };
-            };
-            /** @description TruthObject not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_truth_api_v1_truths__truth_id__delete: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                truth_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    validate_truth_api_v1_truths__truth_id__validate_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                truth_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateRequest"];
-            };
-        };
-        responses: {
-            /** @description Transition applied successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidateResponse"];
-                };
-            };
-            /** @description Invalid transition or insufficient evidence */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description TruthObject not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    add_truth_source_api_v1_truths__truth_id__sources_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                truth_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AddSourceRequest"];
-            };
-        };
-        responses: {
-            /** @description Source added successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TruthSourceResponse"];
-                };
-            };
-            /** @description TruthObject not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_audit_trail_api_v1_truths__truth_id__audit_get: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                truth_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ValidationEventResponse"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    sync_to_kg_api_v1_truths_sync_kg_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    wrapper_api_v1_maturity_ladder_get: {
-        parameters: {
-            query: {
-                args: unknown;
-                kwargs: unknown;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MaturityLadderResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    check_stale_api_v1_truths_check_stale_post: {
-        parameters: {
-            query?: {
-                /** @description Preview only, don't mark stale */
-                dry_run?: boolean;
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Freshness check completed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_stale_api_v1_truths_stale_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    freshness_summary_api_v1_truths_freshness_summary_get: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    health_check_api_v1_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HealthResponse"];
-                };
-            };
-        };
-    };
-    list_model_versions_api_v1_models_get: {
-        parameters: {
-            query?: {
-                /** @description Filter by provider */
-                provider?: string | null;
-                /** @description Filter by active status */
-                is_active?: boolean | null;
-                /** @description Filter by default flag */
-                is_default?: boolean | null;
-                limit?: number;
-                offset?: number;
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelVersionListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_model_version_api_v1_models_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ModelVersionCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_model_version_api_v1_models__model_id__get: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    deprecate_model_version_api_v1_models__model_id__deprecate_post: {
-        parameters: {
-            query?: {
-                /** @description Deprecation reason */
-                reason?: string | null;
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    set_default_model_version_api_v1_models__model_id__set_default_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    promote_model_api_v1_models__model_id__promote_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PromoteModelRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PromoteModelResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_model_deployments_api_v1_models__model_id__deployments_get: {
-        parameters: {
-            query?: {
-                /** @description Tenant UUID — dev/test fallback when JWT is absent */
-                tenant_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-Tenant-ID"?: string | null;
-            };
-            path: {
-                model_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ModelDeploymentListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_deployments_api_v1_deployments_get: {
         parameters: {
             query?: {
@@ -2491,6 +1709,253 @@ export interface operations {
             };
         };
     };
+    health_check_api_v1_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    wrapper_api_v1_maturity_ladder_get: {
+        parameters: {
+            query: {
+                args: unknown;
+                kwargs: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaturityLadderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_model_versions_api_v1_models_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by provider */
+                provider?: string | null;
+                /** @description Filter by active status */
+                is_active?: boolean | null;
+                /** @description Filter by default flag */
+                is_default?: boolean | null;
+                limit?: number;
+                offset?: number;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_model_version_api_v1_models_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModelVersionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_version_api_v1_models__model_id__get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_model_deployments_api_v1_models__model_id__deployments_get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelDeploymentListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deprecate_model_version_api_v1_models__model_id__deprecate_post: {
+        parameters: {
+            query?: {
+                /** @description Deprecation reason */
+                reason?: string | null;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_model_evaluations_api_v1_models__model_id__evaluations_get: {
         parameters: {
             query?: {
@@ -2516,6 +1981,541 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ModelEvaluationListResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_model_api_v1_models__model_id__promote_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromoteModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PromoteModelResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_default_model_version_api_v1_models__model_id__set_default_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelVersionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_truths_api_v1_truths_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by validation status */
+                status?: components["schemas"]["TruthStatus"] | null;
+                /** @description Filter by claim type */
+                claim_type?: components["schemas"]["ClaimType"] | null;
+                /** @description Minimum maturity level (0–5) */
+                min_maturity?: number | null;
+                /** @description Minimum confidence score */
+                min_confidence?: number | null;
+                /** @description Filter by staleness */
+                is_stale?: boolean | null;
+                /** @description Filter by opportunity_id in applies_to */
+                applies_to_opportunity?: string | null;
+                limit?: number;
+                offset?: number;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TruthObjectListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_truth_api_v1_truths_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TruthObjectCreate"];
+            };
+        };
+        responses: {
+            /** @description TruthObject created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TruthObjectResponse"];
+                };
+            };
+            /** @description Validation error in request body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    check_stale_api_v1_truths_check_stale_post: {
+        parameters: {
+            query?: {
+                /** @description Preview only, don't mark stale */
+                dry_run?: boolean;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Freshness check completed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    freshness_summary_api_v1_truths_freshness_summary_get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stale_api_v1_truths_stale_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_to_kg_api_v1_truths_sync_kg_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_truth_api_v1_truths__truth_id__get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                truth_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description TruthObject found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TruthObjectResponse"];
+                };
+            };
+            /** @description TruthObject not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_truth_api_v1_truths__truth_id__delete: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                truth_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audit_trail_api_v1_truths__truth_id__audit_get: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                truth_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidationEventResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_truth_source_api_v1_truths__truth_id__sources_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                truth_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Source added successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TruthSourceResponse"];
+                };
+            };
+            /** @description TruthObject not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_truth_api_v1_truths__truth_id__validate_post: {
+        parameters: {
+            query?: {
+                /** @description Tenant UUID — dev/test fallback when JWT is absent */
+                tenant_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-Tenant-ID"?: string | null;
+            };
+            path: {
+                truth_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateRequest"];
+            };
+        };
+        responses: {
+            /** @description Transition applied successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateResponse"];
+                };
+            };
+            /** @description Invalid transition or insufficient evidence */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TruthObject not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

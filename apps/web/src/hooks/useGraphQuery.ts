@@ -141,7 +141,7 @@ export function useEntityContext(
       }
 
       const encodedId = encodeURIComponent(entityId);
-      const response = await apiGet<l3.components['schemas']['EntityContextResponse']>('l3', `/entity/${encodedId}/context?${params.toString()}`);
+      const response = await apiGet<unknown>('l3', `/entity/${encodedId}/context?${params.toString()}`);
 
       const validated = safeParseResponse(
         EntityContextResponseSchema,

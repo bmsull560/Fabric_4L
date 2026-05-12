@@ -29,11 +29,6 @@ python scripts/check_mirrored_files.py
 
 The check fails when configured mirrored file pairs diverge.
 
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
 
 ## Allowed wrapper-only deviations
 
@@ -54,11 +49,6 @@ If a future exception is required, document it in this file with:
 - exact file path(s)
 - rationale
 - expected removal date or follow-up issue
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
 ## Audit artifacts
 
 Layer 6 wrapper drift-audit evidence lives in:
@@ -72,20 +62,9 @@ Start with:
 
 For every active milestone, keep both `report.md` and `checklist.md` under `milestones/<milestone-id>/`.
 
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
 
 
 See also: `docs/reference/layer6-drift-audit-artifact-index.md` for current audit evidence and milestone artifact requirements.
->>>>>>> theirs
-=======
 
 
 See also: `docs/reference/layer6-drift-audit-artifact-index.md` for current audit evidence and milestone artifact requirements.
->>>>>>> theirs

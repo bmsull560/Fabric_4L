@@ -7,7 +7,7 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 
 from ..dependencies import get_graph_rag, get_hybrid_search
 from ..models import GraphRAGQuery, GraphRAGResponse, SearchRequest, SearchResponse
-from ..services.compat_metrics import record_deprecated_legacy_field_usage, record_deprecated_route_hit
+from ...services.compat_metrics import record_deprecated_legacy_field_usage, record_deprecated_route_hit
 from . import query_search
 
 router = APIRouter(prefix="/v1", tags=["compatibility"], dependencies=[Depends(require_authenticated)])
@@ -39,24 +39,10 @@ async def graph_rag_legacy_alias(
     ctx: RequestContext = Depends(require_authenticated),
 ):
     _assert_legacy_alias_enabled(request, "/v1/graphrag")
-<<<<<<< ours
-<<<<<<< ours
-    record_deprecated_route_hit("/v1/graphrag", tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
-    return await query_search.graph_rag_query_impl(query, graph_rag, ctx=ctx, request=request)
-
-
-=======
-=======
->>>>>>> theirs
     _record_route_hit(request, "/v1/graphrag", tenant_id=str(ctx.tenant_id))
     return await query_search.graph_rag_query_impl(query, graph_rag, ctx=ctx, request=request)
 
 
-@router.post("/query", response_model=GraphRAGResponse, deprecated=True)
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
 @router.post("/query/graph", response_model=GraphRAGResponse, deprecated=True)
 async def graph_rag_query_aliases(
     query: GraphRAGQuery,
@@ -66,15 +52,7 @@ async def graph_rag_query_aliases(
 ):
     route = request.url.path
     _assert_legacy_alias_enabled(request, route)
-<<<<<<< ours
-<<<<<<< ours
-    record_deprecated_route_hit(route, tenant_id=str(ctx.tenant_id), app_client=_app_client(request))
-=======
     _record_route_hit(request, route, tenant_id=str(ctx.tenant_id))
->>>>>>> theirs
-=======
-    _record_route_hit(request, route, tenant_id=str(ctx.tenant_id))
->>>>>>> theirs
     return await query_search.graph_rag_query_impl(query, graph_rag, ctx=ctx, request=request)
 
 

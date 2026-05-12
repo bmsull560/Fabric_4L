@@ -256,7 +256,7 @@ export function mapGeneratedQueryResultToDomain(
  * Maps the raw L3 EntityContextResponse OpenAPI type to domain model.
  */
 export function mapGeneratedEntityContextToDomain(
-  raw: components['schemas']['EntityContextResponse']
+  raw: unknown
 ): EntityContext {
   return mapEntityContextResponseDtoToDomain(raw as unknown as EntityContextResponseDto);
 }

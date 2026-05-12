@@ -200,11 +200,7 @@ jobs:
       - name: Emit build metadata artifact
         env:
           IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-<<<<<<< ours
           PUBLISHED_REF: sha-${{ github.sha }}
-=======
-          PUBLISHED_TAG: ${{ steps.tags.outputs.published_tag }}
->>>>>>> theirs
         run: |
           mkdir -p artifacts/build-metadata
           cat > "artifacts/build-metadata/${{ matrix.layer }}.json" <<JSON
