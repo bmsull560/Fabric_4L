@@ -2309,6 +2309,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         }
       },
@@ -2351,6 +2354,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         }
       }
@@ -2396,6 +2402,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         }
       },
@@ -2449,6 +2458,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         }
       }
@@ -2504,6 +2516,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         }
       }
@@ -2559,6 +2574,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         }
       }
@@ -2578,6 +2596,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         },
         "security": [
@@ -2606,6 +2627,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing tenant context"
           }
         },
         "security": [
@@ -11124,33 +11148,51 @@
           "label": {
             "type": "string",
             "title": "Label",
-            "description": "Display label (legacy: use 'name')"
+            "description": "Deprecated alias of name; removal planned after v1.4",
+            "deprecated": true
           },
           "type": {
             "type": "string",
             "title": "Type",
-            "description": "Node type (legacy: use 'entity_type')"
+            "description": "Deprecated alias of entity_type; removal planned after v1.4",
+            "deprecated": true
           },
           "confidence": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Confidence",
-            "description": "Confidence score (legacy: use 'confidence_score')",
-            "default": 0.8
+            "description": "Deprecated alias of confidence_score; removal planned after v1.4",
+            "default": 0.8,
+            "deprecated": true
           },
           "properties": {
             "additionalProperties": true,
             "type": "object",
             "title": "Properties",
             "description": "Additional node properties"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display label"
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Node type"
+          },
+          "confidence_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "default": 0.8,
+            "description": "Confidence score"
           }
         },
         "type": "object",
         "required": [
           "id",
-          "label",
-          "type"
+          "name",
+          "entity_type"
         ],
         "title": "GraphNode",
         "description": "Node in the knowledge graph.\n\nNOTE: This model provides backward-compatible field aliases for frontend contract stability:\n- 'name' is an alias for 'label' (frontend expects 'name')\n- 'entity_type' is an alias for 'type' (frontend expects 'entity_type')\n- 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')\n\nThe legacy fields (label, type, confidence) are preserved for backward compatibility.\nTODO: Deprecate legacy fields once all consumers migrate to new field names."

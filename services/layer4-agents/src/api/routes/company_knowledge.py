@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
@@ -150,6 +150,7 @@ async def update_profile(
 async def approve_profile(
     profile_id: UUID,
     request: ProfileApproveRequest,
+    http_request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db_from_context),
     ctx: RequestContext = Depends(require_authenticated),
@@ -174,6 +175,10 @@ async def approve_profile(
         service.sync_profile_to_layer3,
         profile_id=profile_id,
         tenant_id=str(ctx.tenant_id),
+        auth_headers={
+            key: value for key, value in http_request.headers.items()
+            if key.lower() in {"authorization", "x-service-auth", "x-tenant-id"}
+        },
     )
     logger.info(
         "Queued Layer 3 sync for approved profile %s (tenant=%s)",

@@ -352,12 +352,22 @@ All test data must use factories. No hardcoded complex objects.
 
 | Metric | Target | Current |
 |--------|--------|---------|
-| Unit Test Count | 140+ | TBD |
-| Integration Test Count | 40+ | TBD |
-| Property Test Count | 20+ | TBD |
-| Performance Test Count | 15+ | TBD |
-| Line Coverage | ≥90% | TBD |
-| Flaky Test Rate | <1% | TBD |
+| Unit Test Count | ≥54 | 54 (2026-05-12 local baseline) |
+| Integration Test Count | ≥14 | 14 (2026-05-12 local baseline) |
+| Property Test Count | ≥12 | 12 (2026-05-12 local baseline) |
+| Performance Test Count | ≥12 | 12 (2026-05-12 local baseline) |
+| Line Coverage | ≥95.0% (`useGraphQuery.ts`) | 95.1% (2026-05-12 local baseline) |
+| Flaky Test Rate | ≤1.0% on PR/release runs | 0.0% (0 flaky / 114 executions across 3 reruns on 2026-05-12) |
+
+
+### Metric Sources and Commands
+
+| Metric | Command / Source of Truth | Extraction Method |
+|-------|----------------------------|-------------------|
+| L1 Unit test count | `pnpm vitest run src/hooks/useGraphQuery.comprehensive.test.ts --coverage --coverage.include=src/hooks/useGraphQuery.ts --coverage.reporter=json-summary` | Vitest summary (`Tests 54 passed`). |
+| L2+L3+L4 test counts | `pnpm vitest run src/hooks/useGraphQuery.integration.test.ts src/hooks/useGraphQuery.property.test.ts src/hooks/useGraphQuery.performance.test.ts --reporter=verbose` | Vitest summary (`Tests 38 passed`) + per-file assertions in reporter output (14/12/12). |
+| Coverage percentages | `cat apps/web/coverage/coverage-summary.json` after the L1 coverage run | Read `lines.pct`, `branches.pct`, `functions.pct`, `statements.pct` for `src/hooks/useGraphQuery.ts`. |
+| Flaky rate | CI workflow `.github/workflows/graph-module-tests.yml` step **Flaky Rate Gate (PR + release branches)** | Re-run graph module suites 3 times; flaky rate = `(failed_runs / total_runs) * 100`. Gate fails if rate > 1.0%. |
 
 ### Flaky Test Protocol
 

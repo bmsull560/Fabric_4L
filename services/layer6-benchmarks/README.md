@@ -49,3 +49,17 @@ Canonical runtime package: `value_fabric/layer6`.
 
 `services/layer6-benchmarks/src/` contains service wiring plus compatibility shims for legacy imports.
 Use canonical imports (`value_fabric.layer6.*`) for all new code.
+
+
+## Dependency locking
+
+- Canonical Python lock artifact for this service: `uv.lock` (source of truth).
+- Regenerate lock state after dependency edits in `pyproject.toml`:
+
+```bash
+cd services/layer6-benchmarks
+uv lock
+uv export --locked --no-dev --format requirements-txt -o requirements.lock
+```
+
+- CI and Docker builds must consume `uv.lock` deterministically (`uv sync --locked` or equivalent).

@@ -195,3 +195,16 @@ Layer 3 graph response models currently include both canonical and legacy alias 
 Target removal is **v2.4 / 2026-07-01**. Monitor runtime counters before removal:
 `graph_node_request_legacy_fields`, `graph_node_response_legacy_fields`, `graph_edge_request_legacy_fields`, `graph_edge_response_legacy_fields`.
 See `docs/DEPRECATIONS.md#graph-legacy-field-removal-checklist` for mandatory cutover steps.
+
+## Dependency locking
+
+- Canonical Python lock artifact for this service: `uv.lock` (source of truth).
+- Regenerate lock state after dependency edits in `pyproject.toml`:
+
+```bash
+cd services/layer3-knowledge
+uv lock
+uv export --locked --no-dev --format requirements-txt -o requirements.lock
+```
+
+- CI and Docker builds must consume `uv.lock` deterministically (`uv sync --locked` or equivalent).

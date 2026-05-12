@@ -42,13 +42,18 @@ jobs:
           # Check for Python lockfiles in all layers
           for layer in services/layer{1..6}-*; do
             if [ -d "$layer" ]; then
-              if [ -f "$layer/uv.lock" ] || [ -f "$layer/poetry.lock" ]; then
-                echo "✓ $layer has lockfile"
+              if [ -f "$layer/uv.lock" ]; then
+                echo "✓ $layer has canonical uv.lock"
               else
-                echo "⚠ $layer missing lockfile (acceptable if using pip-compile)"
+                echo "✗ $layer missing canonical uv.lock"
+                exit 1
               fi
             fi
           done
+
+
+      - name: Check lockfiles for placeholder boilerplate
+        run: python scripts/ci/check_lockfile_placeholders.py
 
       - name: Check required root files
         run: |

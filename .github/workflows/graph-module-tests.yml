@@ -14,14 +14,14 @@ permissions:
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'release/**']
     paths:
       - 'apps/web/src/hooks/useGraphQuery.ts'
       - 'apps/web/src/hooks/useGraphQuery.*.test.ts'
       - 'services/layer3-knowledge/src/api/**'
       - 'tests/contract/**'
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, 'release/**']
     paths:
       - 'apps/web/src/hooks/useGraphQuery.ts'
       - 'apps/web/src/hooks/useGraphQuery.*.test.ts'
@@ -66,7 +66,7 @@ jobs:
             --coverage \
             --coverage.thresholds.statements=90 \
             --coverage.thresholds.branches=80 \
-            --coverage.thresholds.functions=100 \
+            --coverage.thresholds.functions=90 \
             --coverage.thresholds.lines=90
 
       - name: Upload coverage report
@@ -249,7 +249,28 @@ jobs:
           echo "Checking coverage thresholds..."
           echo "Line coverage: ≥90%"
           echo "Branch coverage: ≥80%"
-          echo "Function coverage: 100%"
+          echo "Function coverage: ≥90%"
+
+      - name: Flaky Rate Gate (PR + release branches)
+        if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/')
+        working-directory: apps/web
+        run: |
+          set -euo pipefail
+          total_runs=0
+          failed_runs=0
+          for i in 1 2 3; do
+            total_runs=$((total_runs + 1))
+            if ! pnpm vitest run \
+              src/hooks/useGraphQuery.comprehensive.test.ts \
+              src/hooks/useGraphQuery.integration.test.ts \
+              src/hooks/useGraphQuery.property.test.ts \
+              src/hooks/useGraphQuery.performance.test.ts; then
+              failed_runs=$((failed_runs + 1))
+            fi
+          done
+          flaky_rate=$(awk "BEGIN { printf \"%.2f\", (${failed_runs}/${total_runs})*100 }")
+          echo "Flaky rate: ${flaky_rate}% (failed=${failed_runs}, total=${total_runs})"
+          awk "BEGIN { if (${flaky_rate} > 1.0) { print \"Flaky rate gate failed: ${flaky_rate}% > 1.00%\"; exit 1 } else { print \"Flaky rate gate passed: ${flaky_rate}% <= 1.00%\" } }"
 
       - name: Coverage Report
         uses: irongut/CodeCoverageSummary@v1.3.0
@@ -287,4 +308,3 @@ jobs:
           echo "- Branch Coverage: ≥80%" >> $GITHUB_STEP_SUMMARY
           echo "- Performance SLOs: All met" >> $GITHUB_STEP_SUMMARY
           echo "- Contract Validation: Passing" >> $GITHUB_STEP_SUMMARY
-

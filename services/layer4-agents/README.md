@@ -101,6 +101,15 @@ Dependency-aware state behavior:
 - Transition to `failed_terminal` for non-retryable dependency failures (for example `graph_sync_status=failed` with no retry policy, or `truth_approval_status=rejected` for gated flows).
 - Use `retrying` for retryable dependency and tool failures according to retry budget.
 
+## Company Knowledge → Layer 3 Ingestion Flow
+
+When a company profile is approved, Layer 4 sync uses the canonical Layer 3 `POST /v1/ingest` route (not temporary signal persistence). The integration enforces contract handling on both sides:
+
+- Layer 4 builds and validates a structured ingest request payload before dispatch.
+- Layer 4 validates the Layer 3 ingest response schema before accepting success.
+- Tenant and auth headers (`X-Tenant-ID`, `Authorization`, `X-Service-Auth`) are passed through unchanged into the ingestion call.
+- Contract mismatch responses are treated as sync failures and surfaced for retry/triage.
+
 ## Database Migrations
 
 Layer 4 uses Alembic for database schema management.

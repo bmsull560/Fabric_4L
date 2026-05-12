@@ -67,7 +67,11 @@ class Layer3Client:
             self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client
 
-    def _get_headers(self, tenant_id: str | None = None) -> dict[str, str]:
+    def _get_headers(
+        self,
+        tenant_id: str | None = None,
+        passthrough_headers: dict[str, str] | None = None,
+    ) -> dict[str, str]:
         """Build request headers with tenant context.
 
         Args:
@@ -89,6 +93,8 @@ class Layer3Client:
             if service_auth:
                 headers[SERVICE_AUTH_HEADER] = service_auth
 
+        if passthrough_headers:
+            headers.update(passthrough_headers)
         return headers
 
     def _get_effective_tenant(self, tenant_id: str | None) -> str:
@@ -289,6 +295,25 @@ class Layer3Client:
 
         result = await self._make_request("POST", url, effective_tenant, json=signal_data)
         return result.get("signal_id", "")
+
+    async def ingest(
+        self,
+        ingestion_payload: dict[str, Any],
+        tenant_id: str | None = None,
+        passthrough_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Call canonical Layer 3 ingestion endpoint."""
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/ingest"
+        client = await self._get_client()
+        headers = self._get_headers(effective_tenant, passthrough_headers=passthrough_headers)
+        try:
+            response = await client.post(url, json=ingestion_payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error("Layer3 ingest call failed: %s", e)
+            raise Layer3ClientError(f"Layer3 ingest call failed: {e}") from e
 
     async def find_matching_evidence(
         self,

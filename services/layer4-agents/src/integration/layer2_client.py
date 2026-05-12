@@ -78,6 +78,14 @@ class Layer2ExtractionClient:
                 headers[SERVICE_AUTH_HEADER] = service_auth
         return headers
 
+    def _require_tenant(self, tenant_id: str | None, *, operation: str) -> str:
+        effective_tenant = tenant_id or self._default_tenant_id
+        if not effective_tenant:
+            raise Layer2ClientError(
+                f"Missing tenant context for '{operation}'. Provide tenant_id or set a default tenant in constructor."
+            )
+        return effective_tenant
+
     async def extract_filing(
         self,
         url: str,
@@ -347,12 +355,13 @@ class Layer2ExtractionClient:
                 "chunk_overlap": 200,
             },
         }
+        effective_tenant = self._require_tenant(tenant_id, operation="extract_value_attributes")
 
         try:
             response = await self.client.post(
                 "/v1/extract-and-ingest",
                 json=payload,
-                headers=self._get_headers(tenant_id),
+                headers=self._get_headers(effective_tenant),
             )
             response.raise_for_status()
             return response.json()

@@ -15,9 +15,13 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
+<<<<<<< ours
 from asyncio import TimeoutError as AsyncTimeoutError
 from fastapi import HTTPException, Request
 from pydantic import ValidationError as PydanticValidationError
+=======
+from fastapi import HTTPException, Request
+>>>>>>> theirs
 from value_fabric.shared.identity import RequestContext
 from fastapi.responses import StreamingResponse
 
@@ -41,14 +45,19 @@ def _build_error_context(*, tenant_id: str | None, endpoint: str, operation: str
     return context
 
 
+<<<<<<< ours
 def _request_id_from_context(request: Request | None, ctx: RequestContext | None) -> str | None:
     if request:
-        return getattr(request.state, "trace_id", None) or getattr(request.state, "correlation_id", None)
+        request_id = getattr(request.state, "trace_id", None) or getattr(request.state, "correlation_id", None)
+        if request_id:
+            return request_id
     if ctx:
         return ctx.request_id
     return None
 
 
+=======
+>>>>>>> theirs
 async def _execute_graph_rag_query(
     graph_rag: Any,
     query_text: str,
@@ -127,7 +136,13 @@ async def graph_rag_query_impl(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
             endpoint="/v1/query",
             operation="graph_rag_query",
+<<<<<<< ours
             request_id=_request_id_from_context(request, ctx),
+=======
+            request_id=(getattr(request.state, "trace_id", None) if request else None)
+            or (getattr(request.state, "correlation_id", None) if request else None)
+            or (ctx.request_id if ctx else None),
+>>>>>>> theirs
         )
         logger.warning("GraphRAG query mapped exception", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
@@ -150,12 +165,19 @@ async def graph_rag_query_impl(
         )
         context["error_code"] = "UPSTREAM_TIMEOUT"
         logger.error("GraphRAG query timed out", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
     except Exception as exc:
         context = _build_error_context(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
             endpoint="/v1/query",
             operation="graph_rag_query",
+<<<<<<< ours
             request_id=_request_id_from_context(request, ctx),
+=======
+            request_id=(getattr(request.state, "trace_id", None) if request else None)
+            or (getattr(request.state, "correlation_id", None) if request else None)
+            or (ctx.request_id if ctx else None),
+>>>>>>> theirs
         )
         logger.error("GraphRAG query failed", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
@@ -267,7 +289,13 @@ async def hybrid_search_impl(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
             endpoint="/v1/search",
             operation="hybrid_search",
+<<<<<<< ours
             request_id=_request_id_from_context(http_request, ctx),
+=======
+            request_id=(getattr(http_request.state, "trace_id", None) if http_request else None)
+            or (getattr(http_request.state, "correlation_id", None) if http_request else None)
+            or (ctx.request_id if ctx else None),
+>>>>>>> theirs
         )
         logger.warning("Search mapped exception", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
@@ -290,12 +318,19 @@ async def hybrid_search_impl(
         )
         context["error_code"] = "UPSTREAM_TIMEOUT"
         logger.error("Search timed out", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
     except Exception as exc:
         context = _build_error_context(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
             endpoint="/v1/search",
             operation="hybrid_search",
+<<<<<<< ours
             request_id=_request_id_from_context(http_request, ctx),
+=======
+            request_id=(getattr(http_request.state, "trace_id", None) if http_request else None)
+            or (getattr(http_request.state, "correlation_id", None) if http_request else None)
+            or (ctx.request_id if ctx else None),
+>>>>>>> theirs
         )
         logger.error("Search failed", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)

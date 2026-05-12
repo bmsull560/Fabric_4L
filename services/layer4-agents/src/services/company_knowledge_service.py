@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from pydantic import BaseModel, ValidationError
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +36,25 @@ logger = logging.getLogger(__name__)
 LAYER1_BASE_URL = os.getenv("LAYER4_LAYER1_API_URL", "http://layer1-ingestion:8000")
 LAYER2_BASE_URL = os.getenv("LAYER4_LAYER2_API_URL", "http://layer2-extraction:8000")
 LAYER3_BASE_URL = os.getenv("LAYER4_LAYER3_API_URL", "http://layer3-knowledge:8000")
+
+
+class Layer3IngestRequest(BaseModel):
+    rdf_data: str
+    source_id: str
+    extraction_job_id: str
+    content_hash: str | None = None
+    tenant_id: str | None = None
+
+
+class Layer3IngestResponse(BaseModel):
+    status: str
+    source_id: str
+    entities_loaded: int
+    relationships_loaded: int
+    triples_processed: int
+    duration_seconds: float | None = None
+    error: str | None = None
+    warnings: list[str] = []
 
 
 class CompanyKnowledgeService:
@@ -890,6 +910,7 @@ class CompanyKnowledgeService:
         self,
         profile_id: UUID,
         tenant_id: str,
+        auth_headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Sync approved company knowledge profile to Layer 3 Knowledge Graph.
 
@@ -945,32 +966,39 @@ class CompanyKnowledgeService:
                     "properties": driver,
                 })
 
-        # Persist to Layer 3 via signals endpoint (generic entity storage)
-        # For MVP, we use the signals endpoint as a generic entity bucket
-        # TODO: Replace with dedicated /v1/ingest endpoint when available
-        results = []
+        rdf_lines = []
         for entity in entities:
-            try:
-                signal_data = {
-                    "signal_type": "company_knowledge_entity",
-                    "entity_type": entity["type"],
-                    "entity_name": entity["name"],
-                    "properties": entity["properties"],
-                    "profile_id": str(profile_id),
-                    "tenant_id": tenant_id,
-                }
-                signal_id = await client.persist_signal(
-                    signal_data=signal_data,
-                    tenant_id=tenant_id,
-                )
-                results.append({"entity_type": entity["type"], "signal_id": signal_id})
-            except Exception as e:
-                logger.error("Failed to sync entity %s to Layer 3: %s", entity.get("name"), e)
+            entity_type = entity["type"]
+            entity_name = str(entity["name"]).replace('"', '\\"')
+            rdf_lines.append(f'_:{entity_type}_{entity_name.replace(" ", "_")} a <urn:value-fabric:{entity_type}> .')
+            rdf_lines.append(f'_:{entity_type}_{entity_name.replace(" ", "_")} <urn:value-fabric:name> "{entity_name}" .')
+        ingest_request = Layer3IngestRequest(
+            rdf_data="\n".join(rdf_lines),
+            source_id=f"company-profile:{profile_id}",
+            extraction_job_id=f"layer4-company-knowledge:{profile_id}",
+            content_hash=None,
+            tenant_id=tenant_id,
+        )
+        ingest_result = await client.ingest(
+            ingestion_payload=ingest_request.model_dump(),
+            tenant_id=tenant_id,
+            passthrough_headers=auth_headers,
+        )
+        try:
+            validated_result = Layer3IngestResponse.model_validate(ingest_result)
+        except ValidationError as e:
+            raise ValueError(f"Layer 3 ingest contract mismatch: {e}") from e
 
         logger.info(
-            "Synced profile %s to Layer 3: %s/%s entities",
+            "Synced profile %s to Layer 3 via /v1/ingest: %s entities",
             profile_id,
-            len([r for r in results if r.get("signal_id")]),
-            len(entities),
+            validated_result.entities_loaded,
         )
-        return {"profile_id": str(profile_id), "entities_synced": results}
+        return {
+            "profile_id": str(profile_id),
+            "ingest_status": validated_result.status,
+            "source_id": validated_result.source_id,
+            "entities_loaded": validated_result.entities_loaded,
+            "relationships_loaded": validated_result.relationships_loaded,
+            "triples_processed": validated_result.triples_processed,
+        }

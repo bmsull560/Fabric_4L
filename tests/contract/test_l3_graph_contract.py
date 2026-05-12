@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from .schema_assertions import assert_matches_schema
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -236,13 +238,7 @@ class TestL3GraphNodeContracts:
     def test_graph_node_schema_completeness(self) -> None:
         """GraphNode schema contains all required fields for frontend."""
         l3_openapi = _load_json(OPENAPI_L3_PATH)
-        # NOTE: Backend provides backward-compatible alias fields:
-        # - 'name' alias for 'label' (frontend expects 'name')
-        # - 'entity_type' alias for 'type' (frontend expects 'entity_type')
-        # - 'confidence_score' alias for 'confidence' (frontend expects 'confidence_score')
-        # Legacy fields (label, type, confidence) are preserved for backward compatibility.
-        schema_required = {"id", "label", "type"}
-        # frontend_expects = {"id", "name", "entity_type", "confidence_score"}  # Documented expectation
+        schema_required = {"id", "name", "entity_type"}
 
         components = l3_openapi.get("components", {}).get("schemas", {})
         if "GraphNode" in components:
@@ -258,30 +254,36 @@ class TestL3GraphNodeContracts:
         from value_fabric.layer3.api.models import GraphNode
 
         # Create a GraphNode instance (uses legacy fields internally)
-        node = GraphNode(
-            id="cap-1",
-            label="Automated Invoice Processing",
-            type="Capability",
-            confidence=0.92,
-            x=100.0,
-            y=200.0,
-        )
+        node = GraphNode(id="cap-1", name="Automated Invoice Processing", entity_type="Capability", confidence_score=0.92)
 
         # Serialize - this should include alias fields via model_dump override
         serialized = node.model_dump()
 
         # Validate that both legacy and alias fields are present in serialized output
-        assert "label" in serialized, "Legacy 'label' field should be in serialized output"
-        assert "name" in serialized, "Alias 'name' field should be in serialized output"
+        assert "name" in serialized, "Canonical 'name' field should be in serialized output"
+        assert "label" in serialized, "Deprecated 'label' alias should be in serialized output"
         assert serialized["label"] == serialized["name"], "Label and name should match"
 
-        assert "type" in serialized, "Legacy 'type' field should be in serialized output"
-        assert "entity_type" in serialized, "Alias 'entity_type' field should be in serialized output"
+        assert "entity_type" in serialized, "Canonical 'entity_type' field should be in serialized output"
+        assert "type" in serialized, "Deprecated 'type' alias should be in serialized output"
         assert serialized["type"] == serialized["entity_type"], "Type and entity_type should match"
 
-        assert "confidence" in serialized, "Legacy 'confidence' field should be in serialized output"
-        assert "confidence_score" in serialized, "Alias 'confidence_score' field should be in serialized output"
+        assert "confidence_score" in serialized, "Canonical 'confidence_score' field should be in serialized output"
+        assert "confidence" in serialized, "Deprecated 'confidence' alias should be in serialized output"
         assert serialized["confidence"] == serialized["confidence_score"], "Confidence fields should match"
+
+    def test_graph_node_rejects_conflicting_alias_and_canonical_values(self) -> None:
+        from pydantic import ValidationError
+        from value_fabric.layer3.api.models import GraphNode
+
+        with pytest.raises(ValidationError):
+            GraphNode(
+                id="cap-1",
+                name="Canonical",
+                label="LegacyMismatch",
+                entity_type="Capability",
+                confidence_score=0.9,
+            )
 
 
 class TestL3GraphRelationshipContracts:

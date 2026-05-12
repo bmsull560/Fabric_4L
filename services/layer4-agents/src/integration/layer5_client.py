@@ -158,6 +158,24 @@ class Layer5GroundTruthClient:
             logger.debug("Layer 5 ping failed: %s", exc)
             return False
 
+    def _require_organization_id(
+        self,
+        organization_id: str | None,
+        *,
+        operation: str,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
+    ) -> dict[str, str]:
+        """Enforce tenant context before outbound tenant-scoped calls."""
+        if organization_id:
+            return {"organization_id": str(organization_id)}
+        if allow_system_call and audit_reason:
+            logger.warning("Privileged system call for %s: %s", operation, audit_reason)
+            return {}
+        raise ValueError(
+            f"Missing tenant context for '{operation}'. Provide organization_id or use privileged system-call path with audit reason."
+        )
+
     # ------------------------------------------------------------------
     # Core: sync approved truths to KG
     # ------------------------------------------------------------------
@@ -171,6 +189,8 @@ class Layer5GroundTruthClient:
     async def sync_approved_truths(
         self,
         organization_id: str | None = None,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
     ) -> dict[str, Any]:
         """Trigger a bulk sync of all APPROVED TruthObjects to Layer 3 KG.
 
@@ -186,9 +206,12 @@ class Layer5GroundTruthClient:
             Dict with keys ``synced``, ``failed``, ``total_pending``,
             or ``error`` on failure.
         """
-        params: dict[str, str] = {}
-        if organization_id:
-            params["organization_id"] = str(organization_id)
+        params = self._require_organization_id(
+            organization_id,
+            operation="sync_approved_truths",
+            allow_system_call=allow_system_call,
+            audit_reason=audit_reason,
+        )
 
         try:
             resp = await self._client.post("/api/v1/truths/sync-kg", params=params)
@@ -235,6 +258,8 @@ class Layer5GroundTruthClient:
         claim_type: str,
         confidence: float,
         organization_id: str | None = None,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
         value: float | None = None,
         applies_to: dict[str, Any] | None = None,
         sources: list[dict[str, Any]] | None = None,
@@ -280,9 +305,12 @@ class Layer5GroundTruthClient:
         if raw_extraction_data:
             body["raw_extraction_data"] = raw_extraction_data
 
-        params: dict[str, str] = {}
-        if organization_id:
-            params["organization_id"] = str(organization_id)
+        params = self._require_organization_id(
+            organization_id,
+            operation="submit_truth",
+            allow_system_call=allow_system_call,
+            audit_reason=audit_reason,
+        )
 
         try:
             resp = await self._client.post("/api/v1/truths", json=body, params=params)
@@ -318,6 +346,8 @@ class Layer5GroundTruthClient:
         applies_to_opportunity: str | None = None,
         limit: int = 50,
         offset: int = 0,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
     ) -> dict[str, Any]:
         """List TruthObjects with optional filters.
 
@@ -326,8 +356,14 @@ class Layer5GroundTruthClient:
             ``has_more``, or ``{"error": ...}`` on failure.
         """
         params: dict[str, Any] = {"limit": limit, "offset": offset}
-        if organization_id:
-            params["organization_id"] = str(organization_id)
+        params.update(
+            self._require_organization_id(
+                organization_id,
+                operation="list_truths",
+                allow_system_call=allow_system_call,
+                audit_reason=audit_reason,
+            )
+        )
         if status:
             params["status"] = status
         if claim_type:

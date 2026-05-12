@@ -85,6 +85,25 @@ class Layer1IngestionClient:
                 headers[SERVICE_AUTH_HEADER] = service_auth
         return headers
 
+    def _require_tenant(
+        self,
+        tenant_id: str | None,
+        *,
+        operation: str,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
+    ) -> str:
+        """Require tenant context for tenant-scoped operations."""
+        effective_tenant = tenant_id or self._default_tenant_id
+        if effective_tenant:
+            return effective_tenant
+        if allow_system_call and audit_reason:
+            logger.warning("Privileged system call for %s: %s", operation, audit_reason)
+            return ""
+        raise Layer1ClientError(
+            f"Missing tenant context for '{operation}'. Provide tenant_id or use privileged system-call path with audit reason."
+        )
+
     async def create_job(
         self,
         target_url: str,
@@ -206,6 +225,8 @@ class Layer1IngestionClient:
         name: str | None = None,
         tenant_id: str | None = None,
         extraction_config: dict[str, Any] | None = None,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
     ) -> dict[str, Any]:
         """Create a scraping target for a website.
 
@@ -238,12 +259,18 @@ class Layer1IngestionClient:
             },
             "tags": ["company-knowledge", "onboarding"],
         }
+        effective_tenant = self._require_tenant(
+            tenant_id,
+            operation="create_website_target",
+            allow_system_call=allow_system_call,
+            audit_reason=audit_reason,
+        )
 
         try:
             response = await self.client.post(
                 "/targets",
                 json=payload,
-                headers=self._get_headers(tenant_id),
+                headers=self._get_headers(effective_tenant or None),
             )
             response.raise_for_status()
             return response.json()
@@ -256,6 +283,8 @@ class Layer1IngestionClient:
         target_id: str,
         tenant_id: str | None = None,
         priority: int = 5,
+        allow_system_call: bool = False,
+        audit_reason: str | None = None,
     ) -> dict[str, Any]:
         """Trigger immediate execution of a scraping target.
 
@@ -268,12 +297,18 @@ class Layer1IngestionClient:
             Execution response with job_id
         """
         payload = {"priority": priority}
+        effective_tenant = self._require_tenant(
+            tenant_id,
+            operation="execute_target",
+            allow_system_call=allow_system_call,
+            audit_reason=audit_reason,
+        )
 
         try:
             response = await self.client.post(
                 f"/targets/{target_id}/execute",
                 json=payload,
-                headers=self._get_headers(tenant_id),
+                headers=self._get_headers(effective_tenant or None),
             )
             response.raise_for_status()
             return response.json()
