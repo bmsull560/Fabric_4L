@@ -1,4 +1,4 @@
-"""Compatibility exports for structured Value Fabric error handling."""
+"""Shared error handling module for all Value Fabric layers."""
 
 from .exceptions import (
     AuthenticationError,
@@ -9,15 +9,26 @@ from .exceptions import (
     ValidationError,
     ValueFabricException,
 )
+from .handlers import (
+    canonical_error_response_schema,
+    install_error_response_openapi,
+    register_exception_handlers,
+)
+from .middleware import get_request_id, RequestIDMiddleware
 from .models import ErrorCode, ErrorResponse
 
 __all__ = [
     "AuthenticationError",
     "AuthorizationError",
+    "canonical_error_response_schema",
     "ErrorCode",
     "ErrorResponse",
+    "get_request_id",
+    "install_error_response_openapi",
     "NotFoundError",
     "RateLimitError",
+    "register_exception_handlers",
+    "RequestIDMiddleware",
     "ServiceUnavailableError",
     "ValidationError",
     "ValueFabricException",

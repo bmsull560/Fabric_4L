@@ -162,3 +162,197 @@ def test_required_env_defaults_are_safe_and_do_not_use_real_env(monkeypatch):
         assert env[key] == expected
         assert expected.startswith(("compose-contract", "compose_contract", "composecontract"))
         assert expected != os.environ.get(key)
+
+
+def test_full_compose_rejects_unapproved_host_ports():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-ports")
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  layer4-agents:
+    image: alpine:3.20
+    ports:
+      - "8004:8000"
+    healthcheck:
+      test: ["CMD", "true"]
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "true"]
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+
+    assert any(failure.service == "redis" and "host-published ports" in failure.message for failure in failures)
+    assert not any(
+        failure.service == "layer4-agents" and "host-published ports" in failure.message
+        for failure in failures
+    )
+
+
+def test_full_compose_rejects_placeholder_secrets_and_optional_secret_defaults():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-secret-placeholders")
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  api:
+    image: alpine:3.20
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-changeme}
+      - POSTGRES_PASSWORD=postgres
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/app
+    healthcheck:
+      test: ["CMD", "true"]
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+    messages = [failure.message for failure in failures]
+
+    assert "JWT_SECRET must use required env interpolation" in messages
+    assert "JWT_SECRET must not use an optional default" in messages
+    assert "JWT_SECRET contains a production-forbidden placeholder value" in messages
+    assert "POSTGRES_PASSWORD must use required env interpolation" in messages
+    assert "POSTGRES_PASSWORD contains a production-forbidden placeholder value" in messages
+    assert "DATABASE_URL contains a production-forbidden placeholder value" in messages
+
+
+def test_full_compose_accepts_required_secret_interpolation():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-required-secrets")
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  api:
+    image: alpine:3.20
+    environment:
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/app
+    healthcheck:
+      test: ["CMD", "true"]
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+
+    assert failures == []
+
+
+def test_full_compose_rejects_unguarded_embedded_required_secret_reference():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-unguarded-embedded-secret")
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  api:
+    image: alpine:3.20
+    environment:
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "true"]
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "true"]
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+
+    assert any(
+        failure.service == "api"
+        and failure.message == "REDIS_PASSWORD reference must use required env interpolation"
+        for failure in failures
+    )
+
+
+def test_full_compose_requires_redis_dependency_for_redis_runtime_reference():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-redis-dependency")
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  layer6-benchmarks:
+    image: alpine:3.20
+    environment:
+      - REDIS_URL=redis://:secret@redis:6379/0
+    healthcheck:
+      test: ["CMD", "true"]
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "true"]
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+
+    assert any(
+        failure.service == "layer6-benchmarks" and "depends_on.redis" in failure.message
+        for failure in failures
+    )
+
+
+def test_full_compose_requires_custom_service_runtime_hardening():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-runtime-hardening")
+    write_file(
+        tmp_path / "service" / "Dockerfile",
+        "FROM alpine:3.20\nHEALTHCHECK CMD true\nCMD [\"sh\"]\n",
+    )
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  api:
+    build:
+      context: ./service
+      dockerfile: ./Dockerfile
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+    messages = [failure.message for failure in failures]
+
+    assert "custom long-running service must drop all Linux capabilities" in messages
+    assert "custom long-running service must set no-new-privileges" in messages
+    assert "custom long-running service must use read_only: true" in messages
+
+
+def test_full_compose_hardening_exemption_allows_migration_runner():
+    module = load_module()
+    tmp_path = repo_tmp_path("full-runtime-hardening-exemption")
+    write_file(
+        tmp_path / "service" / "Dockerfile",
+        "FROM alpine:3.20\nCMD [\"sh\"]\n",
+    )
+    compose = write_file(
+        tmp_path / module.FULL_COMPOSE_FILE,
+        """
+services:
+  layer5-migrate:
+    build:
+      context: ./service
+      dockerfile: ./Dockerfile
+    command: alembic upgrade head
+    restart: "no"
+""",
+    )
+
+    failures = module.validate_compose_contract(compose, tmp_path)
+
+    assert failures == []

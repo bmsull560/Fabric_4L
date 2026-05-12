@@ -3,7 +3,9 @@
 
 This gate validates compose syntax through Docker Compose v2 and then checks
 repo-local contracts that `docker compose config` does not catch reliably:
-build contexts, Dockerfile paths, bind-mount sources, and healthcheck coverage.
+build contexts, Dockerfile paths, bind-mount sources, healthcheck coverage,
+production-like port exposure, placeholder secrets, runtime hardening, and
+runtime dependency declarations.
 It intentionally does not start containers.
 """
 
@@ -40,6 +42,7 @@ SAFE_REQUIRED_ENV_DEFAULTS = {
     "REDIS_PASSWORD": "compose-contract-redis-password",
     "POSTGRES_USER": "compose_contract_user",
     "POSTGRES_PASSWORD": "compose-contract-postgres-password",
+    "API_KEY_HMAC_SECRET": "compose-contract-api-key-hmac-secret-32chars",
     "SERVICE_AUTH_SECRET": "compose-contract-service-auth-secret-32chars",
 }
 
@@ -55,6 +58,49 @@ ONE_SHOT_SERVICE_PATTERNS = (
 SKIPPED_BIND_SOURCES = {
     "/var/run/docker.sock",
 }
+
+FULL_COMPOSE_FILE = "docker-compose.full.yml"
+
+FULL_COMPOSE_ALLOWED_PORT_SERVICES = {
+    "layer4-agents",
+}
+
+FULL_COMPOSE_HARDENING_EXEMPT_SERVICES = {
+    "neo4j",
+    "layer5-migrate",
+    "alertmanager",
+    "grafana",
+    "jaeger",
+    "redis",
+    "vault",
+    "postgres",
+}
+
+FULL_COMPOSE_REQUIRED_ENV_KEYS = {
+    "JWT_SECRET",
+    "NEO4J_PASSWORD",
+    "REDIS_PASSWORD",
+    "POSTGRES_USER",
+    "POSTGRES_PASSWORD",
+    "FLOWER_PASSWORD",
+    "GRAFANA_ADMIN_PASSWORD",
+    "API_KEY_HMAC_SECRET",
+    "SERVICE_AUTH_SECRET",
+}
+
+PLACEHOLDER_SECRET_PATTERNS = (
+    "do-not-use-in-production",
+    "non_deployable",
+    "non-deployable",
+    "changeme",
+    "change_me",
+    "devpassword",
+    "placeholder",
+    "todo",
+    "postgres:postgres@",
+)
+
+SENSITIVE_ENV_NAME_RE = re.compile(r"(SECRET|PASSWORD|TOKEN|PRIVATE|API_KEY|HMAC)", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -231,6 +277,19 @@ def dockerfile_has_healthcheck(dockerfile_path: Path) -> bool:
     return False
 
 
+def service_profiles(service: dict[str, Any]) -> set[str]:
+    profiles = service.get("profiles") or []
+    if isinstance(profiles, str):
+        return {profiles}
+    if isinstance(profiles, list):
+        return {str(profile) for profile in profiles}
+    return set()
+
+
+def is_dev_profile_service(service: dict[str, Any]) -> bool:
+    return "dev" in {profile.lower() for profile in service_profiles(service)}
+
+
 def is_one_shot_service(service_name: str, service: dict[str, Any]) -> bool:
     name = service_name.lower()
     if any(pattern in name for pattern in ONE_SHOT_SERVICE_PATTERNS):
@@ -245,12 +304,191 @@ def is_one_shot_service(service_name: str, service: dict[str, Any]) -> bool:
     return False
 
 
+def iter_environment_entries(service: dict[str, Any]) -> list[tuple[str, str]]:
+    entries: list[tuple[str, str]] = []
+    environment = service.get("environment") or []
+    if isinstance(environment, dict):
+        for key, value in environment.items():
+            entries.append((str(key), "" if value is None else str(value)))
+    elif isinstance(environment, list):
+        for item in environment:
+            if not isinstance(item, str) or "=" not in item:
+                continue
+            key, value = item.split("=", 1)
+            entries.append((key, value))
+    return entries
+
+
+def is_required_env_reference(value: str) -> bool:
+    return bool(re.fullmatch(r"\$\{[A-Za-z_][A-Za-z0-9_]*(?::?\?)[^}]*\}", value))
+
+
+def has_optional_env_default(value: str) -> bool:
+    return bool(re.search(r"\$\{[A-Za-z_][A-Za-z0-9_]*:-", value))
+
+
+def has_unguarded_required_env_reference(value: str, required_key: str) -> bool:
+    for match in re.finditer(r"\$\{([A-Za-z_][A-Za-z0-9_]*)([^}]*)\}", value):
+        key, suffix = match.groups()
+        if key == required_key and not suffix.startswith((":?", "?")):
+            return True
+    return False
+
+
+def contains_placeholder_secret(value: str) -> bool:
+    normalized = value.lower()
+    return any(pattern in normalized for pattern in PLACEHOLDER_SECRET_PATTERNS)
+
+
+def is_default_sensitive_literal(key: str, value: str) -> bool:
+    if not SENSITIVE_ENV_NAME_RE.search(key):
+        return False
+    return value.lower() in {"admin", "password", "postgres", "root", "changeme"}
+
+
+def service_depends_on(service: dict[str, Any], dependency_name: str) -> bool:
+    depends_on = service.get("depends_on") or {}
+    if isinstance(depends_on, dict):
+        return dependency_name in depends_on
+    if isinstance(depends_on, list):
+        return dependency_name in depends_on
+    return False
+
+
+def service_references_redis(service: dict[str, Any]) -> bool:
+    for key, value in iter_environment_entries(service):
+        joined = f"{key}={value}".lower()
+        if "redis://" in joined or "@redis:" in joined or "redis:" in joined:
+            return True
+    return False
+
+
+def service_has_cap_drop_all(service: dict[str, Any]) -> bool:
+    cap_drop = service.get("cap_drop") or []
+    if isinstance(cap_drop, str):
+        cap_drop = [cap_drop]
+    return any(str(cap).upper() == "ALL" for cap in cap_drop)
+
+
+def service_has_no_new_privileges(service: dict[str, Any]) -> bool:
+    security_opt = service.get("security_opt") or []
+    if isinstance(security_opt, str):
+        security_opt = [security_opt]
+    return any(str(option) == "no-new-privileges:true" for option in security_opt)
+
+
+def validate_full_compose_hardening(
+    compose_file: Path,
+    services: dict[str, Any],
+) -> list[ComposeFailure]:
+    if compose_file.name != FULL_COMPOSE_FILE:
+        return []
+
+    failures: list[ComposeFailure] = []
+    for service_name, service in services.items():
+        if not isinstance(service, dict):
+            continue
+
+        if service.get("ports") and service_name not in FULL_COMPOSE_ALLOWED_PORT_SERVICES:
+            failures.append(
+                ComposeFailure(
+                    compose_file.name,
+                    service_name,
+                    "host-published ports are not allowed in production-like full compose",
+                )
+            )
+
+        if not is_dev_profile_service(service):
+            for key, value in iter_environment_entries(service):
+                if key in FULL_COMPOSE_REQUIRED_ENV_KEYS and not is_required_env_reference(value):
+                    failures.append(
+                        ComposeFailure(
+                            compose_file.name,
+                            service_name,
+                            f"{key} must use required env interpolation",
+                        )
+                    )
+                if key in FULL_COMPOSE_REQUIRED_ENV_KEYS and has_optional_env_default(value):
+                    failures.append(
+                        ComposeFailure(
+                            compose_file.name,
+                            service_name,
+                            f"{key} must not use an optional default",
+                        )
+                    )
+                for required_key in FULL_COMPOSE_REQUIRED_ENV_KEYS:
+                    if has_unguarded_required_env_reference(value, required_key):
+                        failures.append(
+                            ComposeFailure(
+                                compose_file.name,
+                                service_name,
+                                f"{required_key} reference must use required env interpolation",
+                            )
+                        )
+                if (
+                    (SENSITIVE_ENV_NAME_RE.search(key) or "://" in value)
+                    and contains_placeholder_secret(value)
+                ) or is_default_sensitive_literal(key, value):
+                    failures.append(
+                        ComposeFailure(
+                            compose_file.name,
+                            service_name,
+                            f"{key} contains a production-forbidden placeholder value",
+                        )
+                    )
+
+        if service_name != "redis" and service_references_redis(service) and not service_depends_on(
+            service, "redis"
+        ):
+            failures.append(
+                ComposeFailure(
+                    compose_file.name,
+                    service_name,
+                    "references Redis at runtime but does not declare depends_on.redis",
+                )
+            )
+
+        has_build = "build" in service
+        if (
+            has_build
+            and service_name not in FULL_COMPOSE_HARDENING_EXEMPT_SERVICES
+            and not is_one_shot_service(service_name, service)
+        ):
+            if not service_has_cap_drop_all(service):
+                failures.append(
+                    ComposeFailure(
+                        compose_file.name,
+                        service_name,
+                        "custom long-running service must drop all Linux capabilities",
+                    )
+                )
+            if not service_has_no_new_privileges(service):
+                failures.append(
+                    ComposeFailure(
+                        compose_file.name,
+                        service_name,
+                        "custom long-running service must set no-new-privileges",
+                    )
+                )
+            if service.get("read_only") is not True:
+                failures.append(
+                    ComposeFailure(
+                        compose_file.name,
+                        service_name,
+                        "custom long-running service must use read_only: true",
+                    )
+                )
+
+    return failures
+
+
 def validate_compose_contract(compose_file: Path, repo_root: Path = REPO_ROOT) -> list[ComposeFailure]:
     data = load_compose(compose_file)
     declared_volumes = set((data.get("volumes") or {}).keys())
     failures: list[ComposeFailure] = []
 
     services = data["services"]
+    failures.extend(validate_full_compose_hardening(compose_file, services))
     for service_name, service in services.items():
         if not isinstance(service, dict):
             failures.append(

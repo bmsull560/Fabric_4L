@@ -19,6 +19,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 COPY services/layer1-ingestion/pyproject.toml services/layer1-ingestion/uv.lock ./
 RUN uv sync --frozen --no-install-project
+RUN uv pip install "flower>=2.0"
 
 ENV PATH="/app/.venv/bin:$PATH"
 

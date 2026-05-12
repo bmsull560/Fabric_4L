@@ -1,6 +1,21 @@
 # Migrated from value-fabric/docker-compose.yml during legacy path cleanup.
 version: "3.8"
 
+x-app-hardening: &app-hardening
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  read_only: true
+  tmpfs:
+    - /tmp
+
+x-process-hardening: &process-hardening
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+
 services:
   # Layer 1: Data Ingestion Service
   layer1-ingestion:
@@ -8,11 +23,14 @@ services:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-layer1
-    ports:
-      - "8001:8000"
+    <<: *app-hardening
+    expose:
+      - "8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - LAYER1_DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      - LAYER1_REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - BROWSERBASE_API_KEY=${BROWSERBASE_API_KEY:-}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
@@ -48,12 +66,14 @@ services:
       context: .
       dockerfile: ./services/layer2-extraction/Dockerfile.full
     container_name: value-fabric-layer2
-    ports:
-      - "8002:8000"
+    <<: *app-hardening
+    expose:
+      - "8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - LAYER2_DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/extraction
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
@@ -89,9 +109,9 @@ services:
   neo4j:
     image: neo4j:5-community
     container_name: value-fabric-neo4j
-    ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+    expose:
+      - "7474"  # HTTP
+      - "7687"  # Bolt
     environment:
       - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
       - NEO4J_PLUGINS=["apoc"]
@@ -116,13 +136,14 @@ services:
       context: .
       dockerfile: ./services/layer3-knowledge/Dockerfile.full
     container_name: value-fabric-layer3
-    ports:
-      - "8003:8001"
+    <<: *app-hardening
+    expose:
+      - "8001"
     environment:
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
       - LOG_LEVEL=info
       # Infisical — leave blank to use plain env vars
@@ -153,13 +174,14 @@ services:
       context: .
       dockerfile: ./services/layer4-agents/Dockerfile.full
     container_name: value-fabric-layer4
+    <<: *app-hardening
     ports:
       - "8004:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
@@ -169,7 +191,7 @@ services:
       - LAYER5_GROUND_TRUTH_URL=http://layer5-ground-truth:8005
       - LAYER6_BENCHMARKS_URL=http://layer6-benchmarks:8006
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
-      - CHECKPOINT_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
+      - CHECKPOINT_DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ground_truth
       - LOG_LEVEL=info
       # Infisical — leave blank to use plain env vars
       - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
@@ -205,11 +227,12 @@ services:
       context: .
       dockerfile: ./services/layer5-ground-truth/Dockerfile.full
     container_name: value-fabric-layer5
-    ports:
-      - "8005:8005"
+    <<: *app-hardening
+    expose:
+      - "8005"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
-      - DATABASE_URL_SYNC=postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ground_truth
+      - DATABASE_URL_SYNC=postgresql+psycopg2://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ground_truth
       - LAYER3_BASE_URL=http://layer3-knowledge:8001
       - LAYER3_SYNC_ENABLED=true
       - LAYER3_API_KEY=${LAYER3_API_KEY:-}
@@ -253,7 +276,7 @@ services:
     container_name: value-fabric-layer5-migrate
     command: /app/.venv/bin/alembic upgrade head
     environment:
-      - DATABASE_URL_SYNC=postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth
+      - DATABASE_URL_SYNC=postgresql+psycopg2://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ground_truth
     depends_on:
       postgres:
         condition: service_healthy
@@ -267,19 +290,20 @@ services:
       context: .
       dockerfile: ./services/layer6-benchmarks/Dockerfile.full
     container_name: value-fabric-layer6
-    ports:
-      - "8006:8006"
+    <<: *app-hardening
+    expose:
+      - "8006"
     environment:
       - PORT=8006
       - LOG_LEVEL=info
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/layer6_benchmarks
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/layer6_benchmarks
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
-      - API_KEY_HMAC_SECRET=${API_KEY_HMAC_SECRET:-full-local-api-key-hmac-secret-do-not-use-in-production-32c}
-      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-full-local-service-auth-secret-do-not-use-in-production-32c}
+      - API_KEY_HMAC_SECRET=${API_KEY_HMAC_SECRET:?API_KEY_HMAC_SECRET is required}
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?SERVICE_AUTH_SECRET is required}
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       # Infisical — leave blank to use plain env vars
       - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
       - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
@@ -290,6 +314,8 @@ services:
       - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     depends_on:
       layer4-agents:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - value-fabric-network
@@ -308,8 +334,9 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --web.enable-lifecycle
-    ports:
-      - "9090:9090"
+    <<: *process-hardening
+    expose:
+      - "9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alerting/rules.yml:/etc/prometheus/alerting/rules.yml:ro
@@ -328,10 +355,13 @@ services:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-layer1-celery-worker
+    <<: *app-hardening
     command: celery -A src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - LAYER1_DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      - LAYER1_REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - PYTHONPATH=/app
     depends_on:
@@ -354,10 +384,13 @@ services:
       context: .
       dockerfile: ./services/layer1-ingestion/Dockerfile.live
     container_name: value-fabric-layer1-celery-beat
-    command: celery -A src.shared.tasks beat --loglevel=info
+    <<: *app-hardening
+    command: celery -A src.shared.tasks beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - LAYER1_DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      - LAYER1_REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - PYTHONPATH=/app
     depends_on:
@@ -384,14 +417,17 @@ services:
     container_name: value-fabric-flower
     command: celery -A src.shared.tasks flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:?FLOWER_PASSWORD is required}
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - LAYER1_DATABASE_URL=postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/ingestion
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+      - LAYER1_REDIS_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
       - FLOWER_USER=${FLOWER_USER:-admin}
       - FLOWER_PASSWORD=${FLOWER_PASSWORD:?FLOWER_PASSWORD is required}
       - PYTHONPATH=/app
-    ports:
-      - "5555:5555"
+    <<: *app-hardening
+    expose:
+      - "5555"
     depends_on:
       redis:
         condition: service_healthy
@@ -412,8 +448,8 @@ services:
     container_name: value-fabric-alertmanager
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
-    ports:
-      - "9093:9093"
+    expose:
+      - "9093"
     volumes:
       - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager-data:/alertmanager
@@ -430,8 +466,8 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     container_name: value-fabric-grafana
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
@@ -457,11 +493,11 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:1.50
     container_name: value-fabric-jaeger
-    ports:
-      - "16686:16686"  # Jaeger UI
-      - "4317:4317"    # OTLP gRPC
-      - "4318:4318"    # OTLP HTTP
-      - "14268:14268"  # Jaeger thrift
+    expose:
+      - "16686"  # Jaeger UI
+      - "4317"    # OTLP gRPC
+      - "4318"    # OTLP HTTP
+      - "14268"  # Jaeger thrift
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     networks:
@@ -478,15 +514,15 @@ services:
     image: redis:7-alpine
     container_name: value-fabric-redis
     command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - redis-data:/data
     networks:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -503,8 +539,8 @@ services:
     environment:
       - VAULT_DEV_ROOT_TOKEN_ID=root
       - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-    ports:
-      - "8200:8200"
+    expose:
+      - "8200"
     volumes:
       - ./scripts/vault-dev-init.sh:/vault-dev-init.sh:ro
     networks:
@@ -521,14 +557,14 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: value-fabric-postgres
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       - POSTGRES_DB=ingestion
       # POSTGRES_MULTIPLE_DATABASES is consumed by init-multiple-dbs.sh
-      - POSTGRES_MULTIPLE_DATABASES=ingestion,ground_truth,layer6_benchmarks
+      - POSTGRES_MULTIPLE_DATABASES=ingestion,extraction,ground_truth,layer6_benchmarks
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/db/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh

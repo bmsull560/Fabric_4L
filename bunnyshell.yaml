@@ -10,6 +10,7 @@ type: primary
 #   JWT_SECRET, SERVICE_AUTH_SECRET, API_KEY_HMAC_SECRET, CREDENTIALS_MASTER_KEY
 #   NEO4J_PASSWORD, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD
 #   POSTGRES_USER, POSTGRES_PASSWORD, REDIS_PASSWORD
+#   OPENAI_API_KEY, ANTHROPIC_API_KEY
 #
 # Validation commands (run with --remote mode):
 #   Config-only: scripts/ci/run_live_workflow_validation.sh --config-only
@@ -84,15 +85,15 @@ components:
                 JWT_SECRET: ${JWT_SECRET}
                 SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
                 LAYER1_API_PORT: '8000'
-                LAYER1_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/ingestion'
+                LAYER1_DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/ingestion'
                 LAYER1_DEBUG: 'true'
                 LAYER1_ENVIRONMENT: development
-                LAYER1_REDIS_URL: 'redis://redis:6379/0'
+                LAYER1_REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
                 LAYER1_RELEASE_SMOKE_LIGHT_HEALTH: 'true'
-                LAYER1_S3_ACCESS_KEY: minioadmin
+                LAYER1_S3_ACCESS_KEY: ${MINIO_ROOT_USER}
                 LAYER1_S3_BUCKET: layer1-raw-html
                 LAYER1_S3_ENDPOINT: 'http://minio:9000'
-                LAYER1_S3_SECRET_KEY: minioadmin
+                LAYER1_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
             healthcheck:
                 test:
                     - CMD
@@ -128,12 +129,12 @@ components:
                 - '--loglevel=info'
                 - '--concurrency=2'
             environment:
-                LAYER1_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/ingestion'
+                LAYER1_DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/ingestion'
                 LAYER1_ENVIRONMENT: development
-                LAYER1_REDIS_URL: 'redis://redis:6379/0'
-                LAYER1_S3_ACCESS_KEY: minioadmin
+                LAYER1_REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
+                LAYER1_S3_ACCESS_KEY: ${MINIO_ROOT_USER}
                 LAYER1_S3_ENDPOINT: 'http://minio:9000'
-                LAYER1_S3_SECRET_KEY: minioadmin
+                LAYER1_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
                 PYTHONPATH: /app
             deploy:
                 resources:
@@ -152,21 +153,21 @@ components:
                 dockerfile: ./Dockerfile
             environment:
                 ENVIRONMENT: development
-                LAYER2_DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/layer2_extraction'
+                LAYER2_DATABASE_URL: 'postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/layer2_extraction'
                 LAYER2_HEALTH_SKIP_LAYER3: 'true'
                 LAYER3_API_URL: 'http://layer3:8001'
                 LLM_MODEL: gpt-4o
                 LOG_LEVEL: info
-                NEO4J_PASSWORD: ${NEO4J_PASSWORD:-devpassword}
+                NEO4J_PASSWORD: ${NEO4J_PASSWORD}
                 NEO4J_URI: 'bolt://neo4j:7687'
                 NEO4J_USER: neo4j
-                OPENAI_API_KEY: sk-placeholder-change-in-production
+                OPENAI_API_KEY: ${OPENAI_API_KEY}
                 POSTGRES_DB: layer2_extraction
                 POSTGRES_HOST: postgres
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
                 POSTGRES_PORT: '5432'
-                POSTGRES_USER: ${POSTGRES_USER:-postgres}
-                REDIS_URL: 'redis://redis:6379/0'
+                POSTGRES_USER: ${POSTGRES_USER}
+                REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
             healthcheck:
                 test:
                     - CMD
@@ -196,11 +197,11 @@ components:
                     CACHEBUST: ${CACHEBUST}
             environment:
                 LOG_LEVEL: info
-                NEO4J_PASSWORD: ${NEO4J_PASSWORD:-devpassword}
+                NEO4J_PASSWORD: ${NEO4J_PASSWORD}
                 NEO4J_URI: 'bolt://neo4j:7687'
                 NEO4J_USER: neo4j
-                POSTGRES_USER: ${POSTGRES_USER:-postgres}
-                REDIS_URL: 'redis://redis:6379/0'
+                POSTGRES_USER: ${POSTGRES_USER}
+                REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
             healthcheck:
                 test:
                     - CMD
@@ -227,12 +228,11 @@ components:
                 context: ./services/layer4-agents
                 dockerfile: ./Dockerfile
             environment:
-                ANTHROPIC_API_KEY: sk-ant-placeholder-change-in-production
+                ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
                 API_KEY_HMAC_SECRET: ${API_KEY_HMAC_SECRET}
-                CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
+                CHECKPOINT_DATABASE_URL: 'postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/ground_truth'
                 CREDENTIALS_MASTER_KEY: ${CREDENTIALS_MASTER_KEY}
-                DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents'
-                DEV_AUTH_BYPASS: 'true'
+                DATABASE_URL: 'postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/layer4_agents'
                 JWT_SECRET: ${JWT_SECRET}
                 LAYER1_API_URL: 'http://layer1:8000'
                 LAYER1_URL: 'http://layer1:8000'
@@ -244,13 +244,13 @@ components:
                 LAYER6_BENCHMARKS_URL: 'http://layer6:8006'
                 LLM_MODEL: gpt-4o
                 LOG_LEVEL: debug
-                NEO4J_PASSWORD: ${NEO4J_PASSWORD:-devpassword}
+                NEO4J_PASSWORD: ${NEO4J_PASSWORD}
                 NEO4J_URI: 'bolt://neo4j:7687'
                 NEO4J_USER: neo4j
-                OPENAI_API_KEY: sk-placeholder-change-in-production
+                OPENAI_API_KEY: ${OPENAI_API_KEY}
                 PLAYWRIGHT_BACKEND_URL: 'http://layer4-{{ env.base_domain }}'
                 PYTHONPATH: /app
-                REDIS_URL: 'redis://redis:6379/0'
+                REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
                 SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
             healthcheck:
                 test:
@@ -273,7 +273,7 @@ components:
             -
                 hostname: 'layer4-{{ env.base_domain }}'
                 path: /
-                servicePort: 8004
+                servicePort: 8000
     -
         kind: Application
         name: layer5
@@ -286,17 +286,17 @@ components:
                 dockerfile: ./Dockerfile
             environment:
                 API_PORT: '8005'
-                DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth'
-                DATABASE_URL_SYNC: 'postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth'
+                DATABASE_URL: 'postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/ground_truth'
+                DATABASE_URL_SYNC: 'postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/ground_truth'
                 ENVIRONMENT: development
                 JWT_ALGORITHM: HS256
                 JWT_SECRET: ${JWT_SECRET}
                 LAYER3_BASE_URL: 'http://layer3:8001'
                 LAYER3_SYNC_ENABLED: 'true'
                 LOG_LEVEL: info
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-                POSTGRES_USER: ${POSTGRES_USER:-postgres}
-                REDIS_URL: 'redis://redis:6379/0'
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                POSTGRES_USER: ${POSTGRES_USER}
+                REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
                 SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
             healthcheck:
                 test:
@@ -338,7 +338,7 @@ components:
                       sleep 5
                     done
             environment:
-                DATABASE_URL_SYNC: 'postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth'
+                DATABASE_URL_SYNC: 'postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/ground_truth'
                 MIGRATION_CONNECT_ATTEMPTS: '12'
                 MIGRATION_CONNECT_DELAY_SECONDS: '5'
             deploy:
@@ -361,13 +361,13 @@ components:
                 ENVIRONMENT: development
                 JWT_SECRET: ${JWT_SECRET}
                 LOG_LEVEL: info
-                NEO4J_PASSWORD: ${NEO4J_PASSWORD:-devpassword}
+                NEO4J_PASSWORD: ${NEO4J_PASSWORD}
                 NEO4J_URI: 'bolt://neo4j:7687'
                 NEO4J_USER: neo4j
                 PORT: '8006'
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-                POSTGRES_USER: ${POSTGRES_USER:-postgres}
-                REDIS_URL: 'redis://redis:6379/0'
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                POSTGRES_USER: ${POSTGRES_USER}
+                REDIS_URL: 'redis://:${REDIS_PASSWORD}@redis:6379/0'
                 SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET}
             healthcheck:
                 test:
@@ -394,8 +394,8 @@ components:
                 - '--console-address'
                 - ':9001'
             environment:
-                MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-                MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+                MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+                MINIO_ROOT_USER: ${MINIO_ROOT_USER}
             healthcheck:
                 test:
                     - CMD
@@ -424,7 +424,7 @@ components:
                 - /bin/sh
                 - '-c'
                 - |4-
-                     until /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin}; do
+                     until /usr/bin/mc config host add myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}; do
                       echo 'waiting for minio';
                       sleep 2;
                     done; /usr/bin/mc mb myminio/layer1-raw-html || true; /usr/bin/mc anonymous set none myminio/layer1-raw-html || true; exit 0; 
@@ -439,7 +439,7 @@ components:
         name: neo4j
         dockerCompose:
             environment:
-                NEO4J_AUTH: 'neo4j/${NEO4J_PASSWORD:-devpassword}'
+                NEO4J_AUTH: 'neo4j/${NEO4J_PASSWORD}'
                 NEO4J_PLUGINS: '["apoc"]'
                 NEO4J_dbms_memory_heap_max__size: 1G
                 NEO4J_dbms_memory_pagecache_size: 512m
@@ -468,15 +468,14 @@ components:
         dockerCompose:
             environment:
                 POSTGRES_DB: ingestion
-                POSTGRES_HOST_AUTH_METHOD: trust
                 POSTGRES_INITDB_ARGS: '-E UTF8 --locale=C'
                 POSTGRES_MULTIPLE_DATABASES: 'ingestion,layer2_extraction,ground_truth,layer4_agents'
-                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-                POSTGRES_USER: ${POSTGRES_USER:-postgres}
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+                POSTGRES_USER: ${POSTGRES_USER}
             healthcheck:
                 test:
                     - CMD-SHELL
-                    - 'pg_isready -U postgres'
+                    - 'pg_isready -U "$POSTGRES_USER"'
                 timeout: 3s
                 interval: 5s
                 retries: 5
@@ -498,14 +497,13 @@ components:
             command:
                 - redis-server
                 - '--requirepass'
-                - '${REDIS_PASSWORD:-dev-redis-password}'
+                - '${REDIS_PASSWORD}'
             environment:
-                REDIS_PASSWORD: ${REDIS_PASSWORD:-dev-redis-password}
+                REDIS_PASSWORD: ${REDIS_PASSWORD}
             healthcheck:
                 test:
-                    - CMD
-                    - redis-cli
-                    - ping
+                    - CMD-SHELL
+                    - 'redis-cli -a "$REDIS_PASSWORD" ping'
                 timeout: 3s
                 interval: 5s
                 retries: 3
