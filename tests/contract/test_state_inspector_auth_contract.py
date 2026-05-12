@@ -6,7 +6,7 @@ import inspect
 
 from fastapi.params import Depends
 
-from value_fabric.layer4.api.routes import state_inspector
+from services.layer4_agents.src.api.routes import state_inspector
 from value_fabric.shared.identity.dependencies import require_authenticated
 
 

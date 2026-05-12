@@ -9,7 +9,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 # Logger defined early so lifespan() and module-level instrumentation can use it.
 logger = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ async def lifespan(app: FastAPI):
         dataset_count = len(datasets)
         _neo4j_startup_error = None
         logger.info("Layer 6 Benchmark Service started with %d datasets", dataset_count)
-    except Exception as exc:
+    except (ServiceUnavailable, TransientError, AuthError, ConfigurationError) as exc:
         _benchmark_repo = None
         _neo4j_startup_error = str(exc)
         logger.warning(
@@ -223,10 +223,10 @@ async def metrics_endpoint(request: Request):
             content=metrics_data,
             media_type="text/plain; version=0.0.4; charset=utf-8"
         )
-    except Exception as e:
-        logger.error(f"Error generating metrics: {e}")
+    except (OSError, RuntimeError) as exc:
+        logger.error("Error generating metrics: %s", exc)
         return Response(
-            content=f"# Error: {e}",
+            content=f"# Error: {exc}",
             status_code=500,
             media_type="text/plain"
         )
@@ -341,8 +341,8 @@ async def health_check(request: Request):
 
 
 async def list_datasets(
-    industry: Optional[str] = None,
-    segment: Optional[str] = None,
+    industry: str | None = None,
+    segment: str | None = None,
     ctx: RequestContext = Depends(get_request_context),
 ):
     """List available benchmark datasets."""

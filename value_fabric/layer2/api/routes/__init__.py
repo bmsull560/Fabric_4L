@@ -1,3 +1,19 @@
-"""Compatibility shim; canonical implementation lives in `value_fabric/layer2/api/routes/__init__.py`."""
+"""Layer 2 API routes package."""
 
-from value_fabric.layer2.api.routes.__init__ import *  # noqa: F401,F403
+from value_fabric.layer2.api.routes.extraction import (
+    EntityProvenance,
+    EntitySourceSpan,
+    ExtractedEntity,
+    ExtractionResultSummary,
+    ExtractionResultsResponse,
+    get_extraction_results,
+)
+
+__all__ = [
+    "EntityProvenance",
+    "EntitySourceSpan",
+    "ExtractedEntity",
+    "ExtractionResultSummary",
+    "ExtractionResultsResponse",
+    "get_extraction_results",
+]

@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
+import argparse
 import ast
+import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-CANONICAL_ROOT = REPO_ROOT / "services" / "layer5-ground-truth" / "src" / "layer5_ground_truth"
-SHIM_ROOT = REPO_ROOT / "value_fabric" / "layer5"
+DEFAULT_CANONICAL = "services/layer5-ground-truth/src/layer5_ground_truth"
+DEFAULT_SHIM = "value_fabric/layer5"
 
 
 def _py_files(root: Path) -> list[Path]:
@@ -50,27 +51,32 @@ def _is_thin_shim(path: Path, expected_module: str) -> bool:
     )
 
 
-def _shim_violations() -> list[str]:
+def _shim_violations(repo_root: Path) -> list[str]:
+    canonical_root = repo_root / DEFAULT_CANONICAL
+    shim_root = repo_root / DEFAULT_SHIM
     violations: list[str] = []
-    canonical_files = {path.relative_to(CANONICAL_ROOT) for path in _py_files(CANONICAL_ROOT)}
-    shim_files = {path.relative_to(SHIM_ROOT) for path in _py_files(SHIM_ROOT)}
+    canonical_files = {path.relative_to(canonical_root) for path in _py_files(canonical_root)}
+    shim_files = {path.relative_to(shim_root) for path in _py_files(shim_root)}
 
     for rel in sorted(canonical_files - shim_files):
-        violations.append(f"missing shim for canonical module: value_fabric/layer5/{rel.as_posix()}")
+        violations.append(f"missing shim for canonical module: {DEFAULT_SHIM}/{rel.as_posix()}")
     for rel in sorted(shim_files - canonical_files):
-        violations.append(f"shim without canonical module: value_fabric/layer5/{rel.as_posix()}")
+        violations.append(f"shim without canonical module: {DEFAULT_SHIM}/{rel.as_posix()}")
 
     for rel in sorted(canonical_files & shim_files):
         expected_module = _canonical_module_for(rel)
-        if not _is_thin_shim(SHIM_ROOT / rel, expected_module):
+        if not _is_thin_shim(shim_root / rel, expected_module):
             violations.append(
                 "non-shim implementation in compatibility tree: "
-                f"value_fabric/layer5/{rel.as_posix()} must re-export {expected_module}"
+                f"{DEFAULT_SHIM}/{rel.as_posix()} must re-export {expected_module}"
             )
 
-    for path in _py_files(CANONICAL_ROOT):
-        text = path.read_text(encoding="utf-8")
-        rel = path.relative_to(REPO_ROOT).as_posix()
+    for path in _py_files(canonical_root):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        rel = path.relative_to(repo_root).as_posix()
         if "Compatibility shim" in text and "from layer5_ground_truth" in text and "import *" in text:
             violations.append(f"canonical tree contains a self-recursive compatibility shim: {rel}")
         if "sys.path" in text:
@@ -79,17 +85,28 @@ def _shim_violations() -> list[str]:
     return violations
 
 
-def main() -> int:
-    violations = _shim_violations()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Fail CI when Layer 5 compatibility modules drift from shim-only adapters."
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path(__file__).resolve().parents[3],
+        help="Repository root directory (default: auto-detected)",
+    )
+    args = parser.parse_args(argv)
+
+    violations = _shim_violations(args.repo_root)
     if not violations:
         print("OK: Layer 5 canonical tree and compatibility shims are aligned.")
         return 0
 
-    print("ERROR: Layer 5 source-of-truth contract failed.")
-    print("Canonical source-of-truth: services/layer5-ground-truth/src/layer5_ground_truth")
-    print("Compatibility tree must stay shim-only: value_fabric/layer5")
+    print("ERROR: Layer 5 source-of-truth contract failed.", file=sys.stderr)
+    print("Canonical source-of-truth: services/layer5-ground-truth/src/layer5_ground_truth", file=sys.stderr)
+    print("Compatibility tree must stay shim-only: value_fabric/layer5", file=sys.stderr)
     for violation in violations:
-        print(f" - {violation}")
+        print(f" - {violation}", file=sys.stderr)
     return 1
 
 

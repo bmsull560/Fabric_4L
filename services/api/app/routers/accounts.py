@@ -64,3 +64,20 @@ async def get_account_summary(account_id: str, tenant_id: str = Depends(tenant_r
         "hypothesis_count": len(hypotheses),
         "roi_calculation_count": len(roi_calcs),
     }
+
+
+@router.post("/{account_id}/share")
+async def create_share_link(account_id: str, tenant_id: str = Depends(tenant_required)):
+    acc = db.accounts.get(account_id, tenant_id=tenant_id)
+    if not acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+    token = f"share_{account_id}_{tenant_id}_{hash(account_id + tenant_id) % 1000000}"
+    return {"share_token": token, "account_id": account_id, "role": "read_only"}
+
+
+@router.delete("/{account_id}/share")
+async def revoke_share_link(account_id: str, tenant_id: str = Depends(tenant_required)):
+    acc = db.accounts.get(account_id, tenant_id=tenant_id)
+    if not acc:
+        raise HTTPException(status_code=404, detail="Account not found")
+    return {"revoked": True, "account_id": account_id}

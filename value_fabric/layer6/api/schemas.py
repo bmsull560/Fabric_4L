@@ -1,6 +1,6 @@
 """Pydantic request/response schemas for Layer 6 Benchmark API."""
 
-from typing import Dict, List, Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
@@ -12,12 +12,12 @@ class DatasetSummary(BaseModel):
     name: str
     description: str
     industry: str
-    segment: Optional[str]
-    geography: Optional[str]
-    metrics: List[str]
+    segment: str | None
+    geography: str | None
+    metrics: list[str]
     metric_count: int
     version: str
-    data_source: Optional[str]
+    data_source: str | None
 
 
 class DatasetDetail(BaseModel):
@@ -27,11 +27,11 @@ class DatasetDetail(BaseModel):
     name: str
     description: str
     industry: str
-    segment: Optional[str]
-    geography: Optional[str]
-    metrics: Dict[str, dict]
+    segment: str | None
+    geography: str | None
+    metrics: dict[str, dict]
     version: str
-    data_source: Optional[str]
+    data_source: str | None
 
 
 class ComparisonRequestPayload(BaseModel):
@@ -41,7 +41,7 @@ class ComparisonRequestPayload(BaseModel):
     metric: str
     company_value: str = Field(..., description="Company value as string (Decimal)")
     industry: str
-    segment: Optional[str] = None
+    segment: str | None = None
 
 
 class ComparisonResponse(BaseModel):
@@ -70,6 +70,6 @@ class ValidationResponse(BaseModel):
     is_valid: bool
     expected_range: tuple[str, str]
     actual_value: str
-    deviation_percent: Optional[float]
+    deviation_percent: float | None
     severity: str
     message: str

@@ -2,16 +2,22 @@
 
 from value_fabric.layer2.output.provenance import (
     ExtractionActivity,
-    ExtractionStatus,
+    ExtractionActivityStatus,
     ExtractionStep,
     LLMCall,
+    ProvenanceTracker,
     SourceDocument,
+    create_llm_call_record,
+    get_provenance_tracker,
 )
 
 __all__ = [
     "ExtractionActivity",
-    "ExtractionStatus",
+    "ExtractionActivityStatus",
     "ExtractionStep",
     "LLMCall",
+    "ProvenanceTracker",
     "SourceDocument",
+    "create_llm_call_record",
+    "get_provenance_tracker",
 ]

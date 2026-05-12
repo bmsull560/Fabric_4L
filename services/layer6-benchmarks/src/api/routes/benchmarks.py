@@ -1,7 +1,5 @@
 """Benchmark domain routes for Layer 6 API."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends
 
 from ..deps import get_request_context, industry_filter, segment_filter
@@ -17,7 +15,7 @@ from ..schemas import (
 router = APIRouter(prefix="/v1/benchmarks", tags=["benchmarks"])
 
 
-@router.get("/datasets", response_model=List[DatasetSummary])
+@router.get("/datasets", response_model=list[DatasetSummary])
 async def list_datasets(
     industry: str | None = Depends(industry_filter),
     segment: str | None = Depends(segment_filter),

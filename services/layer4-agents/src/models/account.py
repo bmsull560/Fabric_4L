@@ -303,8 +303,6 @@ class Account(Base):
     __table_args__ = (
         # Unique constraint: one record per provider+record_id combination
         UniqueConstraint("tenant_id", "provider", "provider_record_id", name="uix_account_tenant_provider_record"),
-        # Allow redefinition during tests when imported through multiple paths (value_fabric shim)
-        {"extend_existing": True},
         # Indexes for common query patterns
         Index("ix_accounts_provider", "provider"),
         Index("ix_accounts_sync_status", "sync_status"),

@@ -4,6 +4,7 @@ from app.core.database import db
 from app.core.tenant_enforcement import enforce_authenticated_tenant
 from app.core.tenant_context import tenant_required
 from app.models.schemas import Evidence
+from app.services.pii_detection_service import pii_summary
 
 router = APIRouter(prefix="/accounts/{account_id}", tags=["Evidence"])
 

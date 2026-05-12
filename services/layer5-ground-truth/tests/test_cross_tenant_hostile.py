@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import uuid
 
 import pytest
+from httpx import AsyncClient
 
 from tests.conftest import TEST_ORG_ID, make_source_payload, make_truth_payload
 
 
 @pytest.mark.asyncio
-async def test_truth_object_cross_tenant_read_write_denied(tenant_aware_client):
+async def test_truth_object_cross_tenant_read_write_denied(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
 
@@ -33,7 +36,7 @@ async def test_truth_object_cross_tenant_read_write_denied(tenant_aware_client):
 
 
 @pytest.mark.asyncio
-async def test_model_registry_cross_tenant_read_write_denied(tenant_aware_client):
+async def test_model_registry_cross_tenant_read_write_denied(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
     payload = {
@@ -66,7 +69,7 @@ async def test_model_registry_cross_tenant_read_write_denied(tenant_aware_client
 
 
 @pytest.mark.asyncio
-async def test_truth_list_filter_cross_tenant_enumeration_blocked(tenant_aware_client):
+async def test_truth_list_filter_cross_tenant_enumeration_blocked(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
 
@@ -79,7 +82,7 @@ async def test_truth_list_filter_cross_tenant_enumeration_blocked(tenant_aware_c
 
 
 @pytest.mark.asyncio
-async def test_truth_state_transition_cross_tenant_denied(tenant_aware_client):
+async def test_truth_state_transition_cross_tenant_denied(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
 
@@ -96,7 +99,7 @@ async def test_truth_state_transition_cross_tenant_denied(tenant_aware_client):
 
 
 @pytest.mark.asyncio
-async def test_truth_sync_cross_tenant_does_not_process_other_tenant_data(tenant_aware_client):
+async def test_truth_sync_cross_tenant_does_not_process_other_tenant_data(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
 
@@ -120,7 +123,9 @@ async def test_truth_sync_cross_tenant_does_not_process_other_tenant_data(tenant
         ("/api/v1/models/{id}/evaluations", "get", None),
     ],
 )
-async def test_id_scoped_endpoints_cross_tenant_denied(tenant_aware_client, endpoint, method, body):
+async def test_id_scoped_endpoints_cross_tenant_denied(
+    tenant_aware_client: AsyncClient, endpoint: str, method: str, body: dict | None
+) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
 
@@ -144,7 +149,7 @@ async def test_id_scoped_endpoints_cross_tenant_denied(tenant_aware_client, endp
 
 
 @pytest.mark.asyncio
-async def test_list_endpoints_cross_tenant_enumeration_blocked(tenant_aware_client):
+async def test_list_endpoints_cross_tenant_enumeration_blocked(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
 
@@ -172,7 +177,7 @@ async def test_list_endpoints_cross_tenant_enumeration_blocked(tenant_aware_clie
 
 
 @pytest.mark.asyncio
-async def test_truth_check_stale_cross_tenant_does_not_process_other_tenant_data(tenant_aware_client):
+async def test_truth_check_stale_cross_tenant_does_not_process_other_tenant_data(tenant_aware_client: AsyncClient) -> None:
     tenant_a = str(TEST_ORG_ID)
     tenant_b = str(uuid.uuid4())
     create = await tenant_aware_client.post("/api/v1/truths", json=make_truth_payload(), headers={"X-Test-Tenant": tenant_a})
