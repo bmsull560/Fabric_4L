@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
+from value_fabric.shared.identity import RequestContext
 
 from value_fabric.layer3.api.dependencies_tenant import Neo4jTenantSession
 from value_fabric.layer3.api.models import GraphRAGQuery, SearchRequest, SearchType
@@ -62,6 +63,7 @@ class _FakeGraphRAG:
         self.tenant_id = tenant_id
 
     async def query(self, **kwargs):
+        assert kwargs["tenant_id"] == self.tenant_id
         return {
             "query": kwargs["query_text"],
             "entities": [{"id": f"{self.tenant_id}-entity"}],
@@ -77,13 +79,16 @@ class _FakeHybridSearch:
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
 
-    async def semantic_search(self, query, entity_type, top_k):
+    async def semantic_search(self, query, entity_type, top_k, tenant_id=None):
+        assert tenant_id == self.tenant_id
         return [SimpleNamespace(id=f"{self.tenant_id}-vec", score=0.9, source="vector", metadata={"tenant_id": self.tenant_id})]
 
-    async def fulltext_search(self, query, entity_type, top_k):
+    async def fulltext_search(self, query, entity_type, top_k, tenant_id=None):
+        assert tenant_id == self.tenant_id
         return [SimpleNamespace(id=f"{self.tenant_id}-full", score=0.8, source="fulltext", metadata={"tenant_id": self.tenant_id})]
 
-    async def search(self, query, entity_types, top_k, weights):
+    async def search(self, query, entity_types, top_k, weights, tenant_id=None):
+        assert tenant_id == self.tenant_id
         return [SimpleNamespace(id=f"{self.tenant_id}-hybrid", score=0.95, source="hybrid", metadata={"tenant_id": self.tenant_id})]
 
 
@@ -123,12 +128,13 @@ async def test_entity_list_and_detail_are_tenant_isolated(request, tenant_fixtur
 async def test_graphrag_vector_and_hybrid_results_remain_tenant_scoped(request, tenant_fixture):
     tenant_id = str(request.getfixturevalue(tenant_fixture))
 
-    graphrag = await query_search.graph_rag_query_impl(GraphRAGQuery(query="revenue"), _FakeGraphRAG(tenant_id))
+    ctx = RequestContext(tenant_id=tenant_id, user_id="u", roles=())
+    graphrag = await query_search.graph_rag_query_impl(GraphRAGQuery(query="revenue"), _FakeGraphRAG(tenant_id), ctx=ctx)
     assert all(item["id"].startswith(tenant_id) for item in graphrag.entities)
     assert all(item["id"].startswith(tenant_id) for item in graphrag.relationships)
 
-    vector = await query_search.hybrid_search_impl(SearchRequest(query="abc", search_type=SearchType.VECTOR), _FakeHybridSearch(tenant_id))
-    hybrid = await query_search.hybrid_search_impl(SearchRequest(query="abc", search_type=SearchType.HYBRID), _FakeHybridSearch(tenant_id))
+    vector = await query_search.hybrid_search_impl(SearchRequest(query="abc", search_type=SearchType.VECTOR), _FakeHybridSearch(tenant_id), ctx=ctx)
+    hybrid = await query_search.hybrid_search_impl(SearchRequest(query="abc", search_type=SearchType.HYBRID), _FakeHybridSearch(tenant_id), ctx=ctx)
 
     assert all(result.id.startswith(tenant_id) for result in vector.results)
     assert all(result.id.startswith(tenant_id) for result in hybrid.results)
@@ -143,3 +149,19 @@ async def test_raw_cypher_missing_tenant_predicate_fails_closed():
 
     ok = await session.run("MATCH (e:Entity) WHERE e.tenant_id = $tenant_id RETURN e LIMIT 1")
     assert ok.params["tenant_id"] == "tenant-a"
+
+
+@pytest.mark.asyncio
+async def test_graph_rag_query_missing_tenant_context_fails_closed():
+    with pytest.raises(Exception):
+        await query_search.graph_rag_query_impl(GraphRAGQuery(query="revenue"), _FakeGraphRAG("tenant-a"), ctx=None)
+
+
+@pytest.mark.asyncio
+async def test_hybrid_search_missing_tenant_context_fails_closed():
+    with pytest.raises(Exception):
+        await query_search.hybrid_search_impl(
+            SearchRequest(query="abc", search_type=SearchType.HYBRID),
+            _FakeHybridSearch("tenant-a"),
+            ctx=None,
+        )

@@ -25,3 +25,11 @@ jobs:
 
       - name: Validate Layer3 wrappers
         run: python scripts/ci/check_layer3_wrapper_drift.py
+
+      - name: Collect changed files
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          echo "CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | tr '\n' ' ')" >> "$GITHUB_ENV"
+
+      - name: Report unregistered Layer3 compatibility additions
+        run: python scripts/ci/report_layer3_compat_additions.py

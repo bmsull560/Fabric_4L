@@ -1,3 +1,7 @@
-"""Compatibility wrapper for value_fabric.layer3.rate_limiting.__init__."""
+"""Compatibility wrapper for ``value_fabric.layer3.rate_limiting``.
 
-from value_fabric.layer3.rate_limiting.__init__ import *  # noqa: F401,F403
+Canonical implementation lives in ``value_fabric.layer3.rate_limiting``
+per ``docs/reference/layer-runtime-path-governance.md``.
+"""
+
+from value_fabric.layer3.rate_limiting import *  # noqa: F401,F403

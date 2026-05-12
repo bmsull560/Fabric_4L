@@ -1,3 +1,22 @@
-"""Compatibility wrapper for value_fabric.layer3.analytics.centrality."""
+"""Compatibility wrapper for ``value_fabric.layer3.analytics.centrality``.
 
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+=======
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+Canonical implementation lives in ``value_fabric.layer3.analytics.centrality``
+per ``docs/reference/layer-runtime-path-governance.md``.
+"""
+
+<<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
 from value_fabric.layer3.analytics.centrality import *  # noqa: F401,F403

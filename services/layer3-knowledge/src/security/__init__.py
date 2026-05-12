@@ -1,3 +1,7 @@
-"""Compatibility wrapper for value_fabric.layer3.security.__init__."""
+"""Compatibility wrapper for ``value_fabric.layer3.security``.
 
-from value_fabric.layer3.security.__init__ import *  # noqa: F401,F403
+Canonical implementation lives in ``value_fabric.layer3.security``
+per ``docs/reference/layer-runtime-path-governance.md``.
+"""
+
+from value_fabric.layer3.security import *  # noqa: F401,F403

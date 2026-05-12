@@ -57,6 +57,7 @@ async def _execute_graph_rag_query(
     entity_type: str | None,
     max_hops: int,
     max_results: int,
+    tenant_id: str,
 ) -> GraphRAGResponse:
     start_time = time.time()
     result = await graph_rag.query(
@@ -64,6 +65,7 @@ async def _execute_graph_rag_query(
         entity_type=entity_type,
         max_hops=max_hops,
         max_results=max_results,
+        tenant_id=tenant_id,
     )
     processing_time = (time.time() - start_time) * 1000
     if isinstance(result, dict):
@@ -102,6 +104,8 @@ async def graph_rag_query_impl(
     request: Request | None = None,
 ) -> GraphRAGResponse:
     try:
+        if not (ctx and ctx.tenant_id):
+            raise ValueError("tenant context required for graph_rag_query")
         deduplicator = get_request_deduplicator()
         if deduplicator:
             params = {
@@ -110,7 +114,7 @@ async def graph_rag_query_impl(
                 "max_hops": query.max_hops,
                 "max_results": query.max_results,
             }
-            return await deduplicator.execute(
+            response = await deduplicator.execute(
                 operation="graph_rag_query",
                 params=params,
                 executor=_execute_graph_rag_query,
@@ -120,10 +124,15 @@ async def graph_rag_query_impl(
                 entity_type=query.entity_type,
                 max_hops=query.max_hops,
                 max_results=query.max_results,
+                tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else "",
             )
-        return await _execute_graph_rag_query(
-            graph_rag, query.query, query.entity_type, query.max_hops, query.max_results
+            logger.info("GraphRAG query completed", extra={"context": _build_error_context(tenant_id=str(ctx.tenant_id), endpoint="/v1/query", operation="graph_rag_query", request_id=_request_id_from_context(request, ctx))})
+            return response
+        response = await _execute_graph_rag_query(
+            graph_rag, query.query, query.entity_type, query.max_hops, query.max_results, str(ctx.tenant_id) if ctx and ctx.tenant_id else ""
         )
+        logger.info("GraphRAG query completed", extra={"context": _build_error_context(tenant_id=str(ctx.tenant_id), endpoint="/v1/query", operation="graph_rag_query", request_id=_request_id_from_context(request, ctx))})
+        return response
     except (SearchError, VectorStoreError) as exc:
         context = _build_error_context(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
@@ -209,15 +218,16 @@ async def _execute_hybrid_search(
     search_type: SearchType | str,
     top_k: int,
     weights: dict | None,
+    tenant_id: str,
 ) -> SearchResponse:
     start_time = time.time()
     search_type_value = search_type.value if isinstance(search_type, SearchType) else search_type
     if search_type_value == "vector":
-        results = await hybrid_search.semantic_search(query, entity_type, top_k)
+        results = await hybrid_search.semantic_search(query, entity_type, top_k, tenant_id=tenant_id)
     elif search_type_value == "fulltext":
-        results = await hybrid_search.fulltext_search(query, entity_type, top_k)
+        results = await hybrid_search.fulltext_search(query, entity_type, top_k, tenant_id=tenant_id)
     else:
-        results = await hybrid_search.search(query, [entity_type] if entity_type else None, top_k, weights)
+        results = await hybrid_search.search(query, [entity_type] if entity_type else None, top_k, weights, tenant_id=tenant_id)
     search_results = [SearchResult(**asdict(result)) for result in results]
     return SearchResponse.model_validate({
         "query": query,
@@ -236,6 +246,8 @@ async def hybrid_search_impl(
     http_request: Request | None = None,
 ) -> SearchResponse:
     try:
+        if not (ctx and ctx.tenant_id):
+            raise ValueError("tenant context required for hybrid_search")
         deduplicator = get_request_deduplicator()
         if deduplicator:
             params = {
@@ -245,7 +257,7 @@ async def hybrid_search_impl(
                 "top_k": request.top_k,
                 "weights": request.weights,
             }
-            return await deduplicator.execute(
+            response = await deduplicator.execute(
                 operation="hybrid_search",
                 params=params,
                 executor=_execute_hybrid_search,
@@ -256,15 +268,21 @@ async def hybrid_search_impl(
                 search_type=request.search_type,
                 top_k=request.top_k,
                 weights=request.weights,
+                tenant_id=str(ctx.tenant_id),
             )
-        return await _execute_hybrid_search(
+            logger.info("Hybrid search completed", extra={"context": _build_error_context(tenant_id=str(ctx.tenant_id), endpoint="/v1/search", operation="hybrid_search", request_id=_request_id_from_context(http_request, ctx))})
+            return response
+        response = await _execute_hybrid_search(
             hybrid_search,
             request.query,
             request.entity_type,
             request.search_type,
             request.top_k,
             request.weights,
+            str(ctx.tenant_id),
         )
+        logger.info("Hybrid search completed", extra={"context": _build_error_context(tenant_id=str(ctx.tenant_id), endpoint="/v1/search", operation="hybrid_search", request_id=_request_id_from_context(http_request, ctx))})
+        return response
     except (SearchError, VectorStoreError) as exc:
         context = _build_error_context(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,

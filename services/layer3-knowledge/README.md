@@ -1,81 +1,58 @@
 # Layer 3: Knowledge Graph & Semantic Layer
-> Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
-> Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
+> Canonical routing/versioning source: [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
-> Tenant enforcement reference: for authenticated-context-as-source-of-truth and body tenant mismatch rejection, see [`docs/reference/tenant-context-enforcement-pattern.md`](../../docs/reference/tenant-context-enforcement-pattern.md).
+> Canonical runtime path policy: [Layer Runtime Path Governance Matrix](../../docs/reference/layer-runtime-path-governance.md).
 
-Layer 3 of the Value Fabric platform consumes RDF/OWL triples from Layer 2 and provides a queryable knowledge graph with GraphRAG retrieval capabilities.
+> Contract source of truth: [`contracts/openapi/layer3-knowledge.json`](../../contracts/openapi/layer3-knowledge.json).
 
-## Architecture
+Layer 3 consumes ontology-guided outputs from Layer 2 and exposes graph retrieval, evidence traversal, and semantic APIs for downstream workflows.
 
+## Architecture ownership (canonical runtime vs service wrapper)
+
+### Canonical runtime code (`value_fabric/layer3/`)
+
+All net-new Layer 3 runtime logic belongs in `value_fabric/layer3/` per path governance.
+
+Primary responsibilities:
+
+- Route handler logic under `value_fabric/layer3/api/routes/` (entities, value trees, formulas, evidence, products, benchmarks, calculators, tenant resolution, compatibility aliases).
+- FastAPI runtime composition and route-group registration under `value_fabric/layer3/api/`.
+- Layer 3 domain services (knowledge graph, retrieval, provenance, analytics, pack-aware semantics).
+- Canonical models/schemas used by the Layer 3 runtime contract.
+
+### Deployable service wrapper (`services/layer3-knowledge/src/`)
+
+`services/layer3-knowledge/src/` exists as a deployable wrapper and compatibility boundary, **not** the place for net-new business logic.
+
+Wrapper responsibilities:
+
+<<<<<<< ours
+- Service entrypoint/wiring for deployment packaging.
+- Compatibility re-exports/shims that forward to canonical runtime modules.
+- Environment/bootstrap glue needed to run Layer 3 in service form.
+=======
+# 4. Verify health
+curl http://localhost:8003/health
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    LAYER 3: KNOWLEDGE GRAPH                 │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌───────────────┐  │
-│  │ RDF Ingestion   │  │ GraphRAG        │  │ Analytics     │  │
-│  │ - Neo4j Loader  │  │ - Multi-hop       │  │ - Communities │  │
-│  │ - Schema Init   │  │ - Vector Search   │  │ - Centrality  │  │
-│  │ - Sync Manager  │  │ - Hybrid Search   │  │ - Similarity  │  │
-│  └────────┬────────┘  └────────┬────────┘  └───────┬───────┘  │
-│           │                    │                    │          │
-│           └────────────────────┼────────────────────┘          │
-│                                │                               │
-│                     ┌──────────▼──────────┐                    │
-│                     │   Neo4j 5.x         │                    │
-│                     │   + GDS Library     │                    │
-│                     └─────────────────────┘                    │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+>>>>>>> theirs
 
-## Quick Start
+Contributor rule of thumb:
+
+- New endpoint behavior/model logic → `value_fabric/layer3/`.
+- Wrapper edits in `services/layer3-knowledge/src/` should remain thin, explicit, and wiring-only.
+
+## Quick start (routing-aligned)
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Pinecone API key (optional, for vector search)
-
-### Run with Docker
-
+<<<<<<< ours
+- Python environment with project dependencies.
+- Neo4j 5.x reachable by Layer 3.
+- Optional vector backend credentials if semantic vector search is enabled.
+=======
 ```bash
-# 1. Set environment variables
-export PINECONE_API_KEY=your_key_here  # Optional
-
-# 2. Start services
-docker-compose up -d
-
-# 3. Wait for Neo4j to initialize (first run takes ~30s)
-sleep 30
-
-# 4. Verify health
-curl http://localhost:8001/health
-```
-
-### API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Service health check |
-| `/v1/ingest` | POST | Ingest RDF data from Layer 2 |
-| `/v1/query` | POST | GraphRAG natural language query |
-| `/v1/search` | POST | Hybrid entity search |
-| `/v1/entity/{id}/context` | GET | Get entity neighborhood |
-| `/v1/entity/traverse` | POST | Traverse 4-layer value tree |
-| `/v1/analytics/communities` | POST | Detect communities |
-| `/v1/analytics/centrality` | POST | Calculate centrality |
-| `/v1/analytics/similar` | POST | Find similar entities |
-| `/v1/analytics/compare` | POST | Compare two entities |
-| `/v1/schema/status` | GET | Schema verification |
-
-### Example Usage
-
-#### Ingest RDF Data
-
-```bash
-curl -X POST http://localhost:8001/v1/ingest \
+curl -X POST http://localhost:8003/v1/ingest \
   -H "Content-Type: application/json" \
   -d '{
     "rdf_data": "@prefix vf: <https://valuefabric.io/ontology/> . vf:cap-1 a vf:Capability ; vf:name \"Real-Time Data Ingestion\" .",
@@ -83,11 +60,17 @@ curl -X POST http://localhost:8001/v1/ingest \
     "extraction_job_id": "job-123"
   }'
 ```
+>>>>>>> theirs
 
-#### GraphRAG Query
+### Run the Layer 3 service wrapper locally
 
 ```bash
-curl -X POST http://localhost:8001/v1/query \
+<<<<<<< ours
+# from repository root
+cd services/layer3-knowledge
+python -m uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
+=======
+curl -X POST http://localhost:8003/v1/query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "How can data processing capabilities benefit finance teams?",
@@ -95,24 +78,38 @@ curl -X POST http://localhost:8001/v1/query \
     "max_hops": 3,
     "max_results": 10
   }'
+>>>>>>> theirs
 ```
 
-#### Hybrid Search
+Layer 3 canonical external port in the routing matrix is **8001**.
+
+### Smoke-check core health routes
 
 ```bash
-curl -X POST http://localhost:8001/v1/search \
+<<<<<<< ours
+curl http://localhost:8001/health
+curl http://localhost:8001/ready
+curl http://localhost:8001/metrics
+=======
+curl -X POST http://localhost:8003/v1/search \
   -H "Content-Type: application/json" \
   -d '{
     "query": "real-time analytics",
     "search_type": "hybrid",
     "top_k": 10
   }'
+>>>>>>> theirs
 ```
 
-#### Detect Communities
+## API surface reconciliation notes
 
+<<<<<<< ours
+The prior README examples used outdated routes/ports (for example `:8001/v1/query`, `:8001/v1/search`, and older analytics endpoints).
+
+For current behavior, use the OpenAPI contract as source of truth:
+=======
 ```bash
-curl -X POST http://localhost:8001/v1/analytics/communities \
+curl -X POST http://localhost:8003/v1/analytics/communities \
   -H "Content-Type: application/json" \
   -d '{
     "algorithm": "louvain",
@@ -121,74 +118,103 @@ curl -X POST http://localhost:8001/v1/analytics/communities \
   }'
 ```
 
+## Canonical Runtime vs Wrapper Ownership
+
+Layer 3 runtime implementation is canonical in `value_fabric/layer3/`.
+`services/layer3-knowledge/src/` is a deployable compatibility/wrapper tree and should remain thin forwarding shims unless a governance-approved exception exists.
+
+Before adding or modifying logic:
+- Prefer editing `value_fabric/layer3/` first.
+- Keep wrapper modules as import-forwarders/delegators where possible.
+- Run shim-drift checks to prevent mirror divergence:
+
+```bash
+python services/layer3-knowledge/scripts/check_runtime_shim_drift.py
+python services/layer3-knowledge/scripts/check_app_monolith_shim_drift.py
+python services/layer3-knowledge/scripts/check_backup_shim_drift.py
+```
+
+Compatibility exceptions must be tracked in `docs/governance/compatibility-debt-registry.md`.
+
 ## Configuration
+>>>>>>> theirs
 
-Environment variables:
+- Contract file: `contracts/openapi/layer3-knowledge.json`
+- Runtime route modules: `value_fabric/layer3/api/routes/`
 
+<<<<<<< ours
+### Current route families (by canonical module)
+=======
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEO4J_URI` | `bolt://localhost:7687` | Neo4j connection URI |
 | `NEO4J_USER` | `neo4j` | Neo4j username |
 | `NEO4J_PASSWORD` | `password` | Neo4j password |
 | `PINECONE_API_KEY` | - | Pinecone API key (optional) |
-| `API_PORT` | `8001` | API server port |
+| `API_PORT` | `8003` | API server port |
+>>>>>>> theirs
 
-## Development
+- System/ops: `system.py` (`/health`, `/ready`, `/metrics`, detailed health variants)
+- Value trees and graph traversal: `value_trees.py`
+- Query/search and entity discovery: `query_search.py`, `entities.py`, `entity_compat.py`
+- Evidence/provenance: `evidence.py`, `provenance_audit.py`
+- Formulas/calculators/ROI/value packs: `formulas.py`, `formula_governance.py`, `calculators.py`, `roi_calculator.py`, `value_packs.py`, `variables.py`, `models.py`, `products.py`, `benchmarks.py`, `competitive_intel.py`
+- Compatibility aliases and tenant helpers: `compat_aliases.py`, `tenant_resolution.py`
 
+<<<<<<< ours
+### Versioning/prefix notes
+
+- Most Layer 3 functional endpoints are mounted under `/v1`.
+- Operational routes remain at root (`/health`, `/ready`, `/metrics`).
+- Some compatibility paths exist for backward compatibility and should not be treated as net-new API design targets.
+
+## Contract-first changes (Layer 3 contributor checklist)
+=======
 ```bash
 # Install dependencies
-pip install -e ".[dev]"
+uv sync --locked --all-extras
 
 # Run tests
-pytest tests/ -v
+pytest services/layer3-knowledge/tests -v
 
 # Code quality
-black src/ && ruff check src/
+ruff check value_fabric/layer3 services/layer3-knowledge/src && ruff format --check value_fabric/layer3 services/layer3-knowledge/src
 ```
+>>>>>>> theirs
 
-## Project Structure
+Before changing Layer 3 APIs, models, or endpoint semantics:
 
-```
-layer3-knowledge/
-├── src/
-│   ├── __init__.py
-│   ├── config.py              # Settings management
-│   ├── ingestion/             # RDF → Neo4j pipeline
-│   ├── schema/                # Neo4j constraints & indexes
-│   ├── retrieval/             # GraphRAG, hybrid search
-│   ├── analytics/             # Community detection, centrality
-│   └── api/                   # FastAPI application
-├── tests/                     # Test suite
-├── Dockerfile
-├── docker-compose.yml
-├── pyproject.toml
-└── README.md
-```
+1. Confirm canonical runtime target in the [Layer Runtime Path Governance Matrix](../../docs/reference/layer-runtime-path-governance.md).
+2. Verify route and version prefix expectations in the [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
+3. Update and validate the Layer 3 OpenAPI contract: [`contracts/openapi/layer3-knowledge.json`](../../contracts/openapi/layer3-knowledge.json).
+4. Reconcile any impacted tests (contract tests, route tests, tenant isolation tests) before merge.
+5. If compatibility aliases are touched, document migration intent and avoid introducing new business logic in wrapper/shim paths.
 
-## Integration
+Related governance references:
 
-- **Input**: RDF/Turtle from Layer 2 extraction pipeline
-- **Output**: GraphRAG results to Layer 4 agent workflows
+- Root agent/platform rules: [`AGENTS.md`](../../AGENTS.md)
+- Layer runtime parity checks: `tests/contract/test_layer_runtime_parity.py`
+- Service entrypoint smoke checks: `tests/contract/test_layer_service_entrypoint_smoke.py`
 
----
+## Scheduled removals & deprecations
 
-## Scheduled Removals & Deprecations
+Layer 3 follows Value Fabric deprecation policy:
 
-Layer 3 follows the Value Fabric deprecation policy:
+- Machine-readable register: `docs/deprecation_register.json`
+- Human-readable inventory: `docs/deprecation_inventory.md`
+- CI gate: `make check-deprecations`
 
-- **Machine-readable register**: `docs/deprecation_register.json`
-- **Human-readable inventory**: `docs/deprecation_inventory.md`
-- **CI gate**: `make check-deprecations` (fails on overdue items)
+Deprecated endpoints emit warning headers:
 
-Deprecated API endpoints emit warning headers:
 - `Warning: 299 - "Deprecated since {date}"`
 - `X-Deprecated-Since`, `X-Target-Removal-Date`, `X-Deprecation-Owner`
 
-See [API Reference - Deprecation Policy](../../docs/API_REFERENCE.md#deprecation-policy) for full details.
+See [API Reference - Deprecation Policy](../../docs/API_REFERENCE.md#deprecation-policy).
 
-### Graph Field Deprecation Transition (v2.4 target)
+### Graph field deprecation transition (v2.4 target)
 
 Layer 3 graph response models currently include both canonical and legacy alias fields during the deprecation window:
+
 - GraphNode canonical: `label`, `type`, `confidence`
 - GraphNode legacy aliases: `name`, `entity_type`, `confidence_score`
 - GraphEdge canonical: `type`

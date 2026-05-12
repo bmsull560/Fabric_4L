@@ -4,6 +4,7 @@ from value_fabric.layer3.api.models import (
     GraphNode,
     get_deprecated_field_usage_counters,
 )
+from value_fabric.layer3.api.main import app
 
 
 def test_graph_node_contract_includes_legacy_and_canonical_fields() -> None:
@@ -61,3 +62,18 @@ def test_layer3_contract_fixtures_prefer_canonical_fields() -> None:
     assert sample["name"] == "Canonical"
     assert sample["entity_type"] == "Capability"
     assert sample["confidence_score"] == 0.8
+
+
+def test_openapi_graph_node_fields_are_canonical_plus_explicit_aliases_only() -> None:
+    schema = app.openapi()
+    graph_node = schema["components"]["schemas"]["GraphNode"]["properties"]
+    assert {"id", "name", "entity_type", "confidence_score", "properties"}.issubset(graph_node.keys())
+    assert {"label", "type", "confidence"}.issubset(graph_node.keys())
+    unexpected = {"title", "node_type"} & set(graph_node.keys())
+    assert not unexpected
+
+
+def test_deprecated_alias_routes_remain_marked_deprecated() -> None:
+    schema = app.openapi()["paths"]
+    for route in ("/api/v1/query", "/api/v1/query/graph", "/api/v1/query/search", "/api/v1/graphrag"):
+        assert schema[route]["post"].get("deprecated") is True
