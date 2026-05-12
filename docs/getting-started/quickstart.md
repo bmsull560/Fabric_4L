@@ -304,3 +304,7 @@ See [Troubleshooting Index](../troubleshooting/index.md) for more solutions.
 ---
 
 *Last updated: 2026-05-04 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/getting-started/quickstart.md)*
+
+## Contributor Pathing Reference
+
+- [Layer Runtime Path Governance Matrix](../reference/layer-runtime-path-governance.md) — Where to add new layer code vs compatibility-only paths

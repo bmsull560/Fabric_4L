@@ -1,6 +1,8 @@
 # Layer 5 — Ground Truth
 > Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
+> Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
+
 > **Evidence-backed, CFO-defensible facts for the Value Fabric platform.**
 
 Layer 5 is the epistemic foundation of the Value Fabric stack. It stores, validates, and governs factual claims extracted from customer conversations, documents, and web content. Every claim in the system has a traceable provenance, a confidence score, and a maturity level that reflects how thoroughly it has been validated.

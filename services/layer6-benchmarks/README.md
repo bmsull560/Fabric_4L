@@ -1,6 +1,8 @@
 # Layer 6: Benchmark Service
 > Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
+> Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
+
 Standalone service for comparative intelligence and peer benchmarking.
 
 ## Overview

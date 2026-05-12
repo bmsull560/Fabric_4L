@@ -258,3 +258,7 @@ See [`/contributing/`](./contributing/) for:
 - Moved 4 reference documents to proper `docs/` subdirectories
 - Merged `THREAT_MODEL.md` into `docs/core-concepts/security-model.md`
 - Root-level docs reduced from 41 to 24 files
+
+## Contributor Pathing Reference
+
+- [Layer Runtime Path Governance Matrix](./reference/layer-runtime-path-governance.md) — Canonical vs legacy layer paths for contributors

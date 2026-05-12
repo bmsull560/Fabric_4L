@@ -553,3 +553,7 @@ For production/staging release approvals, SLO review is mandatory:
 - Block release if burn-rate threshold breaches are unresolved.
 
 See `docs/troubleshooting/runbooks/infrastructure/release-checklist.md` and `docs/operations/reliability-policy.md`.
+
+## Contributor Pathing Reference
+
+- [Layer Runtime Path Governance Matrix](../reference/layer-runtime-path-governance.md) — Where to add new layer code vs compatibility-only paths

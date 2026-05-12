@@ -1,6 +1,8 @@
 # Layer 2: Ontology-Guided Extraction Pipeline
 > Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
+> Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
+
 Transforms unstructured Markdown content into structured RDF/OWL triples using LLM-guided extraction with strict schema compliance.
 
 ## Overview

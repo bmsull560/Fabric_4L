@@ -1,6 +1,8 @@
 # Layer 4: Agentic Workflow Engine
 > Routing/versioning reference: see the canonical [Service Routing and API Version Matrix](../../docs/reference/service-routing-and-api-version-matrix.md).
 
+> Runtime path governance: net-new layer logic must go to canonical runtime packages in `value_fabric/layer*/`. See [`docs/reference/layer-runtime-path-governance.md`](../../docs/reference/layer-runtime-path-governance.md).
+
 LangGraph-powered agentic workflow layer for the Value Fabric platform.
 
 ## Overview

@@ -141,6 +141,9 @@ packs/
 docs/
 ```
 
+Path governance matrix for canonical vs compatibility locations:
+- `docs/reference/layer-runtime-path-governance.md`
+
 ---
 
 ## 4. Contract-First Development
