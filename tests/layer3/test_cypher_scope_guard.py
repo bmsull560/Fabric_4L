@@ -108,7 +108,6 @@ def test_executor_allows_ambiguous_query_when_explicitly_allowlisted_system_quer
     )
 
 
-<<<<<<< ours
 @pytest.mark.parametrize(
     "query",
     [
@@ -126,8 +125,6 @@ def test_executor_blocks_union_call_and_multimatch_without_system_opt_in(query: 
         )
 
 
-=======
->>>>>>> theirs
 @pytest.mark.asyncio
 async def test_run_scoped_query_enforces_tenant_for_tenant_scoped_queries() -> None:
     async def _run(_query: str, _params: dict[str, str]):

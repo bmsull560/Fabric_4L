@@ -636,9 +636,19 @@ def validate_jwt_secret_strength() -> None:
 def validate_jwt_config() -> None:
     """Compatibility wrapper for identity dependency startup validation."""
     jwt_secret = os.getenv("JWT_SECRET", "")
-    if is_production() and not jwt_secret:
-        raise ValueError("JWT_SECRET is required in production")
+    if is_production_like_environment() and not jwt_secret:
+        raise ValueError("JWT_SECRET is required in production-like environments")
     validate_jwt_secret_strength()
+
+    # JWT_ISSUER and JWT_AUDIENCE validation (production-like environments)
+    jwt_issuer = os.getenv("JWT_ISSUER", "").strip()
+    jwt_audience = os.getenv("JWT_AUDIENCE", "").strip()
+
+    if is_production_like_environment():
+        if not jwt_issuer:
+            raise ValueError("JWT_ISSUER is required in production-like environments")
+        if not jwt_audience:
+            raise ValueError("JWT_AUDIENCE is required in production-like environments")
 
 
 def validate_database_superuser() -> None:

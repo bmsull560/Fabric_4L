@@ -5,12 +5,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from value_fabric.shared.identity.isolation import QueryScope, ScopedQuery
-<<<<<<< ours
-=======
-
-from value_fabric.layer3.security.query_validator import QueryValidator, ValidationSeverity
->>>>>>> theirs
-
 
 class TenantQueryValidationError(ValueError):
     """Raised when Cypher execution violates tenant isolation requirements."""

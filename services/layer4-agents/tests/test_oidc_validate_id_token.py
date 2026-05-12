@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jose import jwt
 
-from shared.identity.oidc import OIDCClient, OIDCProviderConfig
+from src.shared.identity.oidc import OIDCClient, OIDCProviderConfig
 
 
 def _b64url_uint(value: int) -> str:
@@ -123,3 +123,19 @@ async def test_validate_id_token_rejects_expired_token(oidc_setup):
 
     with pytest.raises(ValueError, match="ID token validation failed"):
         await client.validate_id_token(token)
+
+
+@pytest.mark.asyncio
+async def test_verify_id_token_uses_validate_path(oidc_setup):
+    client, private_key, jwks = oidc_setup
+    client._fetch_jwks = AsyncMock(return_value=jwks)
+
+    token = _make_token(
+        private_key,
+        issuer="https://issuer.example.com",
+        audience="vf-client",
+        expires_delta=timedelta(minutes=5),
+    )
+
+    claims = await client.verify_id_token(token)
+    assert claims["sub"] == "user-123"

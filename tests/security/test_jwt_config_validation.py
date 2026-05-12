@@ -264,7 +264,7 @@ class TestEdgeCases:
         """Unicode characters in JWT secret are handled."""
         with patch.dict(os.environ, {
             "ENVIRONMENT": "production",
-            "JWT_SECRET": "🔐secret-key-with-32-chars!!🔐🔐🔐",
+            "JWT_SECRET": "🔐secret-key-with-32-chars!!🔐🔐🔐🔐🔐",
             "JWT_ISSUER": "test-issuer",
             "JWT_AUDIENCE": "test-audience",
         }, clear=False):

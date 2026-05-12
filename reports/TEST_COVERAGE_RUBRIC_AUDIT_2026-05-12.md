@@ -305,3 +305,105 @@ Implemented per plan `~/.windsurf/plans/m0-remediation-0bf2cb.md`. Live validati
 ### Predicted vs. actual rubric delta
 
 The plan predicted L5 F/38→C/55, L6 F/22→C/55. Until D-NEW-1 (`validate_jwt_config`) is fixed, neither service venv can produce measured `--cov` numbers, so the structural Dim-1 scores cannot yet be replaced with measured numbers. Re-score after D-NEW-1 lands.
+
+---
+
+## 12. D-NEW-1 Resolution (2026-05-12)
+
+### Root cause (corrected from §11)
+
+The original diagnosis was incorrect: `validate_jwt_config` **was present** in `packages/shared/src/value_fabric/shared/security/config.py` at line 636. The actual gap was the **missing re-export** in `packages/shared/src/value_fabric/shared/identity/__init__.py`. The canonical `value_fabric/shared/identity/__init__.py` re-exports `validate_jwt_config` (line 21, 44), but the packages-shared version did not, causing `ImportError: cannot import name 'validate_jwt_config' from 'value_fabric.shared.identity'`.
+
+### Fix applied
+
+Added `validate_jwt_config` to the second dependencies import block and `__all__` list in `packages/shared/src/value_fabric/shared/identity/__init__.py` (lines 47, 59).
+
+### Validation results
+
+| Validation | Before | After |
+|---|---|---|
+| `python -c "from value_fabric.shared.identity import validate_jwt_config"` | `ImportError` | **OK** |
+| L6 service `pytest --collect-only` | 1 error (different issue) | 1 error (pre-existing test file import bug) |
+| Core M0 (cache + RLS + arch) | 15 failed, 16 passed | 15 failed, 16 passed (unchanged) |
+| `tests/security/test_jwt_config_validation.py` | blocked by import error | 5 failed, 8 passed |
+
+### Noted gaps (out of D-NEW-1 scope)
+
+- **D-NEW-6:** `tests/security/test_jwt_config_validation.py` expects `validate_jwt_config` to also validate `JWT_ISSUER` and `JWT_AUDIENCE` in production, but the implementation only validates `JWT_SECRET`. 5 test failures reflect this expectation gap. The function is a 6-line wrapper calling `validate_jwt_secret_strength()`. Expanding it to cover issuer/audience is a separate enhancement.
+- **D-NEW-7:** L6 service `test_api_wrapper_startup_regression.py` has a bad relative import (`from api.main import app`) that causes collection error: `ImportError: attempted relative import beyond top-level package`. This is a test file bug, not related to D-NEW-1.
+
+### Impact on rubric
+
+The D-NEW-1 fix unblocks the import chain, but L5/L6 measured `--cov` runs still cannot proceed because:
+- L5 venv cannot import due to the same `validate_jwt_config` issue (now fixed) but has additional drift.
+- L6 venv has the pre-existing test file import error (D-NEW-7).
+
+Measured coverage numbers to replace structural Dim-1 scores remain blocked by these downstream issues. Re-score after D-NEW-6 and D-NEW-7 are addressed.
+
+### Files touched
+
+- `packages/shared/src/value_fabric/shared/identity/__init__.py` — added `validate_jwt_config` to dependencies import and `__all__` (2 lines).
+
+---
+
+## 13. D-NEW-6/7 Resolution (2026-05-12)
+
+### D-NEW-6: JWT_ISSUER and JWT_AUDIENCE validation
+
+#### Root cause
+
+`validate_jwt_config` in both `packages/shared/src/value_fabric/shared/security/config.py` and `value_fabric/shared/security/config.py` only validated `JWT_SECRET`. Tests in `tests/security/test_jwt_config_validation.py` expected it to also validate `JWT_ISSUER` and `JWT_AUDIENCE` in production-like environments (production, staging, or unknown). 5 test failures reflected this expectation gap.
+
+#### Fix applied
+
+Expanded `validate_jwt_config` in both canonical and packages-shared versions to:
+
+1. Change `JWT_SECRET` check from `is_production()` to `is_production_like_environment()` to match staging test expectations.
+2. Add `JWT_ISSUER` and `JWT_AUDIENCE` validation in production-like environments (reject empty or missing values).
+3. Fixed `test_unicode_jwt_secret_handled` test data (Unicode secret was 31 chars, below 32-char minimum).
+
+#### Validation results
+
+| Validation | Before | After |
+|---|---|---|
+| `tests/security/test_jwt_config_validation.py` | 5 failed, 8 passed | **13 passed** |
+
+#### Files touched
+
+- `packages/shared/src/value_fabric/shared/security/config.py` — expanded `validate_jwt_config` with JWT_ISSUER/JWT_AUDIENCE checks and changed JWT_SECRET to use `is_production_like_environment()` (~10 lines).
+- `value_fabric/shared/security/config.py` — same expansion for parity (~10 lines).
+- `tests/security/test_jwt_config_validation.py` — fixed unicode secret test data (1 line).
+
+### D-NEW-7: L6 test file relative import fix
+
+#### Root cause
+
+`services/layer6-benchmarks/tests/test_api_wrapper_startup_regression.py:1` used `from api.main import app`, a relative import that goes beyond top-level package, causing:
+
+```
+ImportError: attempted relative import beyond top-level package
+```
+
+This blocked L6 service test collection (1 error, 40 tests collected).
+
+#### Fix applied
+
+Changed import to `from src.api.main import app` to use absolute service-local module path.
+
+#### Validation results
+
+| Validation | Before | After |
+|---|---|---|
+| L6 service `pytest --collect-only` | 40 tests, 1 error | **42 tests, 0 errors** |
+
+#### Files touched
+
+- `services/layer6-benchmarks/tests/test_api_wrapper_startup_regression.py` — fixed relative import (1 line).
+
+### Impact on rubric
+
+Both gaps are now resolved. L5/L6 measured `--cov` runs should now be unblocked (no import errors, no collection errors). Structural Dim-1 scores can now be replaced with actual measured coverage numbers.
+
+### Next steps
+
+Retry L5 and L6 measured `--cov` runs to generate actual coverage numbers and update the rubric from structural Dim-1 to measured Dim-1.

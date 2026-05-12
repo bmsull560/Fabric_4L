@@ -44,6 +44,7 @@ from .permissions import Permission, Role, ROLE_PERMISSIONS
 from .dependencies import (
     require_tenant_admin,
     require_super_admin,
+    validate_jwt_config,
 )
 from .vault_check import check_vault_health, resolve_vault_secret
 from .auth_mode import (
@@ -55,6 +56,7 @@ from .auth_mode import (
 __all__ = [
     # Dependencies (merged from root)
     "require_tenant_admin",
+    "validate_jwt_config",
     "require_super_admin",
     # Vault (merged from root)
     "check_vault_health",
