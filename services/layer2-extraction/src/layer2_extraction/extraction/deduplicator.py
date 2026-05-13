@@ -49,22 +49,32 @@ class EntityDeduplicator:
         self, entities: list[OntologyEntity]
     ) -> list[list[float]]:
         """Compute pairwise cosine similarity matrix for entity embeddings."""
-        n = len(entities)
-        matrix: list[list[float]] = [[0.0 for _ in range(n)] for _ in range(n)]
-        for i in range(n):
-            for j in range(n):
-                if i == j:
-                    matrix[i][j] = 1.0
-                elif j < i:
-                    matrix[i][j] = matrix[j][i]
-                else:
-                    emb_i = getattr(entities[i], "embedding", [])
-                    emb_j = getattr(entities[j], "embedding", [])
-                    if emb_i and emb_j:
-                        matrix[i][j] = self._cosine_similarity(emb_i, emb_j)
-                    else:
-                        matrix[i][j] = 0.0
-        return matrix
+        import numpy as np
+
+        # Collect embeddings; missing embeddings become zero vectors
+        embeddings = []
+        dim = 0
+        for e in entities:
+            emb = getattr(e, "embedding", None) or []
+            if emb:
+                dim = len(emb)
+            embeddings.append(emb)
+
+        # If no embeddings at all, return identity-like fallback
+        if dim == 0:
+            n = len(entities)
+            return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+
+        # Pad missing embeddings with zeros so we can use vectorized numpy ops
+        padded = []
+        for emb in embeddings:
+            if emb:
+                padded.append(emb)
+            else:
+                padded.append([0.0] * dim)
+
+        sim = self._compute_similarity_matrix(np.array(padded, dtype=np.float64))
+        return sim.tolist()
 
     def _find_clusters(self, similarity_matrix: Any) -> list[list[int]]:
         """Cluster entity indices based on similarity matrix using BFS."""
@@ -74,7 +84,8 @@ class EntityDeduplicator:
         if matrix.size == 0:
             return []
         n = matrix.shape[0]
-        visited = [False] * n
+        adj = matrix >= self.threshold
+        visited = np.zeros(n, dtype=bool)
         clusters: list[list[int]] = []
 
         for i in range(n):
@@ -86,10 +97,10 @@ class EntityDeduplicator:
             while queue:
                 curr = queue.pop(0)
                 cluster.append(curr)
-                for j in range(n):
-                    if not visited[j] and matrix[curr, j] >= self.threshold:
-                        visited[j] = True
-                        queue.append(j)
+                neighbors = np.where(~visited & adj[curr])[0]
+                if neighbors.size:
+                    visited[neighbors] = True
+                    queue.extend(neighbors.tolist())
             clusters.append(cluster)
         return clusters
 

@@ -4,7 +4,12 @@ from layer2_extraction.models.extraction_api import ExtractionRequest, Extractio
 from layer2_extraction.models.extraction_cost import ExtractionCost, JobCostSummary
 from layer2_extraction.models.extraction_response import (
     CapabilityExtractionResponse,
+    FeatureExtractionResponse,
+    PersonaExtractionResponse,
     RelationshipExtractionResponse,
+    UnifiedExtractionResponse,
+    UseCaseExtractionResponse,
+    ValueDriverExtractionResponse,
 )
 from layer2_extraction.models.ontology import (
     APQCProcess,
@@ -50,6 +55,11 @@ __all__ = [
     "Relationship",
     "RelationshipExtractionResponse",
     "RelationshipGraph",
+    "UnifiedExtractionResponse",
+    "UseCaseExtractionResponse",
+    "ValueDriverExtractionResponse",
+    "FeatureExtractionResponse",
+    "PersonaExtractionResponse",
     "RoleType",
     "SeniorityLevel",
     "SignalExtractionResult",

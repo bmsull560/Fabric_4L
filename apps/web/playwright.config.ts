@@ -30,6 +30,7 @@ const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_REPORT || 'playwright-report
 const JUNIT_OUTPUT_FILE = process.env.PLAYWRIGHT_JUNIT_FILE || 'e2e-results/junit.xml';
 const TEST_OUTPUT_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || 'e2e-results/';
 const WEBSERVER_COMMAND = process.env.PLAYWRIGHT_WEBSERVER_COMMAND || 'pnpm dev';
+const SKIP_WEBSERVER = process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true';
 
 export default defineConfig({
   testDir: "./e2e",
@@ -140,7 +141,7 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
 
   /* Run local dev server before starting tests */
-  webServer: {
+  webServer: SKIP_WEBSERVER ? undefined : {
     command: WEBSERVER_COMMAND,
     url: BASE_URL,
     reuseExistingServer: LIVE_MODE || !CI,

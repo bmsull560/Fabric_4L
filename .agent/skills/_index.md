@@ -67,6 +67,11 @@ Constraints: get_canvas before edits; max 200 shapes per create_shape call.
 Requires: tldraw MCP server wired in the harness's MCP config; user has
 http://localhost:3030 open. Opt-in via `.features.json` (`tldraw: true`).
 
+## source-intelligence
+Layer 1 reasoning procedure for transforming raw company materials into structured, provenance-backed intelligence. Drives licensing-company ontology intake and prospect research.
+Triggers: "source intelligence", "ingest company", "research prospect", "build corpus", "account intelligence", "licensing company intake", "prospect research", "ontology seed"
+Constraints: do not replace downstream layer logic, always preserve source provenance, emit events only after successful storage, never finalize strategic conclusions in Layer 1
+
 ## saas-product-design
 Core competencies for building scalable, high-retention multi-tenant SaaS products, focusing on architecture, onboarding, navigation, and modern UI design.
 Triggers: "SaaS", "multi-tenant", "onboarding", "navigation", "dashboard", "UI design", "accessibility", "AI integration", "tenant isolation", "Time-to-Value", "TTV", "command palette", "dark mode", "WCAG"

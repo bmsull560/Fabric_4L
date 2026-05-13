@@ -2,19 +2,26 @@
 
 from __future__ import annotations
 
-import json
+import asyncio
 import math
 import os
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from layer2_extraction.extraction.cache import ExtractionCache
 from layer2_extraction.models.extraction_response import (
     CapabilityExtractionResponse,
+    FeatureExtractionResponse,
+    PersonaExtractionResponse,
     RelationshipExtractionResponse,
+    UnifiedExtractionResponse,
+    UseCaseExtractionResponse,
+    ValueDriverExtractionResponse,
 )
 from layer2_extraction.models.ontology import (
     Capability,
+    Feature,
     Persona,
     RoleType,
     SeniorityLevel,
@@ -110,47 +117,299 @@ class EntityExtractor:
         "additionalProperties": False,
     }
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o") -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "gpt-4o",
+        cache: ExtractionCache | None = None,
+        client: Any | None = None,
+    ) -> None:
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.model = model
-        self.client = _MockClient()
+        self.client = client or _MockClient()
+        self.cache = cache
 
     async def chat_completion_structured(
         self, **kwargs: Any
     ) -> tuple[Any, None]:
         return await self.client.chat_completion_structured(**kwargs)
 
-    async def _extract_capabilities(
-        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
-    ) -> list[Capability]:
-        """Extract capabilities using structured output."""
+    async def _cached_extract(
+        self,
+        text: str,
+        endpoint: str,
+        response_format: type[Any],
+        source_url: str,
+        job_id: str,
+        confidence_threshold: float,
+        entity_attr: str,
+    ) -> list[Any]:
+        """Generic cached extraction helper.
+
+        Returns deep-copied entities so that cached objects are never mutated
+        in place across different extraction calls.
+        """
+        if self.cache is not None:
+            cached = await self.cache.get(text, endpoint, model=self.model)
+            if cached is not None:
+                entities = getattr(cached, entity_attr, [])
+                return self._prepare_entities(entities, source_url, job_id, confidence_threshold)
+
         try:
             response, _ = await self.client.chat_completion_structured(
-                response_format=CapabilityExtractionResponse,
-                endpoint="extract_capabilities",
+                response_format=response_format,
+                endpoint=endpoint,
             )
         except ValidationError as exc:
             raise LLMExtractionError(f"schema validation error: {exc}") from exc
 
         if response is None:
             return []
-        capabilities = getattr(response, "capabilities", [])
-        for cap in capabilities:
-            cap.extraction_job_id = job_id
-            if cap.source_refs and source_url:
-                cap.source_refs.append(source_url)
-        return [c for c in capabilities if c.confidence >= confidence_threshold]
+
+        if self.cache is not None:
+            await self.cache.set(text, endpoint, response, model=self.model)
+
+        entities = getattr(response, entity_attr, [])
+        return self._prepare_entities(entities, source_url, job_id, confidence_threshold)
+
+    def _prepare_entities(
+        self,
+        entities: list[Any],
+        source_url: str,
+        job_id: str,
+        confidence_threshold: float,
+    ) -> list[Any]:
+        """Deep-copy entities, tag with job_id/source_url, and filter by confidence."""
+        result: list[Any] = []
+        for ent in entities:
+            copied = ent.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if hasattr(copied, "source_refs") and copied.source_refs and source_url:
+                if source_url not in copied.source_refs:
+                    copied.source_refs.append(source_url)
+            if copied.confidence >= confidence_threshold:
+                result.append(copied)
+        return result
+
+    async def _extract_capabilities(
+        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
+    ) -> list[Capability]:
+        """Extract capabilities using structured output."""
+        return await self._cached_extract(
+            text,
+            "extract_capabilities",
+            CapabilityExtractionResponse,
+            source_url,
+            job_id,
+            confidence_threshold,
+            "capabilities",
+        )
+
+    async def _extract_use_cases(
+        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
+    ) -> list[UseCase]:
+        """Extract use cases using structured output."""
+        return await self._cached_extract(
+            text,
+            "extract_use_cases",
+            UseCaseExtractionResponse,
+            source_url,
+            job_id,
+            confidence_threshold,
+            "use_cases",
+        )
+
+    async def _extract_personas(
+        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
+    ) -> list[Persona]:
+        """Extract personas using structured output."""
+        return await self._cached_extract(
+            text,
+            "extract_personas",
+            PersonaExtractionResponse,
+            source_url,
+            job_id,
+            confidence_threshold,
+            "personas",
+        )
+
+    async def _extract_value_drivers(
+        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
+    ) -> list[ValueDriver]:
+        """Extract value drivers using structured output."""
+        return await self._cached_extract(
+            text,
+            "extract_value_drivers",
+            ValueDriverExtractionResponse,
+            source_url,
+            job_id,
+            confidence_threshold,
+            "value_drivers",
+        )
+
+    async def _extract_features(
+        self, text: str, source_url: str, job_id: str, confidence_threshold: float = 0.0
+    ) -> list[Feature]:
+        """Extract features using structured output."""
+        return await self._cached_extract(
+            text,
+            "extract_features",
+            FeatureExtractionResponse,
+            source_url,
+            job_id,
+            confidence_threshold,
+            "features",
+        )
 
     async def extract(
-        self, text: str, source_url: str = "", job_id: str = ""
+        self,
+        text: str,
+        source_url: str = "",
+        job_id: str = "",
+        confidence_threshold: float = 0.0,
     ) -> dict[str, list[Any]]:
-        """Extract entities from text."""
+        """Extract entities from text concurrently.
+
+        Independent entity extractions (capabilities, use_cases, personas,
+        value_drivers, features) are launched in parallel via asyncio.gather.
+        Partial failures are handled gracefully: entities from successful
+        extractions are returned, and the exception is re-raised only if
+        every extraction fails.
+        """
+        coros = [
+            self._extract_capabilities(text, source_url, job_id, confidence_threshold),
+            self._extract_use_cases(text, source_url, job_id, confidence_threshold),
+            self._extract_personas(text, source_url, job_id, confidence_threshold),
+            self._extract_value_drivers(text, source_url, job_id, confidence_threshold),
+            self._extract_features(text, source_url, job_id, confidence_threshold),
+        ]
+
+        results = await asyncio.gather(*coros, return_exceptions=True)
+
+        capabilities: list[Any] = []
+        use_cases: list[Any] = []
+        personas: list[Any] = []
+        value_drivers: list[Any] = []
+        features: list[Any] = []
+        failures = 0
+
+        for idx, result in enumerate(results):
+            if isinstance(result, Exception):
+                failures += 1
+                continue
+            if idx == 0:
+                capabilities = result
+            elif idx == 1:
+                use_cases = result
+            elif idx == 2:
+                personas = result
+            elif idx == 3:
+                value_drivers = result
+            elif idx == 4:
+                features = result
+
+        if failures == len(coros):
+            raise LLMExtractionError("All entity extractions failed")
+
         return {
+            "capabilities": capabilities,
+            "use_cases": use_cases,
+            "personas": personas,
+            "value_drivers": value_drivers,
+            "features": features,
+        }
+
+    async def extract_unified(
+        self,
+        text: str,
+        source_url: str = "",
+        job_id: str = "",
+        confidence_threshold: float = 0.0,
+    ) -> dict[str, list[Any]]:
+        """Extract entities and relationships in a single LLM call.
+
+        This is a latency/cost optimization (opt #7) that combines entity
+        and relationship extraction into one structured LLM response.
+        Falls back to separate extractions if the unified endpoint fails.
+        """
+        if self.cache is not None:
+            cached = await self.cache.get(text, "extract_unified", model=self.model)
+            if cached is not None:
+                return self._unified_response_to_dict(cached, source_url, job_id, confidence_threshold)
+
+        try:
+            response, _ = await self.client.chat_completion_structured(
+                response_format=UnifiedExtractionResponse,
+                endpoint="extract_unified",
+            )
+        except ValidationError as exc:
+            raise LLMExtractionError(f"schema validation error: {exc}") from exc
+
+        if response is None:
+            return await self.extract(text, source_url, job_id, confidence_threshold)
+
+        if self.cache is not None:
+            await self.cache.set(text, "extract_unified", response, model=self.model)
+
+        return self._unified_response_to_dict(response, source_url, job_id, confidence_threshold)
+
+    def _unified_response_to_dict(
+        self,
+        response: UnifiedExtractionResponse,
+        source_url: str,
+        job_id: str,
+        confidence_threshold: float,
+    ) -> dict[str, list[Any]]:
+        """Convert a UnifiedExtractionResponse to the standard entity dict."""
+        result: dict[str, list[Any]] = {
             "capabilities": [],
             "use_cases": [],
             "personas": [],
             "value_drivers": [],
+            "features": [],
+            "relationships": [],
         }
+        for cap in getattr(response, "capabilities", []):
+            copied = cap.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if copied.source_refs and source_url and source_url not in copied.source_refs:
+                copied.source_refs.append(source_url)
+            if copied.confidence >= confidence_threshold:
+                result["capabilities"].append(copied)
+        for uc in getattr(response, "use_cases", []):
+            copied = uc.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if copied.source_refs and source_url and source_url not in copied.source_refs:
+                copied.source_refs.append(source_url)
+            if copied.confidence >= confidence_threshold:
+                result["use_cases"].append(copied)
+        for p in getattr(response, "personas", []):
+            copied = p.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if copied.source_refs and source_url and source_url not in copied.source_refs:
+                copied.source_refs.append(source_url)
+            if copied.confidence >= confidence_threshold:
+                result["personas"].append(copied)
+        for vd in getattr(response, "value_drivers", []):
+            copied = vd.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if copied.source_refs and source_url and source_url not in copied.source_refs:
+                copied.source_refs.append(source_url)
+            if copied.confidence >= confidence_threshold:
+                result["value_drivers"].append(copied)
+        for f in getattr(response, "features", []):
+            copied = f.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if copied.source_refs and source_url and source_url not in copied.source_refs:
+                copied.source_refs.append(source_url)
+            if copied.confidence >= confidence_threshold:
+                result["features"].append(copied)
+        for rel in getattr(response, "relationships", []):
+            copied = rel.model_copy(deep=True)
+            copied.extraction_job_id = job_id
+            if copied.confidence >= confidence_threshold:
+                result["relationships"].append(copied)
+        return result
 
     async def extract_with_schema(
         self, text: str, schema: type[BaseModel], source_url: str = "", job_id: str = ""
@@ -162,10 +421,10 @@ class EntityExtractor:
 class RelationshipExtractor:
     """Extract relationships between entities using an LLM."""
 
-    def __init__(self, api_key: str | None = None, model: str = "gpt-4o") -> None:
+    def __init__(self, api_key: str | None = None, model: str = "gpt-4o", client: Any | None = None) -> None:
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.model = model
-        self.client = _MockClient()
+        self.client = client or _MockClient()
 
     async def chat_completion_structured(
         self, **kwargs: Any

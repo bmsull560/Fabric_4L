@@ -41,6 +41,7 @@ from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import is_production_like_environment, settings
 from ..shared.database import get_db_from_context_sync
 from ..shared.models import (
+    AccountIntelligencePacket,
     AuthenticationType,
     BrowserEngine,
     ComplianceEventType,
@@ -58,7 +59,9 @@ from ..shared.models import (
     RawContent,
     RetryBackoff,
     ScrapingJob,
+    ScrapingJobType,
     ScrapingTarget,
+    SourceCorpus,
     TargetStatus,
     TargetType,
     TriggeredBy,
@@ -66,6 +69,7 @@ from ..shared.models import (
     create_scraping_job,
     create_scraping_target,
 )
+from ..skills import get_skill
 from ..shared.tasks import cleanup_old_content, process_scraping_job
 
 # Configure logging
@@ -707,6 +711,73 @@ class RetryJobRequest(BaseModel):
     retry_strategy: str = "FULL"  # FULL, FAILED_ONLY, FROM_STAGE
     from_stage: str | None = None
     max_retries: int = 3
+
+
+class CreateLicensingCompanyIntakeRequest(BaseModel):
+    """Request to create a licensing company ontology intake job."""
+
+    target_id: UUID
+    company_name: str
+    company_id: str | None = None
+    priority: int = 5
+    override_config: dict[str, Any] | None = None
+
+
+class CreateProspectResearchRequest(BaseModel):
+    """Request to create a prospect research job."""
+
+    target_id: UUID
+    account_name: str
+    account_id: str | None = None
+    priority: int = 5
+    override_config: dict[str, Any] | None = None
+
+
+class SkillJobResponse(BaseModel):
+    """Response for skill-aware job creation."""
+
+    job_id: UUID
+    status: str
+    job_type: str
+    skill_name: str
+    queue_position: int
+    queue_position_metadata: dict[str, str]
+    estimated_start_time: datetime | None = None
+
+
+class SourceCorpusResponse(BaseModel):
+    """SourceCorpus API response."""
+
+    id: UUID
+    tenant_id: UUID
+    company_id: str | None
+    company_name: str
+    corpus_type: str
+    source_groups: list[dict[str, Any]]
+    candidate_concepts: list[str]
+    provenance: list[dict[str, Any]]
+    extraction_status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class AccountIntelligencePacketResponse(BaseModel):
+    """AccountIntelligencePacket API response."""
+
+    id: UUID
+    tenant_id: UUID
+    account_id: str | None
+    account_name: str
+    packet_type: str
+    company_profile: dict[str, Any]
+    observed_signals: list[dict[str, Any]]
+    likely_pain_areas: list[str]
+    likely_stakeholders: list[str]
+    source_references: list[dict[str, Any]]
+    confidence_summary: dict[str, Any]
+    next_recommended_events: list[str]
+    created_at: datetime
+    updated_at: datetime
 
 
 class JobProgressResponse(BaseModel):
@@ -1926,6 +1997,358 @@ async def retry_job(
         "new_job_id": str(new_job.id),
         "status": JobStatus.QUEUED.value,
     })
+
+
+# =============================================================================
+# UTILITY FUNCTIONS - Skill Output Response Builders
+# =============================================================================
+
+
+def _source_corpus_to_response(corpus: SourceCorpus) -> SourceCorpusResponse:
+    """Convert a SourceCorpus DB model to its API response."""
+    return SourceCorpusResponse(
+        id=corpus.id,
+        tenant_id=corpus.tenant_id,
+        company_id=corpus.company_id,
+        company_name=corpus.company_name,
+        corpus_type=corpus.corpus_type,
+        source_groups=corpus.source_groups or [],
+        candidate_concepts=corpus.candidate_concepts or [],
+        provenance=corpus.provenance or [],
+        extraction_status=corpus.extraction_status,
+        created_at=corpus.created_at,
+        updated_at=corpus.updated_at,
+    )
+
+
+def _account_packet_to_response(packet: AccountIntelligencePacket) -> AccountIntelligencePacketResponse:
+    """Convert an AccountIntelligencePacket DB model to its API response."""
+    return AccountIntelligencePacketResponse(
+        id=packet.id,
+        tenant_id=packet.tenant_id,
+        account_id=packet.account_id,
+        account_name=packet.account_name,
+        packet_type=packet.packet_type,
+        company_profile=packet.company_profile or {},
+        observed_signals=packet.observed_signals or [],
+        likely_pain_areas=packet.likely_pain_areas or [],
+        likely_stakeholders=packet.likely_stakeholders or [],
+        source_references=packet.source_references or [],
+        confidence_summary=packet.confidence_summary or {},
+        next_recommended_events=packet.next_recommended_events or [],
+        created_at=packet.created_at,
+        updated_at=packet.updated_at,
+    )
+
+
+# =============================================================================
+# API ENDPOINTS - Source Intelligence Skills
+# =============================================================================
+
+
+def _create_skill_job(
+    db: Session,
+    org_id: UUID,
+    user_id: UUID,
+    target_id: UUID,
+    job_type: ScrapingJobType,
+    entity_name: str,
+    entity_id: str | None,
+    priority: int,
+    override_config: dict[str, Any] | None,
+) -> ScrapingJob:
+    """Create and queue a skill-aware scraping job."""
+    target = (
+        db.query(ScrapingTarget)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
+        .first()
+    )
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    if target.status != TargetStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=409, detail=f"Target is not active (status: {target.status})"
+        )
+
+    skill = get_skill(job_type.value)
+    if not skill:
+        raise HTTPException(status_code=400, detail=f"Unknown job_type: {job_type.value}")
+
+    configuration = {
+        "target_id": str(target.id),
+        "target_name": target.name,
+        "url": target.url,
+        "target_type": target.target_type,
+        "job_type": job_type.value,
+        "company_name" if job_type == ScrapingJobType.LICENSING_COMPANY_INTAKE else "account_name": entity_name,
+        "company_id" if job_type == ScrapingJobType.LICENSING_COMPANY_INTAKE else "account_id": entity_id,
+        "extraction_config": target.extraction_config,
+        "browser_config": target.browser_config,
+        "rate_limit": target.rate_limit,
+        "compliance": target.compliance,
+        "proxy_config": target.proxy_config,
+        "authentication": target.authentication,
+        "override_config": override_config,
+    }
+
+    job = create_scraping_job(
+        tenant_id=org_id,
+        target_id=target_id,
+        created_by=user_id,
+        configuration=configuration,
+        priority=priority,
+        triggered_by=TriggeredBy.API,
+        correlation_id=str(uuid4()),
+    )
+    job.job_type = job_type.value
+    job.skill_name = skill.skill_name
+    job.target_entity_id = entity_id
+    job.target_entity_type = skill.config.target_entity_type
+    job.output_contract = skill.output_contract
+    job.downstream_events = skill.downstream_events
+
+    db.add(job)
+    db.refresh(job)
+
+    # Initialize pipeline stages
+    for stage in PipelineStage:
+        stage_detail = JobStageDetail(
+            job_id=job.id, tenant_id=org_id, stage=stage.value, status="PENDING"
+        )
+        db.add(stage_detail)
+
+    job.status = JobStatus.QUEUED.value
+    process_scraping_job.delay(str(job.id))
+
+    logger.info(
+        "Queued skill-aware job",
+        job_id=str(job.id),
+        job_type=job_type.value,
+        skill_name=skill.skill_name,
+    )
+    return job
+
+
+@router.post("/jobs/licensing-company-intake", response_model=SkillJobResponse, status_code=202)
+async def create_licensing_company_intake_job(
+    request: CreateLicensingCompanyIntakeRequest,
+    org_id: UUID = Depends(get_tenant_id),
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Create a skill-aware job for licensing company ontology intake."""
+    job = _create_skill_job(
+        db=db,
+        org_id=org_id,
+        user_id=user_id,
+        target_id=request.target_id,
+        job_type=ScrapingJobType.LICENSING_COMPANY_INTAKE,
+        entity_name=request.company_name,
+        entity_id=request.company_id,
+        priority=request.priority,
+        override_config=request.override_config,
+    )
+
+    queue_position = (
+        db.query(ScrapingJob)
+        .filter(
+            ScrapingJob.tenant_id == org_id,
+            ScrapingJob.status == JobStatus.QUEUED.value,
+            ScrapingJob.created_at <= job.created_at,
+        )
+        .count()
+    )
+
+    return SkillJobResponse(
+        job_id=job.id,
+        status=JobStatus.QUEUED.value,
+        job_type=job.job_type,
+        skill_name=job.skill_name or "",
+        queue_position=queue_position,
+        queue_position_metadata={
+            "calculation": "count_queued_jobs_created_before_or_at_current_job",
+            "scope": "organization",
+        },
+    )
+
+
+@router.post("/jobs/prospect-research", response_model=SkillJobResponse, status_code=202)
+async def create_prospect_research_job(
+    request: CreateProspectResearchRequest,
+    org_id: UUID = Depends(get_tenant_id),
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Create a skill-aware job for prospect research."""
+    job = _create_skill_job(
+        db=db,
+        org_id=org_id,
+        user_id=user_id,
+        target_id=request.target_id,
+        job_type=ScrapingJobType.PROSPECT_RESEARCH,
+        entity_name=request.account_name,
+        entity_id=request.account_id,
+        priority=request.priority,
+        override_config=request.override_config,
+    )
+
+    queue_position = (
+        db.query(ScrapingJob)
+        .filter(
+            ScrapingJob.tenant_id == org_id,
+            ScrapingJob.status == JobStatus.QUEUED.value,
+            ScrapingJob.created_at <= job.created_at,
+        )
+        .count()
+    )
+
+    return SkillJobResponse(
+        job_id=job.id,
+        status=JobStatus.QUEUED.value,
+        job_type=job.job_type,
+        skill_name=job.skill_name or "",
+        queue_position=queue_position,
+        queue_position_metadata={
+            "calculation": "count_queued_jobs_created_before_or_at_current_job",
+            "scope": "organization",
+        },
+    )
+
+
+@router.get("/corpuses/{corpus_id}", response_model=SourceCorpusResponse)
+async def get_source_corpus(
+    corpus_id: UUID,
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Retrieve a SourceCorpus by ID."""
+    corpus = (
+        db.query(SourceCorpus)
+        .filter(SourceCorpus.id == corpus_id, SourceCorpus.tenant_id == org_id)
+        .first()
+    )
+    if not corpus:
+        raise HTTPException(status_code=404, detail="Corpus not found")
+    return SourceCorpusResponse(
+        id=corpus.id,
+        tenant_id=corpus.tenant_id,
+        company_id=corpus.company_id,
+        company_name=corpus.company_name,
+        corpus_type=corpus.corpus_type,
+        source_groups=corpus.source_groups or [],
+        candidate_concepts=corpus.candidate_concepts or [],
+        provenance=corpus.provenance or [],
+        extraction_status=corpus.extraction_status,
+        created_at=corpus.created_at,
+        updated_at=corpus.updated_at,
+    )
+
+
+@router.get("/intelligence-packets/{packet_id}", response_model=AccountIntelligencePacketResponse)
+async def get_account_intelligence_packet(
+    packet_id: UUID,
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Retrieve an AccountIntelligencePacket by ID."""
+    packet = (
+        db.query(AccountIntelligencePacket)
+        .filter(AccountIntelligencePacket.id == packet_id, AccountIntelligencePacket.tenant_id == org_id)
+        .first()
+    )
+    if not packet:
+        raise HTTPException(status_code=404, detail="Intelligence packet not found")
+    return AccountIntelligencePacketResponse(
+        id=packet.id,
+        tenant_id=packet.tenant_id,
+        account_id=packet.account_id,
+        account_name=packet.account_name,
+        packet_type=packet.packet_type,
+        company_profile=packet.company_profile or {},
+        observed_signals=packet.observed_signals or [],
+        likely_pain_areas=packet.likely_pain_areas or [],
+        likely_stakeholders=packet.likely_stakeholders or [],
+        source_references=packet.source_references or [],
+        confidence_summary=packet.confidence_summary or {},
+        next_recommended_events=packet.next_recommended_events or [],
+        created_at=packet.created_at,
+        updated_at=packet.updated_at,
+    )
+
+
+@router.get("/jobs/{job_id}/skill-output")
+async def get_job_skill_output(
+    job_id: UUID,
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Retrieve the skill-specific output for a completed job."""
+    job = (
+        db.query(ScrapingJob)
+        .filter(ScrapingJob.id == job_id, ScrapingJob.tenant_id == org_id)
+        .first()
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if not job.skill_name:
+        raise HTTPException(status_code=404, detail="Job has no skill output")
+
+    if job.output_contract == "SourceCorpus":
+        corpus = (
+            db.query(SourceCorpus)
+            .filter(SourceCorpus.job_id == job_id, SourceCorpus.tenant_id == org_id)
+            .first()
+        )
+        if not corpus:
+            raise HTTPException(status_code=404, detail="SourceCorpus not yet available")
+        return {
+            "output_contract": "SourceCorpus",
+            "data": SourceCorpusResponse(
+                id=corpus.id,
+                tenant_id=corpus.tenant_id,
+                company_id=corpus.company_id,
+                company_name=corpus.company_name,
+                corpus_type=corpus.corpus_type,
+                source_groups=corpus.source_groups or [],
+                candidate_concepts=corpus.candidate_concepts or [],
+                provenance=corpus.provenance or [],
+                extraction_status=corpus.extraction_status,
+                created_at=corpus.created_at,
+                updated_at=corpus.updated_at,
+            ).model_dump(),
+        }
+
+    if job.output_contract == "AccountIntelligencePacket":
+        packet = (
+            db.query(AccountIntelligencePacket)
+            .filter(AccountIntelligencePacket.job_id == job_id, AccountIntelligencePacket.tenant_id == org_id)
+            .first()
+        )
+        if not packet:
+            raise HTTPException(status_code=404, detail="AccountIntelligencePacket not yet available")
+        return {
+            "output_contract": "AccountIntelligencePacket",
+            "data": AccountIntelligencePacketResponse(
+                id=packet.id,
+                tenant_id=packet.tenant_id,
+                account_id=packet.account_id,
+                account_name=packet.account_name,
+                packet_type=packet.packet_type,
+                company_profile=packet.company_profile or {},
+                observed_signals=packet.observed_signals or [],
+                likely_pain_areas=packet.likely_pain_areas or [],
+                likely_stakeholders=packet.likely_stakeholders or [],
+                source_references=packet.source_references or [],
+                confidence_summary=packet.confidence_summary or {},
+                next_recommended_events=packet.next_recommended_events or [],
+                created_at=packet.created_at,
+                updated_at=packet.updated_at,
+            ).model_dump(),
+        }
+
+    raise HTTPException(status_code=400, detail=f"Unknown output_contract: {job.output_contract}")
 
 
 # =============================================================================

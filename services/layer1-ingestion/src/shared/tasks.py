@@ -29,9 +29,13 @@ if TYPE_CHECKING:
     from value_fabric.layer1.crawler.httpx_crawler import FastPathResult
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..skills import get_extraction_schema, get_skill
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import (
+    AccountIntelligencePacket,
+    ScrapingJobType,
+    SourceCorpus,
     ComplianceEventType,
     ComplianceLog,
     ExtractedData,
@@ -80,17 +84,7 @@ class compliance_check_stageResult(TypedDictModel):
     job_id: Any
     success: bool
 
-class browser_launch_stageResult(TypedDictModel):
-    job_id: Any
-    success: bool
-
-class navigation_stageResult(TypedDictModel):
-    job_id: Any
-    navigation_result: Any
-    success: bool
-
-class content_capture_stageResult(TypedDictModel):
-    html_content: Any
+class browser_crawl_stageResult(TypedDictModel):
     job_id: Any
     raw_content_id: Any
     success: bool
@@ -168,14 +162,30 @@ def process_scraping_job(self, job_id: str):
             # Start job
             job.status = JobStatus.VALIDATING.value
             job.started_at = datetime.now(UTC)
+
+            # Skill-aware initialization: if configuration specifies a job_type,
+            # resolve the skill and copy its metadata onto the job.
+            job_type = job.configuration.get("job_type", ScrapingJobType.GENERIC_SCRAPE.value)
+            job.job_type = job_type
+            skill = get_skill(job_type)
+            if skill:
+                job.skill_name = skill.skill_name
+                job.output_contract = skill.output_contract
+                job.downstream_events = skill.downstream_events
+                logger.info(
+                    "Skill-aware job initialized",
+                    job_id=str(job_id),
+                    job_type=job_type,
+                    skill_name=skill.skill_name,
+                    output_contract=skill.output_contract,
+                )
+
             session.commit()
 
         # Execute pipeline chain
         pipeline_chain = chain(
             compliance_check_stage.s(job_id),
-            browser_launch_stage.s(),
-            navigation_stage.s(),
-            content_capture_stage.s(),
+            browser_crawl_stage.s(),
             ai_extraction_stage.s(),
             post_processing_stage.s(),
             validation_stage.s(),
@@ -208,6 +218,19 @@ def compliance_check_stage(self, job_id: UUID):
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
+
+            # Idempotent: skip if already completed (handles retry after crawl delay)
+            existing_stage = (
+                session.query(JobStageDetail)
+                .filter(
+                    JobStageDetail.job_id == job_id,
+                    JobStageDetail.stage == PipelineStage.COMPLIANCE_CHECK.value,
+                )
+                .first()
+            )
+            if existing_stage and existing_stage.status == "COMPLETED":
+                logger.info("Compliance check already completed (idempotent retry)", job_id=str(job_id))
+                return compliance_check_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
             # Update stage status
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "RUNNING")
@@ -250,9 +273,17 @@ def compliance_check_stage(self, job_id: UUID):
                     _fail_job(job_id, "URL blocked by robots.txt", PipelineStage.COMPLIANCE_CHECK)
                     return compliance_check_stageResult.model_validate({"success": False, "error": "robots.txt blocked", "job_id": str(job_id)})
 
-                # Apply crawl delay
+                # OPTIMIZATION: Apply crawl delay via Celery retry instead of blocking sleep.
+                # This frees the worker to process other tasks during the delay.
                 if result.crawl_delay:
-                    time.sleep(result.crawl_delay)
+                    _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "RUNNING")
+                    session.commit()
+                    logger.info(
+                        "Applying crawl delay via Celery retry",
+                        job_id=str(job_id),
+                        crawl_delay_seconds=result.crawl_delay,
+                    )
+                    raise self.retry(countdown=int(result.crawl_delay))
 
             # Complete stage
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "COMPLETED")
@@ -262,6 +293,9 @@ def compliance_check_stage(self, job_id: UUID):
             return compliance_check_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
+        # Propagate Celery retry exceptions directly; don't wrap them
+        if "Retry" in type(exc).__name__:
+            raise
         logger.error("Compliance check failed", job_id=str(job_id), error=str(exc))
         try:
             with get_db_session() as error_session:
@@ -273,12 +307,17 @@ def compliance_check_stage(self, job_id: UUID):
         raise self.retry(exc=exc, countdown=30)
 
 
-@celery_app.task(bind=True, max_retries=2)
-def browser_launch_stage(self, prev_result: dict):
-    """Stage 2: Browser Acquisition and Launch."""
+@celery_app.task(bind=True, max_retries=3)
+def browser_crawl_stage(self, prev_result: dict):
+    """Stages 2-4: Smart crawl with routing (FAST / FAST_WITH_FALLBACK / BROWSER).
+
+    OPTIMIZATION: Integrates SmartRouter to choose between HTTPX fast path
+    and Playwright browser path. Merges launch+navigate+capture into one task,
+    eliminating redundant browser launches and enabling fast path for static content.
+    """
     job_id = UUID(prev_result["job_id"])
 
-    logger.info("Starting browser launch stage", job_id=str(job_id))
+    logger.info("Starting smart crawl stage", job_id=str(job_id))
 
     try:
         with get_db_session() as session:
@@ -286,130 +325,169 @@ def browser_launch_stage(self, prev_result: dict):
             if not job:
                 raise ValueError(f"Job {job_id} not found")
 
+            config = job.configuration
+            url = config.get("url", "")
+            browser_config = config.get("browser_config", {})
+            target_config = {}
+            if job.target_id:
+                target = session.query(ScrapingTarget).get(job.target_id)
+                if target:
+                    target_config = target.configuration or {}
+
+            tenant_id = str(job.tenant_id) if job.tenant_id else None
+            effective_mode = target_config.get("crawl_path", "browser")
+
+            router = SmartRouter()
+            gate = QualityGate()
+            decision_repo = CrawlDecisionRepository()
+
+            # Stage 2: Browser Launch
             _update_stage(session, job_id, PipelineStage.BROWSER_LAUNCH, "RUNNING")
             job.status = JobStatus.BROWSER_ACQUIRING.value
             job.progress_stage = PipelineStage.BROWSER_LAUNCH.value
             job.resources_browser_sessions_used += 1
             session.commit()
 
-            # Browser is launched per-URL in navigation stage
-            # This stage mainly tracks resource allocation
+            # Routing decision
+            route_type = RouteType(effective_mode)
+            routing_decision = asyncio.run(router.decide(url, route_type))
+
+            decision_record = CrawlDecisionRecord(
+                decision_id=str(uuid4()),
+                job_id=str(job_id),
+                tenant_id=tenant_id,
+                url=url,
+                domain=urlparse(url).netloc,
+                requested_path=effective_mode,
+                router_decision=routing_decision.route.value,
+                router_rule=routing_decision.reason,
+                quality_passed=None,
+                quality_checks=None,
+                fallback_reason=None,
+                final_path="unknown",
+                status_code=None,
+                fast_duration_ms=0,
+                browser_duration_ms=None,
+                fetch_time_ms=0,
+                bytes_transferred=0,
+                spa_detected=False,
+                text_length=0,
+            )
+
+            # Determine crawl path
+            crawl_result = None
+            fast_result = None
+            final_path = "unknown"
+
+            if routing_decision.route == RouteType.FAST:
+                logger.info("Using FAST path (HTTPX)", job_id=str(job_id), url=url)
+                fast_result = asyncio.run(_execute_fast_path(url))
+                final_path = "fast"
+                html_bytes = (fast_result.html or "").encode("utf-8")
+                decision_record.final_path = "fast"
+                decision_record.status_code = fast_result.status_code
+                decision_record.fast_duration_ms = fast_result.fetch_time_ms
+                decision_record.fetch_time_ms = fast_result.fetch_time_ms
+                decision_record.bytes_transferred = len(html_bytes)
+                decision_record.spa_detected = fast_result.is_spa_detected
+                decision_record.text_length = len(fast_result.text_content)
+                decision_record.quality_passed = fast_result.status_code == 200
+                decision_record.quality_checks = {"direct_fast": True}
+
+            elif routing_decision.route == RouteType.FAST_WITH_FALLBACK:
+                logger.info("Using FAST_WITH_FALLBACK path", job_id=str(job_id), url=url)
+                fast_result = asyncio.run(_execute_fast_path(url))
+                decision_record.fast_duration_ms = fast_result.fetch_time_ms
+                decision_record.spa_detected = fast_result.is_spa_detected
+                quality = gate.evaluate(fast_result)
+                decision_record.quality_passed = quality.passed
+                decision_record.quality_checks = quality.checks
+                decision_record.fallback_reason = quality.fallback_reason
+                if quality.passed:
+                    final_path = "fast"
+                    decision_record.final_path = "fast"
+                    decision_record.status_code = fast_result.status_code
+                    decision_record.fetch_time_ms = fast_result.fetch_time_ms
+                    decision_record.bytes_transferred = len((fast_result.html or "").encode("utf-8"))
+                    decision_record.text_length = len(fast_result.text_content)
+                    logger.info("Fast path succeeded", job_id=str(job_id), duration_ms=fast_result.fetch_time_ms)
+                else:
+                    logger.warning(
+                        "Fast path failed quality, escalating to browser",
+                        job_id=str(job_id),
+                        url=url,
+                        fallback_reason=quality.fallback_reason,
+                    )
+                    crawl_result = asyncio.run(_crawl_browser(url, browser_config))
+                    final_path = "fallback"
+                    decision_record.final_path = "fallback"
+                    decision_record.status_code = crawl_result.status_code
+                    decision_record.browser_duration_ms = crawl_result.duration_ms
+                    decision_record.fetch_time_ms = fast_result.fetch_time_ms + crawl_result.duration_ms
+                    decision_record.bytes_transferred = len((fast_result.html or "").encode("utf-8")) + len((crawl_result.html_content or "").encode("utf-8"))
+                    decision_record.text_length = len(crawl_result.html_content or "") // 10
+
+            else:  # RouteType.BROWSER
+                logger.info("Using BROWSER path (Playwright)", job_id=str(job_id), url=url)
+                crawl_result = asyncio.run(_crawl_browser(url, browser_config))
+                final_path = "browser"
+                decision_record.final_path = "browser"
+                decision_record.status_code = crawl_result.status_code
+                decision_record.browser_duration_ms = crawl_result.duration_ms
+                decision_record.fetch_time_ms = crawl_result.duration_ms
+                decision_record.bytes_transferred = len((crawl_result.html_content or "").encode("utf-8"))
+                decision_record.text_length = len(crawl_result.html_content or "") // 10
+
+            # Persist routing decision
+            asyncio.run(decision_repo.save(decision_record))
 
             _update_stage(session, job_id, PipelineStage.BROWSER_LAUNCH, "COMPLETED")
-            session.commit()
 
-            logger.info("Browser launch completed", job_id=str(job_id))
-            return browser_launch_stageResult.model_validate({"success": True, "job_id": str(job_id)})
-
-    except Exception as exc:
-        logger.error("Browser launch failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.BROWSER_LAUNCH, "FAILED", str(exc))
-        raise self.retry(exc=exc, countdown=10)
-
-
-@celery_app.task(bind=True, max_retries=3)
-def navigation_stage(self, prev_result: dict):
-    """Stage 3: Navigate to URL and handle dynamic content."""
-    job_id = UUID(prev_result["job_id"])
-
-    logger.info("Starting navigation stage", job_id=str(job_id))
-
-    try:
-        with get_db_session() as session:
-            job = session.query(ScrapingJob).get(job_id)
-            if not job:
-                raise ValueError(f"Job {job_id} not found")
-
+            # Stage 3: Navigation
             _update_stage(session, job_id, PipelineStage.NAVIGATION, "RUNNING")
             job.status = JobStatus.NAVIGATING.value
             job.progress_stage = PipelineStage.NAVIGATION.value
             session.commit()
 
-            config = job.configuration
-            url = config.get("url", "")
-            browser_config = config.get("browser_config", {})
+            if crawl_result and crawl_result.error:
+                raise Exception(crawl_result.error)
 
-            # Launch browser and navigate
-            async def _navigate():
-                async with PlaywrightCrawler(
-                    headless=browser_config.get("headless", True),
-                    proxy_config=config.get("proxy_config"),
-                ) as crawler:
-                    result = await crawler.navigate(url)
-                    return result
+            # Extract unified result
+            final_url = ""
+            status_code = None
+            headers = {}
+            html_content = ""
+            title = ""
+            duration_ms = 0
+            if fast_result and final_path in ("fast",):
+                final_url = fast_result.url
+                status_code = fast_result.status_code
+                headers = fast_result.headers
+                html_content = fast_result.html or ""
+                title = fast_result.title
+                duration_ms = fast_result.fetch_time_ms
+            elif crawl_result:
+                final_url = crawl_result.final_url
+                status_code = crawl_result.status_code
+                headers = crawl_result.headers
+                html_content = crawl_result.html_content or ""
+                title = crawl_result.title or ""
+                duration_ms = crawl_result.duration_ms
 
-            nav_result = asyncio.run(_navigate())
-
-            if nav_result.error:
-                raise Exception(nav_result.error)
-
-            # Store navigation result for next stage
             job.configuration["navigation_result"] = {
-                "final_url": nav_result.final_url,
-                "status_code": nav_result.status_code,
-                "headers": nav_result.headers,
+                "final_url": final_url,
+                "status_code": status_code,
+                "headers": headers,
             }
-
             _update_stage(session, job_id, PipelineStage.NAVIGATION, "COMPLETED")
-            session.commit()
 
-            logger.info("Navigation completed", job_id=str(job_id), final_url=nav_result.final_url)
-            return navigation_stageResult.model_validate({
-                "success": True,
-                "job_id": str(job_id),
-                "navigation_result": nav_result.__dict__,
-            })
-
-
-    except Exception as exc:
-        logger.error("Navigation failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.NAVIGATION, "FAILED", str(exc))
-        raise self.retry(exc=exc, countdown=30)
-
-
-@celery_app.task(bind=True, max_retries=2)
-def content_capture_stage(self, prev_result: dict):
-    """Stage 4: Capture content (HTML, screenshots, DOM snapshot)."""
-    job_id = UUID(prev_result["job_id"])
-
-    logger.info("Starting content capture stage", job_id=str(job_id))
-
-    try:
-        with get_db_session() as session:
-            job = session.query(ScrapingJob).get(job_id)
-            if not job:
-                raise ValueError(f"Job {job_id} not found")
-
+            # Stage 4: Content Capture
             _update_stage(session, job_id, PipelineStage.CONTENT_CAPTURE, "RUNNING")
             job.status = JobStatus.EXTRACTING.value
             job.progress_stage = PipelineStage.CONTENT_CAPTURE.value
             session.commit()
 
-            config = job.configuration
-            url = config.get("url", "")
-            browser_config = config.get("browser_config", {})
-            config.get("extraction_config", {})
-
-            async def _capture():
-                async with PlaywrightCrawler(
-                    headless=browser_config.get("headless", True)
-                ) as crawler:
-                    # Capture full page content
-                    result = await crawler.capture_page(
-                        url=url,
-                        wait_for_selector=browser_config.get("wait_for_selector"),
-                        wait_timeout=browser_config.get("wait_timeout", 30000),
-                    )
-                    return result
-
-            capture_result = asyncio.run(_capture())
-
-            # Calculate content hash
-            content_hash = hashlib.sha256(
-                capture_result.html_content.encode() if capture_result.html_content else b""
-            ).hexdigest()
-
-            # Check for duplicates
+            content_hash = hashlib.sha256(html_content.encode()).hexdigest()
             existing = (
                 session.query(RawContent)
                 .filter(
@@ -418,38 +496,31 @@ def content_capture_stage(self, prev_result: dict):
                 )
                 .first()
             )
-
             is_duplicate = existing is not None
 
-            # Create RawContent record
+            capture_method = "STATIC" if fast_result and final_path == "fast" else "DYNAMIC"
+            js_executed = not (fast_result and final_path == "fast")
+
             raw_content = RawContent(
                 job_id=job_id,
                 tenant_id=job.tenant_id,
                 target_id=job.target_id,
                 source_url=url,
-                source_final_url=capture_result.final_url,
+                source_final_url=final_url,
                 source_domain=url.split("/")[2] if "/" in url else url,
-                source_http_status=capture_result.status_code,
-                source_headers=capture_result.headers,
-                storage_html_path=capture_result.storage_paths.get("html"),
-                storage_screenshot_path=capture_result.storage_paths.get("screenshot"),
-                storage_dom_snapshot_path=capture_result.storage_paths.get("dom_snapshot"),
-                meta_title=capture_result.title,
-                meta_description=capture_result.description,
-                capture_method="DYNAMIC",
-                capture_browser_version=capture_result.browser_version,
-                capture_javascript_executed=True,
-                capture_wait_time_ms=browser_config.get("wait_timeout", 30000),
+                source_http_status=status_code,
+                source_headers=headers,
+                meta_title=title,
+                capture_method=capture_method,
+                capture_javascript_executed=js_executed,
+                capture_wait_time_ms=duration_ms,
                 content_hash=content_hash,
                 is_duplicate=is_duplicate,
                 duplicate_of_id=existing.id if existing else None,
                 processing_status="PENDING",
             )
-
             session.add(raw_content)
             session.flush()
-
-            # Update job with raw_content_id
             job.configuration["raw_content_id"] = str(raw_content.id)
             job.results_raw_content_count += 1
 
@@ -457,23 +528,26 @@ def content_capture_stage(self, prev_result: dict):
             session.commit()
 
             logger.info(
-                "Content capture completed", job_id=str(job_id), raw_content_id=str(raw_content.id)
+                "Smart crawl completed",
+                job_id=str(job_id),
+                raw_content_id=str(raw_content.id),
+                final_path=final_path,
+                final_url=final_url,
             )
-            return content_capture_stageResult.model_validate({
+            return browser_crawl_stageResult.model_validate({
                 "success": True,
                 "job_id": str(job_id),
                 "raw_content_id": str(raw_content.id),
-                "html_content": capture_result.html_content,
             })
 
-
     except Exception as exc:
-        logger.error("Content capture failed", job_id=str(job_id), error=str(exc))
-        _update_stage(get_db_session(), job_id, PipelineStage.CONTENT_CAPTURE, "FAILED", str(exc))
+        logger.error("Smart crawl failed", job_id=str(job_id), error=str(exc))
+        for stage in (PipelineStage.BROWSER_LAUNCH, PipelineStage.NAVIGATION, PipelineStage.CONTENT_CAPTURE):
+            _update_stage(get_db_session(), job_id, stage, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=30)
 
 
-@celery_app.task(bind=True, max_retries=2)
+@celery_app.task(bind=True, max_retries=5)
 def ai_extraction_stage(self, prev_result: dict):
     """Stage 5: AI/LLM Extraction (conditional based on config)."""
     job_id = UUID(prev_result["job_id"])
@@ -490,8 +564,18 @@ def ai_extraction_stage(self, prev_result: dict):
             extraction_config = config.get("extraction_config", {})
             method = extraction_config.get("method", "DETERMINISTIC")
 
+            # Skill-aware extraction: override schema if a skill is configured
+            skill_schema = get_extraction_schema(job.job_type)
+            if skill_schema:
+                extraction_config = {**extraction_config, "extraction_schema": skill_schema}
+                job.configuration["extraction_config"] = extraction_config
+                logger.info(
+                    "Using skill-specific extraction schema",
+                    job_id=str(job_id),
+                    skill_name=job.skill_name,
+                )
+
             if method == ExtractionMethod.DETERMINISTIC.value:
-                # Skip AI extraction for deterministic method
                 logger.info("Skipping AI extraction (deterministic mode)", job_id=str(job_id))
                 return ai_extraction_stageResult.model_validate({"success": True, "job_id": str(job_id), "skipped": True})
 
@@ -499,7 +583,6 @@ def ai_extraction_stage(self, prev_result: dict):
             job.progress_stage = PipelineStage.AI_EXTRACTION.value
             session.commit()
 
-            # Get raw content
             raw_content_id = config.get("raw_content_id")
             raw_content = (
                 session.query(RawContent).get(UUID(raw_content_id)) if raw_content_id else None
@@ -508,7 +591,6 @@ def ai_extraction_stage(self, prev_result: dict):
             if not raw_content:
                 raise ValueError("Raw content not found for AI extraction")
 
-            # P0-35: Call Layer 2 Extraction Service for LLM extraction
             l2_url = settings.layer2_api_url
             extraction_payload = {
                 "content": raw_content.meta_title or "",
@@ -516,51 +598,51 @@ def ai_extraction_stage(self, prev_result: dict):
                 "extraction_method": method.lower(),
                 "source_id": str(raw_content_id),
                 "job_id": str(job_id),
-                "tenant_id": str(job.tenant_id),  # Pass tenant for isolation
+                "tenant_id": str(job.tenant_id),
                 "options": {
                     "model": extraction_config.get("model", settings.openai_model),
                     "temperature": extraction_config.get("temperature", 0.0),
                     "max_tokens": extraction_config.get("max_tokens", 4000),
                 },
             }
+            # Pass skill-specific schema downstream if configured
+            schema = extraction_config.get("extraction_schema")
+            if schema:
+                extraction_payload["extraction_schema"] = schema
 
-            # Call L2 extraction API with retry logic
-            max_retries = 3
-            last_error = None
-            extraction_result = None
-            tokens_consumed = 0
-
-            for attempt in range(max_retries):
-                try:
-                    response = httpx.post(
+            # OPTIMIZATION: Async L2 call with short timeout + Celery retry.
+            # Previously: sync httpx.post with 120s timeout blocked the worker.
+            # Now: 30s async timeout; transient failures trigger Celery retry
+            # which returns the task to the queue, freeing the worker.
+            async def _call_l2():
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
                         f"{l2_url}/v1/extract",
                         json=extraction_payload,
-                        timeout=120.0,
                         headers={
                             "Content-Type": "application/json",
                             "X-Tenant-ID": str(job.tenant_id),
                         },
                     )
                     response.raise_for_status()
-                    extraction_result = response.json()
-                    tokens_consumed = extraction_result.get("tokens_consumed", 0)
-                    break
-                except httpx.HTTPStatusError as e:
-                    last_error = f"HTTP {e.response.status_code}: {e.response.text}"
-                    if e.response.status_code in (429, 503, 504):
-                        logger.warning(f"L2 extraction attempt {attempt + 1} failed, retrying...")
-                        time.sleep(2**attempt)
-                        continue
-                    break
-                except Exception as e:
-                    last_error = str(e)
-                    logger.warning(f"L2 extraction attempt {attempt + 1} failed: {e}")
-                    time.sleep(2**attempt)
+                    return response.json()
 
-            if extraction_result is None:
-                raise ValueError(f"L2 extraction failed after {max_retries} attempts: {last_error}")
+            try:
+                extraction_result = asyncio.run(_call_l2())
+                tokens_consumed = extraction_result.get("tokens_consumed", 0)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (429, 503, 504):
+                    logger.warning(
+                        "L2 transient error, returning to queue via Celery retry",
+                        job_id=str(job_id),
+                        status=e.response.status_code,
+                    )
+                    raise self.retry(exc=e, countdown=15)
+                raise ValueError(f"L2 extraction failed: HTTP {e.response.status_code}: {e.response.text}")
+            except Exception as e:
+                logger.warning("L2 extraction failed, retrying via Celery", job_id=str(job_id), error=str(e))
+                raise self.retry(exc=e, countdown=30)
 
-            # Store extraction result
             job.configuration["extraction_result"] = extraction_result
 
             _update_stage(session, job_id, PipelineStage.AI_EXTRACTION, "COMPLETED")
@@ -580,8 +662,9 @@ def ai_extraction_stage(self, prev_result: dict):
                 "entities_extracted": len(extraction_result.get("entities", [])),
             })
 
-
     except Exception as exc:
+        if "Retry" in type(exc).__name__:
+            raise
         logger.error("AI extraction failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.AI_EXTRACTION, "FAILED", str(exc))
         raise self.retry(exc=exc, countdown=30)
@@ -639,6 +722,30 @@ def post_processing_stage(self, prev_result: dict):
                             response_action_taken="REDACTED",
                         )
                         session.add(log)
+
+            # Skill-aware post-processing: build structured intelligence outputs
+            skill = get_skill(job.job_type)
+            if skill:
+                raw_contents = (
+                    session.query(RawContent)
+                    .filter(RawContent.job_id == job_id)
+                    .all()
+                )
+                extracted_data = (
+                    session.query(ExtractedData)
+                    .filter(ExtractedData.job_id == job_id)
+                    .all()
+                )
+                skill_output = skill.build_output(job, raw_contents, extracted_data)
+                # Store in job configuration for downstream stages
+                job.configuration["skill_output"] = skill_output
+                job.configuration["output_contract"] = skill.output_contract
+                logger.info(
+                    "Skill output built",
+                    job_id=str(job_id),
+                    skill_name=skill.skill_name,
+                    output_contract=skill.output_contract,
+                )
 
             _update_stage(session, job_id, PipelineStage.POST_PROCESSING, "COMPLETED")
             session.commit()
@@ -830,6 +937,80 @@ def storage_stage(self, prev_result: dict):
                     job.results_extracted_record_count += 1
                     job.results_storage_bytes_used += raw_content.source_content_length or 0
 
+            # Skill-aware storage: persist structured intelligence output
+            skill_output = config.get("skill_output")
+            output_contract = config.get("output_contract")
+            if skill_output and output_contract:
+                if output_contract == "SourceCorpus":
+                    # Idempotent: skip if a SourceCorpus already exists for this job
+                    existing_corpus = (
+                        session.query(SourceCorpus)
+                        .filter(SourceCorpus.job_id == job_id, SourceCorpus.tenant_id == job.tenant_id)
+                        .first()
+                    )
+                    if existing_corpus:
+                        logger.info(
+                            "SourceCorpus already exists (idempotent retry)",
+                            job_id=str(job_id),
+                            corpus_id=str(existing_corpus.id),
+                        )
+                    else:
+                        corpus = SourceCorpus(
+                            tenant_id=job.tenant_id,
+                            company_id=skill_output.get("company_id"),
+                            company_name=skill_output.get("company_name", "Unknown"),
+                            corpus_type=skill_output.get("corpus_type", "licensing_company_ontology_seed"),
+                            source_groups=skill_output.get("source_groups", []),
+                            candidate_concepts=skill_output.get("candidate_concepts", []),
+                            provenance=skill_output.get("provenance", []),
+                            extraction_status=skill_output.get("extraction_status", "ready_for_extraction"),
+                            job_id=job_id,
+                        )
+                        session.add(corpus)
+                        session.flush()
+                        logger.info(
+                            "SourceCorpus stored",
+                            job_id=str(job_id),
+                            corpus_id=str(corpus.id),
+                            company_name=corpus.company_name,
+                        )
+                elif output_contract == "AccountIntelligencePacket":
+                    # Idempotent: skip if a packet already exists for this job
+                    existing_packet = (
+                        session.query(AccountIntelligencePacket)
+                        .filter(AccountIntelligencePacket.job_id == job_id, AccountIntelligencePacket.tenant_id == job.tenant_id)
+                        .first()
+                    )
+                    if existing_packet:
+                        logger.info(
+                            "AccountIntelligencePacket already exists (idempotent retry)",
+                            job_id=str(job_id),
+                            packet_id=str(existing_packet.id),
+                        )
+                    else:
+                        packet = AccountIntelligencePacket(
+                            tenant_id=job.tenant_id,
+                            account_id=skill_output.get("account_id"),
+                            account_name=skill_output.get("account_name", "Unknown"),
+                            packet_type=skill_output.get("packet_type", "prospect_research"),
+                            company_profile=skill_output.get("company_profile", {}),
+                            observed_signals=skill_output.get("observed_signals", []),
+                            likely_pain_areas=skill_output.get("likely_pain_areas", []),
+                            likely_stakeholders=skill_output.get("likely_stakeholders", []),
+                            source_references=skill_output.get("source_references", []),
+                            confidence_summary=skill_output.get("confidence_summary", {}),
+                            next_recommended_events=skill_output.get("next_recommended_events", []),
+                            job_id=job_id,
+                        )
+                        session.add(packet)
+                        session.flush()
+                        logger.info(
+                            "AccountIntelligencePacket stored",
+                            job_id=str(job_id),
+                            packet_id=str(packet.id),
+                            account_name=packet.account_name,
+                        )
+
             _update_stage(session, job_id, PipelineStage.STORAGE, "COMPLETED")
             session.commit()
 
@@ -881,6 +1062,19 @@ def notification_stage(prev_result: dict):
                     )
                     target.average_execution_time_ms = int(total_duration / target.success_count)
                 session.commit()
+
+            # Skill-aware event emission: notify downstream layers
+            if job.downstream_events and job.skill_name:
+                for event in job.downstream_events:
+                    logger.info(
+                        "Emitting downstream event",
+                        job_id=str(job_id),
+                        event=event,
+                        tenant_id=str(job.tenant_id),
+                        skill_name=job.skill_name,
+                    )
+                    # TODO: wire to actual event bus (Redis pub/sub, webhook, or message queue)
+                    # For now, log the event for observability and testing
 
             logger.info("Job completed successfully", job_id=str(job_id))
             return notification_stageResult.model_validate({"success": True, "job_id": str(job_id)})
@@ -965,9 +1159,9 @@ def execute_pipeline_stage(job_id: str, stage: str):
     # Dispatch to appropriate stage task
     stage_tasks = {
         PipelineStage.COMPLIANCE_CHECK.value: compliance_check_stage,
-        PipelineStage.BROWSER_LAUNCH.value: browser_launch_stage,
-        PipelineStage.NAVIGATION.value: navigation_stage,
-        PipelineStage.CONTENT_CAPTURE.value: content_capture_stage,
+        PipelineStage.BROWSER_LAUNCH.value: browser_crawl_stage,
+        PipelineStage.NAVIGATION.value: browser_crawl_stage,
+        PipelineStage.CONTENT_CAPTURE.value: browser_crawl_stage,
         PipelineStage.AI_EXTRACTION.value: ai_extraction_stage,
         PipelineStage.POST_PROCESSING.value: post_processing_stage,
         PipelineStage.VALIDATION.value: validation_stage,
@@ -1195,6 +1389,27 @@ async def _execute_fast_path(url: str) -> "FastPathResult":
         return await crawler.fetch(url)
 
 
+async def _crawl_browser(url: str, browser_config: dict) -> "CrawlResult":
+    """Execute Playwright browser crawl using proper CrawlerConfig.
+
+    Args:
+        url: URL to crawl
+        browser_config: Browser configuration dict with headless, wait_for_selector, etc.
+
+    Returns:
+        CrawlResult with rendered HTML and metadata
+    """
+    from crawler.crawler_config import CrawlerConfig
+    cfg = CrawlerConfig(headless=browser_config.get("headless", True))
+    async with PlaywrightCrawler(config=cfg) as crawler:
+        return await crawler.crawl_url(
+            url=url,
+            wait_for_selector=browser_config.get("wait_for_selector"),
+            wait_for_timeout=browser_config.get("wait_timeout", 30000),
+            scroll_page=True,
+        )
+
+
 async def _execute_browser_path(url: str, config: dict | None) -> dict:
     """Execute Playwright browser path crawl.
 
@@ -1209,14 +1424,12 @@ async def _execute_browser_path(url: str, config: dict | None) -> dict:
 
     # Actual Playwright integration
     browser_config = config or {}
-    headless = browser_config.get("headless", True)
     wait_for_selector = browser_config.get("wait_for_selector")
     wait_timeout = browser_config.get("wait_timeout", 30000)
 
-    async with PlaywrightCrawler(
-        headless=headless,
-        proxy_config=browser_config.get("proxy_config"),
-    ) as crawler:
+    from crawler.crawler_config import CrawlerConfig
+    crawler_cfg = CrawlerConfig(headless=browser_config.get("headless", True))
+    async with PlaywrightCrawler(config=crawler_cfg) as crawler:
         result = await crawler.crawl_url(
             url=url,
             wait_for_selector=wait_for_selector,

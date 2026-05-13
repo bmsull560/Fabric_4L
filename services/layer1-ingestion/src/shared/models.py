@@ -175,6 +175,18 @@ class CrawlPath(str, PyEnum):
     FAST_WITH_FALLBACK = "fast_fallback"  # HTTPX first, browser if quality fails
 
 
+class ScrapingJobType(str, PyEnum):
+    """Skill-aware job types for Layer 1 Source Intelligence.
+
+    Extends the generic scraping pipeline with purpose-driven
+    intelligence intake workflows.
+    """
+
+    GENERIC_SCRAPE = "generic_scrape"
+    LICENSING_COMPANY_INTAKE = "licensing_company_intake"
+    PROSPECT_RESEARCH = "prospect_research"
+
+
 class AuthenticationType(str, PyEnum):
     """Authentication types for targets."""
 
@@ -346,6 +358,16 @@ class ScrapingJob(Base):
 
     # Job Configuration (snapshot of target config at creation)
     configuration = Column(JSONB, default=dict)  # ScrapingTargetSnapshot
+
+    # Skill-aware metadata
+    job_type = Column(
+        String(50), nullable=False, default=ScrapingJobType.GENERIC_SCRAPE.value
+    )
+    skill_name = Column(String(100), nullable=True)
+    target_entity_id = Column(String(255), nullable=True)
+    target_entity_type = Column(String(100), nullable=True)
+    output_contract = Column(String(100), nullable=True)
+    downstream_events = Column(JSONB, default=list)
 
     # Execution State
     status = Column(String(50), nullable=False, default=JobStatus.PENDING.value, index=True)
@@ -994,4 +1016,118 @@ class CrawlDecision(Base):
     __table_args__ = (
         Index("idx_crawl_decisions_job_created", "job_id", "created_at"),
         Index("idx_crawl_decisions_domain_created", "domain", "created_at"),
+    )
+
+
+# =============================================================================
+# SKILL-SPECIFIC OUTPUT MODELS
+# =============================================================================
+
+
+class SourceCorpus(Base):
+    """Structured output from Licensing Company Ontology Intake Skill.
+
+    Packages normalized, provenance-backed source materials
+    for downstream ontology construction (Layer 2/3).
+    """
+
+    __tablename__ = "source_corpuses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+
+    # Entity reference
+    company_id = Column(String(255), nullable=True)
+    company_name = Column(String(255), nullable=False)
+    corpus_type = Column(
+        String(50), nullable=False, default="licensing_company_ontology_seed"
+    )
+
+    # Aggregated source intelligence
+    source_groups = Column(JSONB, default=list)  # [{"source_type": "product_page", "count": 18}]
+    candidate_concepts = Column(JSONB, default=list)  # ["sales enablement", ...]
+    provenance = Column(JSONB, default=list)  # [{"url": "...", "source_type": "...", ...}]
+
+    # Downstream tracking
+    extraction_status = Column(
+        String(50),
+        nullable=False,
+        default="ready_for_extraction",
+    )  # pending, ready_for_extraction, sent_to_layer_2, failed
+
+    # Job linkage
+    job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("scraping_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("idx_source_corpuses_tenant_created", "tenant_id", "created_at"),
+        Index("idx_source_corpuses_company", "tenant_id", "company_id"),
+    )
+
+
+class AccountIntelligencePacket(Base):
+    """Structured output from Prospect Research Skill.
+
+    Packages account intelligence for downstream signal
+    extraction and value hypothesis generation (Layer 2/4).
+    """
+
+    __tablename__ = "account_intelligence_packets"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+
+    # Entity reference
+    account_id = Column(String(255), nullable=True)
+    account_name = Column(String(255), nullable=False)
+    packet_type = Column(String(50), nullable=False, default="prospect_research")
+
+    # Aggregated intelligence
+    company_profile = Column(JSONB, default=dict)  # {size, geography, business_model, industry}
+    observed_signals = Column(JSONB, default=list)  # [{signal, source, confidence, detail}]
+    likely_pain_areas = Column(JSONB, default=list)  # ["distributed seller onboarding", ...]
+    likely_stakeholders = Column(JSONB, default=list)  # ["CRO", "VP Sales Enablement", ...]
+    source_references = Column(JSONB, default=list)  # [{url, source_type, confidence}]
+
+    # Quality and routing
+    confidence_summary = Column(JSONB, default=dict)  # {signal_count, high_confidence_signals}
+    next_recommended_events = Column(JSONB, default=list)
+
+    # Job linkage
+    job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("scraping_jobs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_account_intel_packets_tenant_created", "tenant_id", "created_at"
+        ),
+        Index("idx_account_intel_packets_account", "tenant_id", "account_id"),
     )

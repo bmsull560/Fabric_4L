@@ -78,6 +78,54 @@ def test_pnpm_is_setup_before_setup_node_pnpm_cache() -> None:
     assert not violations, "setup-node pnpm cache appears before pnpm setup in: " + ", ".join(violations)
 
 
+def test_stage_1_installs_python_gate_dependencies_before_validators() -> None:
+    """Regression for PR #347: PyYAML must be installed before launch gate validators run."""
+    workflow = _workflow()
+    steps = workflow["jobs"]["stage-1-baseline"]["steps"]
+
+    validator_idx = None
+    pyyaml_idx = None
+    for i, step in enumerate(steps):
+        if not isinstance(step, dict):
+            continue
+        name = step.get("name", "")
+        if "Launch gate validators" in name:
+            validator_idx = i
+        if "Install Python gate dependencies" in name:
+            pyyaml_idx = i
+
+    assert pyyaml_idx is not None, "Missing 'Install Python gate dependencies' step in stage-1-baseline"
+    assert validator_idx is not None, "Missing 'Launch gate validators' step in stage-1-baseline"
+    assert pyyaml_idx < validator_idx, (
+        f"Python gate dependency install (step {pyyaml_idx}) must come before "
+        f"launch validators (step {validator_idx})"
+    )
+
+
+def test_stage_3_uses_existing_requirements_file() -> None:
+    """Regression for PR #347: Stage 3 must reference an existing requirements file."""
+    workflow = _workflow()
+    steps = workflow["jobs"]["stage-3-contract-security"]["steps"]
+
+    req_step = None
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        name = step.get("name", "")
+        if "Install test dependencies" in name:
+            req_step = step
+            break
+
+    assert req_step is not None, "Missing test dependency install step in stage-3-contract-security"
+    run_cmd = req_step.get("run", "")
+    assert "tests/requirements-test.txt" in run_cmd, (
+        f"Stage 3 must use tests/requirements-test.txt, got: {run_cmd}"
+    )
+    assert (REPO_ROOT / "tests" / "requirements-test.txt").exists(), (
+        "tests/requirements-test.txt must exist on disk"
+    )
+
+
 def test_launch_pipeline_does_not_reference_generated_bytecode() -> None:
     content = WORKFLOW.read_text(encoding="utf-8")
     script_text = (REPO_ROOT / "scripts" / "ci" / "generate_launch_evidence_bundle.py").read_text(encoding="utf-8")

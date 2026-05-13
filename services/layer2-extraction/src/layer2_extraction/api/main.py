@@ -15,16 +15,15 @@ from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
 from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
 
+from layer2_extraction.extraction.cache import ExtractionCache
+from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
 from layer2_extraction.integration.job_store import (
     ExtractionArtifacts,
-    InMemoryJobStore,
     PipelineJob,
     build_job_store,
 )
 from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
 from layer2_extraction.integration.pending_ingestion_store import (
-    InMemoryPendingIngestionStore,
-    PendingIngestionRecord,
     build_pending_ingestion_store,
 )
 from layer2_extraction.models.extraction_api import ExtractionRequest, ExtractionResult
@@ -55,8 +54,9 @@ async def _init_redis_rate_limiter() -> Any:
         raise RuntimeError("Redis rate limiting is required")
 
 
-job_store = InMemoryJobStore()
-pending_ingestion_store = InMemoryPendingIngestionStore()
+job_store = build_job_store()
+pending_ingestion_store = build_pending_ingestion_store()
+_extraction_cache = ExtractionCache()
 
 app = FastAPI(title="Layer 2 Extraction API")
 
@@ -217,53 +217,65 @@ async def _set_pipeline_job(
 async def _process_pending_ingestions() -> None:
     now = datetime.now()
     due = await pending_ingestion_store.get_due(now)
-    for record in due:
-        client = Layer3KnowledgeClient()
+    if not due:
+        return
+
+    client = Layer3KnowledgeClient()
+    try:
         healthy = await client.health_check()
-        if healthy:
-            try:
-                result = await client.ingest_rdf_data(
-                    rdf_data=record.extraction_result_json,
-                    source_url=record.source_url,
-                    extraction_job_id=record.job_id,
-                )
-                if result.success:
-                    await pending_ingestion_store.complete(record.job_id)
-                    await _set_pipeline_job(
-                        record.job_id,
-                        ingestion_status="completed",
-                        last_error=None,
-                        next_retry_at=None,
-                        completed_at=datetime.now(),
-                    )
-                else:
-                    raise RuntimeError(result.message or "Ingestion failed")
-            except Exception as exc:
-                next_retry = datetime.now() + timedelta(seconds=RETRY_BASE_SECONDS * (record.retry_count + 1))
+        if not healthy:
+            for record in due:
+                next_retry = datetime.now() + timedelta(seconds=RETRY_BASE_SECONDS)
                 await pending_ingestion_store.reschedule(
                     record.job_id,
                     retry_count=record.retry_count + 1,
-                    last_error=str(exc),
+                    last_error="Layer 3 unavailable",
                     next_retry_at=next_retry,
                 )
                 await _set_pipeline_job(
                     record.job_id,
                     ingestion_status="queued",
-                    last_error=str(exc),
+                    last_error="Layer 3 unavailable",
                 )
-        else:
-            next_retry = datetime.now() + timedelta(seconds=RETRY_BASE_SECONDS)
-            await pending_ingestion_store.reschedule(
-                record.job_id,
-                retry_count=record.retry_count + 1,
-                last_error="Layer 3 unavailable",
-                next_retry_at=next_retry,
-            )
-            await _set_pipeline_job(
-                record.job_id,
-                ingestion_status="queued",
-                last_error="Layer 3 unavailable",
-            )
+            return
+
+        # Attempt batch ingestion first
+        batch_items = [
+            {
+                "rdf_data": record.extraction_result_json,
+                "source_url": record.source_url,
+                "extraction_job_id": record.job_id,
+            }
+            for record in due
+        ]
+        batch_results = await client.batch_ingest_rdf_data(batch_items)
+
+        for record, result in zip(due, batch_results):
+            if result.success:
+                await pending_ingestion_store.complete(record.job_id)
+                await _set_pipeline_job(
+                    record.job_id,
+                    ingestion_status="completed",
+                    last_error=None,
+                    next_retry_at=None,
+                    completed_at=datetime.now(),
+                )
+            else:
+                error_msg = result.message or result.error or "Ingestion failed"
+                next_retry = datetime.now() + timedelta(seconds=RETRY_BASE_SECONDS * (record.retry_count + 1))
+                await pending_ingestion_store.reschedule(
+                    record.job_id,
+                    retry_count=record.retry_count + 1,
+                    last_error=error_msg,
+                    next_retry_at=next_retry,
+                )
+                await _set_pipeline_job(
+                    record.job_id,
+                    ingestion_status="queued",
+                    last_error=error_msg,
+                )
+    finally:
+        await client.close()
 
 
 async def run_extraction(
@@ -273,9 +285,74 @@ async def run_extraction(
     config: dict[str, Any],
     mark_pipeline_complete: bool = True,
 ) -> ExtractionArtifacts:
-    """Run extraction and return artifacts."""
-    result = ExtractionResult(source_url=source_url)
-    return ExtractionArtifacts(result=result, relationships=[])
+    """Run extraction and return artifacts.
+
+    Uses parallel entity extraction (asyncio.gather) and an optional
+    content-hash cache to avoid redundant LLM calls.
+    """
+    confidence_threshold = config.get("confidence_threshold", 0.0)
+    use_unified = config.get("use_unified_extraction", False)
+
+    extractor = EntityExtractor(
+        cache=_extraction_cache if config.get("enable_cache", True) else None,
+    )
+
+    try:
+        if use_unified:
+            entities = await extractor.extract_unified(
+                text=content,
+                source_url=source_url,
+                job_id=job_id,
+                confidence_threshold=confidence_threshold,
+            )
+        else:
+            entities = await extractor.extract(
+                text=content,
+                source_url=source_url,
+                job_id=job_id,
+                confidence_threshold=confidence_threshold,
+            )
+    except Exception as exc:
+        await _set_pipeline_job(
+            job_id,
+            extraction_status="failed",
+            last_error=str(exc),
+        )
+        raise
+
+    relationships = entities.pop("relationships", [])
+
+    if not relationships and any(entities.values()):
+        rel_extractor = RelationshipExtractor()
+        try:
+            relationships = await rel_extractor.extract_relationships(
+                text=content,
+                entities=entities,
+                source_url=source_url,
+                job_id=job_id,
+                confidence_threshold=confidence_threshold,
+            )
+        except Exception:
+            # Relationship extraction failure is non-fatal; continue with entities
+            relationships = []
+
+    result = ExtractionResult(
+        source_url=source_url,
+        capabilities=entities.get("capabilities", []),
+        use_cases=entities.get("use_cases", []),
+        personas=entities.get("personas", []),
+        value_drivers=entities.get("value_drivers", []),
+        features=entities.get("features", []),
+    )
+
+    await _set_pipeline_job(
+        job_id,
+        extraction_status="completed",
+        entities_extracted=len(result.get_all_entities()),
+        relationships_extracted=len(relationships),
+    )
+
+    return ExtractionArtifacts(result=result, relationships=relationships)
 
 
 async def run_extract_and_ingest(
@@ -285,28 +362,41 @@ async def run_extract_and_ingest(
     config: dict[str, Any],
 ) -> None:
     """Run full extract-and-ingest pipeline."""
-    artifacts = await run_extraction(job_id, source_url, content, config)
+    await _set_pipeline_job(job_id, extraction_status="running")
+    try:
+        artifacts = await run_extraction(job_id, source_url, content, config)
+    except Exception:
+        await _set_pipeline_job(
+            job_id,
+            extraction_status="failed",
+            overall_status="failed",
+        )
+        return
+
     await job_store.set_artifacts(job_id, artifacts)
     client = Layer3KnowledgeClient()
-    healthy = await client.health_check()
-    if healthy:
-        rdf_data = json.dumps({"source_url": source_url, "extraction_job_id": job_id})
-        result = await client.ingest_rdf_data(
-            rdf_data=rdf_data,
-            source_url=source_url,
-            extraction_job_id=job_id,
-        )
-        if result.success:
-            await _set_pipeline_job(
-                job_id,
-                extraction_status="completed",
-                ingestion_status="completed",
-                completed_at=datetime.now(),
+    try:
+        healthy = await client.health_check()
+        if healthy:
+            rdf_data = json.dumps({"source_url": source_url, "extraction_job_id": job_id})
+            result = await client.ingest_rdf_data(
+                rdf_data=rdf_data,
+                source_url=source_url,
+                extraction_job_id=job_id,
             )
+            if result.success:
+                await _set_pipeline_job(
+                    job_id,
+                    extraction_status="completed",
+                    ingestion_status="completed",
+                    completed_at=datetime.now(),
+                )
+            else:
+                await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 ingestion failed")
         else:
-            await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 ingestion failed")
-    else:
-        await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 unavailable")
+            await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 unavailable")
+    finally:
+        await client.close()
 
 
 async def _queue_for_retry(
