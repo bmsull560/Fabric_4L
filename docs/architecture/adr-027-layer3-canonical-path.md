@@ -97,11 +97,11 @@ If a layer migration fails, revert only that layer's `value_fabric/layerX/__init
 
 | Layer | Status | Service Path | Notes |
 | :---- | :----- | :----------- | :---- |
-| 1 | In Progress | `services/layer1-ingestion/src/` | Already partially migrated; `skills/` package added directly in service |
+| 1 | Compliant | `services/layer1-ingestion/src/` | Production migrated 2026-05-13; `tasks.py` and `api/` use relative/service-local imports; CI gate blocks new `value_fabric.layer1` imports; tests remain on legacy allowlist; shim retained |
 | 2 | Pending | `services/layer2-extraction/src/` | Awaiting Layer 1 pilot completion |
-| 3 | Pending | `services/layer3-knowledge/src/` | Incident layer; high priority |
-| 4 | Compliant | `services/layer4-agents/src/` | Template for other layers |
-| 5 | Compliant | `services/layer5-ground-truth/src/` | Template for other layers |
+| 3 | Compliant | `services/layer3-knowledge/src/` | Migrated 2026-05-13; namespace package shim only |
+| 4 | Compliant | `services/layer4-agents/src/` | Implementation in service tree, but relative imports (``from ..models...``) depend on namespace package; direct service imports require restructuring ``src/*`` into ``src/layer4_agents/*`` |
+| 5 | Compliant | `services/layer5-ground-truth/src/` | Canonical imports enabled 2026-05-13 via pytest.ini pythonpath; shim remains for backward compat |
 | 6 | Pending | `services/layer6-benchmarks/src/` | Low incident history; lowest priority |
 
 ## Incident Root Cause

@@ -1,10 +1,33 @@
-"""Allowed service-local exception for Layer 3 service wrapper.
+"""Phase 2 Migration: L3 Tenant Property Standardization
 
-Owner: layer3-knowledge
-Removal/migration target: 2026-09-30
-Reason: Service-wrapper-only logic permitted by runtime path governance.
+This migration performs three operations:
+
+1. RENAME: tenantId (camelCase) → tenant_id (snake_case) on :Formula and :Variable
+2. BACKFILL: Add tenant_id = 'default' to nodes that never had a tenant property
+3. VERIFY: Report counts and confirm all targeted nodes now have tenant_id
+
+Target labels:
+    - :Formula     (rename + backfill nulls)
+    - :Variable    (rename + backfill nulls)
+    - :ValueModel  (backfill only)
+    - :Benchmark   (backfill only)
+    - :BenchmarkPolicy (backfill only)
+    - :FormulaVersion  (backfill only)
+    - :SourceBinding   (backfill only)
+
+Usage:
+    # Dry run
+    python -m services.layer3-knowledge.src.migrations.028_l3_tenant_standardization --dry-run
+
+    # Execute
+    python -m services.layer3-knowledge.src.migrations.028_l3_tenant_standardization
+
+Environment:
+    NEO4J_URI       (default: bolt://localhost:7687)
+    NEO4J_USER      (default: neo4j)
+    NEO4J_PASSWORD  (required)
+    DEFAULT_TENANT  (default: default)
 """
-
 
 from __future__ import annotations
 

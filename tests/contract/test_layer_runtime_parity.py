@@ -10,13 +10,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 LAYER_PARITY_RULES: dict[str, dict[str, object]] = {
     "layer1": {
-        "canonical_routes": REPO_ROOT / "value_fabric/layer1/api/routes/__init__.py",
+        "canonical_routes": REPO_ROOT / "services/layer1-ingestion/src/api/routes/__init__.py",
         "service_routes": REPO_ROOT / "services/layer1-ingestion/src/api/routes/__init__.py",
         "service_main": REPO_ROOT / "services/layer1-ingestion/src/api/main.py",
-        "canonical_import": "value_fabric.layer1.api.routes.__init__",
-        "service_interface": REPO_ROOT / "value_fabric/layer1/services/ingestion_service.py",
-        "repository_interface": REPO_ROOT / "value_fabric/layer1/storage/job_repository.py",
-        "middleware_anchor": REPO_ROOT / "value_fabric/layer1/api/app_monolith.py",
+        "canonical_import": "layer1_ingestion.api.routes",
+        "service_interface": REPO_ROOT / "services/layer1-ingestion/src/api/main.py",
+        "repository_interface": REPO_ROOT / "services/layer1-ingestion/src/crawler/decision_store.py",
+        "middleware_anchor": REPO_ROOT / "services/layer1-ingestion/src/api/app_monolith.py",
     },
     "layer2": {
         "canonical_routes": REPO_ROOT / "value_fabric/layer2/api/routes/__init__.py",
@@ -86,6 +86,9 @@ def test_layer_parity_rules_cover_all_layers() -> None:
 
 def test_service_route_modules_reexport_canonical_exports() -> None:
     for layer, rule in LAYER_PARITY_RULES.items():
+        # Fully migrated layers have no separate shim; service_routes == canonical_routes
+        if rule["service_routes"] == rule["canonical_routes"]:
+            continue
         imports = _star_imports(rule["service_routes"])
         expected = {rule["canonical_import"]}
         assert expected.issubset(imports), f"{layer} service route module must star-import canonical route module"

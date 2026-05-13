@@ -175,7 +175,12 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
 
 def get_openai_provider(config: dict[str, Any] | None = None) -> OpenAIProvider:
     """Build the default OpenAI provider from an optional tool/workflow config."""
-    api_key = config.get("openai_api_key") if config else None
+    if config is None:
+        api_key = None
+    elif hasattr(config, "get"):
+        api_key = config.get("openai_api_key")
+    else:
+        api_key = getattr(config, "openai_api_key", None)
     return OpenAIProvider(api_key=api_key)
 
 

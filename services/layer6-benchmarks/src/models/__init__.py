@@ -1,3 +1,23 @@
-"""Compatibility wrapper for value_fabric.layer6.models."""
+"""Models for Benchmark Service."""
 
-from value_fabric.layer6.models import *
+from .benchmark_dataset import (
+    MANUFACTURING_BENCHMARK_SEED,
+    BenchmarkDataset,
+    BenchmarkMetric,
+    ComparisonRequest,
+    ComparisonResult,
+    RangeValidationRequest,
+    RangeValidationResult,
+    StatisticalProfile,
+)
+
+__all__ = [
+    "BenchmarkDataset",
+    "BenchmarkMetric",
+    "ComparisonRequest",
+    "ComparisonResult",
+    "RangeValidationRequest",
+    "RangeValidationResult",
+    "StatisticalProfile",
+    "MANUFACTURING_BENCHMARK_SEED",
+]

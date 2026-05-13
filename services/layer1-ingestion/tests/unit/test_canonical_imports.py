@@ -1,0 +1,108 @@
+"""Canonical import regression tests for Layer 1 (ADR-027).
+
+Proves that direct service-tree imports resolve without the
+``value_fabric.layer1`` namespace shim.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+import types
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
+SERVICE_SRC = REPO_ROOT / "services" / "layer1-ingestion" / "src"
+
+
+def _load_from_canonical_path(dotted_name: str, rel_path: str) -> types.ModuleType:
+    """Load *dotted_name* directly from ``services/layer1-ingestion/src/{rel_path}``.
+
+    Creates dummy parent packages in ``sys.modules`` so that
+    cross-package relative imports in real ``__init__.py`` files do not
+    interfere with the canonical-path assertion.
+    """
+    file_path = SERVICE_SRC / rel_path
+    assert file_path.exists(), f"Canonical module missing: {file_path}"
+
+    # Create dummy parent packages to bypass real __init__.py execution
+    parts = dotted_name.split(".")
+    for i in range(1, len(parts)):
+        parent_name = ".".join(parts[:i])
+        if parent_name not in sys.modules:
+            parent_mod = types.ModuleType(parent_name)
+            parent_mod.__path__ = [str(SERVICE_SRC / parts[0])]
+            sys.modules[parent_name] = parent_mod
+
+    spec = importlib.util.spec_from_file_location(dotted_name, file_path)
+    assert spec is not None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[dotted_name] = mod
+    if spec.loader:
+        spec.loader.exec_module(mod)
+    return mod
+
+
+def test_crawler_httpx_crawler_at_canonical_path() -> None:
+    mod = _load_from_canonical_path("crawler.httpx_crawler", "crawler/httpx_crawler.py")
+    assert SERVICE_SRC.resolve() in Path(mod.__file__).resolve().parents
+
+
+def test_crawler_playwright_crawler_at_canonical_path() -> None:
+    mod = _load_from_canonical_path("crawler.playwright_crawler", "crawler/playwright_crawler.py")
+    assert SERVICE_SRC.resolve() in Path(mod.__file__).resolve().parents
+
+
+def test_crawler_smart_router_at_canonical_path() -> None:
+    mod = _load_from_canonical_path("crawler.smart_router", "crawler/smart_router.py")
+    assert SERVICE_SRC.resolve() in Path(mod.__file__).resolve().parents
+
+
+def test_compliance_robots_checker_at_canonical_path() -> None:
+    # Module uses cross-package relative imports (..shared) so we assert
+    # file existence rather than executing it directly.
+    canonical = SERVICE_SRC / "compliance" / "robots_checker.py"
+    assert canonical.exists(), f"Canonical module missing: {canonical}"
+
+
+def test_compliance_pii_scanner_at_canonical_path() -> None:
+    canonical = SERVICE_SRC / "compliance" / "pii_scanner.py"
+    assert canonical.exists(), f"Canonical module missing: {canonical}"
+
+
+def test_shared_models_at_canonical_path() -> None:
+    canonical = SERVICE_SRC / "shared" / "models.py"
+    assert canonical.exists(), f"Canonical module missing: {canonical}"
+
+
+def test_skills_registry_at_canonical_path() -> None:
+    canonical = SERVICE_SRC / "skills" / "registry.py"
+    assert canonical.exists(), f"Canonical module missing: {canonical}"
+
+
+def test_tasks_py_uses_relative_crawler_imports() -> None:
+    """tasks.py must use relative ``..crawler`` imports for crawler modules."""
+    import ast
+
+    tasks_file = SERVICE_SRC / "shared" / "tasks.py"
+    tree = ast.parse(tasks_file.read_text(encoding="utf-8"), filename=str(tasks_file))
+    found = any(
+        isinstance(node, ast.ImportFrom)
+        and node.level == 2
+        and node.module is not None
+        and node.module.startswith("crawler.")
+        and any(alias.name == "HttpxCrawler" for alias in node.names)
+        for node in ast.walk(tree)
+    )
+    assert found, "Expected tasks.py to import HttpxCrawler from ..crawler.httpx_crawler"
+
+
+def test_value_fabric_layer1_shim_resolves_to_canonical_path() -> None:
+    """Backward-compat shim must still point to the canonical service tree."""
+    import value_fabric.layer1.crawler.httpx_crawler as shim_mod
+
+    canonical_file = (SERVICE_SRC / "crawler" / "httpx_crawler.py").resolve()
+    shim_file = Path(shim_mod.__file__).resolve()
+    assert shim_file == canonical_file, (
+        f"Shim resolved to {shim_file}, expected {canonical_file}"
+    )

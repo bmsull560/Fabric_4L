@@ -1,9 +1,8 @@
-"""Allowed service-local exception for Layer 3 service wrapper.
+"""Compatibility shim for legacy Layer 3 entity route imports.
 
-Owner: layer3-knowledge
-Removal/migration target: 2026-09-30
-Reason: Service-wrapper-only logic permitted by runtime path governance.
+Canonical implementation lives in ``value_fabric.layer3.api.routes.entities``.
 """
 
+from value_fabric.layer3.api.routes.entities import router
 
-from value_fabric.layer3.api.routes.entity_compat import *  # noqa: F401,F403
+__all__ = ["router"]

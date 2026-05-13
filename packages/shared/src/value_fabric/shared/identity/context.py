@@ -91,6 +91,7 @@ class RequestContext:
     org_id: Optional[Any] = None
     workspace_id: Optional[Any] = None
     tenant_role: Optional[str] = None
+    trace_id: Optional[str] = None
     isolation_tier: str = ISOLATION_TIER_SHARED
     service_account_id: Optional[str] = None
     service_account_scopes: List[str] = field(default_factory=list)

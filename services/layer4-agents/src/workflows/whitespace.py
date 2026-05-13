@@ -20,8 +20,17 @@ from ..models.agent_state import (
 from ..models.workflow_config import WHITESPACE_WORKFLOW_CONFIG
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
 from ..services.llm_provider import get_openai_provider
-from ..tools.registry import ToolRegistry
+from ..tools.registry import ToolRegistry, ToolResult
 from .base import BaseWorkflow
+
+
+def _unwrap_tool_data(result: Any) -> dict[str, Any]:
+    """Extract data dict from ToolResult or return dict fallback."""
+    if isinstance(result, ToolResult) and result.status == "success":
+        return result.data or {}
+    if isinstance(result, dict):
+        return result
+    return {}
 
 
 class WhitespaceAnalysisWorkflow__execute_analyze_prospectResult(TypedDictModel):
@@ -155,7 +164,7 @@ Description:
 <<</USER_CONTENT>>>
 
 Extract needs as JSON with this exact shape:
-{"needs": ["Reduce invoice processing time", "Improve data visibility across departments"]}
+{{"needs": ["Reduce invoice processing time", "Improve data visibility across departments"]}}
 
 Return ONLY the JSON object, no other text."""
 
@@ -211,6 +220,7 @@ Return ONLY the JSON object, no other text."""
             "industry_context": profile.get("industry", "Unknown"),
             "company_size": profile.get("employees", 0),
             "analysis_confidence": 0.85,
+            "error": "",
         })
 
 
@@ -248,7 +258,7 @@ Return ONLY the JSON object, no other text."""
             },
         )
 
-        capabilities = query_result.get("results", [])
+        capabilities = _unwrap_tool_data(query_result).get("results", [])
 
         # Transform to simplified format
         simplified = [
@@ -292,7 +302,7 @@ Return ONLY the JSON object, no other text."""
                     "semantic_search", {"query": need, "top_k": 3, "similarity_threshold": 0.5}
                 )
 
-                matches = search_result.get("results", [])
+                matches = _unwrap_tool_data(search_result).get("results", [])
                 if matches:
                     best_match = matches[0]
                     best_score = best_match.get("similarity_score", 0)
@@ -337,6 +347,7 @@ Return ONLY the JSON object, no other text."""
             "coverage_percentage": sum(1 for g in gaps if g.gap_type == "none") / len(gaps) * 100
             if gaps
             else 0,
+            "error": "",
         })
 
 
@@ -408,6 +419,7 @@ Return ONLY the JSON object, no other text."""
         return WhitespaceAnalysisWorkflow__execute_score_opportunityResult.model_validate({
             "opportunity_score": round(total_score, 1),
             "assessment": assessment,
+            "score": int(total_score),
             "factors": {
                 "gap_contribution": round(gap_factor, 1),
                 "whitespace_contribution": round(whitespace_factor, 1),

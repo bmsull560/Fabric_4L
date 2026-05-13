@@ -1,7 +1,53 @@
-"""Compatibility wrapper for ``value_fabric.layer3.security``.
+"""Security package initialization."""
 
-Canonical implementation lives in ``value_fabric.layer3.security``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from security.monitor import (
+    AlertStatus,
+    AnomalyDetector,
+    DetectionMethod,
+    SecurityAlert,
+    SecurityConfig,
+    SecurityEvent,
+    SecurityMonitor,
+    SecurityStore,
+    SignatureMatcher,
+    ThreatLevel,
+    ThreatSignature,
+    ThreatType,
+    get_security_monitor,
+    initialize_security_monitoring,
+)
+from security.query_validator import (
+    QueryValidator,
+    UnsafePatternError,
+    UnscopedQueryError,
+    ValidatedNeo4jSession,
+    ValidationFinding,
+    ValidationSeverity,
+    create_validated_session,
+)
 
-from value_fabric.layer3.security import *  # noqa: F401,F403
+__all__ = [
+    # Query Validator
+    "QueryValidator",
+    "ValidationFinding",
+    "ValidationSeverity",
+    "UnscopedQueryError",
+    "UnsafePatternError",
+    "ValidatedNeo4jSession",
+    "create_validated_session",
+    # Security Monitor
+    "ThreatLevel",
+    "ThreatType",
+    "DetectionMethod",
+    "AlertStatus",
+    "SecurityEvent",
+    "ThreatSignature",
+    "SecurityAlert",
+    "SecurityConfig",
+    "AnomalyDetector",
+    "SignatureMatcher",
+    "SecurityStore",
+    "SecurityMonitor",
+    "get_security_monitor",
+    "initialize_security_monitoring",
+]

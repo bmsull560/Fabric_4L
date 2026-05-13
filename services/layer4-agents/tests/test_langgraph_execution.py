@@ -24,6 +24,7 @@ from value_fabric.layer4.models.agent_state import (
 from value_fabric.layer4.tools.registry import ToolRegistry
 from value_fabric.layer4.workflows.business_case import BusinessCaseGeneratorWorkflow
 from value_fabric.layer4.workflows.roi_calculator import ROICalculatorWorkflow
+from value_fabric.layer4.workflows.whitespace import WhitespaceAnalysisWorkflow
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
@@ -97,6 +98,149 @@ class TestWorkflowStatusEnum:
 
 
 # ── ROI Calculator Workflow Tests ─────────────────────────────────────────────
+class TestWhitespaceAnalysisWorkflow:
+    """WhitespaceAnalysisWorkflow unit tests."""
+
+    @pytest.mark.asyncio
+    @patch("value_fabric.layer4.workflows.whitespace.get_openai_provider")
+    @patch("value_fabric.layer4.workflows.whitespace.get_llm_budget_guardrails")
+    async def test_analyze_prospect_returns_complete_result(self, mock_guardrails, mock_get_provider) -> None:
+        """_execute_analyze_prospect must return a result with all required fields."""
+        decision_mock = Mock()
+        decision_mock.throttle_seconds = 0
+        decision_mock.model = "gpt-4o-mini"
+        mock_guardrails.return_value.precheck_or_raise = AsyncMock(return_value=decision_mock)
+        mock_guardrails.return_value.record_usage = AsyncMock(return_value=None)
+
+        provider_mock = Mock()
+        provider_mock.complete_text = AsyncMock(
+            return_value=Mock(content='{"needs": ["better analytics", "faster reporting"]}', usage=Mock(prompt_tokens=10, completion_tokens=5))
+        )
+        mock_get_provider.return_value = provider_mock
+
+        registry = _make_mock_tool_registry()
+        workflow = WhitespaceAnalysisWorkflow(tool_registry=registry)
+
+        input_data = {
+            "prospect_id": "p-001",
+            "prospect_needs": "We need better analytics and faster reporting.",
+        }
+        state = workflow.create_initial_state(input_data)
+
+        # Mock get_prospect_data to return valid profile
+        async def mock_execute(tool_name: str, params: dict[str, Any]) -> Any:
+            if tool_name == "get_prospect_data":
+                return {"profile": {"industry": "saas", "employees": 500}}
+            return {"status": "ok"}
+
+        registry.execute = AsyncMock(side_effect=mock_execute)
+
+        result = await workflow._execute_analyze_prospect(state)
+
+        assert "extracted_needs" in result
+        assert "error" in result
+        assert "need_count" in result
+
+    @pytest.mark.asyncio
+    async def test_identify_gaps_returns_complete_result(self) -> None:
+        """_execute_identify_gaps must return a result with all required fields."""
+        registry = _make_mock_tool_registry()
+        workflow = WhitespaceAnalysisWorkflow(tool_registry=registry)
+
+        input_data = {
+            "prospect_id": "p-001",
+            "prospect_needs": "We need better analytics.",
+        }
+        state = workflow.create_initial_state(input_data)
+        state.output_data = {
+            "analyze_prospect": {
+                "extracted_needs": ["better analytics", "faster reporting"],
+            },
+            "query_capabilities": {
+                "capabilities": [
+                    {"name": "Analytics", "category": "Data"},
+                ],
+            },
+        }
+
+        # Mock semantic_search to return empty results so fallback matching is used
+        async def mock_execute(tool_name: str, params: dict[str, Any]) -> Any:
+            if tool_name == "semantic_search":
+                return {"results": []}
+            return {"status": "ok"}
+
+        registry.execute = AsyncMock(side_effect=mock_execute)
+
+        result = await workflow._execute_identify_gaps(state)
+
+        assert "gaps" in result
+        assert "error" in result
+        assert "gap_count" in result
+
+    @pytest.mark.asyncio
+    async def test_score_opportunity_returns_complete_result(self) -> None:
+        """_execute_score_opportunity must return a result with all required fields."""
+        registry = _make_mock_tool_registry()
+        workflow = WhitespaceAnalysisWorkflow(tool_registry=registry)
+
+        input_data = {
+            "prospect_id": "p-001",
+            "prospect_needs": "We need better analytics.",
+        }
+        state = workflow.create_initial_state(input_data)
+        state.output_data = {
+            "identify_gaps": {
+                "gaps": [
+                    {
+                        "need_statement": "better analytics",
+                        "gap_type": "coverage",
+                        "impact": "high",
+                        "recommendation": "Use standard analytics",
+                    }
+                ],
+            },
+        }
+
+        result = await workflow._execute_score_opportunity(state)
+
+        assert "score" in result
+        assert "assessment" in result
+        assert "opportunity_score" in result
+
+    @pytest.mark.asyncio
+    async def test_query_capabilities_handles_tool_result_contract(self) -> None:
+        """_execute_query_capabilities must unwrap ToolResult.data, not crash on .get()."""
+        from value_fabric.layer4.tools.registry import ToolResult
+        registry = _make_mock_tool_registry()
+        workflow = WhitespaceAnalysisWorkflow(tool_registry=registry)
+
+        input_data = {
+            "prospect_id": "p-001",
+            "prospect_needs": "We need better analytics.",
+        }
+        state = workflow.create_initial_state(input_data)
+
+        async def mock_execute(tool_name: str, params: dict[str, Any]) -> Any:
+            if tool_name == "query_graph":
+                return ToolResult.success(
+                    data={
+                        "results": [
+                            {"c.id": "c1", "c.name": "Analytics", "c.description": "Desc", "c.category": "Data"}
+                        ]
+                    }
+                )
+            return {"status": "ok"}
+
+        registry.execute = AsyncMock(side_effect=mock_execute)
+
+        result = await workflow._execute_query_capabilities(state)
+
+        assert "capabilities" in result
+        assert "capability_count" in result
+        assert "categories" in result
+        assert result["capability_count"] == 1
+
+
 class TestROICalculatorWorkflow:
     """Test ROI Calculator workflow execution with mocked tool calls."""
 
@@ -312,6 +456,32 @@ class TestBusinessCaseGeneratorWorkflow:
             assert len(section["content"]) > 0
 
     @pytest.mark.asyncio
+    async def test_generate_sections_returns_complete_result_with_all_required_fields(self) -> None:
+        """_execute_generate_sections must include all model fields (blocked, error, remediation_items, truth_references)."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        input_data = {
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
+            "sections_requested": ["executive_summary"],
+            "output_format": "pdf",
+        }
+        state = workflow.create_initial_state(input_data)
+        state.output_data = {
+            "gather_inputs": {"prospect": {"profile": {"name": "Acme Corp"}}},
+            "run_roi": {"roi_results": {}},
+        }
+
+        result = await workflow._execute_generate_sections(state)
+
+        assert "sections" in result
+        assert "section_count" in result
+        assert "blocked" in result
+        assert "error" in result
+        assert "remediation_items" in result
+        assert "truth_references" in result
+
+    @pytest.mark.asyncio
     async def test_generate_sections_handles_llm_error_gracefully(self) -> None:
         """When LLM fails, _execute_generate_sections must return error section, not crash."""
         registry = _make_mock_tool_registry()
@@ -343,6 +513,130 @@ class TestBusinessCaseGeneratorWorkflow:
         assert result["section_count"] == 1
         section = result["sections"][0]
         assert "Error" in section["content"] or "error" in section["content"].lower()
+
+    @pytest.mark.asyncio
+    async def test_roi_subworkflow_returns_complete_result_when_input_missing(self) -> None:
+        """_execute_roi_subworkflow must return a result with all required fields even when case_input is missing."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        state = BusinessCaseAgentState(
+            workflow_type="business_case",
+            status=WorkflowStatus.RUNNING,
+            case_input=None,
+        )
+
+        result = await workflow._execute_roi_subworkflow(state)
+
+        assert "error" in result
+        assert "status" in result
+        assert "roi_results" in result
+
+    @pytest.mark.asyncio
+    async def test_verify_truth_requirements_returns_complete_result_when_input_missing(self) -> None:
+        """_execute_verify_truth_requirements must return a result with all required fields even when case_input is missing."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        state = BusinessCaseAgentState(
+            workflow_type="business_case",
+            status=WorkflowStatus.RUNNING,
+            case_input=None,
+        )
+
+        result = await workflow._execute_verify_truth_requirements(state)
+
+        assert "error" in result
+        assert "passed" in result
+        assert "organization_id" in result
+        assert "requirements" in result
+        assert "truth_references" in result
+        assert "remediation_items" in result
+
+    @pytest.mark.asyncio
+    async def test_gather_inputs_returns_complete_result(self) -> None:
+        """_execute_gather_inputs must return a result with all required fields on success."""
+        registry = _make_mock_tool_registry()
+
+        async def mock_execute(tool_name: str, params: dict[str, Any]) -> Any:
+            if tool_name == "get_prospect_data":
+                return {"profile": {"name": "Acme Corp", "industry": "saas"}}
+            if tool_name == "get_interactions":
+                return {"interactions": []}
+            if tool_name == "score_lead":
+                return {"score": 85}
+            return {"status": "ok"}
+
+        registry.execute = AsyncMock(side_effect=mock_execute)
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        input_data = {
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
+            "sections_requested": ["executive_summary"],
+            "output_format": "pdf",
+        }
+        state = workflow.create_initial_state(input_data)
+
+        result = await workflow._execute_gather_inputs(state)
+
+        assert "account_id" in result
+        assert "prospect" in result
+        assert "interactions" in result
+        assert "lead_score" in result
+        assert "sections_requested" in result
+        assert "output_format" in result
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_verify_truth_requirements_returns_complete_result_when_no_requirements(self) -> None:
+        """_execute_verify_truth_requirements must include organization_id when no requirements are configured."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        input_data = {
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
+            "sections_requested": ["executive_summary"],
+            "output_format": "pdf",
+        }
+        state = workflow.create_initial_state(input_data)
+
+        result = await workflow._execute_verify_truth_requirements(state)
+
+        assert "passed" in result
+        assert "requirements" in result
+        assert "truth_references" in result
+        assert "remediation_items" in result
+        assert "organization_id" in result
+
+    @pytest.mark.asyncio
+    @patch("value_fabric.layer4.workflows.business_case.Layer5GroundTruthClient")
+    async def test_sync_ground_truths_normalizes_success_result(self, mock_client_cls) -> None:
+        """_sync_ground_truths_to_kg must return a dict matching the result model even when Layer 5 omits fields."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        input_data = {
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
+            "sections_requested": ["executive_summary"],
+            "output_format": "pdf",
+        }
+        state = workflow.create_initial_state(input_data)
+        state.metadata = {"authenticated_tenant_id": "tenant-456"}
+
+        # Mock Layer5 client to return a dict missing `error` (common success shape)
+        mock_client = AsyncMock()
+        mock_client.sync_approved_truths = AsyncMock(return_value={"synced": 5, "failed": 1})
+        mock_client.close = AsyncMock()
+        mock_client_cls.return_value = mock_client
+
+        result = await workflow._sync_ground_truths_to_kg(state)
+
+        assert "synced" in result
+        assert "failed" in result
+        assert "error" in result
+        assert result["synced"] == 5
+        assert result["failed"] == 1
+        assert result["error"] == ""
 
     @pytest.mark.asyncio
     async def test_business_case_workflow_run_with_mocked_graph(self) -> None:
@@ -517,7 +811,7 @@ class TestOrchestrationControllerWorkflowLifecycle:
         # Patch both create_workflow and _wait_for_workflow to avoid scheduler setup
         with (
             patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow),
-            patch.object(controller, "_wait_for_workflow", AsyncMock(return_value=mock_roi_state)),
+            patch.object(controller, "_wait_for_workflow_with_timeout", AsyncMock(return_value=mock_roi_state)),
             patch.object(controller, "scheduler") as mock_scheduler,
         ):
             mock_scheduler.schedule_task = AsyncMock()
@@ -642,7 +936,7 @@ class TestWorkflowStateTransitions:
         
         bc_wf = BusinessCaseGeneratorWorkflow(tool_registry=registry)
         bc_state = bc_wf.create_initial_state({
-            "prospect_id": "p-001",
+            "account_id": "12345678-1234-5678-1234-567812345678",
             "sections_requested": ["executive_summary"],
         })
         assert bc_state.errors == []
@@ -706,7 +1000,7 @@ class TestWorkflowInputValidation:
             "roi_analysis", "implementation", "next_steps",
         ]
         state = workflow.create_initial_state({
-            "prospect_id": "p-001",
+            "account_id": "12345678-1234-5678-1234-567812345678",
             "sections_requested": all_sections,
             "output_format": "pdf",
         })
@@ -833,6 +1127,18 @@ class TestOrchestrationControllerErrorPaths:
             state_manager=state_manager,
         )
 
+        # Persist a state so load_state returns something
+        from value_fabric.layer4.models.agent_state import ROIAgentState, WorkflowStatus, WorkflowType
+        await state_manager.save_state(
+            "wf-manual-001",
+            ROIAgentState(
+                workflow_id="wf-manual-001",
+                workflow_type=WorkflowType.ROI_CALCULATOR,
+                status=WorkflowStatus.COMPLETED,
+                output_data={"result": "ok"},
+            ),
+        )
+
         # Add a workflow manually to the metadata
         controller._workflow_metadata["wf-manual-001"] = {
             "workflow_id": "wf-manual-001",
@@ -851,3 +1157,63 @@ class TestOrchestrationControllerErrorPaths:
         assert status is not None
         assert status["workflow_type"] == "roi_calculator"
         assert status["status"] == "completed"
+
+
+class TestSignalDetectionAgent:
+    """Regression tests for SignalDetectionAgent result model completeness."""
+
+    @pytest.mark.asyncio
+    @patch("value_fabric.layer4.integration.layer3_client.Layer3Client")
+    @patch("value_fabric.layer4.integration.layer2_client.Layer2ExtractionClient")
+    async def test_detect_signals_returns_complete_result(self, mock_l3, mock_l2) -> None:
+        """_detect_signals success path must include all required fields (message, signals, processing_metadata)."""
+        from value_fabric.layer4.agents.signal_detection import SignalDetectionAgent
+        from value_fabric.shared.identity.context import RequestContext
+
+        agent = SignalDetectionAgent(config={})
+
+        # Mock Layer 2 to return signals
+        mock_l2_instance = Mock()
+        mock_l2_instance.extract_operational_signals = AsyncMock(
+            return_value={
+                "signals": [
+                    {
+                        "name": "Slow Reporting",
+                        "description": "Reports take too long",
+                        "confidence_score": 0.85,
+                        "trend_direction": "increasing",
+                    }
+                ],
+                "duration_ms": 120,
+            }
+        )
+        mock_l2.return_value = mock_l2_instance
+
+        # Mock Layer 3 evidence/quantify to no-op
+        mock_l3_instance = Mock()
+        mock_l3_instance.find_matching_evidence = AsyncMock(return_value=[])
+        mock_l3_instance.quantify_impact = AsyncMock(return_value=None)
+        mock_l3_instance.persist_signal = AsyncMock(return_value=None)
+        mock_l3.return_value = mock_l3_instance
+
+        parameters = {
+            "prospect_data": {
+                "account_id": "acc-001",
+                "company_name": "Acme Corp",
+                "industry": "saas",
+                "business_pains": ["slow reporting"],
+                "friction_points": [],
+                "desired_outcomes": [],
+                "prompt_text": "",
+            },
+            "options": {"include_evidence": False, "quantify_impact": False},
+        }
+        ctx = RequestContext(tenant_id="tenant-001", trace_id="trace-001")
+
+        result = await agent._detect_signals(parameters, ctx)
+
+        assert "signals" in result
+        assert "processing_metadata" in result
+        assert "message" in result
+        assert len(result["signals"]) == 1
+        assert "Detected" in result["message"]

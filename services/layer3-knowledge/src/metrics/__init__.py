@@ -1,9 +1,19 @@
-"""Allowed service-local exception for Layer 3 service wrapper.
+"""Metrics package initialization."""
 
-Owner: layer3-knowledge
-Removal/migration target: 2026-09-30
-Reason: Service-wrapper-only logic permitted by runtime path governance.
-"""
+from metrics.prometheus_metrics import (
+    MetricsConfig,
+    MetricsMiddleware,
+    PrometheusMetrics,
+    get_metrics,
+    initialize_metrics,
+    track_metrics,
+)
 
-
-from value_fabric.layer3.metrics.__init__ import *  # noqa: F401,F403
+__all__ = [
+    "MetricsConfig",
+    "PrometheusMetrics",
+    "MetricsMiddleware",
+    "get_metrics",
+    "initialize_metrics",
+    "track_metrics",
+]

@@ -1,3 +1,17 @@
-"""Compatibility wrapper for value_fabric.layer6.metrics."""
+"""Prometheus metrics for Layer 6 Benchmark Service."""
 
-from value_fabric.layer6.metrics import *
+from .prometheus_metrics import (
+    MetricsConfig,
+    MetricsMiddleware,
+    PrometheusMetrics,
+    get_metrics,
+    initialize_metrics,
+)
+
+__all__ = [
+    "MetricsConfig",
+    "MetricsMiddleware",
+    "PrometheusMetrics",
+    "get_metrics",
+    "initialize_metrics",
+]

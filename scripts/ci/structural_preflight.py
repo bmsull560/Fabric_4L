@@ -175,37 +175,47 @@ def check_import_namespace_mismatch(repo_root: Path) -> list[Finding]:
 
 
 def check_namespace_shadowing(repo_root: Path) -> list[Finding]:
-    """Detect root shared/ shadowing packages/shared/src/value_fabric/shared/."""
+    """Detect legacy root value_fabric/shared/ that should have been removed."""
     findings = []
 
-    root_shared = repo_root / "shared"
-    vf_shared = repo_root / "value-fabric" / "shared"
+    root_shared = repo_root / "value_fabric" / "shared"
+    pkg_shared = repo_root / "packages" / "shared" / "src" / "value_fabric" / "shared"
 
-    if root_shared.exists() and vf_shared.exists():
+    if root_shared.exists():
         findings.append(Finding(
             check_id="namespace_shadowing",
             severity="high",
-            path="shared/",
-            finding_type="duplicate_shared_packages",
-            message="Both root shared/ and packages/shared/src/value_fabric/shared/ exist",
-            recommendation="Merge root shared/ into packages/shared/src/value_fabric/shared/ or remove root shared/",
+            path="value_fabric/shared/",
+            finding_type="legacy_shared_remains",
+            message="Root value_fabric/shared/ still exists",
+            recommendation="Delete value_fabric/shared/ after confirming all code imports from packages/shared/src/value_fabric/shared/",
         ))
 
-    # Test where 'import shared' resolves
+    if not pkg_shared.exists():
+        findings.append(Finding(
+            check_id="namespace_shadowing",
+            severity="high",
+            path="packages/shared/src/value_fabric/shared/",
+            finding_type="canonical_shared_missing",
+            message="Canonical shared package is missing",
+            recommendation="Restore packages/shared/src/value_fabric/shared/",
+        ))
+
+    # Test where 'import value_fabric.shared' resolves
     exit_code, stdout, stderr = run_command(
-        [sys.executable, "-c", "import shared; print(shared.__file__)"],
+        [sys.executable, "-c", "import value_fabric.shared; print(value_fabric.shared.__file__)"],
         cwd=repo_root
     )
     if exit_code == 0:
         resolved_path = stdout.strip()
-        if "value-fabric" not in resolved_path and "value_fabric" not in resolved_path:
+        if "packages/shared/src/value_fabric/shared" not in resolved_path.replace("\\", "/"):
             findings.append(Finding(
                 check_id="namespace_shadowing",
                 severity="medium",
-                path="shared/",
-                finding_type="shared_resolves_to_root",
-                message=f"import shared resolves to: {resolved_path}",
-                recommendation="Ensure shared resolves to canonical location in services/",
+                path="value_fabric/shared/",
+                finding_type="shared_resolves_to_wrong_location",
+                message=f"import value_fabric.shared resolves to: {resolved_path}",
+                recommendation="Ensure value_fabric.shared resolves to packages/shared/src/value_fabric/shared/",
             ))
 
     return findings

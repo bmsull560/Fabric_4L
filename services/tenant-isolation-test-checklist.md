@@ -20,3 +20,20 @@ Use this checklist in every maintained layer service test package (`services/lay
 - Assert repository method call kwargs include `tenant_id=<context tenant>`.
 - Assert repository methods are not called when tenant context is absent.
 - Include at least one read path and one mutate path per layer where applicable.
+
+## Tenancy propagation contract
+
+### Async workers (Celery tasks)
+- `tenant_id` must be stored on the job record (e.g. `ScrapingJob.tenant_id`).
+- Tasks read `tenant_id` from the job record, never from the task payload or request body.
+- When calling downstream services, pass `tenant_id` in the `X-Tenant-ID` HTTP header.
+
+### Service-to-service calls
+- `tenant_id` is propagated via the `X-Tenant-ID` HTTP header.
+- Receiving services extract `tenant_id` from authenticated request context, not from the request body.
+- Missing or mismatched tenant context must fail closed (401/403).
+
+### API routes
+- `tenant_id` is extracted from authenticated request context (JWT claims, API key lookup, or trusted middleware).
+- API routes must **never** accept `tenant_id` from the request body.
+- Repository/service methods receive `tenant_id` as an explicit keyword argument.

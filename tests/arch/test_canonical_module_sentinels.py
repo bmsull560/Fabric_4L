@@ -26,10 +26,13 @@ class CanonicalModuleSentinel:
 # Add entries only for modules that would cause broad architecture drift
 # if logic moved into compatibility-only roots.
 SENTINELS: tuple[CanonicalModuleSentinel, ...] = (
+    # Layer 3 migrated to service-first per ADR-027 (2026-05-13).
+    # Compatibility is handled by namespace package __path__ appending
+    # in value_fabric/layer3/__init__.py; no shim file remains.
     CanonicalModuleSentinel(
         name="layer3_api_models",
-        canonical_path="value_fabric/layer3/api/models.py",
-        compatibility_path="services/layer3-knowledge/src/api/models.py",
+        canonical_path="services/layer3-knowledge/src/api/models.py",
+        compatibility_path="value_fabric/layer3/__init__.py",
     ),
     CanonicalModuleSentinel(
         name="layer5_truth_object_model",
@@ -88,3 +91,88 @@ def test_sentinel_compatibility_modules_are_shims_only() -> None:
             )
 
     assert not violations, "\n".join(violations)
+
+
+# ---------------------------------------------------------------------------
+# Layer 5 — Ground Truth canonical import regression (ADR-027)
+# ---------------------------------------------------------------------------
+
+
+def test_layer5_ground_truth_imports_directly() -> None:
+    """layer5_ground_truth must be importable without value_fabric namespace."""
+    import layer5_ground_truth
+
+    assert layer5_ground_truth.__file__ is not None
+
+
+def test_layer5_api_imports_directly() -> None:
+    """layer5_ground_truth.api must be importable via canonical path."""
+    import layer5_ground_truth.api
+
+    assert layer5_ground_truth.api.__file__ is not None
+
+
+def test_layer5_models_imports_directly() -> None:
+    """layer5_ground_truth.models must be importable via canonical path."""
+    import layer5_ground_truth.models
+
+    assert layer5_ground_truth.models.__file__ is not None
+
+
+def test_layer5_resolves_to_canonical_service_tree() -> None:
+    """layer5_ground_truth must resolve via services/layer5-ground-truth/src/."""
+    import layer5_ground_truth
+
+    canonical = (REPO_ROOT / "services" / "layer5-ground-truth" / "src" / "layer5_ground_truth").resolve()
+    module_path = Path(layer5_ground_truth.__file__).parent.resolve()
+    assert module_path == canonical, (
+        f"layer5_ground_truth resolved to {module_path}, expected {canonical}"
+    )
+
+
+def test_layer5_no_production_imports_via_value_fabric_namespace() -> None:
+    """Regression: no production code should import value_fabric.layer5.*.
+
+    Layer 5 is fully migrated to service-first. Consumers must use
+    layer5_ground_truth.* directly. The value_fabric/layer5/ shim
+    remains for backward compatibility only.
+    """
+    import re
+    import os
+
+    pattern = re.compile(r"from value_fabric\.layer5|import value_fabric\.layer5")
+    violations: list[str] = []
+    skip_dirs = {".venv", "venv", "node_modules", "__pycache__", ".pytest_cache", ".git", ".hypothesis"}
+
+    # Only scan directories that contain production/runtime code
+    scan_roots = [REPO_ROOT / d for d in ("services", "value_fabric", "scripts", "tests")]
+
+    for scan_root in scan_roots:
+        if not scan_root.exists():
+            continue
+        for dirpath, dirnames, filenames in os.walk(scan_root):
+            # Prune skip directories
+            dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+            for fname in filenames:
+                if not fname.endswith(".py"):
+                    continue
+                py_file = Path(dirpath) / fname
+                rel_path = py_file.relative_to(REPO_ROOT).as_posix()
+                # Skip shim files and tests that intentionally verify the shim
+                if "value_fabric/layer5/" in rel_path:
+                    continue
+                if "test_check_layer5_shim" in rel_path:
+                    continue
+                if "test_canonical_module_sentinels" in rel_path:
+                    continue
+                if "test_import_topology" in rel_path:
+                    continue
+
+                content = py_file.read_text(encoding="utf-8")
+                if pattern.search(content):
+                    violations.append(str(rel_path))
+
+    assert not violations, (
+        "Found production imports via value_fabric.layer5:\n"
+        + "\n".join(violations)
+    )

@@ -76,6 +76,8 @@ jobs:
         run: |
           python scripts/ci/validate_final_testing_launch_gate.py
           python scripts/ci/validate_core_ga_launch_evidence.py
+      - name: Layer 1 import-hygiene gate
+        run: python scripts/ci/check_layer1_imports.py --strict
       - name: Enforce release launch governance checklist
         if: startsWith(github.ref_name, 'release/')
         run: python scripts/ci/check_release_launch_governance.py

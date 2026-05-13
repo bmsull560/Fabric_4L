@@ -1,7 +1,48 @@
-"""Compatibility wrapper for ``value_fabric.layer3.config``.
+"""Configuration package initialization."""
 
-Canonical implementation lives in ``value_fabric.layer3.config``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from config.manager import (
+    APIConfig,
+    AppConfig,
+    AuthConfig,
+    BackupConfig,
+    CacheConfig,
+    ConfigFormat,
+    ConfigSource,
+    ConfigurationManager,
+    DatabaseConfig,
+    Environment,
+    LoggingConfig,
+    MetricsConfig,
+    SecurityConfig,
+    TracingConfig,
+    VectorStoreConfig,
+    get_config,
+    get_config_manager,
+    load_config,
+    validate_configuration,
+)
+from config.settings import Settings, get_settings
 
-from value_fabric.layer3.config import *  # noqa: F401,F403
+__all__ = [
+    "Settings",
+    "get_settings",
+    "Environment",
+    "ConfigFormat",
+    "ConfigSource",
+    "DatabaseConfig",
+    "CacheConfig",
+    "VectorStoreConfig",
+    "AuthConfig",
+    "LoggingConfig",
+    "MetricsConfig",
+    "TracingConfig",
+    "BackupConfig",
+    "SecurityConfig",
+    "APIConfig",
+    "AppConfig",
+    "ConfigurationManager",
+    "get_config_manager",
+    "get_config",
+    "load_config",
+    "validate_configuration",
+]

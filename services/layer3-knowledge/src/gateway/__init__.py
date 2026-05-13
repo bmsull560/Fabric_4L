@@ -1,7 +1,45 @@
-"""Compatibility wrapper for ``value_fabric.layer3.gateway``.
+"""API gateway and service mesh package initialization."""
 
-Canonical implementation lives in ``value_fabric.layer3.gateway``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from gateway.api_gateway import (
+    APIGateway,
+    CircuitBreaker,
+    CircuitState,
+    FaultInjection,
+    GatewayConfig,
+    GatewayProtocol,
+    GatewayStats,
+    RetryPolicy,
+    RouteEngine,
+    RouteRule,
+    RoutingStrategy,
+    ServiceEndpoint,
+    ServiceMesh,
+    ServiceMeshConfig,
+    ServiceMeshProtocol,
+    ServiceRegistry,
+    get_api_gateway,
+    get_service_mesh,
+    initialize_gateway,
+)
 
-from value_fabric.layer3.gateway import *  # noqa: F401,F403
+__all__ = [
+    "GatewayProtocol",
+    "ServiceMeshProtocol",
+    "RoutingStrategy",
+    "RetryPolicy",
+    "CircuitState",
+    "ServiceEndpoint",
+    "RouteRule",
+    "FaultInjection",
+    "GatewayConfig",
+    "ServiceMeshConfig",
+    "GatewayStats",
+    "CircuitBreaker",
+    "ServiceRegistry",
+    "RouteEngine",
+    "APIGateway",
+    "ServiceMesh",
+    "get_api_gateway",
+    "get_service_mesh",
+    "initialize_gateway",
+]

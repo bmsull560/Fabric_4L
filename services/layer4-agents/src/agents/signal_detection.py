@@ -157,7 +157,7 @@ class SignalDetectionAgent(BaseAgent):
         """
         capability = task.get("capability", "detect_operational_signals")
         parameters = task.get("parameters", {})
-        ctx = RequestContext.model_validate(context)
+        ctx = RequestContext(**context)
 
         if capability == "detect_operational_signals":
             return await self._detect_signals(parameters, ctx)
@@ -310,6 +310,7 @@ class SignalDetectionAgent(BaseAgent):
             return SignalDetectionAgent__detect_signalsResult.model_validate({
                 "signals": [s.model_dump() for s in signals],
                 "processing_metadata": processing_metadata,
+                "message": f"Detected {len(signals)} operational signals",
             })
 
 

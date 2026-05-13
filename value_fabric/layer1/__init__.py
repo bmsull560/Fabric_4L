@@ -1,12 +1,13 @@
-"""Canonical Layer 1 import namespace.
+"""Compatibility shim for Layer 1 imports.
 
-Layer 1 callers must import runtime modules through ``value_fabric.layer1.*``.
-During the runtime-path migration, this package still appends the
-service-wrapper tree at ``services/layer1-ingestion/src`` to ``__path__`` so
-canonical imports continue to resolve while modules move under this namespace.
+This package is a backward-compatibility facade per ADR-027.
+The canonical implementation lives in ``services/layer1-ingestion/src/``.
 
-Keep service-local imports compatibility-only. New runtime callers should not
-import directly from ``services/layer1-ingestion/src``.
+This shim appends the service source tree to ``__path__`` so legacy
+``value_fabric.layer1.*`` imports continue to resolve during migration.
+
+New code should import directly from ``services/layer1-ingestion/src/`` or
+use the service package names. Do not add new implementation logic here.
 """
 
 from __future__ import annotations
@@ -14,14 +15,14 @@ from __future__ import annotations
 from pathlib import Path
 
 _repo_root: Path = Path(__file__).resolve().parent.parent.parent
-_canonical: str = str(_repo_root / "services" / "layer1-ingestion" / "src")
+_service_src: str = str(_repo_root / "services" / "layer1-ingestion" / "src")
 
-# Only register the canonical path if it exists; fail fast otherwise.
+# Only register the service source path if it exists; fail fast otherwise.
 if (_repo_root / "services" / "layer1-ingestion" / "src").exists():
-    if _canonical not in __path__:
-        __path__.append(_canonical)
+    if _service_src not in __path__:
+        __path__.append(_service_src)
 else:
     raise FileNotFoundError(
-        f"Canonical Layer 1 source tree not found at {_canonical}. "
+        f"Layer 1 service source tree not found at {_service_src}. "
         "Expected services/layer1-ingestion/src/ to exist."
     )

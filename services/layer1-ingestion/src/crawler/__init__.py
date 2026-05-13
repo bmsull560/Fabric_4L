@@ -1,9 +1,32 @@
-"""Compatibility wrapper for the Layer 1 crawler package.
+"""Layer 1 crawler package.
 
-Deprecated import path: ``src.crawler``.
-Canonical import path: ``value_fabric.layer1.crawler``.
-
-Keep this module as a thin re-export only until remaining callers migrate.
+Canonical implementation lives in services/layer1-ingestion/src/crawler/.
 """
 
-from value_fabric.layer1.crawler import *  # noqa: F401,F403
+from __future__ import annotations
+
+from .decision_store import CrawlDecisionRecord, CrawlDecisionRepository, FallbackStats, RouterQualityReport
+from .httpx_crawler import FastPathResult, HttpxCrawler, HttpxCrawlerConfig, SSRFProtectionError
+from .playwright_crawler import CrawlResult, PlaywrightCrawler
+from .quality_gate import AdaptiveQualityGate, QualityGate, QualityThresholds
+from .smart_router import QualityDecision, RouteType, RoutingDecision, SmartRouter
+
+__all__ = [
+    "AdaptiveQualityGate",
+    "CrawlDecisionRecord",
+    "CrawlDecisionRepository",
+    "CrawlResult",
+    "FallbackStats",
+    "FastPathResult",
+    "HttpxCrawler",
+    "HttpxCrawlerConfig",
+    "PlaywrightCrawler",
+    "QualityDecision",
+    "QualityGate",
+    "QualityThresholds",
+    "RouteType",
+    "RouterQualityReport",
+    "RoutingDecision",
+    "SSRFProtectionError",
+    "SmartRouter",
+]

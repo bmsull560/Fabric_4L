@@ -16,17 +16,17 @@ import httpx
 import structlog
 from celery import Celery, chain
 from jsonschema import Draft7Validator
-from value_fabric.layer1.crawler.decision_store import CrawlDecisionRecord, CrawlDecisionRepository
-from value_fabric.layer1.crawler.httpx_crawler import HttpxCrawler
-from value_fabric.layer1.crawler.playwright_crawler import PlaywrightCrawler
-from value_fabric.layer1.crawler.quality_gate import QualityGate
-from value_fabric.layer1.crawler.smart_router import RouteType, SmartRouter
+from ..crawler.decision_store import CrawlDecisionRecord, CrawlDecisionRepository
+from ..crawler.httpx_crawler import HttpxCrawler
+from ..crawler.playwright_crawler import PlaywrightCrawler
+from ..crawler.quality_gate import QualityGate
+from ..crawler.smart_router import RouteType, SmartRouter
 
 from ..compliance.pii_scanner import PIIScanner
 from ..compliance.robots_checker import RobotsChecker
 
 if TYPE_CHECKING:
-    from value_fabric.layer1.crawler.httpx_crawler import FastPathResult
+    from ..crawler.httpx_crawler import FastPathResult
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..skills import get_extraction_schema, get_skill

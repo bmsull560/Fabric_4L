@@ -1,10 +1,12 @@
-"""Compatibility wrapper for ``value_fabric.layer3.services``.
+"""Services for Layer 3 Knowledge Graph operations."""
 
-Canonical implementation lives in ``value_fabric.layer3.services``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from services.evidence_search import EvidenceSearchService
+from services.signal_persistence import SignalPersistenceService
+from services.signal_quantification import QuantificationResult, SignalQuantificationService
 
-try:
-    from value_fabric.layer3.services import *  # noqa: F401,F403
-except ModuleNotFoundError:
-    pass
+__all__ = [
+    "EvidenceSearchService",
+    "SignalPersistenceService",
+    "SignalQuantificationService",
+    "QuantificationResult",
+]

@@ -1,7 +1,35 @@
-"""Compatibility wrapper for ``value_fabric.layer3.auth``.
+"""Authentication package initialization."""
 
-Canonical implementation lives in ``value_fabric.layer3.auth``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from auth.api_keys import (
+    ROLE_PERMISSIONS,
+    APIKey,
+    APIKeyCreateRequest,
+    APIKeyCreateResponse,
+    APIKeyManager,
+    APIKeyResponse,
+    APIKeyUpdateRequest,
+    AuthenticationResult,
+    AuthorizationChecker,
+    Permission,
+    Role,
+    get_api_key_manager,
+    get_authorization_checker,
+    initialize_authentication,
+)
 
-from value_fabric.layer3.auth import *  # noqa: F401,F403
+__all__ = [
+    "Permission",
+    "Role",
+    "APIKey",
+    "APIKeyCreateRequest",
+    "APIKeyResponse",
+    "APIKeyCreateResponse",
+    "APIKeyUpdateRequest",
+    "AuthenticationResult",
+    "APIKeyManager",
+    "AuthorizationChecker",
+    "get_api_key_manager",
+    "get_authorization_checker",
+    "initialize_authentication",
+    "ROLE_PERMISSIONS",
+]

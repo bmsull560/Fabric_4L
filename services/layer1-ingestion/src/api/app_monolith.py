@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from value_fabric.layer1.crawler.decision_store import CrawlDecisionRepository
+from ..crawler.decision_store import CrawlDecisionRepository
 from value_fabric.shared.error_handling.handlers import (
     get_request_trace_id,
     global_exception_handler as shared_global_exception_handler,

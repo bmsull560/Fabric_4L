@@ -1,7 +1,4 @@
-"""Compatibility wrapper for ``value_fabric.layer3``.
+"""Layer 3 Knowledge Graph Service.
 
-Canonical implementation lives in ``value_fabric.layer3``
-per ``docs/reference/layer-runtime-path-governance.md``.
+Canonical implementation per ADR-027 (Accepted 2026-05-13).
 """
-
-from value_fabric.layer3 import *  # noqa: F401,F403

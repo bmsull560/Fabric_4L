@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from api.routes.benchmarks import list_benchmark_policies
+from value_fabric.layer3.api.routes.benchmarks import list_benchmark_policies
 
 
 class _Result:

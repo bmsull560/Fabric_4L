@@ -1,7 +1,7 @@
 # Shared Package Consolidation Plan
 
 **Date:** 2026-05-02
-**Status:** Phase 1 Complete → Execution Ready
+**Status:** Completed 2026-05-13 — root `value_fabric/shared/` removed
 **Target:** `packages/shared/src/value_fabric/shared/`
 
 ---

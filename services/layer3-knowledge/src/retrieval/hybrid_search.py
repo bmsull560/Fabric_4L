@@ -1,7 +1,453 @@
-"""Compatibility shim for `retrieval/hybrid_search.py`.
+"""Hybrid search combining BM25, vector similarity, and graph structure.
 
-Canonical implementation lives in `value_fabric.layer3.retrieval.hybrid_search`
-per `docs/reference/layer-runtime-path-governance.md`.
+Changes from original:
+- Replaced ``AsyncGraphDatabase.driver()`` with shared ``get_driver()`` factory.
+- ``_vector_search``: adapts the new Neo4j VectorStore tuple return format
+  ``(entity_id, score, metadata)`` into the dict format expected by
+  ``_merge_results``.
+- ``_vector_search``: gracefully handles ``None`` vector_store (returns []).
+- ``_graph_search``: added null-driver guard.
+- PERF: Parallelized search operations using asyncio.gather for ~3x speedup
 """
 
-from value_fabric.layer3.retrieval.hybrid_search import *  # noqa: F401,F403
+import asyncio
+import logging
+from dataclasses import dataclass
+from typing import Any
+
+from neo4j import AsyncDriver
+from value_fabric.shared.identity.context import get_request_context
+from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
+
+from config import Settings, get_settings
+from db.driver import get_driver
+from db.query_execution import run_scoped_query
+from retrieval.graph_rag import GraphRAGEngine
+from retrieval.vector_store import VectorStore
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class HybridSearchResult:
+    """Result from hybrid search."""
+
+    entity_id: str
+    entity_type: str
+    name: str
+    bm25_score: float
+    vector_score: float
+    graph_score: float
+    combined_score: float
+    metadata: dict[str, Any]
+    confidence: float = 1.0
+
+
+class HybridSearch:
+    """Hybrid search engine combining multiple retrieval signals.
+
+    Combines:
+    1. BM25 sparse retrieval (full-text search)
+    2. Dense vector similarity (semantic search)
+    3. Graph centrality/pagerank (structural importance)
+    4. Recency boost (for temporal relevance)
+    """
+
+    def __init__(
+        self,
+        driver: AsyncDriver | None = None,
+        vector_store: VectorStore | None = None,
+        graph_engine: GraphRAGEngine | None = None,
+        settings: Settings | None = None,
+    ):
+        self.settings = settings or get_settings()
+        self._driver = driver
+        self._owned_driver = driver is None
+        self.vector_store = vector_store
+        self.graph_engine = graph_engine
+
+    async def _get_driver(self) -> AsyncDriver:
+        """Get or create Neo4j driver via the shared singleton factory."""
+        if self._driver is None:
+            self._driver = await get_driver(self.settings)
+        return self._driver
+
+    async def close(self) -> None:
+        if self._owned_driver and self._driver:
+            await self._driver.close()
+            self._driver = None
+
+    async def search(
+        self,
+        query: str,
+        entity_types: list[str] | None = None,
+        top_k: int = 10,
+        weights: dict[str, float] | None = None,
+        limit: int | None = None,
+        tenant_id: str | None = None,
+    ) -> list[HybridSearchResult]:
+        """Execute hybrid search across all signals.
+
+        Args:
+            query: Search query text
+            entity_types: Filter by entity types
+            top_k: Number of results to return
+            weights: Custom weights for bm25, vector, graph
+            limit: Alias for top_k for API compatibility
+
+        Returns:
+            List of ranked search results
+        """
+        # Use limit if provided, otherwise top_k (keeping positional compatibility
+        # with existing callers that pass weights as the 4th argument).
+        result_limit = limit if limit is not None else top_k
+
+        weights = weights or {
+            "bm25": self.settings.hybrid_bm25_weight,
+            "vector": self.settings.hybrid_vector_weight,
+            "graph": self.settings.hybrid_graph_weight,
+        }
+        total = sum(weights.values())
+        weights = {k: v / total for k, v in weights.items()}
+
+        # PERF: Execute searches in parallel - independent operations
+        # Before: Sequential (BM25 time + vector time + graph time)
+        # After: Parallel (max(BM25 time, vector time, graph time))
+        effective_tenant_id = self._resolve_tenant_id(tenant_id)
+        bm25_task = self._bm25_search(query, entity_types, result_limit * 2, effective_tenant_id)
+        vector_task = self._vector_search(query, entity_types, result_limit * 2)
+        graph_task = self._graph_search(query, entity_types, result_limit * 2, effective_tenant_id)
+
+        bm25_results, vector_results, graph_results = await asyncio.gather(
+            bm25_task, vector_task, graph_task, return_exceptions=True
+        )
+
+        # Handle any exceptions from parallel execution
+        if isinstance(bm25_results, Exception):
+            logger.warning(f"BM25 search failed: {bm25_results}")
+            bm25_results = []
+        if isinstance(vector_results, Exception):
+            logger.warning(f"Vector search failed: {vector_results}")
+            vector_results = []
+        if isinstance(graph_results, Exception):
+            logger.warning(f"Graph search failed: {graph_results}")
+            graph_results = []
+
+        merged = self._merge_results(
+            bm25_results, vector_results, graph_results, weights
+        )
+        return merged[:result_limit]
+
+    async def semantic_search(
+        self,
+        query: str,
+        entity_type: str | None = None,
+        top_k: int = 10,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Pure semantic (vector) search."""
+        return await self._vector_search(
+            query, [entity_type] if entity_type else None, top_k, tenant_id
+        )
+
+    async def keyword_search(
+        self,
+        query: str,
+        entity_type: str | None = None,
+        top_k: int = 10,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Pure BM25 keyword search."""
+        return await self._bm25_search(
+            query, [entity_type] if entity_type else None, top_k, tenant_id
+        )
+
+    async def fulltext_search(
+        self,
+        query: str,
+        entity_type: str | None = None,
+        top_k: int = 10,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Backward-compatible alias for keyword/BM25 search."""
+        return await self.keyword_search(query, entity_type, top_k, tenant_id)
+
+    def _resolve_tenant_id(self, tenant_id: str | None = None) -> str:
+        """Resolve the tenant for strict graph reads, failing closed if absent."""
+        if tenant_id:
+            return str(tenant_id)
+        context = get_request_context()
+        if context and context.tenant_id:
+            return str(context.tenant_id)
+        raise ValueError("tenant_id is required for tenant-scoped HybridSearch queries")
+
+    def _tenant_builder(self, tenant_id: str | None = None) -> TenantScopedCypher:
+        return TenantScopedCypher(self._resolve_tenant_id(tenant_id))
+
+    async def _run_scoped(self, session: Any, scoped: ScopedQuery):
+        """Execute a strict scoped query through the Neo4j session seam."""
+        return await run_scoped_query(session.run, scoped)
+
+    async def _bm25_search(
+        self,
+        query: str,
+        entity_types: list[str] | None,
+        top_k: int,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Execute BM25 full-text search via Neo4j fulltext index."""
+        driver = await self._get_driver()
+        results = []
+
+        if entity_types:
+            unions = []
+            for etype in entity_types:
+                idx = f"{etype.lower()}_fulltext"
+                unions.append(
+                    f"CALL db.index.fulltext.queryNodes('{idx}', $query) "
+                    "YIELD node, score RETURN node, score"
+                )
+            fulltext_call = "\nUNION\n".join(unions)
+        else:
+            fulltext_call = """
+                CALL db.index.fulltext.queryNodes('capability_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('usecase_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('persona_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('valuedriver_fulltext', $query)
+                YIELD node, score RETURN node, score
+            """
+
+        async with driver.session(database=self.settings.neo4j_database) as session:
+            escaped_query = query.replace('"', '\\"')
+            cypher = f"""
+            CALL {{
+                {fulltext_call}
+            }}
+            WITH node as n, score
+            WHERE n.tenant_id = $_tenant_id
+            RETURN n.id as id, labels(n)[0] as entity_type, n.name as name,
+                   n.description as description, score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+            try:
+                builder = self._tenant_builder(tenant_id)
+                scoped = builder.custom_tenant_query(
+                    cypher,
+                    params={"query": escaped_query, "limit": top_k},
+                    operation="hybrid_search.bm25",
+                    labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
+                )
+                result = await self._run_scoped(session, scoped)
+                async for record in result:
+                    row = dict(record)
+                    if entity_types and row.get("entity_type") not in entity_types:
+                        continue
+                    results.append(row)
+            except Exception as exc:
+                logger.warning("BM25 search failed: %s", exc)
+
+        return results
+
+    async def _vector_search(
+        self,
+        query: str,
+        entity_types: list[str] | None,
+        top_k: int,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Execute vector similarity search.
+
+        Adapts the Neo4jVectorStore return format — list of
+        ``(entity_id, score, metadata)`` tuples — into the dict format
+        expected by ``_merge_results``.
+        """
+        if not self.vector_store:
+            logger.debug("Vector store not configured, skipping vector search")
+            return []
+
+        entity_type = entity_types[0] if entity_types else None
+
+        try:
+            raw = await self.vector_store.search(
+                query_text=query,
+                entity_type=entity_type,
+                top_k=top_k,
+                tenant_id=self._resolve_tenant_id(tenant_id),
+            )
+        except Exception as exc:
+            logger.warning("Vector search failed: %s", exc)
+            return []
+
+        results: list[dict[str, Any]] = []
+        for item in raw:
+            # Handle both tuple format (new) and dict format (legacy)
+            if isinstance(item, tuple):
+                entity_id, score, meta = item
+                results.append(
+                    {
+                        "id": entity_id,
+                        "entity_id": entity_id,
+                        "score": score,
+                        "entity_type": meta.get("entity_type", "Unknown"),
+                        "name": meta.get("name", ""),
+                        "description": meta.get("description", ""),
+                        "metadata": meta,
+                    }
+                )
+            else:
+                # Legacy dict format — ensure 'id' key exists
+                item.setdefault("id", item.get("entity_id", ""))
+                results.append(item)
+
+        return results
+
+    async def _graph_search(
+        self,
+        query: str,
+        entity_types: list[str] | None,
+        top_k: int,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Execute graph-based search (centrality-aware)."""
+        driver = await self._get_driver()
+        results = []
+
+        if entity_types:
+            unions = []
+            for etype in entity_types:
+                idx = f"{etype.lower()}_fulltext"
+                unions.append(
+                    f"CALL db.index.fulltext.queryNodes('{idx}', $query) "
+                    "YIELD node, score RETURN node, score"
+                )
+            fulltext_call = "\nUNION\n".join(unions)
+        else:
+            fulltext_call = """
+                CALL db.index.fulltext.queryNodes('capability_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('usecase_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('persona_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('valuedriver_fulltext', $query)
+                YIELD node, score RETURN node, score
+            """
+
+        async with driver.session(database=self.settings.neo4j_database) as session:
+            escaped_query = query.replace('"', '\\"')
+            cypher = f"""
+            CALL {{
+                {fulltext_call}
+            }}
+            WITH node as n, score as text_score
+            WHERE n.tenant_id = $_tenant_id
+            OPTIONAL MATCH (n)-[r]-(neighbor)
+            WHERE neighbor.tenant_id = $_tenant_id
+            WITH n, text_score, count(r) as degree
+            RETURN n.id as id, labels(n)[0] as entity_type, n.name as name,
+                   text_score * log(degree + 1) as score
+            ORDER BY score DESC
+            LIMIT $limit
+            """
+            try:
+                builder = self._tenant_builder(tenant_id)
+                scoped = builder.custom_tenant_query(
+                    cypher,
+                    params={"query": escaped_query, "limit": top_k},
+                    operation="hybrid_search.graph",
+                    labels=tuple(entity_types or ["Capability", "UseCase", "Persona", "ValueDriver"]),
+                )
+                result = await self._run_scoped(session, scoped)
+                async for record in result:
+                    results.append(dict(record))
+            except Exception as exc:
+                logger.warning("Graph search failed: %s", exc)
+
+        return results
+
+    def _merge_results(
+        self,
+        bm25_results: list[dict],
+        vector_results: list[dict],
+        graph_results: list[dict],
+        weights: dict[str, float],
+    ) -> list[HybridSearchResult]:
+        """Merge and rank results from multiple sources."""
+        all_ids: set = set()
+        bm25_lookup: dict[str, dict] = {}
+        vector_lookup: dict[str, dict] = {}
+        graph_lookup: dict[str, dict] = {}
+
+        for r in bm25_results:
+            eid = r.get("id") or r.get("entity_id")
+            if eid:
+                all_ids.add(eid)
+                bm25_lookup[eid] = r
+
+        for r in vector_results:
+            eid = r.get("id") or r.get("entity_id")
+            if eid:
+                all_ids.add(eid)
+                vector_lookup[eid] = r
+
+        for r in graph_results:
+            eid = r.get("id")
+            if eid:
+                all_ids.add(eid)
+                graph_lookup[eid] = r
+
+        bm25_max = max((r.get("score", 0.0) for r in bm25_results), default=1.0) or 1.0
+        vector_max = (
+            max((r.get("score", 0.0) for r in vector_results), default=1.0) or 1.0
+        )
+        graph_max = (
+            max((r.get("score", 0.0) for r in graph_results), default=1.0) or 1.0
+        )
+
+        merged = []
+        for entity_id in all_ids:
+            bm25_score = bm25_lookup.get(entity_id, {}).get("score", 0.0) / bm25_max
+            vector_score = (
+                vector_lookup.get(entity_id, {}).get("score", 0.0) / vector_max
+            )
+            graph_score = graph_lookup.get(entity_id, {}).get("score", 0.0) / graph_max
+
+            combined = (
+                weights["bm25"] * bm25_score
+                + weights["vector"] * vector_score
+                + weights["graph"] * graph_score
+            )
+
+            source = (
+                bm25_lookup.get(entity_id)
+                or vector_lookup.get(entity_id)
+                or graph_lookup.get(entity_id)
+                or {}
+            )
+
+            merged.append(
+                HybridSearchResult(
+                    entity_id=entity_id,
+                    entity_type=source.get("entity_type", "Unknown"),
+                    name=source.get("name", source.get("text", "")[:100]),
+                    bm25_score=bm25_score,
+                    vector_score=vector_score,
+                    graph_score=graph_score,
+                    combined_score=combined,
+                    confidence=combined,
+                    metadata=source.get("metadata", {}),
+                )
+            )
+
+        merged.sort(key=lambda x: x.combined_score, reverse=True)
+        return merged

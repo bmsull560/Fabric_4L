@@ -1,7 +1,6 @@
-"""Compatibility wrapper for ``value_fabric.layer3.ingestion``.
+"""Ingestion pipeline for Layer 3 Knowledge Graph."""
 
-Canonical implementation lives in ``value_fabric.layer3.ingestion``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from ingestion.neo4j_loader import Neo4jLoader, RDFLoadError
+from ingestion.sync_manager import SyncConflictError, SyncManager
 
-from value_fabric.layer3.ingestion import *  # noqa: F401,F403
+__all__ = ["Neo4jLoader", "RDFLoadError", "SyncManager", "SyncConflictError"]

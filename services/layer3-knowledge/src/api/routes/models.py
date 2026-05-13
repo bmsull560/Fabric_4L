@@ -1,9 +1,3 @@
-"""Allowed service-local exception for Layer 3 service wrapper.
+"""Compatibility shim for value_fabric.layer3.api.routes.models."""
+from value_fabric.layer3.api.routes.models_router import *  # noqa: F401,F403
 
-Owner: layer3-knowledge
-Removal/migration target: 2026-09-30
-Reason: Service-wrapper-only logic permitted by runtime path governance.
-"""
-
-
-from value_fabric.layer3.api.routes.models import *  # noqa: F401,F403

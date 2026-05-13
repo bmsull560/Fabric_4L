@@ -10,6 +10,6 @@ This directory is deprecated. All runtime code has been migrated to:
 - `services/layer6-benchmarks/`
 - `packages/shared/src/value_fabric/shared/`
 
-Do not add new code here. Existing code remains temporarily for backward compatibility during the migration window and will be removed in a future release.
+**Update 2026-05-13:** `value_fabric/shared/` has been removed. The canonical shared package lives exclusively at `packages/shared/src/value_fabric/shared/`.
 
-Last updated: 2026-05-12
+Last updated: 2026-05-13

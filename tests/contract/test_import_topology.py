@@ -23,15 +23,12 @@ class TestImportTopology:
         assert "value" in str(value_fabric.__file__).lower()
 
     def test_shared_namespace_resolution(self):
-        """import shared should resolve to canonical location."""
+        """import value_fabric.shared should resolve to canonical location."""
         import value_fabric.shared
 
         shared_path = Path(value_fabric.shared.__file__)
-        # Should resolve to packages/shared/src/value_fabric/shared/ or value_fabric/shared/
-        # NOT root shared/ which causes shadowing
-        assert "value" in str(shared_path).lower(), (
-            f"shared resolved to {shared_path}, expected packages/shared/src/value_fabric/shared/ "
-            "or value_fabric/shared/"
+        assert "packages/shared/src/value_fabric/shared" in str(shared_path).replace("\\", "/"), (
+            f"shared resolved to {shared_path}, expected packages/shared/src/value_fabric/shared/"
         )
 
     @pytest.mark.parametrize("layer", [
@@ -111,20 +108,10 @@ class TestImportTopology:
         )
 
     def test_no_root_shared_shadowing(self):
-        """Root shared/ should not shadow packages/shared/src/value_fabric/shared/."""
-        import value_fabric.shared
+        """Root value_fabric/shared/ must not exist."""
+        root_shared = REPO_ROOT / "value_fabric" / "shared"
 
-        shared_file = Path(value_fabric.shared.__file__)
-        repo_root = REPO_ROOT
-
-        # Check if shared resolves to root directory (bad)
-        is_root_shared = (
-            shared_file.parent == repo_root or
-            str(shared_file).endswith("shared/__init__.py") and "value" not in str(shared_file)
-        )
-
-        assert not is_root_shared, (
-            f"shared module resolves to {shared_file} which appears to be "
-            "root shared/. This shadows packages/shared/src/value_fabric/shared/. "
-            "Consider removing root shared/ or adjusting pythonpath."
+        assert not root_shared.exists(), (
+            f"Root {root_shared} still exists. "
+            "It should have been removed after consolidation into packages/shared/src/value_fabric/shared/."
         )

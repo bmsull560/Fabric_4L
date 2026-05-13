@@ -361,6 +361,7 @@ class GenerateSectionOutput(BaseModel):
     content: str
     word_count: int
     key_points: list[str] = Field(default_factory=list)
+    error: str | None = None
 
 
 class CreateChartInput(BaseModel):

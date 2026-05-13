@@ -1,9 +1,23 @@
-"""Allowed service-local exception for Layer 3 service wrapper.
+from __future__ import annotations
 
-Owner: layer3-knowledge
-Removal/migration target: 2026-09-30
-Reason: Service-wrapper-only logic permitted by runtime path governance.
-"""
+import sys
+from importlib import import_module
+from pathlib import Path
+
+from value_fabric.shared.identity.protocols import MetricsAccessHook
+
+def _resolve_shared_src() -> Path | None:
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / "packages" / "shared" / "src"
+        if candidate.exists():
+            return candidate
+    return None
 
 
-from value_fabric.layer3.api.shared_bootstrap import *  # noqa: F401,F403
+_SHARED_SRC = _resolve_shared_src()
+if _SHARED_SRC and str(_SHARED_SRC) not in sys.path:
+    sys.path.insert(0, str(_SHARED_SRC))
+
+_observability = import_module("value_fabric.shared.observability.metrics_access")
+verify_metrics_access: MetricsAccessHook = _observability.verify_metrics_access

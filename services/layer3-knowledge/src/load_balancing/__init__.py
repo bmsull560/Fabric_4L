@@ -1,7 +1,35 @@
-"""Compatibility wrapper for ``value_fabric.layer3.load_balancing``.
+"""Load balancing package initialization."""
 
-Canonical implementation lives in ``value_fabric.layer3.load_balancing``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from load_balancing.manager import (
+    AutoScaler,
+    AutoScalingConfig,
+    BackendServer,
+    CircuitBreaker,
+    HealthStatus,
+    LoadBalancer,
+    LoadBalancerConfig,
+    LoadBalancerStats,
+    LoadBalanceStrategy,
+    LoadBalancingSystem,
+    ScaleDirection,
+    ScalingPolicy,
+    get_load_balancing_system,
+    initialize_load_balancing,
+)
 
-from value_fabric.layer3.load_balancing import *  # noqa: F401,F403
+__all__ = [
+    "LoadBalanceStrategy",
+    "ScalingPolicy",
+    "HealthStatus",
+    "ScaleDirection",
+    "BackendServer",
+    "LoadBalancerConfig",
+    "AutoScalingConfig",
+    "LoadBalancerStats",
+    "CircuitBreaker",
+    "LoadBalancer",
+    "AutoScaler",
+    "LoadBalancingSystem",
+    "get_load_balancing_system",
+    "initialize_load_balancing",
+]

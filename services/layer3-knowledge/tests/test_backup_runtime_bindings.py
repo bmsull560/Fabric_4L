@@ -1,6 +1,6 @@
-from backup.backup_manager import BackupConfig as ServiceBackupConfig
-from backup.backup_manager import BackupManager as ServiceBackupManager
-from backup.backup_manager import LocalStorage as ServiceLocalStorage
+from value_fabric.layer3.backup.backup_manager import BackupConfig as ServiceBackupConfig
+from value_fabric.layer3.backup.backup_manager import BackupManager as ServiceBackupManager
+from value_fabric.layer3.backup.backup_manager import LocalStorage as ServiceLocalStorage
 from value_fabric.layer3.backup.backup_manager import BackupConfig, BackupManager, LocalStorage
 
 

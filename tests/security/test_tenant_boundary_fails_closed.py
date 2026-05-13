@@ -28,7 +28,7 @@ TENANT_A_STR = f"aaaaaaaa-aaaa-aaaa-aaaa-{TENANT_A_UUID.split('-')[-1]}"
 TENANT_B_STR = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 USER_TEST = "test-user"
 
-# The deprecated root `shared/` package may already be cached in
+# The deprecated bare `shared` package may already be cached in
 # `sys.modules` (imported by earlier-collected tests).  Evict it
 # temporarily so the canonical `packages/shared/src/value_fabric/shared/` package is found.
 _existing_shared_modules = {

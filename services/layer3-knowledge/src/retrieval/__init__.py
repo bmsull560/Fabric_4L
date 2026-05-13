@@ -1,7 +1,14 @@
-"""Compatibility wrapper for ``value_fabric.layer3.retrieval``.
+"""Retrieval components for Layer 3 Knowledge Graph."""
 
-Canonical implementation lives in ``value_fabric.layer3.retrieval``
-per ``docs/reference/layer-runtime-path-governance.md``.
-"""
+from retrieval.graph_rag import GraphRAGEngine, GraphRAGResult
+from retrieval.hybrid_search import HybridSearch, HybridSearchResult
+from retrieval.vector_store import VectorStore, VectorStoreError
 
-from value_fabric.layer3.retrieval import *  # noqa: F401,F403
+__all__ = [
+    "GraphRAGEngine",
+    "GraphRAGResult",
+    "HybridSearch",
+    "HybridSearchResult",
+    "VectorStore",
+    "VectorStoreError",
+]
