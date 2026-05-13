@@ -60,6 +60,7 @@ class _VariablesResult(TypedDictModel):
     confidence: float = 0.0
     variable_count: int = 0
     variables: dict[str, Any] | None = None
+    error: str = ""
 
 
 class _EvaluationResult(TypedDictModel):
@@ -111,11 +112,12 @@ def _build_roi_result(
     missing_variables: list[str],
 ) -> ROIResult:
     """Construct an ROIResult from a value driver and optional evaluation output."""
+    formula = vd.get("formula") or ""
     return ROIResult(
         value_driver_id=vd["id"],
         value_driver_name=vd["name"],
-        formula=vd["formula"],
-        substituted_formula=(eval_result or {}).get("substituted_formula", vd["formula"]),
+        formula=formula,
+        substituted_formula=(eval_result or {}).get("substituted_formula", formula),
         result=(eval_result or {}).get("result", 0),
         unit=vd.get("unit", "USD"),
         confidence=confidence,

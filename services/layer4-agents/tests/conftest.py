@@ -214,12 +214,11 @@ def business_case_workflow(mock_tool_registry, mock_openai_client):
 
 
 @pytest.fixture
-def roi_calculator_workflow(mock_tool_registry, mock_openai_client):
+def roi_calculator_workflow(mock_tool_registry):
     """Create a ROICalculatorWorkflow with mocked dependencies."""
     from value_fabric.layer4.workflows.roi_calculator import ROICalculatorWorkflow
     return ROICalculatorWorkflow(
         tool_registry=mock_tool_registry,
-        openai_client=mock_openai_client,
     )
 
 
