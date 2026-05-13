@@ -32,4 +32,21 @@ if [ "$NEEDS_SEED" = "true" ]; then
   echo "[playwright-docker] node_modules ready."
 fi
 
+# ---------------------------------------------------------------------------
+# Production build for fast contract-test page loads
+# ---------------------------------------------------------------------------
+# When PLAYWRIGHT_WEBSERVER_COMMAND uses 'preview', we need a built dist/
+# before Playwright starts its webServer. Building here ensures the bind
+# mount sees the latest source while still benefiting from bundled assets.
+# ---------------------------------------------------------------------------
+if echo "$PLAYWRIGHT_WEBSERVER_COMMAND" | grep -q "preview"; then
+  if [ ! -f /app/dist/public/index.html ] || [ /app/dist/public/index.html -ot /app/src/main.tsx ]; then
+    echo "[playwright-docker] Building production bundle for preview server..."
+    pnpm exec vite build
+    echo "[playwright-docker] Build complete."
+  else
+    echo "[playwright-docker] Reusing existing production build."
+  fi
+fi
+
 exec "$@"

@@ -151,6 +151,7 @@ class SignalQuantificationService:
 
     async def quantify_signal(
         self,
+        tenant_id: str,
         signal_name: str,
         signal_description: str,
         impact_indicators: list[str],
@@ -158,8 +159,6 @@ class SignalQuantificationService:
         prospect_data: dict[str, Any],
     ) -> QuantificationResult:
         """Quantify a pain signal's impact.
-
-        Retrieves tenant context automatically from request scope.
 
         Finds appropriate formula, extracts variables from prospect data,
         and calculates impact value.
@@ -174,10 +173,10 @@ class SignalQuantificationService:
         Returns:
             Quantification result with impact value or errors
         """
-        _get_tenant_id()
         try:
             # Step 1: Find appropriate formula
             formula = await self._select_formula(
+                tenant_id,
                 signal_name,
                 signal_description,
                 industry,
@@ -242,6 +241,7 @@ class SignalQuantificationService:
 
     async def _select_formula(
         self,
+        tenant_id: str,
         signal_name: str,
         signal_description: str,
         industry: str | None,
@@ -256,7 +256,6 @@ class SignalQuantificationService:
         Returns:
             Formula dictionary or None
         """
-        tenant_id = _get_tenant_id()
         # Normalize industry
         industry_key = (industry or "general").lower().strip()
 

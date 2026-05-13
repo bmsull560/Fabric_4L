@@ -246,24 +246,39 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
 
     try:
         header = jwt.get_unverified_header(token)
-        unverified = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
-        issuer = unverified.get("iss")
-        non_dev_without_registered_claims = (
-            not _is_non_dev_environment()
-            and not oidc_issuer
-            and issuer is None
-            and unverified.get("aud") is None
+        header_alg = header.get("alg")
+        if not isinstance(header_alg, str) or not header_alg.strip():
+            return None
+        if oidc_issuer:
+            if header_alg.upper() not in {"RS256", "ES256", algorithm.upper()}:
+                return None
+        elif header_alg.upper() != algorithm.upper():
+            return None
+        unverified = jwt.decode(
+            token,
+            options={
+                "verify_signature": False,
+                "verify_exp": False,
+                "verify_aud": False,
+                "verify_iss": False,
+            },
         )
+        issuer = unverified.get("iss")
         audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
         expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
-        decode_kwargs: Dict[str, Any] = {"algorithms": [algorithm]}
-        if non_dev_without_registered_claims:
-            audience = None
-            expected_issuer = None
-            decode_kwargs["options"] = {"verify_aud": False, "verify_iss": False}
-        else:
-            decode_kwargs["audience"] = audience
-            decode_kwargs["issuer"] = expected_issuer
+        decode_kwargs: Dict[str, Any] = {
+            "algorithms": [algorithm],
+            "audience": audience,
+            "issuer": expected_issuer,
+            "options": {
+                "require": ["exp", "iss", "aud"],
+                "verify_exp": True,
+                "verify_aud": True,
+                "verify_iss": True,
+                "verify_iat": True,
+                "verify_nbf": True,
+            },
+        }
 
         if expected_issuer is not None and issuer != expected_issuer:
             logger.debug("Unexpected JWT issuer: %s", issuer)
@@ -278,7 +293,14 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             verify_key = _resolve_external_key(header, issuer)
             if verify_key is None:
                 return None
-            payload = jwt.decode(token, verify_key, algorithms=[header.get("alg", "RS256")], audience=audience, issuer=expected_issuer)
+            payload = jwt.decode(
+                token,
+                verify_key,
+                algorithms=[header_alg.upper()],
+                audience=audience,
+                issuer=expected_issuer,
+                options=decode_kwargs["options"],
+            )
         else:
             verify_keys = keyset["verify"]
             if kid and kid in verify_keys:

@@ -45,7 +45,7 @@ async def test_layer2_system_health_contract_envelope(monkeypatch: pytest.Monkey
 
     assert payload["status"] == "healthy"
     assert payload["service"] == "layer2-extraction"
-    assert payload["readiness"] == {"is_ready": True, "reason": "dependencies_available"}
+    assert payload["readiness"] == {"is_ready": False, "reason": "neo4j_uninitialized"}
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ async def test_layer3_system_health_contract_envelope(monkeypatch: pytest.Monkey
 
     assert payload["status"] == "degraded"
     assert payload["service"] == "layer3-knowledge"
-    assert payload["readiness"] == {"is_ready": True, "reason": "dependencies_available"}
+    assert payload["readiness"] == {"is_ready": False, "reason": "neo4j_uninitialized"}
 
 
 @pytest.mark.asyncio
@@ -110,7 +110,7 @@ async def test_layer6_system_health_contract_envelope(monkeypatch: pytest.Monkey
 
     assert payload["status"] == "degraded"
     assert payload["service"] == "layer6-benchmarks"
-    assert payload["readiness"] == {"is_ready": True, "reason": "dependencies_available"}
+    assert payload["readiness"] == {"is_ready": False, "reason": "neo4j_uninitialized"}
 
 
 @pytest.mark.asyncio

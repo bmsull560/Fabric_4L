@@ -74,6 +74,11 @@ add_security_middleware(app, config=_security_config)
 app.add_middleware(CORSMiddleware, **resolve_cors_policy().as_kwargs())
 
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
 class ExtractAndIngestResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

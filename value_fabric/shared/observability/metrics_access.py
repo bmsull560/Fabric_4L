@@ -125,7 +125,15 @@ def verify_metrics_access(request: Any) -> bool:
     env = _runtime_environment()
     allow_bypass = os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() == "true"
     if env == "development" and allow_bypass:
-        logger.debug("Metrics access granted via ALLOW_INSECURE_DEV_AUTH_BYPASS")
+        logger.warning(
+            "metrics_dev_bypass_enabled",
+            extra={
+                "event": "metrics_dev_bypass_enabled",
+                "environment": env,
+                "flag": "ALLOW_INSECURE_DEV_AUTH_BYPASS",
+                "client_host": client_host,
+            },
+        )
         return True
 
     logger.warning(

@@ -3,29 +3,23 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict
 
-class TypedDictModel(dict):
-    """A small mapping model with pydantic-like dump helpers.
+
+class TypedDictModel(BaseModel):
+    """A Pydantic-compatible model with dict-like accessors for generated return payloads.
 
     Several generated service modules subclass this type for structured return
-    payloads.  Keeping it dependency-free makes production gates deterministic
-    while preserving normal ``dict`` behavior for callers.
+    payloads.  Inheriting from ``BaseModel`` makes these classes valid
+    ``response_model`` types for FastAPI while preserving dict-like access
+    for existing callers.
     """
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(data)
-        self.__dict__.update(data)
+    model_config = ConfigDict(extra="allow")
 
     @classmethod
     def model_validate(cls, data: Any) -> "TypedDictModel":
-        """Return an instance from mapping-like data, mirroring pydantic v2.
-
-        Generated compatibility classes in the layer services call
-        ``SomeResult.model_validate({...})`` even though these release gates run
-        without pydantic models.  This helper keeps those classes dependency-free
-        while preserving the dict-and-attribute access contract expected by the
-        services and tests.
-        """
+        """Return an instance from mapping-like data, mirroring pydantic v2."""
         if isinstance(data, cls):
             return data
         if isinstance(data, dict):
@@ -37,7 +31,22 @@ class TypedDictModel(dict):
         raise TypeError(f"{cls.__name__}.model_validate() requires mapping data")
 
     def model_dump(self) -> dict[str, Any]:
-        return dict(self)
+        return super().model_dump()
 
     def dict(self) -> dict[str, Any]:
         return self.model_dump()
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        setattr(self, key, value)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
+
+    def __iter__(self):
+        return iter(self.model_dump().keys())
+
+    def __len__(self):
+        return len(self.model_dump())

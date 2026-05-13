@@ -837,7 +837,7 @@ async def get_workflow_events(
     )
 
 
-class ArchiveWorkflowResponse(TypedDictModel):
+class ArchiveWorkflowResponse(BaseModel):
     """Archive workflow response."""
 
     workflow_id: Any

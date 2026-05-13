@@ -198,3 +198,23 @@ async def test_returns_503_when_repo_is_unavailable(
     response = await client.request(method, path, json=payload)
     assert response.status_code == 503
     assert response.json()["detail"] == "Benchmark store not initialized"
+
+
+@pytest.mark.asyncio
+async def test_ready_returns_503_when_dependency_health_check_fails(client: AsyncClient, monkeypatch):
+    async def failing_health(*args, **kwargs):
+        return {"status": "unhealthy"}
+
+    monkeypatch.setattr(main_module, "neo4j_health_check", failing_health)
+    response = await client.get("/ready")
+    assert response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_health_remains_liveness_only_when_dependency_degraded(client: AsyncClient, monkeypatch):
+    async def failing_health(*args, **kwargs):
+        return {"status": "unhealthy"}
+
+    monkeypatch.setattr(main_module, "neo4j_health_check", failing_health)
+    response = await client.get("/health")
+    assert response.status_code == 200

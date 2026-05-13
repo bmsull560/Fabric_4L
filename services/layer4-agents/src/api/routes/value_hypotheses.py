@@ -104,7 +104,7 @@ class PromoteSignalRequest(BaseModel):
     capability_name: str | None = Field(None)
 
 
-class PromoteSignalResponse(TypedDictModel):
+class PromoteSignalResponse(BaseModel):
     status: str
     hypothesis_id: str
     signal_id: str

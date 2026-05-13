@@ -17,7 +17,7 @@ x-process-hardening: &process-hardening
     - no-new-privileges:true
 
 x-build-args: &build-args
-  BASE_IMAGE: ${BASE_IMAGE:-}
+  BASE_IMAGE: ${BASE_IMAGE:-python:3.11.11-slim-bookworm}
 
 services:
   # Layer 1: Data Ingestion Service
@@ -142,7 +142,7 @@ services:
       dockerfile: ./services/layer3-knowledge/Dockerfile.full
       args:
         <<: *build-args
-        BUILDER_BASE_IMAGE: ${BUILDER_BASE_IMAGE:-}
+        BUILDER_BASE_IMAGE: ${BUILDER_BASE_IMAGE:-python:3.11.11-slim-bookworm}
     container_name: value-fabric-layer3
     <<: *app-hardening
     expose:

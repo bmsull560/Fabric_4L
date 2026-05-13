@@ -191,9 +191,33 @@ uvicorn src.api.main:app --reload --port 8004 --log-level debug
 
 ```bash
 cd apps/web
-npm install
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
+
+### Safe Local Auth Workflow
+
+Use real JWT or OIDC flows by default, even in local development. The only sanctioned bypasses are explicit, non-production-only flags for narrow debugging or test harness use.
+
+```bash
+# Preferred local defaults
+ENVIRONMENT=development
+AUTH_REQUIRED=true
+JWT_SECRET=<32+ random chars>
+API_KEY_HMAC_SECRET=<32+ random chars>
+SERVICE_AUTH_SECRET=<32+ random chars>
+ALLOW_INSECURE_DEV_AUTH_BYPASS=false
+JWT_FALLBACK_TO_QUERY_PARAM=false
+ALLOW_EPHEMERAL_ENCRYPTION=false
+```
+
+Rules for local auth work:
+
+1. Use `ALLOW_INSECURE_DEV_AUTH_BYPASS=true` only for temporary local debugging when a real JWT or OIDC session is unavailable.
+2. Use `JWT_FALLBACK_TO_QUERY_PARAM=true` only in isolated test harnesses that still depend on the legacy Layer 5 fallback path.
+3. Use `ALLOW_EPHEMERAL_ENCRYPTION=true` only in local development or tests when you intentionally accept credential loss on restart.
+4. Never commit these flags to shared `.env` files, Compose overrides, CI variables, Helm values, or production secrets stores.
+5. Production-like startup now fails closed if any bypass flag is enabled.
 
 ---
 

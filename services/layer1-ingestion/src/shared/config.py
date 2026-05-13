@@ -15,6 +15,7 @@ _PRODUCTION_ENVS = {"production", "prod", "staging"}
 _DEV_CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
 _EXPLICIT_CORS_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 _EXPLICIT_CORS_HEADERS = ["Authorization", "Content-Type", "X-Request-ID", "X-Tenant-ID"]
+_PRIVATE_CLUSTER_DNS_SUFFIXES = (".svc", ".svc.cluster.local", ".cluster.local", ".internal")
 
 
 def detect_environment() -> str:
@@ -45,6 +46,21 @@ def parse_cors_origins(value: object) -> list[str]:
     if isinstance(value, (list, tuple, set)):
         return [str(origin).strip() for origin in value if str(origin).strip()]
     raise TypeError(f"Unsupported type for CORS origins: {type(value).__name__}. Expected str, list, tuple, set, or None.")
+
+
+def parse_string_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [item.strip() for item in value.split(",") if item.strip()]
+    if isinstance(value, (list, tuple, set)):
+        return [str(item).strip() for item in value if str(item).strip()]
+    raise TypeError(f"Unsupported type for string list: {type(value).__name__}. Expected str, list, tuple, set, or None.")
+
+
+def _is_private_cluster_hostname(hostname: str) -> bool:
+    lower = hostname.lower()
+    return any(lower.endswith(suffix) for suffix in _PRIVATE_CLUSTER_DNS_SUFFIXES)
 
 
 def validate_exact_cors_origins(origins: list[str], *, production_like: bool) -> list[str]:
@@ -130,6 +146,39 @@ class Settings(BaseSettings):
                 errors.append("JWT secret must be >= 32 characters in production-like environments")
             if "postgres:postgres@" in self.database_url or "password" in self.database_url.lower():
                 errors.append("Database URL contains default/insecure credentials")
+            if self.redis_url.strip() == "redis://localhost:6379/0":
+                errors.append(
+                    "REDIS_URL is using default localhost value 'redis://localhost:6379/0'. "
+                    "Set REDIS_URL to a managed Redis endpoint with authentication/TLS for production deployment."
+                )
+            if self.s3_access_key.strip().lower() == "minioadmin" or self.s3_secret_key.strip().lower() == "minioadmin":
+                errors.append(
+                    "S3 credentials use default placeholder value 'minioadmin'. "
+                    "Set S3_ACCESS_KEY and S3_SECRET_KEY to production credentials from your secret manager."
+                )
+            parsed_endpoint = urlparse(self.s3_endpoint.strip())
+            if not parsed_endpoint.scheme or not parsed_endpoint.hostname:
+                errors.append(
+                    "S3_ENDPOINT is missing or invalid. "
+                    "Set S3_ENDPOINT to a valid https:// endpoint (or allowlisted private cluster DNS endpoint)."
+                )
+            else:
+                endpoint_host = parsed_endpoint.hostname.lower()
+                endpoint_is_localhost = endpoint_host in {"localhost", "127.0.0.1", "::1"}
+                endpoint_is_tls = parsed_endpoint.scheme.lower() == "https"
+                allowlisted_hosts = {host.lower() for host in self.private_storage_endpoint_allowlist}
+                allowlisted_private = endpoint_host in allowlisted_hosts and _is_private_cluster_hostname(endpoint_host)
+                if endpoint_is_localhost:
+                    errors.append(
+                        "S3_ENDPOINT cannot target localhost in production-like environments. "
+                        "Use an internal object storage endpoint reachable by the cluster."
+                    )
+                elif not endpoint_is_tls and not allowlisted_private:
+                    errors.append(
+                        "S3_ENDPOINT must use TLS (https) in production-like environments. "
+                        "For private-cluster exceptions, add the exact private DNS hostname to "
+                        "PRIVATE_STORAGE_ENDPOINT_ALLOWLIST."
+                    )
 
         try:
             validate_exact_cors_origins(self.cors_origins, production_like=production_like)
@@ -165,6 +214,15 @@ class Settings(BaseSettings):
     s3_secret_key: str = Field(default="minioadmin", description="S3 secret key")
     s3_bucket: str = Field(default="layer1-raw-html", description="S3 bucket for raw HTML")
     s3_region: str = Field(default="us-east-1", description="S3 region")
+    private_storage_endpoint_allowlist: list[str] = Field(
+        default=[],
+        description="Allowlisted private-cluster storage hostnames allowed to use non-TLS endpoints in production-like environments.",
+    )
+
+    @field_validator("private_storage_endpoint_allowlist", mode="before")
+    @classmethod
+    def parse_storage_allowlist(cls, v: object) -> object:
+        return parse_string_list(v)
 
     # Crawler settings
     max_concurrent_pages: int = Field(default=5, description="Max concurrent pages per worker")

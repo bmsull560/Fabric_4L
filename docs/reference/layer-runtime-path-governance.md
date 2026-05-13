@@ -31,6 +31,8 @@ Use this before creating files so we avoid drift into archived, compatibility-on
 | Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal target review by **2026-09-30** |
 | Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility shims) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
 
+Layer 6 note: when compatibility wrappers are present under `services/layer6-benchmarks/src/`, they are wrapper-only and cannot contain local domain logic; CI enforces this via `scripts/ci/check_layer6_wrapper_drift.py` plus mirror parity checks in `scripts/check_mirrored_files.py`.
+
 
 ## Cross-root import policy (allowed vs forbidden)
 
@@ -55,6 +57,12 @@ Before opening a PR with backend runtime changes:
 2. Add net-new logic only to the canonical runtime path.
 3. Keep service wrapper changes minimal and wiring-only.
 4. If compatibility code is touched, add a TODO with migration intent and owner.
+
+## Layer 3 settings module ownership
+
+- **Canonical settings module:** `value_fabric/layer3/config/settings.py`.
+- **Compatibility-only shim:** `value_fabric/layer3/config.py` (must only re-export `Settings` and `get_settings`).
+- **CI drift guardrail:** `scripts/ci/check_layer3_settings_shim_drift.py` via `.github/workflows/layer3-wrapper-drift.yml`.
 
 ## Layer 3 app_monolith ownership note
 

@@ -1,0 +1,67 @@
+{
+  "service": "layer6-benchmarks",
+  "metrics": [
+    {
+      "name": "layer6_requests_total",
+      "description": "Count of benchmark API requests processed.",
+      "labels": [
+        "route",
+        "method",
+        "status_class"
+      ],
+      "max_cardinality": {
+        "route": 20,
+        "method": 8,
+        "status_class": 5
+      }
+    },
+    {
+      "name": "layer6_request_duration_seconds",
+      "description": "Benchmark API request latency histogram.",
+      "labels": [
+        "route",
+        "method"
+      ],
+      "max_cardinality": {
+        "route": 20,
+        "method": 8
+      }
+    },
+    {
+      "name": "layer6_dataset_comparisons_total",
+      "description": "Count of compare operations by outcome.",
+      "labels": [
+        "industry",
+        "outcome"
+      ],
+      "max_cardinality": {
+        "industry": 50,
+        "outcome": 4
+      }
+    },
+    {
+      "name": "layer6_http_requests_total",
+      "description": "Legacy emitted request counter.",
+      "labels": [
+        "method",
+        "path",
+        "status"
+      ],
+      "max_cardinality": {
+        "method": 8,
+        "path": 30,
+        "status": 10
+      }
+    },
+    {
+      "name": "layer6_health_status",
+      "description": "Service health gauge.",
+      "labels": [
+        "service"
+      ],
+      "max_cardinality": {
+        "service": 5
+      }
+    }
+  ]
+}

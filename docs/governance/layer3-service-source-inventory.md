@@ -141,7 +141,8 @@ Source-of-truth policy references:
 
 All allowed service-local exception modules must retain an explicit module docstring with owner (`layer3-knowledge`) and migration target date (`2026-09-30`) while exceptions remain.
 
+
 ### canonical implementation required in `value_fabric/layer3`
 
-
-- None currently.
+- `value_fabric/layer3/config/settings.py` is the canonical runtime settings source.
+- `value_fabric/layer3/config.py` is compatibility-only and must stay a thin re-export wrapper.

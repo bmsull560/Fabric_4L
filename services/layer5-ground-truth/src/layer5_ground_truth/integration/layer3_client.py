@@ -7,7 +7,7 @@ Responsibilities:
   - Query Layer 3 for entity context when creating truth objects
   - Handle connection failures gracefully (Layer 5 is authoritative; KG sync is best-effort)
 
-Layer 3 API base URL is configured via LAYER3_BASE_URL env var (default: http://localhost:8001).
+Layer 3 API base URL is configured via LAYER3_BASE_URL env var (default: http://localhost:8003).
 """
 
 import asyncio

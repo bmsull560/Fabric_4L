@@ -20,6 +20,12 @@ class TenantContextError(Exception):
     pass
 
 
+class MissingTenantContextError(TenantContextError, PermissionError):
+    """Raised when tenant-scoped persistence is attempted without tenant context."""
+
+    pass
+
+
 def validate_tenant_id(
     tenant_id: UUID | str | None,
     fail_safe_mode: bool = True,
@@ -76,3 +82,27 @@ def validate_tenant_id(
             )
 
     return normalized
+
+
+def require_tenant_context(
+    tenant_id: UUID | str | None,
+    *,
+    operation: str = "tenant-scoped persistence access",
+    reserved_keywords: frozenset[str] = RESERVED_TENANT_KEYWORDS,
+) -> str:
+    """Require tenant context for a tenant-scoped operation.
+
+    This is stricter than ``validate_tenant_id`` only in the sense that the
+    exception type is authorization-oriented, making it suitable for
+    repository/session boundaries where unscoped access must hard-fail.
+    """
+    try:
+        return validate_tenant_id(
+            tenant_id,
+            fail_safe_mode=True,
+            reserved_keywords=reserved_keywords,
+        )
+    except TenantContextError as exc:
+        raise MissingTenantContextError(
+            f"{operation} requires authenticated tenant context."
+        ) from exc

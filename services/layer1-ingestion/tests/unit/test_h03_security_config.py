@@ -54,6 +54,8 @@ def test_layer1_cors_policy_uses_explicit_origins_methods_and_headers(monkeypatc
         jwt_secret="x" * 48,
         database_url="postgresql://fabric:example@db.internal:5432/layer1",
         cors_origins=["https://app.example.com"],
+        redis_url="rediss://redis.internal:6379/0",
+        s3_endpoint="https://s3.internal",
         s3_access_key="custom_access_key",
         s3_secret_key="custom_secret_key",
     )
@@ -74,3 +76,39 @@ def test_layer1_development_default_cors_is_localhost_not_wildcard(monkeypatch):
     assert settings.cors_policy["allow_credentials"] is True
     assert "*" not in settings.cors_policy["allow_methods"]
     assert "*" not in settings.cors_policy["allow_headers"]
+
+
+def test_layer1_rejects_insecure_dependency_defaults_in_production_like_env(monkeypatch):
+    config = _load_config(monkeypatch, ENVIRONMENT="development")
+    with pytest.raises(Exception, match="Unsafe production configuration") as exc_info:
+        config.Settings(
+            environment="production",
+            jwt_secret="x" * 48,
+            database_url="postgresql://fabric:strong-pass@db.internal:5432/layer1",
+            cors_origins=["https://app.example.com"],
+        )
+
+    message = str(exc_info.value)
+    assert "REDIS_URL is using default localhost value" in message
+    assert "default placeholder value 'minioadmin'" in message
+    assert "cannot target localhost" in message
+
+
+def test_layer1_allows_dev_test_defaults(monkeypatch):
+    config = _load_config(monkeypatch, ENVIRONMENT="development")
+    dev_settings = config.Settings(environment="development")
+    test_settings = config.Settings(environment="test")
+    assert dev_settings.redis_url == "redis://localhost:6379/0"
+    assert test_settings.s3_access_key == "minioadmin"
+
+
+def test_layer1_unknown_environment_is_production_like_and_rejects_defaults(monkeypatch):
+    config = _load_config(monkeypatch, ENVIRONMENT="development")
+    with pytest.raises(Exception, match="Unsafe production configuration") as exc_info:
+        config.Settings(
+            environment="qa-sandbox",
+            jwt_secret="x" * 48,
+            database_url="postgresql://fabric:strong-pass@db.internal:5432/layer1",
+            cors_origins=["https://app.example.com"],
+        )
+    assert "REDIS_URL is using default localhost value" in str(exc_info.value)

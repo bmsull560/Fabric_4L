@@ -153,18 +153,11 @@ class ProductService:
     # ------------------------------------------------------------------
 
     async def create_product(
-        self, tenant_or_product: str | ProductCreate, product: ProductCreate | None = None
+        self,
+        tenant_id: str,
+        product: ProductCreate,
     ) -> dict[str, Any]:
-        """Create a Product node in the knowledge graph.
-
-        Accepts both the current implicit-context shape ``create_product(product)``
-        and the legacy test/API shape ``create_product(tenant_id, product)``.
-        """
-        if product is None:
-            product = tenant_or_product  # type: ignore[assignment]
-            tenant_id = _get_tenant_id()
-        else:
-            tenant_id = str(tenant_or_product)
+        """Create a Product node in the knowledge graph."""
         product_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -213,14 +206,11 @@ class ProductService:
             return ProductService_create_productResult.model_validate({"id": product_id, **(record["product"] if record else {})})
 
     async def get_product(
-        self, tenant_or_product_id: str, product_id: str | None = None
+        self,
+        tenant_id: str,
+        product_id: str,
     ) -> dict[str, Any] | None:
         """Get a single product by ID, scoped to tenant."""
-        if product_id is None:
-            product_id = tenant_or_product_id
-            tenant_id = _get_tenant_id()
-        else:
-            tenant_id = str(tenant_or_product_id)
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
@@ -280,8 +270,8 @@ class ProductService:
         list_query = f"""
         // strict-scoped-query-execution: where includes p.tenant_id = $tenant_id
         MATCH (p:Product) WHERE {where}
-        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
-        OPTIONAL MATCH (p)-[:ENABLES_CAPABILITY]->(c:Capability {tenant_id: $tenant_id})
+        OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {{tenant_id: $tenant_id}})
+        OPTIONAL MATCH (p)-[:ENABLES_CAPABILITY]->(c:Capability {{tenant_id: $tenant_id}})
         RETURN p {{.id, .name, .description, .category, .sku,
                     .pricing_model, .industries, .created_at}} AS product,
                count(DISTINCT f) AS feature_count,
@@ -314,10 +304,12 @@ class ProductService:
             return ProductService_list_productsResult.model_validate({"products": products, "total": total, "skip": skip, "limit": limit})
 
     async def update_product(
-        self, product_id: str, updates: dict[str, Any]
+        self,
+        tenant_id: str,
+        product_id: str,
+        updates: dict[str, Any],
     ) -> dict[str, Any] | None:
         """Update a product's properties."""
-        tenant_id = _get_tenant_id()
         # Only allow safe property updates
         allowed_fields = {
             "name", "description", "category", "sku",
@@ -325,7 +317,7 @@ class ProductService:
         }
         safe_updates = {k: v for k, v in updates.items() if k in allowed_fields}
         if not safe_updates:
-            return await self.get_product(product_id)
+            return await self.get_product(tenant_id, product_id)
 
         set_clauses = ", ".join(f"p.{k} = ${k}" for k in safe_updates)
         query = f"""
@@ -349,13 +341,8 @@ class ProductService:
             logger.info("product_updated", product_id=product_id, fields=list(safe_updates))
             return record["product"]
 
-    async def delete_product(self, tenant_or_product_id: str, product_id: str | None = None) -> bool:
+    async def delete_product(self, tenant_id: str, product_id: str) -> bool:
         """Delete a product and its orphaned features."""
-        if product_id is None:
-            product_id = tenant_or_product_id
-            tenant_id = _get_tenant_id()
-        else:
-            tenant_id = str(tenant_or_product_id)
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
@@ -465,7 +452,7 @@ class ProductService:
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         MATCH (c:Capability {id: $capability_id})
-        WHERE c.tenant_id = $tenant_id OR c.tenant_id IS NULL
+        WHERE c.tenant_id = $tenant_id
         MERGE (p)-[r:ENABLES_CAPABILITY]->(c)
         ON CREATE SET r.strength = $strength, r.created_at = datetime()
         ON MATCH SET r.strength = $strength, r.updated_at = datetime()
@@ -542,7 +529,7 @@ class ProductService:
         query = f"""
         // strict-scoped-query-execution: where includes ps.tenant_id = $tenant_id
         MATCH (ps:PainSignal)-[:INDICATES_NEED_FOR]->(c:Capability)<-[ec:ENABLES_CAPABILITY]-(p:Product)
-        WHERE {where} AND p.tenant_id = $tenant_id AND (c.tenant_id = $tenant_id OR c.tenant_id IS NULL)
+        WHERE {where} AND p.tenant_id = $tenant_id AND c.tenant_id = $tenant_id
         WITH p, ps, c,
              ps.confidence_score * COALESCE(ec.strength, 1.0) AS match_score
         ORDER BY match_score DESC
@@ -582,9 +569,8 @@ class ProductService:
     # Portfolio Analytics
     # ------------------------------------------------------------------
 
-    async def get_portfolio_summary(self, tenant_id: str | None = None) -> dict[str, Any]:
+    async def get_portfolio_summary(self, tenant_id: str) -> dict[str, Any]:
         """Get a summary of the product portfolio for a tenant."""
-        tenant_id = tenant_id or _get_tenant_id()
         query = """
         MATCH (p:Product {tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature {tenant_id: $tenant_id})
@@ -620,12 +606,10 @@ class ProductService:
             })
 
 
-    async def get_capability_coverage(self, tenant_id: str | None = None) -> list[dict[str, Any]]:
+    async def get_capability_coverage(self, tenant_id: str) -> list[dict[str, Any]]:
         """Show which capabilities are covered by products and which are gaps."""
-        tenant_id = tenant_id or _get_tenant_id()
         query = """
-        MATCH (c:Capability)
-        WHERE c.tenant_id = $tenant_id OR c.tenant_id IS NULL
+        MATCH (c:Capability {tenant_id: $tenant_id})
         OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[ec:ENABLES_CAPABILITY]->(c)
         OPTIONAL MATCH (ps:PainSignal {tenant_id: $tenant_id})-[:INDICATES_NEED_FOR]->(c)
         RETURN c {.id, .name} AS capability,

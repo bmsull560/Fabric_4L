@@ -114,7 +114,7 @@ class Settings(BaseSettings):
 
     # Layer 3 Knowledge Graph Integration
     layer3_base_url: str = Field(
-        default="http://localhost:8001",
+        default="http://localhost:8003",
         alias="LAYER3_BASE_URL",
     )
     layer3_api_key: str | None = Field(default=None, alias="LAYER3_API_KEY")
@@ -165,6 +165,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(
         default="HS256",
         alias="JWT_ALGORITHM",
+    )
+    jwt_issuer: str = Field(
+        default="value-fabric-internal",
+        alias="JWT_ISSUER",
+    )
+    jwt_audience: str = Field(
+        default="value-fabric-services",
+        alias="JWT_AUDIENCE",
     )
     jwt_tenant_claim: str = Field(
         default="tenant_id",
@@ -233,6 +241,23 @@ class Settings(BaseSettings):
         return v
 
 
+
+
+    @field_validator("layer3_base_url")
+    @classmethod
+    def validate_layer3_base_url(cls, v: str) -> str:
+        """Ensure Layer 3 base URL is an absolute HTTP(S) origin without path/query."""
+        parsed = urlparse(v)
+        if parsed.scheme not in {"http", "https"}:
+            raise ValueError("LAYER3_BASE_URL must use http or https")
+        if not parsed.netloc:
+            raise ValueError("LAYER3_BASE_URL must include a hostname")
+        if parsed.path not in {"", "/"}:
+            raise ValueError("LAYER3_BASE_URL must not include a path")
+        if parsed.params or parsed.query or parsed.fragment:
+            raise ValueError("LAYER3_BASE_URL must not include params, query, or fragment")
+        return v.rstrip("/")
+
     @model_validator(mode="after")
     def warn_on_non_production_auth_risk(self) -> "Settings":
         """Emit explicit warning when non-production starts without strong JWT auth."""
@@ -259,6 +284,10 @@ class Settings(BaseSettings):
             errors.append("DEBUG must be false")
         if len(self.jwt_secret) < 32 or self.jwt_secret.strip().lower() in WEAK_JWT_SECRETS:
             errors.append("JWT_SECRET must be a non-placeholder value of at least 32 characters")
+        if not self.jwt_issuer.strip():
+            errors.append("JWT_ISSUER must be configured")
+        if not self.jwt_audience.strip():
+            errors.append("JWT_AUDIENCE must be configured")
         if self.jwt_fallback_to_query_param:
             errors.append("JWT_FALLBACK_TO_QUERY_PARAM must be false")
         if self.allow_insecure_dev_auth_bypass:

@@ -97,7 +97,7 @@ curl -sf http://localhost:8080/health && echo "✅ Healthy" || echo "❌ Still u
 |---------|----------------|------|-------------|---------------------|
 | L1 Ingestion | layer1-ingestion | 8000 | /api/v1/ingestion/health | Celery worker sidecar rolls back with deployment |
 | L2 Extraction | layer2-extraction | 8000 | /health | Check Redis queue depth after rollback |
-| L3 Knowledge | layer3-knowledge | 8001 | /health | Neo4j schema migrations are forward-only; verify compatibility |
+| L3 Knowledge | layer3-knowledge | 8003 | /health | Neo4j schema migrations are forward-only; verify compatibility |
 | L4 Agents | layer4-agents | 8000 | /health | Check workflow state in Redis post-rollback |
 | L5 Ground Truth | layer5-ground-truth | 8005 | /api/v1/health | DB migrations via initContainer; verify Alembic compatibility |
 | L6 Benchmarks | layer6-benchmarks | 8006 | /health | Low-risk; only depends on L4 |

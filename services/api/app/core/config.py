@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     debug: bool = False
     secret_key: str = _DEFAULT_DEV_SECRET
     algorithm: str = "HS256"
+    jwt_issuer: str = "value-fabric-internal"
+    jwt_audience: str = "value-fabric-services"
     access_token_expire_minutes: int = 60
     mock_persistence: bool = False
     database_url: str | None = None
@@ -131,6 +133,10 @@ class Settings(BaseSettings):
                 errors.append("seed_demo_data must be false in production-like environments")
             if self.secret_key == _DEFAULT_DEV_SECRET or len(self.secret_key) < 32:
                 errors.append("SECRET_KEY must be replaced with a strong production secret")
+            if not self.jwt_issuer.strip():
+                errors.append("JWT_ISSUER must be configured in production-like environments")
+            if not self.jwt_audience.strip():
+                errors.append("JWT_AUDIENCE must be configured in production-like environments")
 
         try:
             _validate_exact_cors_origins(self.cors_origins, production_like=self.is_production_like)

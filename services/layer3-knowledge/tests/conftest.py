@@ -112,7 +112,7 @@ class TestSettings(Settings):
             "neo4j_database": "test_neo4j",
             "pinecone_api_key": None,
             "api_host": "127.0.0.1",
-            "api_port": 8001,
+            "api_port": 8003,
             "log_level": "DEBUG",
             "cache_enabled": False,  # Disable cache for tests
             "metrics_enabled": False,  # Disable metrics for tests

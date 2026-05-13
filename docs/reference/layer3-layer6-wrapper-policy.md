@@ -3,6 +3,10 @@
 ## Purpose
 
 `value_fabric/` is the canonical runtime source for Layer 3 and Layer 6 API modules.
+
+For Layer 6 specifically, the canonical runtime implementation location is:
+
+- `value_fabric/layer6/`
 Service-local API modules under:
 
 - `services/layer3-knowledge/src/api/`
@@ -18,6 +22,7 @@ are compatibility wrappers only, so deployable service import paths remain stabl
 2. Keep service-local modules as thin re-exports (`from value_fabric... import *`).
 3. Preserve public import surfaces (entrypoints like `api.main`, route modules, and exported symbols).
 4. If any files are intentionally duplicated instead of wrapped, register them in `scripts/mirrored_files.json` and keep hashes aligned with `python scripts/check_mirrored_files.py`.
+5. Non-canonical Layer 6 wrappers must never contain implementation logic; CI enforces this with `python scripts/ci/check_layer6_wrapper_drift.py`.
 
 ## CI / drift guard
 

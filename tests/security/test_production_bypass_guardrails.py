@@ -33,3 +33,17 @@ def test_production_rejects_all_bypass_flags(monkeypatch: pytest.MonkeyPatch) ->
         with pytest.raises(RuntimeError, match=bypass_var):
             validate_production_safety(environment="production")
         monkeypatch.delenv(bypass_var)
+
+
+def test_non_production_logs_bypass_activation(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true")
+
+    with caplog.at_level("WARNING"):
+        validate_production_safety(environment="development")
+
+    assert any(
+        record.message == "non_production_bypass_enabled"
+        and getattr(record, "flag", None) == "ALLOW_INSECURE_DEV_AUTH_BYPASS"
+        for record in caplog.records
+    )

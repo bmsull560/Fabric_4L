@@ -51,17 +51,29 @@ def _set_hs_env(monkeypatch):
     monkeypatch.setenv("JWT_ACTIVE_KID", "k1")
     monkeypatch.setenv("JWT_PREVIOUS_KID", "k0")
     monkeypatch.setenv("JWT_PREVIOUS_SECRET", "b" * 64)
+    monkeypatch.setenv("JWT_ISSUER", "value-fabric-internal")
+    monkeypatch.setenv("JWT_AUDIENCE", "value-fabric-services")
 
 
 def test_rotation_accepts_previous_key(monkeypatch):
     _set_hs_env(monkeypatch)
-    token = jwt.encode({"tenant_id": str(uuid4())}, "b" * 64, algorithm="HS256", headers={"kid": "k0"})
+    token = jwt.encode(
+        {"tenant_id": str(uuid4()), "iss": "value-fabric-internal", "aud": "value-fabric-services", "exp": 4102444800},
+        "b" * 64,
+        algorithm="HS256",
+        headers={"kid": "k0"},
+    )
     assert decode_jwt(token) is not None
 
 
 def test_invalid_kid_rejected(monkeypatch):
     _set_hs_env(monkeypatch)
-    token = jwt.encode({"tenant_id": str(uuid4())}, "a" * 64, algorithm="HS256", headers={"kid": "nope"})
+    token = jwt.encode(
+        {"tenant_id": str(uuid4()), "iss": "value-fabric-internal", "aud": "value-fabric-services", "exp": 4102444800},
+        "a" * 64,
+        algorithm="HS256",
+        headers={"kid": "nope"},
+    )
     assert decode_jwt(token) is None
 
 
@@ -69,6 +81,13 @@ def test_stale_key_rejected(monkeypatch):
     monkeypatch.setenv("APP_ENV", "test")
     monkeypatch.setenv("JWT_ALGORITHM", "HS256")
     monkeypatch.setenv("JWT_SECRET", "a" * 64)
+    monkeypatch.setenv("JWT_ISSUER", "value-fabric-internal")
+    monkeypatch.setenv("JWT_AUDIENCE", "value-fabric-services")
     monkeypatch.delenv("JWT_PREVIOUS_KID", raising=False)
-    token = jwt.encode({"tenant_id": str(uuid4())}, "b" * 64, algorithm="HS256", headers={"kid": "k0"})
+    token = jwt.encode(
+        {"tenant_id": str(uuid4()), "iss": "value-fabric-internal", "aud": "value-fabric-services", "exp": 4102444800},
+        "b" * 64,
+        algorithm="HS256",
+        headers={"kid": "k0"},
+    )
     assert decode_jwt(token) is None

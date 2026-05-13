@@ -26,10 +26,10 @@ services:
     container_name: value-fabric-layer3
     restart: unless-stopped
     ports:
-      - "8003:8001"
+      - "8003:8003"
     environment:
       - API_HOST=0.0.0.0
-      - API_PORT=8001
+      - API_PORT=8003
       - NEO4J_URI=bolt://neo4j:7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-valuefabric}
@@ -42,7 +42,7 @@ services:
       sh -c "sleep 10 &&
              python -m uvicorn value_fabric.layer3.api.main:app
              --host 0.0.0.0
-             --port 8001"
+             --port 8003"
 
 volumes:
   neo4j_data:

@@ -17,9 +17,11 @@ from jose import jwt
 # Use the same default secret the app uses in test/dev environments
 TEST_SECRET = "fabric-4l-dev-secret-key-change-in-production"
 TEST_ALGORITHM = "HS256"
+TEST_ISSUER = "value-fabric-internal"
+TEST_AUDIENCE = "value-fabric-services"
 
-TENANT_ALPHA = "tenant-alpha"
-TENANT_BETA = "tenant-beta"
+TENANT_ALPHA = "11111111-1111-4111-8111-111111111111"
+TENANT_BETA = "22222222-2222-4222-8222-222222222222"
 
 
 def mint_token(
@@ -32,6 +34,10 @@ def mint_token(
     payload = {
         "sub": subject,
         "tenant_id": tenant_id,
+        "iss": TEST_ISSUER,
+        "aud": TEST_AUDIENCE,
+        "iat": int(datetime.now(UTC).timestamp()),
+        "nbf": int(datetime.now(UTC).timestamp()),
         "exp": expire,
     }
     return jwt.encode(payload, TEST_SECRET, algorithm=TEST_ALGORITHM)

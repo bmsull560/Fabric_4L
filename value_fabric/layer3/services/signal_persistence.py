@@ -55,6 +55,7 @@ class SignalPersistenceService:
 
     async def persist_signal(
         self,
+        tenant_id: str,
         signal_data: dict[str, Any],
     ) -> str:
         """Persist a pain signal to the knowledge graph.
@@ -67,7 +68,6 @@ class SignalPersistenceService:
         Returns:
             Signal ID of the persisted signal
         """
-        tenant_id = _get_tenant_id()
         signal_id = signal_data.get("id")
         account_id = signal_data.get("account_id")
 
@@ -123,6 +123,7 @@ class SignalPersistenceService:
 
     async def link_evidence(
         self,
+        tenant_id: str,
         signal_id: str,
         evidence_matches: list[dict[str, Any]],
     ) -> int:
@@ -137,7 +138,6 @@ class SignalPersistenceService:
         Returns:
             Number of evidence links created
         """
-        tenant_id = _get_tenant_id()
         links_created = 0
 
         async with self._driver.session() as session:
@@ -178,6 +178,7 @@ class SignalPersistenceService:
 
     async def map_to_value_driver(
         self,
+        tenant_id: str,
         signal_id: str,
         value_driver_id: str,
     ) -> bool:
@@ -190,7 +191,6 @@ class SignalPersistenceService:
         Returns:
             True if relationship created
         """
-        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (s:PainSignal {id: $signal_id, tenant_id: $tenant_id})
@@ -213,6 +213,7 @@ class SignalPersistenceService:
 
     async def get_signals_for_account(
         self,
+        tenant_id: str,
         account_id: str,
         category: str | None = None,
         limit: int = 100,
@@ -227,13 +228,12 @@ class SignalPersistenceService:
         Returns:
             List of signal dictionaries
         """
-        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             if category:
                 query = """
                 MATCH (a:Account {id: $account_id, tenant_id: $tenant_id})
                       -[:exhibits]->(s:PainSignal {category: $category, tenant_id: $tenant_id})
-                OPTIONAL MATCH (s)-[:supportedBy]->(e:Evidence)
+                OPTIONAL MATCH (s)-[r:supportedBy]->(e:Evidence {tenant_id: $tenant_id})
                 RETURN s {
                     .*,
                     evidence_matches: collect(e {.*, match_score: r.match_score})
@@ -251,7 +251,7 @@ class SignalPersistenceService:
                 query = """
                 MATCH (a:Account {id: $account_id, tenant_id: $tenant_id})
                       -[:exhibits]->(s:PainSignal {tenant_id: $tenant_id})
-                OPTIONAL MATCH (s)-[r:supportedBy]->(e:Evidence)
+                OPTIONAL MATCH (s)-[r:supportedBy]->(e:Evidence {tenant_id: $tenant_id})
                 RETURN s {
                     .*,
                     evidence_matches: collect(e {.*, match_score: r.match_score})
@@ -271,6 +271,7 @@ class SignalPersistenceService:
 
     async def get_signal_by_id(
         self,
+        tenant_id: str,
         signal_id: str,
     ) -> dict[str, Any] | None:
         """Get a single signal by ID with full details.
@@ -281,12 +282,11 @@ class SignalPersistenceService:
         Returns:
             Signal dictionary or None if not found
         """
-        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (s:PainSignal {id: $signal_id, tenant_id: $tenant_id})
-            OPTIONAL MATCH (s)-[r:supportedBy]->(e:Evidence)
-            OPTIONAL MATCH (s)-[:mapsTo]->(vd:ValueDriver)
+            OPTIONAL MATCH (s)-[r:supportedBy]->(e:Evidence {tenant_id: $tenant_id})
+            OPTIONAL MATCH (s)-[:mapsTo]->(vd:ValueDriver {tenant_id: $tenant_id})
             RETURN s {
                 .*,
                 evidence_matches: collect(DISTINCT e {
@@ -310,6 +310,7 @@ class SignalPersistenceService:
 
     async def update_signal_impact(
         self,
+        tenant_id: str,
         signal_id: str,
         impact_value: Decimal,
         impact_unit: str,
@@ -326,7 +327,6 @@ class SignalPersistenceService:
         Returns:
             True if updated successfully
         """
-        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (s:PainSignal {id: $signal_id, tenant_id: $tenant_id})

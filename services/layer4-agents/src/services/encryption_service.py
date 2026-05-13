@@ -16,6 +16,7 @@ from collections import OrderedDict
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from value_fabric.shared.security.config import is_production_like_environment
 
 logger = logging.getLogger(__name__)
 
@@ -84,19 +85,29 @@ class EncryptionService:
 
     @classmethod
     def _generate_ephemeral_key(cls) -> bytes:
-        """Generate ephemeral key for development (requires explicit opt-in for production)."""
+        """Generate an ephemeral key only for explicit local development/testing."""
         environment = os.getenv("ENVIRONMENT", "development").lower()
         allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_ENCRYPTION", "").lower() in ("true", "1", "yes")
 
-        if environment == "production" and not allow_ephemeral:
+        if is_production_like_environment(environment):
             raise RuntimeError(
                 "CREDENTIALS_MASTER_KEY is required in production. "
-                "Set the environment variable or ALLOW_EPHEMERAL_ENCRYPTION=true for testing only."
+                "ALLOW_EPHEMERAL_ENCRYPTION is never permitted in production-like environments."
+            )
+
+        if not allow_ephemeral:
+            raise RuntimeError(
+                "CREDENTIALS_MASTER_KEY is required unless ALLOW_EPHEMERAL_ENCRYPTION=true "
+                "is explicitly set for local development or tests."
             )
 
         logger.warning(
-            "CREDENTIALS_MASTER_KEY not set. Generating ephemeral key for development. "
-            "DO NOT USE IN PRODUCTION - credentials will be lost on restart."
+            "ephemeral_encryption_enabled",
+            extra={
+                "event": "ephemeral_encryption_enabled",
+                "environment": environment,
+                "flag": "ALLOW_EPHEMERAL_ENCRYPTION",
+            },
         )
         cls._MASTER_KEY = Fernet.generate_key()
         return cls._MASTER_KEY

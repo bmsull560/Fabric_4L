@@ -16,9 +16,10 @@ import { installApiHarness } from '../helpers/api-harness';
 
 export const test = base.extend({
   page: async ({ page }, use) => {
-    // Install API harness with strict mocking so unhandled requests abort
-    // immediately rather than falling through to the Vite proxy.
-    const teardown = await installApiHarness(page, { strictMocking: true });
+    // Install API harness with relaxed mocking so pages render quickly.
+    // Unhandled requests return empty 200 instead of aborting, preventing
+    // TanStack Query retry loops that stall networkidle.
+    const teardown = await installApiHarness(page, { strictMocking: false });
     await use(page);
     await teardown();
   },

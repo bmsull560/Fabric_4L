@@ -26,6 +26,8 @@ def _clear_layer5_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "ENVIRONMENT",
         "APP_ENV",
         "JWT_SECRET",
+        "JWT_ISSUER",
+        "JWT_AUDIENCE",
         "JWT_FALLBACK_TO_QUERY_PARAM",
         "ALLOW_INSECURE_DEV_AUTH_BYPASS",
         "CORS_ORIGINS",
@@ -48,6 +50,8 @@ def _set_valid_production_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL_SYNC", VALID_DATABASE_URL.replace("postgresql://", "postgresql+psycopg://"))
     monkeypatch.setenv("DEFAULT_TENANT_ID", "11111111-1111-4111-8111-111111111111")
     monkeypatch.setenv("SERVICE_AUTH_SECRET", VALID_SERVICE_AUTH_SECRET)
+    monkeypatch.setenv("JWT_ISSUER", "value-fabric-internal")
+    monkeypatch.setenv("JWT_AUDIENCE", "value-fabric-services")
 
 
 def _validation_message(exc_info: pytest.ExceptionInfo[ValidationError]) -> str:
@@ -55,6 +59,56 @@ def _validation_message(exc_info: pytest.ExceptionInfo[ValidationError]) -> str:
 
 
 class TestLayer5ProductionSettingsFailClosed:
+    def test_effective_environment_prefers_app_env_when_non_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _clear_layer5_env(monkeypatch)
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        monkeypatch.setenv("APP_ENV", "development")
+        monkeypatch.setenv("JWT_SECRET", VALID_JWT_SECRET)
+
+        settings = Settings()
+
+        assert settings.effective_environment == "development"
+
+    def test_app_env_production_overrides_development_and_remains_fail_closed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _clear_layer5_env(monkeypatch)
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("APP_ENV", "production")
+        monkeypatch.setenv("JWT_SECRET", "")
+        monkeypatch.setenv("CORS_ORIGINS", "")
+        monkeypatch.setenv("DATABASE_URL", "sqlite:///./ground_truth.db")
+        monkeypatch.setenv("DATABASE_URL_SYNC", "sqlite:///./ground_truth.db")
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        message = _validation_message(exc_info)
+        assert "Layer 5 production configuration is not fail-closed for production" in message
+        assert "JWT_SECRET must be a non-placeholder value of at least 32 characters" in message
+
+    @pytest.mark.parametrize("app_env_alias", ["stage", "staging"])
+    def test_app_env_staging_aliases_enforce_fail_closed(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        app_env_alias: str,
+    ) -> None:
+        _clear_layer5_env(monkeypatch)
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("APP_ENV", app_env_alias)
+        monkeypatch.setenv("JWT_SECRET", "")
+        monkeypatch.setenv("CORS_ORIGINS", "")
+        monkeypatch.setenv("DATABASE_URL", "sqlite:///./ground_truth.db")
+        monkeypatch.setenv("DATABASE_URL_SYNC", "sqlite:///./ground_truth.db")
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        message = _validation_message(exc_info)
+        assert f"Layer 5 production configuration is not fail-closed for {app_env_alias}" in message
+        assert "CORS_ORIGINS must list exact trusted origins" in message
+
     def test_valid_production_settings_are_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_valid_production_env(monkeypatch)
 
@@ -89,7 +143,7 @@ class TestLayer5ProductionSettingsFailClosed:
 
     def test_production_requires_explicit_cors_origins(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_valid_production_env(monkeypatch)
-        monkeypatch.delenv("CORS_ORIGINS", raising=False)
+        monkeypatch.setenv("CORS_ORIGINS", "")
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -98,7 +152,7 @@ class TestLayer5ProductionSettingsFailClosed:
 
     def test_production_requires_explicit_jwt_secret(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_valid_production_env(monkeypatch)
-        monkeypatch.delenv("JWT_SECRET", raising=False)
+        monkeypatch.setenv("JWT_SECRET", "")
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -147,6 +201,7 @@ class TestLayer5ProductionSettingsFailClosed:
     ) -> None:
         _clear_layer5_env(monkeypatch)
         monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("JWT_SECRET", "")
 
         with caplog.at_level("WARNING"):
             Settings()
@@ -176,7 +231,7 @@ class TestLayer5ProductionSettingsFailClosed:
 
     def test_production_requires_service_auth_secret(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _set_valid_production_env(monkeypatch)
-        monkeypatch.delenv("SERVICE_AUTH_SECRET", raising=False)
+        monkeypatch.setenv("SERVICE_AUTH_SECRET", "")
 
         with pytest.raises(ValidationError) as exc_info:
             Settings()
@@ -264,6 +319,7 @@ class TestLayer5GetCurrentUserHardening:
             tenant_id = tenant
             user_id = "user-123"
             roles = ["admin"]
+            permissions = frozenset()
             raw = {"source": "jwt"}
 
         request = self._fake_request(ctx=_Ctx())
@@ -298,7 +354,7 @@ class TestLayer5GetCurrentUserHardening:
             )
 
         assert exc_info.value.status_code == 401
-        assert exc_info.value.detail == "Authentication required."
+        assert exc_info.value.detail["error_code"] == "AUTH_REQUIRED"
 
     def test_production_ignores_tenant_id_query_param(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from fastapi import HTTPException
@@ -341,31 +397,29 @@ class TestLayer5GetCurrentUserHardening:
 
         assert exc_info.value.status_code == 401
 
-    def test_dev_bypass_enabled_accepts_x_tenant_id_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from uuid import UUID
-
+    def test_dev_bypass_enabled_still_rejects_header_only_tenant_context(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from fastapi import HTTPException
         from layer5_ground_truth.api.auth import get_current_user
 
         settings = self._build_settings(monkeypatch, runtime_mode="dev", allow_bypass=True)
         request = self._fake_request(ctx=None)
         tenant = "11111111-1111-4111-8111-111111111111"
 
-        claims = get_current_user(
-            request=request,
-            authorization=None,
-            x_tenant_id=tenant,
-            tenant_id=None,
-            settings=settings,
-        )
-
-        assert claims.tenant_id == UUID(tenant)
-        assert claims.user_id == "service"
+        with pytest.raises(HTTPException) as exc_info:
+            get_current_user(
+                request=request,
+                authorization=None,
+                x_tenant_id=tenant,
+                tenant_id=None,
+                settings=settings,
+            )
+        assert exc_info.value.status_code == 401
 
     @pytest.mark.parametrize(
         ("runtime_mode", "expect_fallback_admitted"),
         [("prod", False), ("staging", False), ("dev", True), ("test", True)],
     )
-    def test_runtime_mode_fallback_gate_for_legacy_header_and_query(
+    def test_runtime_mode_header_and_query_hints_never_create_identity(
         self,
         monkeypatch: pytest.MonkeyPatch,
         runtime_mode: str,
@@ -384,47 +438,27 @@ class TestLayer5GetCurrentUserHardening:
         )
         request = self._fake_request(ctx=None)
 
-        if expect_fallback_admitted:
-            header_claims = get_current_user(
+        with pytest.raises(HTTPException) as header_exc:
+            get_current_user(
                 request=request,
                 authorization=None,
                 x_tenant_id=tenant,
                 tenant_id=None,
                 settings=settings,
             )
-            assert str(header_claims.tenant_id) == tenant
+        assert header_exc.value.status_code == 401
 
-            query_claims = get_current_user(
+        with pytest.raises(HTTPException) as query_exc:
+            get_current_user(
                 request=request,
                 authorization=None,
                 x_tenant_id=None,
                 tenant_id=tenant,
                 settings=settings,
             )
-            assert str(query_claims.tenant_id) == tenant
-        else:
-            with pytest.raises(HTTPException) as header_exc:
-                get_current_user(
-                    request=request,
-                    authorization=None,
-                    x_tenant_id=tenant,
-                    tenant_id=None,
-                    settings=settings,
-                )
-            assert header_exc.value.status_code == 401
+        assert query_exc.value.status_code == 401
 
-            with pytest.raises(HTTPException) as query_exc:
-                get_current_user(
-                    request=request,
-                    authorization=None,
-                    x_tenant_id=None,
-                    tenant_id=tenant,
-                    settings=settings,
-                )
-            assert query_exc.value.status_code == 401
-            assert query_exc.value.detail == "Authentication required."
-
-    def test_non_production_fallback_paths_emit_warning_logs(
+    def test_non_production_header_and_query_hints_do_not_emit_fallback_logs(
         self,
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
@@ -441,8 +475,10 @@ class TestLayer5GetCurrentUserHardening:
         request = self._fake_request(ctx=None)
 
         with caplog.at_level("WARNING"):
-            get_current_user(request=request, authorization=None, x_tenant_id=tenant, tenant_id=None, settings=settings)
-            get_current_user(request=request, authorization=None, x_tenant_id=None, tenant_id=tenant, settings=settings)
+            with pytest.raises(Exception):
+                get_current_user(request=request, authorization=None, x_tenant_id=tenant, tenant_id=None, settings=settings)
+            with pytest.raises(Exception):
+                get_current_user(request=request, authorization=None, x_tenant_id=None, tenant_id=tenant, settings=settings)
 
-        assert "Auth fallback admitted via x_tenant_id_header" in caplog.text
-        assert "Auth fallback admitted via tenant_query_param" in caplog.text
+        assert "layer5.x_tenant_id_header" not in caplog.text
+        assert "layer5.tenant_query_param" not in caplog.text

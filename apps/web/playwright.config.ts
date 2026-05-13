@@ -29,6 +29,7 @@ const LIVE_MODE = process.env.PLAYWRIGHT_LIVE_MODE === 'true';
 const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_REPORT || 'playwright-report';
 const JUNIT_OUTPUT_FILE = process.env.PLAYWRIGHT_JUNIT_FILE || 'e2e-results/junit.xml';
 const TEST_OUTPUT_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || 'e2e-results/';
+const WEBSERVER_COMMAND = process.env.PLAYWRIGHT_WEBSERVER_COMMAND || 'pnpm dev';
 
 export default defineConfig({
   testDir: "./e2e",
@@ -140,7 +141,7 @@ export default defineConfig({
 
   /* Run local dev server before starting tests */
   webServer: {
-    command: 'pnpm dev',
+    command: WEBSERVER_COMMAND,
     url: BASE_URL,
     reuseExistingServer: LIVE_MODE || !CI,
     timeout: 120000,

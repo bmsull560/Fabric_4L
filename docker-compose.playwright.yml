@@ -59,6 +59,8 @@ services:
       - PLAYWRIGHT_HTML_REPORT=/app/playwright-report
       - PLAYWRIGHT_JUNIT_FILE=/app/e2e-results/junit.xml
       - PLAYWRIGHT_OUTPUT_DIR=/app/e2e-results/
+      # Web server: use production preview in Docker for fast page loads
+      - PLAYWRIGHT_WEBSERVER_COMMAND=pnpm preview --host --port 3001
       # Vite / frontend env (used by pnpm dev when webServer starts)
       - VITE_USE_MOCKS=${VITE_USE_MOCKS:-true}
       - VITE_ENABLE_MOCK_FALLBACK=${VITE_ENABLE_MOCK_FALLBACK:-true}

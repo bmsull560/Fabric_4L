@@ -31,11 +31,19 @@ The local Docker-backed backend-integrated J1+J11 evidence line is now closed by
 
 The CI/staging backend-integrated reproducibility package for GitHub Actions run `25650409895` is accepted with classified retry noted. This accepts only the retained backend-integrated J1+J11 reproducibility package and does not alter SSO/OIDC, billing, live LLM provider, rollback, telemetry, alert receiver, performance smoke, broad security suite, or Journey SLO evidence requirements.
 
+### P0 Playwright Live E2E Evidence Progress (Staging)
+
+- Launch-scope journey count: **7**
+- Live staging evidence attached: **3 of 7**
+- Live staging evidence still required: **4 of 7**
+
+Until the remaining four journeys have retained JUnit/trace/video/screenshot artifacts tied to a release-candidate SHA, `P0-001` remains open as `REQUIRES_ENVIRONMENT`.
+
 ## P0 Launch Blocker
 
 | ID | Item | Owner | Required Evidence | Current Status | Decision Rule |
 |---|---|---|---|---|---|
-| P0-001 | Production-like E2E launch rehearsal not yet executed in a proper environment. | Test owner | Critical user journey evidence with real login, live backing services, persisted state, logs, and release-candidate SHA. | REQUIRES_ENVIRONMENT | Blocks launch until completed or the affected journey is removed from launch scope. |
+| P0-001 | Production-like E2E launch rehearsal is partially complete; 4 of 7 P0 Playwright journeys still require staging runs. | Test owner | All 7 launch-scope P0 journeys must include live staging evidence with real login, live backing services, persisted state, logs, and release-candidate SHA. | REQUIRES_ENVIRONMENT | Blocks launch until all 7 journeys are evidenced or the affected journeys are formally removed from launch scope. |
 | P0-002 | Rollback and restore drill requires launch-environment execution. | SRE owner | Redacted rollback transcript, restore proof, data-integrity check, owner approval, and timing notes. | REQUIRES_ENVIRONMENT | Blocks launch if rollback or restore cannot be executed within the approved recovery target. |
 | P0-003 | Enterprise SSO/OIDC provider validation requires configured provider credentials and tenant mapping. | Identity owner | Provider configuration evidence, successful login/logout, failed-login handling, group/role mapping, and redacted audit event. | REQUIRES_ENVIRONMENT | Blocks enterprise launch if identity validation is incomplete or fails closed incorrectly. |
 | P0-004 | Raw secret exposure in launch artifacts or production-readiness config. | Security owner | Automated launch-gate secret hygiene passes and any findings are remediated. | REQUIRED_PASS | Blocks launch immediately if detected. |

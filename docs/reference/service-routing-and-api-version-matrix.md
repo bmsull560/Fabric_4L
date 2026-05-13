@@ -14,7 +14,7 @@ Use this matrix when configuring:
 |---|---:|---|---|---|
 | Layer 1 Ingestion | `8000` | `layer1-ingestion.value-fabric.svc.cluster.local:8000` | mixed: `/api/v1`, `/v1`, and `/api` admin routes | service auth required for production; browser clients use session cookie + CSRF for mutating calls |
 | Layer 2 Extraction | `8000` | `layer2-extraction.value-fabric.svc.cluster.local:8000` | `/v1` (plus `/health`) | service auth required for production; browser clients use session cookie + CSRF for mutating calls |
-| Layer 3 Knowledge | `8001` | `layer3-knowledge.value-fabric.svc.cluster.local:8001` | mostly `/v1` (plus `/health`, `/graph`, `/entities/*`) | service auth required for production; browser clients use session cookie + CSRF for mutating calls |
+| Layer 3 Knowledge | `8003` | `layer3-knowledge.value-fabric.svc.cluster.local:8003` | mostly `/v1` (plus `/health`, `/graph`, `/entities/*`) | service auth required for production; browser clients use session cookie + CSRF for mutating calls |
 | Layer 4 Agents | `8000` | `layer4-agents.value-fabric.svc.cluster.local:8000` | mixed root + `/v1` | OIDC/session auth for user routes; service auth for internal calls; CSRF for mutating browser calls |
 | Layer 5 Ground Truth | `8005` | `layer5-ground-truth.value-fabric.svc.cluster.local:8005` | `/api/v1` | service auth required for production; browser clients use session cookie + CSRF for mutating calls |
 | Layer 6 Benchmarks | `8006` | `layer6-benchmarks.value-fabric.svc.cluster.local:8006` | `/v1` (plus `/health`) | service auth required for production; browser clients use session cookie + CSRF for mutating calls |

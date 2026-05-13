@@ -26,6 +26,18 @@ class TokenPayload(BaseModel):
     exp: datetime | None = None
 
 
+def _auth_error(message: str, *, error_code: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "error": "authentication_failed",
+            "error_code": error_code,
+            "message": message,
+        },
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 def verify_password(plain: str, hashed: str) -> bool:
     if hashed.startswith("sha256$"):
         import hashlib
@@ -57,7 +69,16 @@ def create_access_token(
         expire = datetime.now(UTC) + expires_delta
     else:
         expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": subject, "tenant_id": tenant_id, "exp": expire}
+    now = datetime.now(UTC)
+    payload = {
+        "sub": subject,
+        "tenant_id": tenant_id,
+        "iss": settings.jwt_issuer,
+        "aud": settings.jwt_audience,
+        "iat": int(now.timestamp()),
+        "nbf": int(now.timestamp()),
+        "exp": expire,
+    }
     if extra_claims:
         payload.update(extra_claims)
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
@@ -104,11 +125,35 @@ def decode_token(token: str) -> TokenPayload | None:
     if not _has_canonical_compact_jws_encoding(token):
         return None
     try:
-        data = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        header = jwt.get_unverified_header(token)
+        header_alg = header.get("alg")
+        if not isinstance(header_alg, str) or not header_alg.strip():
+            return None
+        if header_alg.upper() != settings.algorithm.upper():
+            return None
+        data = jwt.decode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+            audience=settings.jwt_audience,
+            issuer=settings.jwt_issuer,
+            options={
+                "require_sub": True,
+                "require_exp": True,
+                "require_iat": True,
+                "require_nbf": True,
+                "verify_aud": True,
+                "verify_iss": True,
+                "verify_iat": True,
+                "verify_nbf": True,
+            },
+        )
+        if not isinstance(data.get("sub"), str) or not data["sub"].strip():
+            return None
         tenant_id = data.get("tenant_id")
         if not isinstance(tenant_id, str) or not tenant_id.strip():
             return None
-        return TokenPayload(sub=data["sub"], tenant_id=tenant_id.strip(), exp=data.get("exp"))
+        return TokenPayload(sub=data["sub"].strip(), tenant_id=tenant_id.strip(), exp=data.get("exp"))
     except ExpiredSignatureError:
         raise TokenExpiredError("Token has expired")
     except JWTError:
@@ -139,25 +184,13 @@ def require_authenticated(
     """
     raw = _extract_token(request, bearer, vf_session)
     if not raw:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _auth_error("Authentication required", error_code="AUTH_REQUIRED")
     try:
         payload = decode_token(raw)
     except TokenExpiredError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _auth_error("Token has expired", error_code="AUTH_TOKEN_EXPIRED")
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _auth_error("Invalid token", error_code="AUTH_INVALID_TOKEN")
     return payload
 
 
@@ -167,9 +200,5 @@ async def get_current_user(
     """Resolve the authenticated user from the database using the JWT payload."""
     user = db.users.get(auth.sub, tenant_id=auth.tenant_id)
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _auth_error("User not found", error_code="AUTH_SUBJECT_NOT_FOUND")
     return user

@@ -45,6 +45,55 @@ class TestSystemRoutes:
         test_utils.assert_valid_health_response(data)
         assert data["neo4j"]["status"] == "healthy"
 
+
+    def test_health_route_reports_non_ready_when_neo4j_driver_missing(
+        self,
+        system_test_client: TestClient,
+        mock_app_state: Any,
+    ) -> None:
+        mock_app_state.schema_initializer._driver = None
+
+        response = system_test_client.get("/health")
+
+        assert response.status_code == 200
+        data: dict[str, Any] = response.json()
+        assert data["readiness"] == {"is_ready": False, "reason": "neo4j_uninitialized"}
+        assert data["neo4j"]["status"] == "unavailable"
+
+    def test_health_route_reports_non_ready_when_schema_verify_fails(
+        self,
+        system_test_client: TestClient,
+        mock_app_state: Any,
+    ) -> None:
+        mock_app_state.schema_initializer.verify_schema.return_value = {
+            "status": "error",
+            "message": "constraints missing",
+        }
+
+        response = system_test_client.get("/health")
+
+        assert response.status_code == 200
+        data: dict[str, Any] = response.json()
+        assert data["readiness"] == {"is_ready": False, "reason": "schema_verification_failed"}
+        assert data["schema_status"]["status"] == "error"
+
+    def test_health_route_reports_non_ready_when_dependency_unhealthy(
+        self,
+        system_test_client: TestClient,
+        mock_app_state: Any,
+    ) -> None:
+        mock_app_state.schema_initializer.health_check.return_value = {
+            "status": "unhealthy",
+            "error": "neo4j down",
+        }
+
+        response = system_test_client.get("/health")
+
+        assert response.status_code == 200
+        data: dict[str, Any] = response.json()
+        assert data["readiness"] == {"is_ready": False, "reason": "dependency_unhealthy"}
+        assert data["dependencies"][0]["status"] == "unhealthy"
+
     def test_metrics_route_requires_internal_access(
         self,
         system_test_client: TestClient,

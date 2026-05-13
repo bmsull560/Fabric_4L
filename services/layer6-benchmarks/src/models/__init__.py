@@ -1,23 +1,3 @@
-"""Models for Benchmark Service."""
+"""Compatibility shim; canonical Layer 6 models live under value_fabric.layer6."""
 
-from .benchmark_dataset import (
-    MANUFACTURING_BENCHMARK_SEED,
-    BenchmarkDataset,
-    BenchmarkMetric,
-    ComparisonRequest,
-    ComparisonResult,
-    RangeValidationRequest,
-    RangeValidationResult,
-    StatisticalProfile,
-)
-
-__all__ = [
-    "BenchmarkDataset",
-    "BenchmarkMetric",
-    "ComparisonRequest",
-    "ComparisonResult",
-    "RangeValidationRequest",
-    "RangeValidationResult",
-    "StatisticalProfile",
-    "MANUFACTURING_BENCHMARK_SEED",
-]
+from value_fabric.layer6.models import *

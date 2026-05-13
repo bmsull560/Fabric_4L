@@ -41,7 +41,7 @@ def upgrade() -> None:
             sa.text(
                 """
                 UPDATE truth_objects
-                SET tenant_id = :fallback::uuid
+                SET tenant_id = :fallback
                 WHERE tenant_id IS NULL
                 """
             ).bindparams(fallback=BACKFILL_TENANT_UUID)

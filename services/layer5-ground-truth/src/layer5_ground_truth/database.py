@@ -9,7 +9,9 @@ import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
+from urllib.parse import urlparse
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -65,7 +67,12 @@ class SQLiteUUID(TypeDecorator):
 # ---------------------------------------------------------------------------
 
 _engine: AsyncEngine | None = None
-_session_factory: async_sessionmaker[AsyncSession] | None = None
+_session_factory: async_sessionmaker["TenantEnforcedAsyncSession"] | None = None
+_TENANT_CONTEXT_STATE_KEY = "tenant_context_state"
+_TENANT_CONTEXT_VALUE_KEY = "tenant_context_value"
+_TENANT_BYPASS_REASON_KEY = "tenant_context_bypass_reason"
+_RLS_SUPPORTED_SCHEMES = frozenset({"postgresql", "postgres", "postgresql+asyncpg", "postgresql+psycopg"})
+_RLS_SUPERUSER_NAMES = frozenset({"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"})
 
 
 def _setup_sqlite_uuid_handling(url: str) -> None:
@@ -91,11 +98,77 @@ def _setup_sqlite_uuid_handling(url: str) -> None:
     )
 
 
+def _is_production_like_runtime() -> bool:
+    env = get_settings().effective_environment if hasattr(get_settings(), "effective_environment") else ""
+    value = str(env or "").strip().lower()
+    return value not in {"", "local", "dev", "development", "test", "testing", "ci"}
+
+
+def _assert_rls_safe_database_url(database_url: str, *, source: str) -> None:
+    if not _is_production_like_runtime():
+        return
+
+    parsed = urlparse(database_url)
+    scheme = (parsed.scheme or "").lower()
+    username = (parsed.username or "").lower()
+
+    if scheme not in _RLS_SUPPORTED_SCHEMES:
+        raise RuntimeError(
+            f"{source} must use PostgreSQL with RLS-capable tenant isolation in protected environments."
+        )
+
+    if username in _RLS_SUPERUSER_NAMES:
+        raise RuntimeError(
+            f"{source} must not use PostgreSQL superuser role '{username}' in protected environments."
+        )
+
+
+def _statement_sets_tenant_context(statement: object) -> bool:
+    sql = str(statement).lower()
+    return "app.tenant_id" in sql and ("set_config" in sql or "set local" in sql)
+
+
+def _mark_session_tenant_context(session: AsyncSession, tenant_id: str) -> None:
+    session.info[_TENANT_CONTEXT_STATE_KEY] = "set"
+    session.info[_TENANT_CONTEXT_VALUE_KEY] = tenant_id
+    session.info.pop(_TENANT_BYPASS_REASON_KEY, None)
+
+
+def _mark_session_tenant_bypass(session: AsyncSession, *, reason: str) -> None:
+    session.info[_TENANT_CONTEXT_STATE_KEY] = "bypass"
+    session.info[_TENANT_CONTEXT_VALUE_KEY] = ""
+    session.info[_TENANT_BYPASS_REASON_KEY] = reason
+
+
+def _assert_session_has_tenant_context(session: AsyncSession, *, operation: str) -> None:
+    state = session.info.get(_TENANT_CONTEXT_STATE_KEY)
+    if state in {"set", "bypass"}:
+        return
+    raise TenantContextError(
+        f"Tenant database session context must be established before {operation}."
+    )
+
+
+class TenantEnforcedAsyncSession(AsyncSession):
+    """AsyncSession that fails closed if SQL executes before tenant context is set."""
+
+    async def execute(self, statement, params=None, /, **kwargs):  # type: ignore[override]
+        if not _statement_sets_tenant_context(statement):
+            _assert_session_has_tenant_context(self, operation="statement execution")
+        return await super().execute(statement, params, **kwargs)
+
+
+@event.listens_for(TenantEnforcedAsyncSession.sync_session_class, "before_flush")
+def _enforce_tenant_context_before_flush(session, flush_context, instances) -> None:
+    _assert_session_has_tenant_context(session, operation="flush")
+
+
 def get_engine() -> AsyncEngine:
     """Return (or lazily create) the shared async engine."""
     global _engine
     if _engine is None:
         settings = get_settings()
+        _assert_rls_safe_database_url(settings.database_url, source="Layer 5 database URL")
         engine_kwargs: dict[str, Any] = dict(
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
@@ -116,12 +189,13 @@ def get_engine() -> AsyncEngine:
     return _engine
 
 
-def get_session_factory() -> async_sessionmaker[AsyncSession]:
+def get_session_factory() -> async_sessionmaker[TenantEnforcedAsyncSession]:
     """Return (or lazily create) the shared session factory."""
     global _session_factory
     if _session_factory is None:
         _session_factory = async_sessionmaker(
             bind=get_engine(),
+            class_=TenantEnforcedAsyncSession,
             autocommit=False,
             autoflush=False,
             expire_on_commit=False,
@@ -203,6 +277,9 @@ async def db_session(tenant_id: str | None = None) -> AsyncGenerator[AsyncSessio
                 text("SET LOCAL app.tenant_id = :tid"),
                 {"tid": validated},
             )
+            _mark_session_tenant_context(session, validated)
+        else:
+            _mark_session_tenant_bypass(session, reason="system_operation")
         try:
             yield session
             await session.commit()
@@ -332,6 +409,7 @@ async def get_db_from_context(
             text("SET LOCAL app.tenant_id = :tenant_id"),
             {"tenant_id": tenant_id}
         )
+        _mark_session_tenant_context(session, tenant_id)
         try:
             yield session
             await session.commit()
@@ -369,6 +447,7 @@ async def get_db_with_optional_tenant(
     async with factory() as session:
         if context.is_super_admin():
             await session.execute(text("SET LOCAL app.tenant_id = ''"))
+            _mark_session_tenant_bypass(session, reason="super_admin_bypass")
         elif context.tenant_id:
             try:
                 tenant_id = validate_tenant_id(context.tenant_id)
@@ -381,6 +460,7 @@ async def get_db_with_optional_tenant(
                 text("SET LOCAL app.tenant_id = :tenant_id"),
                 {"tenant_id": tenant_id}
             )
+            _mark_session_tenant_context(session, tenant_id)
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

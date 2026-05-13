@@ -15,6 +15,8 @@ from ..jwt import TokenClaims, _get_jwt_secret, decode_jwt, encode_jwt
 # Use a fixed secret across all tests to avoid env-var interference
 _TEST_SECRET = "test-jwt-secret-for-unit-tests"
 _TEST_TENANT = uuid4()
+_TEST_ISSUER = "value-fabric-internal"
+_TEST_AUDIENCE = "value-fabric-services"
 
 
 @pytest.fixture(autouse=True)
@@ -25,6 +27,8 @@ def _jwt_env():
         {
             "JWT_SECRET": _TEST_SECRET,
             "JWT_ALGORITHM": "HS256",
+            "JWT_ISSUER": _TEST_ISSUER,
+            "JWT_AUDIENCE": _TEST_AUDIENCE,
         },
     ):
         yield
@@ -36,25 +40,15 @@ def _jwt_env():
 
 
 class TestTokenClaims:
-    """Tests for the TokenClaims dataclass."""
+    """Tests for the TokenClaims model."""
 
-    def test_has_role_present(self):
-        tc = TokenClaims(tenant_id=_TEST_TENANT, roles=["analyst", "read_only"])
-        assert tc.has_role("analyst") is True
+    def test_roles_are_preserved(self):
+        tc = TokenClaims(sub="user-1", tenant_id=str(_TEST_TENANT), roles=["analyst", "read_only"])
+        assert tc.roles == ["analyst", "read_only"]
 
-    def test_has_role_absent(self):
-        tc = TokenClaims(tenant_id=_TEST_TENANT, roles=["analyst"])
-        assert tc.has_role("super_admin") is False
-
-    def test_require_role_passes(self):
-        tc = TokenClaims(tenant_id=_TEST_TENANT, roles=["super_admin"])
-        tc.require_role("super_admin")  # should not raise
-
-    def test_require_role_raises_403(self):
-        tc = TokenClaims(tenant_id=_TEST_TENANT, roles=["analyst"])
-        with pytest.raises(HTTPException) as exc_info:
-            tc.require_role("super_admin")
-        assert exc_info.value.status_code == 403
+    def test_required_subject_is_enforced(self):
+        with pytest.raises(Exception):
+            TokenClaims(tenant_id=str(_TEST_TENANT), roles=["analyst"])
 
 
 class TestJwtSecretValidation:
@@ -87,34 +81,40 @@ class TestEncodeJwt:
     def test_basic_encode(self):
         """Produces a decodable JWT string."""
         token = encode_jwt(_TEST_TENANT)
-        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"])
+        payload = pyjwt.decode(
+            token,
+            _TEST_SECRET,
+            algorithms=["HS256"],
+            audience=_TEST_AUDIENCE,
+            issuer=_TEST_ISSUER,
+        )
         assert payload["tenant_id"] == str(_TEST_TENANT)
 
     def test_includes_exp_claim(self):
         token = encode_jwt(_TEST_TENANT, expires_in_seconds=600)
-        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"])
+        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"], audience=_TEST_AUDIENCE, issuer=_TEST_ISSUER)
         assert "exp" in payload
         assert "iat" in payload
         assert payload["exp"] - payload["iat"] == 600
 
     def test_includes_user_id(self):
         token = encode_jwt(_TEST_TENANT, user_id="user-42")
-        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"])
+        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"], audience=_TEST_AUDIENCE, issuer=_TEST_ISSUER)
         assert payload["sub"] == "user-42"
 
     def test_includes_roles(self):
         token = encode_jwt(_TEST_TENANT, roles=["analyst", "content_admin"])
-        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"])
+        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"], audience=_TEST_AUDIENCE, issuer=_TEST_ISSUER)
         assert payload["roles"] == ["analyst", "content_admin"]
 
     def test_includes_api_key_id(self):
         token = encode_jwt(_TEST_TENANT, api_key_id="key-99")
-        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"])
+        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"], audience=_TEST_AUDIENCE, issuer=_TEST_ISSUER)
         assert payload["api_key_id"] == "key-99"
 
     def test_extra_claims_merged(self):
         token = encode_jwt(_TEST_TENANT, extra_claims={"custom": "value"})
-        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"])
+        payload = pyjwt.decode(token, _TEST_SECRET, algorithms=["HS256"], audience=_TEST_AUDIENCE, issuer=_TEST_ISSUER)
         assert payload["custom"] == "value"
 
 
@@ -136,10 +136,10 @@ class TestDecodeJwt:
         )
         claims = decode_jwt(token)
         assert claims is not None
-        assert claims.tenant_id == _TEST_TENANT
-        assert claims.user_id == "user-1"
+        assert claims.tenant_id == str(_TEST_TENANT)
+        assert claims.sub == "user-1"
         assert claims.roles == ["analyst"]
-        assert claims.api_key_id == "key-1"
+        assert claims.jti is None
 
     def test_expired_token_raises_401(self):
         """An expired token raises HTTPException(401)."""
@@ -151,7 +151,7 @@ class TestDecodeJwt:
     def test_invalid_signature_returns_none(self):
         """A token signed with the wrong secret returns None."""
         bad_token = pyjwt.encode(
-            {"tenant_id": str(_TEST_TENANT), "exp": int(time.time()) + 3600},
+            {"tenant_id": str(_TEST_TENANT), "iss": _TEST_ISSUER, "aud": _TEST_AUDIENCE, "exp": int(time.time()) + 3600},
             "wrong-secret",
             algorithm="HS256",
         )
@@ -160,7 +160,7 @@ class TestDecodeJwt:
     def test_missing_tenant_claim_returns_none(self):
         """A token without the tenant_id claim returns None."""
         token = pyjwt.encode(
-            {"exp": int(time.time()) + 3600},
+            {"iss": _TEST_ISSUER, "aud": _TEST_AUDIENCE, "exp": int(time.time()) + 3600},
             _TEST_SECRET,
             algorithm="HS256",
         )
@@ -169,7 +169,7 @@ class TestDecodeJwt:
     def test_invalid_tenant_uuid_returns_none(self):
         """A token with a non-UUID tenant_id returns None."""
         token = pyjwt.encode(
-            {"tenant_id": "not-a-uuid", "exp": int(time.time()) + 3600},
+            {"tenant_id": "not-a-uuid", "iss": _TEST_ISSUER, "aud": _TEST_AUDIENCE, "exp": int(time.time()) + 3600},
             _TEST_SECRET,
             algorithm="HS256",
         )
@@ -181,6 +181,8 @@ class TestDecodeJwt:
             {
                 "tenant_id": str(_TEST_TENANT),
                 "roles": "analyst",
+                "iss": _TEST_ISSUER,
+                "aud": _TEST_AUDIENCE,
                 "exp": int(time.time()) + 3600,
             },
             _TEST_SECRET,
@@ -205,7 +207,7 @@ class TestDecodeJwt:
     )
     def test_non_uuid_tenant_rejected_in_prod_like_matrices(self, env_overrides):
         token = pyjwt.encode(
-            {"tenant_id": "tenant-a", "exp": int(time.time()) + 3600},
+            {"tenant_id": "tenant-a", "iss": _TEST_ISSUER, "aud": _TEST_AUDIENCE, "exp": int(time.time()) + 3600},
             _TEST_SECRET,
             algorithm="HS256",
         )

@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     # API Configuration
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
-    api_port: int = Field(default=8001, alias="API_PORT")
+    api_port: int = Field(default=8003, alias="API_PORT")
     api_workers: int = Field(default=1, alias="API_WORKERS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
@@ -72,6 +72,10 @@ class Settings(BaseSettings):
     neo4j_database: str = Field(default="neo4j", alias="NEO4J_DATABASE")
     neo4j_max_pool_size: int = Field(default=50, alias="NEO4J_MAX_POOL_SIZE")
 
+    # Security Configuration
+    jwt_secret: str = Field(default="", alias="JWT_SECRET")
+    cors_origins: list[str] = Field(default=[], alias="CORS_ORIGINS")
+
     # Pinecone Configuration
     pinecone_api_key: str | None = Field(default=None, alias="PINECONE_API_KEY")
     pinecone_index: str = Field(default="value-fabric", alias="PINECONE_INDEX")
@@ -105,6 +109,29 @@ class Settings(BaseSettings):
     ingestion_timeout_seconds: int = Field(
         default=300, alias="INGESTION_TIMEOUT_SECONDS"
     )
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """Validate JWT secret is secure."""
+        insecure_defaults = ["changeme", "changeme-in-production", "valuefabric", "postgres", "secret", "password"]
+        if os.getenv("ENVIRONMENT") == "production":
+            if v.lower() in insecure_defaults:
+                raise ValueError(f"Insecure default JWT secret detected in production: {v}")
+            if len(v) < 32:
+                raise ValueError("JWT secret must be >= 32 characters in production")
+        return v
+
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
+        """Validate CORS origins are secure."""
+        if os.getenv("ENVIRONMENT") == "production":
+            if "*" in v:
+                raise ValueError("Wildcard CORS origin not allowed in production")
+            if not v or all(not origin.strip() for origin in v):
+                raise ValueError("CORS_ORIGINS must be set to at least one specific origin in production")
+        return v
 
     @field_validator("neo4j_password")
     @classmethod

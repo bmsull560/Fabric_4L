@@ -20,6 +20,7 @@ from typing import Any, Generic, TypeVar
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
+from value_fabric.shared.database import MissingTenantContextError, require_tenant_context
 
 from app.core.config import get_settings
 from app.models.schemas import (
@@ -86,6 +87,10 @@ def _tenant_from_obj(obj: Any, tenant_field: str) -> str | None:
     return str(value) if value is not None else None
 
 
+def _is_tenant_scoped_field(tenant_field: str) -> bool:
+    return tenant_field == "tenant_id"
+
+
 class InMemoryTable(Generic[T]):
     """Thread-safe, tenant-aware table used for local development and tests only."""
 
@@ -98,17 +103,33 @@ class InMemoryTable(Generic[T]):
     def _get_tenant_id(self, obj: T) -> str | None:
         return _tenant_from_obj(obj, self.tenant_field)
 
+    def _require_tenant_scope(self, tenant_id: str | None, *, operation: str) -> str:
+        if not _is_tenant_scoped_field(self.tenant_field):
+            return str(tenant_id) if tenant_id is not None else ""
+        return require_tenant_context(tenant_id, operation=f"{self.name}.{operation}")
+
+    def _require_object_tenant(self, obj: T) -> str:
+        if not _is_tenant_scoped_field(self.tenant_field):
+            tenant_id = self._get_tenant_id(obj)
+            return str(tenant_id) if tenant_id is not None else ""
+        return require_tenant_context(
+            self._get_tenant_id(obj),
+            operation=f"{self.name}.insert",
+        )
+
     def insert(self, id: str, obj: T) -> T:
+        self._require_object_tenant(obj)
         with self._lock:
             self._store[id] = obj
         return obj
 
     def get(self, id: str, tenant_id: str | None = None) -> T | None:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="get")
         with self._lock:
             obj = self._store.get(id)
             if obj is None:
                 return None
-            if tenant_id and self._get_tenant_id(obj) != tenant_id:
+            if _is_tenant_scoped_field(self.tenant_field) and self._get_tenant_id(obj) != normalized_tenant_id:
                 return None
             return obj
 
@@ -117,20 +138,22 @@ class InMemoryTable(Generic[T]):
         tenant_id: str | None = None,
         filter_fn: Callable[[T], bool] | None = None,
     ) -> builtins.list[T]:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="list")
         with self._lock:
             items = list(self._store.values())
-        if tenant_id:
-            items = [i for i in items if self._get_tenant_id(i) == tenant_id]
+        if _is_tenant_scoped_field(self.tenant_field):
+            items = [i for i in items if self._get_tenant_id(i) == normalized_tenant_id]
         if filter_fn:
             items = [i for i in items if filter_fn(i)]
         return items
 
     def update(self, id: str, tenant_id: str | None = None, **fields: Any) -> T | None:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="update")
         with self._lock:
             obj = self._store.get(id)
             if obj is None:
                 return None
-            if tenant_id and self._get_tenant_id(obj) != tenant_id:
+            if _is_tenant_scoped_field(self.tenant_field) and self._get_tenant_id(obj) != normalized_tenant_id:
                 return None
             if isinstance(obj, dict):
                 obj.update(fields)
@@ -143,11 +166,12 @@ class InMemoryTable(Generic[T]):
             return obj
 
     def delete(self, id: str, tenant_id: str | None = None) -> bool:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="delete")
         with self._lock:
             obj = self._store.get(id)
             if obj is None:
                 return False
-            if tenant_id and self._get_tenant_id(obj) != tenant_id:
+            if _is_tenant_scoped_field(self.tenant_field) and self._get_tenant_id(obj) != normalized_tenant_id:
                 return False
             del self._store[id]
             return True
@@ -185,9 +209,23 @@ class SQLiteTable(Generic[T]):
     def _get_tenant_id(self, obj: T) -> str | None:
         return _tenant_from_obj(obj, self.tenant_field)
 
+    def _require_tenant_scope(self, tenant_id: str | None, *, operation: str) -> str:
+        if not _is_tenant_scoped_field(self.tenant_field):
+            return str(tenant_id) if tenant_id is not None else ""
+        return require_tenant_context(tenant_id, operation=f"{self.name}.{operation}")
+
+    def _require_object_tenant(self, obj: T) -> str:
+        if not _is_tenant_scoped_field(self.tenant_field):
+            tenant_id = self._get_tenant_id(obj)
+            return str(tenant_id) if tenant_id is not None else ""
+        return require_tenant_context(
+            self._get_tenant_id(obj),
+            operation=f"{self.name}.insert",
+        )
+
     def insert(self, id: str, obj: T) -> T:
         payload = _to_payload(obj)
-        tenant_id = _tenant_from_obj(payload, self.tenant_field)
+        tenant_id = self._require_object_tenant(obj)
         now = _now_iso()
         payload_json = json.dumps(payload, default=_json_default, sort_keys=True)
         with self._lock, self._connection:
@@ -205,11 +243,12 @@ class SQLiteTable(Generic[T]):
         return obj
 
     def get(self, id: str, tenant_id: str | None = None) -> T | None:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="get")
         query = "SELECT payload FROM fabric_api_records WHERE table_name = ? AND id = ?"
         params: list[Any] = [self.name, id]
-        if tenant_id:
+        if _is_tenant_scoped_field(self.tenant_field):
             query += " AND tenant_id = ?"
-            params.append(tenant_id)
+            params.append(normalized_tenant_id)
         with self._lock:
             row = self._connection.execute(query, params).fetchone()
         if row is None:
@@ -221,11 +260,12 @@ class SQLiteTable(Generic[T]):
         tenant_id: str | None = None,
         filter_fn: Callable[[T], bool] | None = None,
     ) -> builtins.list[T]:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="list")
         query = "SELECT payload FROM fabric_api_records WHERE table_name = ?"
         params: list[Any] = [self.name]
-        if tenant_id:
+        if _is_tenant_scoped_field(self.tenant_field):
             query += " AND tenant_id = ?"
-            params.append(tenant_id)
+            params.append(normalized_tenant_id)
         query += " ORDER BY id"
         with self._lock:
             rows = self._connection.execute(query, params).fetchall()
@@ -235,6 +275,7 @@ class SQLiteTable(Generic[T]):
         return items
 
     def update(self, id: str, tenant_id: str | None = None, **fields: Any) -> T | None:
+        self._require_tenant_scope(tenant_id, operation="update")
         obj = self.get(id, tenant_id=tenant_id)
         if obj is None:
             return None
@@ -250,14 +291,15 @@ class SQLiteTable(Generic[T]):
         return obj
 
     def delete(self, id: str, tenant_id: str | None = None) -> bool:
+        normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="delete")
         obj = self.get(id, tenant_id=tenant_id)
         if obj is None:
             return False
         query = "DELETE FROM fabric_api_records WHERE table_name = ? AND id = ?"
         params: list[Any] = [self.name, id]
-        if tenant_id:
+        if _is_tenant_scoped_field(self.tenant_field):
             query += " AND tenant_id = ?"
-            params.append(tenant_id)
+            params.append(normalized_tenant_id)
         with self._lock, self._connection:
             cursor = self._connection.execute(query, params)
         return cursor.rowcount > 0

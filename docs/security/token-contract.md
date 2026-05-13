@@ -4,7 +4,20 @@ This document specifies the JWT token claims supported by Fabric 4L's identity s
 
 ## Overview
 
-Fabric 4L accepts JWT tokens for authentication and tenant context resolution. Tokens must be signed with the configured `jwt_secret` and include specific claims for proper tenant isolation.
+Fabric 4L accepts JWT tokens for authentication and tenant context resolution. Tokens must be signed with the configured secret or trusted OIDC key material and must pass strict claim validation before any service treats the caller as authenticated.
+
+## Validation Contract
+
+All maintained services must fail closed on JWT parse or claim errors.
+
+- Signature verification is mandatory.
+- Header `alg` must match the configured algorithm for internal tokens.
+- `iss` must match `JWT_ISSUER` for internal tokens or `OIDC_ISSUER` for external tokens.
+- `aud` must match `JWT_AUDIENCE` for internal tokens or `OIDC_AUDIENCE` for external tokens.
+- `exp` is required and enforced.
+- `iat` and `nbf` are verified when present; service-local API auth requires both claims.
+- Malformed compact-JWS payloads are rejected before business routing.
+- Decode failures must return contract-safe 401 auth errors and must not fall through to anonymous authorization.
 
 ## Token Structure
 

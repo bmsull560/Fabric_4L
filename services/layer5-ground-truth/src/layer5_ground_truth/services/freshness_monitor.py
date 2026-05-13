@@ -40,6 +40,36 @@ class FreshnessMonitor_get_freshness_summaryResult(TypedDictModel):
 logger = logging.getLogger(__name__)
 
 
+FRESHNESS_ADVISORY_LOCK_KEY = 580051
+
+
+async def run_freshness_check_with_leader_lock(
+    db: AsyncSession,
+    monitor: "FreshnessMonitor",
+    *,
+    tenant_id: UUID | None = None,
+    dry_run: bool = False,
+) -> dict[str, Any] | None:
+    """Run freshness reconciliation only for the elected leader worker.
+
+    Returns None when lock is not acquired (another worker is leader).
+    Uses PostgreSQL advisory locks; non-Postgres dialects run unguarded.
+    """
+    dialect_name = db.bind.dialect.name if db.bind is not None else ""
+    if dialect_name != "postgresql":
+        return await monitor.check_and_mark_stale(db, tenant_id=tenant_id, dry_run=dry_run)
+
+    lock_result = await db.execute(select(func.pg_try_advisory_lock(FRESHNESS_ADVISORY_LOCK_KEY)))
+    has_lock = bool(lock_result.scalar())
+    if not has_lock:
+        return None
+
+    try:
+        return await monitor.check_and_mark_stale(db, tenant_id=tenant_id, dry_run=dry_run)
+    finally:
+        await db.execute(select(func.pg_advisory_unlock(FRESHNESS_ADVISORY_LOCK_KEY)))
+
+
 # ---------------------------------------------------------------------------
 # TTL Configuration per Claim Type (in days)
 # ---------------------------------------------------------------------------
@@ -342,7 +372,8 @@ async def check_freshness(
         Dict with check results
     """
     monitor = FreshnessMonitor()
-    return await monitor.check_and_mark_stale(db, tenant_id, dry_run)
+    result = await run_freshness_check_with_leader_lock(db, monitor, tenant_id=tenant_id, dry_run=dry_run)
+    return result or {"checked": 0, "marked_stale": 0, "dry_run": dry_run, "timestamp": datetime.now(UTC).isoformat()}
 
 
 async def get_stale_truths(

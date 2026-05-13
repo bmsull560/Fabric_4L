@@ -207,6 +207,43 @@ class TestFreshnessMonitor:
         assert result["checked"] == 0
         assert result["marked_stale"] == 0
 
+
+    async def test_check_and_mark_stale_is_idempotent_back_to_back(
+        self,
+        db: AsyncSession,
+        monitor: FreshnessMonitor,
+    ) -> None:
+        """Running reconciliation twice must not duplicate stale transition events."""
+        org_id = UUID("00000000-0000-0000-0000-000000000001")
+
+        expired_truth = TruthObject(
+            id=UUID("77777777-7777-7777-7777-777777777777"),
+            tenant_id=org_id,
+            claim="Idempotent stale transition",
+            claim_type=ClaimType.OTHER.value,
+            confidence=0.7,
+            status=TruthStatus.SUPPORTED.value,
+            maturity_level=2,
+            freshness=datetime.now(UTC) - timedelta(days=100),
+            expires_at=datetime.now(UTC) - timedelta(days=2),
+            is_stale=False,
+        )
+        db.add(expired_truth)
+        await db.flush()
+
+        first = await monitor.check_and_mark_stale(db, org_id)
+        second = await monitor.check_and_mark_stale(db, org_id)
+
+        assert first["marked_stale"] == 1
+        assert second["marked_stale"] == 0
+
+        from sqlalchemy import select as sa_select
+
+        events_result = await db.execute(
+            sa_select(ValidationEvent).where(ValidationEvent.truth_object_id == expired_truth.id)
+        )
+        events = events_result.scalars().all()
+        assert len(events) == 1
     async def test_list_stale_truths(
         self,
         db: AsyncSession,

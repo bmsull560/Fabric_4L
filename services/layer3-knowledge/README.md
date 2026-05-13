@@ -49,7 +49,7 @@ Contributor rule of thumb:
 ```bash
 # from repository root
 cd services/layer3-knowledge
-python -m uvicorn src.main:app --host 0.0.0.0 --port 8001 --reload
+python -m uvicorn src.main:app --host 0.0.0.0 --port 8003 --reload
 curl -X POST http://localhost:8003/v1/query \
   -H "Content-Type: application/json" \
   -d '{
@@ -60,14 +60,14 @@ curl -X POST http://localhost:8003/v1/query \
   }'
 ```
 
-Layer 3 canonical external port in the routing matrix is **8001**.
+Layer 3 canonical external port in the routing matrix is **8003**.
 
 ### Smoke-check core health routes
 
 ```bash
-curl http://localhost:8001/health
-curl http://localhost:8001/ready
-curl http://localhost:8001/metrics
+curl http://localhost:8003/health
+curl http://localhost:8003/ready
+curl http://localhost:8003/metrics
 curl -X POST http://localhost:8003/v1/search \
   -H "Content-Type: application/json" \
   -d '{
@@ -79,7 +79,7 @@ curl -X POST http://localhost:8003/v1/search \
 
 ## API surface reconciliation notes
 
-The prior README examples used outdated routes/ports (for example `:8001/v1/query`, `:8001/v1/search`, and older analytics endpoints).
+The prior README examples used outdated routes/ports (for example `:8001/v1/query`, `:8001/v1/search`, and older analytics endpoints). Current examples in this document use the canonical `8003` Layer 3 port.
 
 For current behavior, use the OpenAPI contract as source of truth:
 

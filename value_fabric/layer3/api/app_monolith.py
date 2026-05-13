@@ -1397,7 +1397,7 @@ async def health_check(
                         },
                         "configuration": {
                             "api_host": "0.0.0.0",
-                            "api_port": 8001,
+                            "api_port": 8003,
                             "log_level": "INFO",
                             "log_format": "json",
                             "neo4j_database": "neo4j",

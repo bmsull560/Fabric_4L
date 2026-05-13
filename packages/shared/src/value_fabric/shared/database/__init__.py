@@ -11,6 +11,7 @@ from .async_engine import (
     get_async_session_factory,
 )
 from .tenant_validation import TenantContextError, validate_tenant_id
+from .tenant_validation import MissingTenantContextError, require_tenant_context
 
 __all__ = [
     "get_async_engine",
@@ -19,4 +20,6 @@ __all__ = [
     "async_db_session",
     "validate_tenant_id",
     "TenantContextError",
+    "MissingTenantContextError",
+    "require_tenant_context",
 ]

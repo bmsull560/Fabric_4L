@@ -178,7 +178,20 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
 
     try:
         header = jwt.get_unverified_header(token)
-        unverified = jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
+        header_alg = header.get("alg")
+        if not isinstance(header_alg, str) or not header_alg.strip():
+            return None
+        if header_alg.upper() != algorithm.upper():
+            return None
+        unverified = jwt.decode(
+            token,
+            options={
+                "verify_signature": False,
+                "verify_exp": False,
+                "verify_aud": False,
+                "verify_iss": False,
+            },
+        )
         issuer = unverified.get("iss")
         audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
         expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
@@ -193,10 +206,26 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             return None
 
         if expected_issuer == oidc_issuer:
+            if header_alg.upper() not in {"RS256", "ES256"}:
+                return None
             verify_key = _resolve_external_key(header, issuer)
             if verify_key is None:
                 return None
-            payload = jwt.decode(token, verify_key, algorithms=[header.get("alg", "RS256")], audience=audience, issuer=expected_issuer)
+            payload = jwt.decode(
+                token,
+                verify_key,
+                algorithms=[header_alg.upper()],
+                audience=audience,
+                issuer=expected_issuer,
+                options={
+                    "require": ["exp", "iss", "aud"],
+                    "verify_exp": True,
+                    "verify_aud": True,
+                    "verify_iss": True,
+                    "verify_iat": True,
+                    "verify_nbf": True,
+                },
+            )
         else:
             verify_keys = keyset["verify"]
             if kid and kid in verify_keys:
@@ -208,7 +237,21 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             payload = None
             for key in candidates:
                 try:
-                    payload = jwt.decode(token, key, algorithms=[algorithm], audience=audience, issuer=expected_issuer)
+                    payload = jwt.decode(
+                        token,
+                        key,
+                        algorithms=[algorithm],
+                        audience=audience,
+                        issuer=expected_issuer,
+                        options={
+                            "require": ["exp", "iss", "aud"],
+                            "verify_exp": True,
+                            "verify_aud": True,
+                            "verify_iss": True,
+                            "verify_iat": True,
+                            "verify_nbf": True,
+                        },
+                    )
                     break
                 except jwt.ExpiredSignatureError:
                     raise

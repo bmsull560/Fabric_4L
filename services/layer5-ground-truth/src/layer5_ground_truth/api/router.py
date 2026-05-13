@@ -41,7 +41,7 @@ from ..services.truth_service import (
     soft_delete_truth_object,
     validate_truth_object,
 )
-from .auth import TokenClaims, get_current_user
+from .auth import TokenClaims, authorize_action, get_current_user
 from .schemas import (
     AddSourceRequest,
     HealthResponse,
@@ -100,6 +100,7 @@ async def create_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> TruthObjectResponse:
+    authorize_action("layer5.truths.create", caller)
     tenant_id = caller.tenant_id
     sources_data = (
         [s.model_dump() for s in payload.sources] if payload.sources else None
@@ -195,6 +196,7 @@ async def list_truths(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> TruthObjectListResponse:
+    authorize_action("layer5.truths.list", caller)
     tenant_id = caller.tenant_id
     items, total = await list_truth_objects(
         db=db,
@@ -252,6 +254,7 @@ async def sync_to_kg(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
+    authorize_action("layer5.truths.sync_kg", caller)
     tenant_id = caller.tenant_id
     from sqlalchemy import and_, select
 
@@ -320,6 +323,7 @@ async def check_stale(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
+    authorize_action("layer5.truths.check_stale", caller)
     from ..services.freshness_monitor import check_freshness
 
     tenant_id = caller.tenant_id
@@ -347,6 +351,7 @@ async def list_stale(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> dict:
+    authorize_action("layer5.truths.list_stale", caller)
     from ..services.freshness_monitor import get_stale_truths
     from .schemas import TruthObjectSummary
 
@@ -398,6 +403,7 @@ async def freshness_summary(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
+    authorize_action("layer5.truths.freshness_summary", caller)
     from ..services.freshness_monitor import FreshnessMonitor
 
     tenant_id = caller.tenant_id
@@ -426,6 +432,7 @@ async def get_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> TruthObjectResponse:
+    authorize_action("layer5.truths.read", caller)
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
@@ -463,6 +470,7 @@ async def validate_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> ValidateResponse:
+    authorize_action("layer5.truths.validate", caller)
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
@@ -565,6 +573,7 @@ async def add_truth_source(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> TruthSourceResponse:
+    authorize_action("layer5.truths.add_source", caller)
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
@@ -599,6 +608,7 @@ async def get_audit_trail(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> list[ValidationEventResponse]:
+    authorize_action("layer5.truths.read_audit", caller)
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
@@ -625,6 +635,7 @@ async def delete_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> None:
+    authorize_action("layer5.truths.delete", caller)
     tenant_id = caller.tenant_id
     deleted_by = caller.user_id
     truth = await get_truth_object(db, truth_id, tenant_id)

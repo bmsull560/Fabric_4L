@@ -25,10 +25,12 @@ Usage:
 """
 
 import logging
+import os
 import threading
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -43,6 +45,34 @@ logger = logging.getLogger(__name__)
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 _engine_lock = threading.Lock()
+_RLS_SUPPORTED_SCHEMES = frozenset({"postgresql", "postgres", "postgresql+asyncpg", "postgresql+psycopg"})
+_RLS_SUPERUSER_NAMES = frozenset({"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"})
+
+
+def _is_production_like_runtime() -> bool:
+    env = os.getenv("ENVIRONMENT", "").strip().lower()
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    value = env or app_env
+    return value not in {"", "local", "dev", "development", "test", "testing", "ci"}
+
+
+def _assert_rls_safe_database_url(database_url: str) -> None:
+    if not _is_production_like_runtime():
+        return
+
+    parsed = urlparse(database_url)
+    scheme = (parsed.scheme or "").lower()
+    username = (parsed.username or "").lower()
+
+    if scheme not in _RLS_SUPPORTED_SCHEMES:
+        raise RuntimeError(
+            "Protected environments must use PostgreSQL with RLS-capable tenant isolation."
+        )
+
+    if username in _RLS_SUPERUSER_NAMES:
+        raise RuntimeError(
+            f"Protected environments must not use PostgreSQL superuser role '{username}'."
+        )
 
 
 def get_async_engine(
@@ -71,6 +101,7 @@ def get_async_engine(
     global _engine
     if not database_url or not database_url.strip():
         raise ValueError("database_url cannot be empty")
+    _assert_rls_safe_database_url(database_url)
 
     with _engine_lock:
         if _engine is None:

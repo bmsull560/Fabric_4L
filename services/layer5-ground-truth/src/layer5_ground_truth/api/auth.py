@@ -9,19 +9,15 @@ L1-L6). ``get_current_user`` is a thin adapter that reads the already-validated
 Resolution precedence (enforced upstream by ``GovernanceMiddleware``):
   1. ``Authorization: Bearer <JWT>`` — verified with ``JWT_SECRET``.
   2. ``X-API-Key`` — HMAC-verified against the stored hash (disabled on L5).
-  3. ``X-Tenant-ID`` + ``X-Service-Auth`` — service-to-service only; the
-     ``X-Service-Auth`` header must HMAC-match ``SERVICE_AUTH_SECRET`` (≥32
-     chars) or the middleware drops the identity.
 
 Fail-closed contract:
   - In any production-like runtime (``ENVIRONMENT``/``APP_ENV`` in
     ``production|staging``), no ``GovernanceMiddleware`` context means 401.
     No header or query-param fallback is permitted.
-  - Dev/test fallbacks (direct JWT decode, ``X-Tenant-ID`` without service
-    auth, ``tenant_id`` query param) are gated behind
+  - Dev/test fallback is limited to direct JWT verification gated behind
     ``ALLOW_INSECURE_DEV_AUTH_BYPASS=true`` **and** a non-production
-    environment, and are only used when the middleware has not produced a
-    context (legacy test paths).
+    environment. Tenant headers and query params remain non-authoritative
+    diagnostics and cannot create tenant context on their own.
 """
 
 import logging
@@ -30,10 +26,13 @@ from uuid import UUID
 
 import jwt
 from fastapi import Depends, Header, HTTPException, Query, Request, status
+from value_fabric.shared.identity.context import AUTH_SOURCE_JWT, RequestContext
 from value_fabric.shared.identity.fallback_telemetry import (
     enforce_fallback_enabled,
     record_fallback_usage,
 )
+from value_fabric.shared.identity.permissions import Role, get_role_permissions, normalize_role_claims
+from value_fabric.shared.identity.policy_registry import authorize_action as authorize_shared_action
 
 from ..config import Settings, get_settings
 
@@ -52,7 +51,12 @@ class TokenClaims:
     tenant_id: UUID
     user_id: str | None = None
     roles: list[str] = field(default_factory=list)
+    permissions: list[str] = field(default_factory=list)
     raw: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.permissions and self.roles:
+            self.permissions = _derive_permissions(self.roles)
 
     def has_role(self, role: str) -> bool:
         return role in self.roles
@@ -70,6 +74,28 @@ class TokenClaims:
 # ---------------------------------------------------------------------------
 
 
+def _derive_permissions(roles: list[str]) -> list[str]:
+    permissions: set[str] = set()
+    for role_name in normalize_role_claims(roles):
+        try:
+            permissions.update(permission.value for permission in get_role_permissions(Role(role_name)))
+        except ValueError:
+            continue
+    return sorted(permissions)
+
+
+def authorize_action(action: str, caller: TokenClaims) -> TokenClaims:
+    ctx = RequestContext(
+        tenant_id=caller.tenant_id,
+        user_id=caller.user_id,
+        roles=caller.roles,
+        permissions=frozenset(caller.permissions),
+        auth_source=AUTH_SOURCE_JWT,
+    )
+    authorize_shared_action(action, ctx, target_tenant_id=str(caller.tenant_id))
+    return caller
+
+
 def _decode_jwt(token: str, settings: Settings) -> dict | None:
     """
     Decode and verify a JWT using the configured secret.
@@ -77,18 +103,37 @@ def _decode_jwt(token: str, settings: Settings) -> dict | None:
     Returns the payload dict on success, None on any failure.
     """
     try:
+        header = jwt.get_unverified_header(token)
+        header_alg = header.get("alg")
+        if not isinstance(header_alg, str) or not header_alg.strip():
+            return None
+        if header_alg.upper() != settings.jwt_algorithm.upper():
+            return None
         payload = jwt.decode(
             token,
             settings.jwt_secret,
             algorithms=[settings.jwt_algorithm],
-            options={"verify_exp": True},
+            audience=settings.jwt_audience,
+            issuer=settings.jwt_issuer,
+            options={
+                "require": ["sub", settings.jwt_tenant_claim, "exp", "iat", "nbf", "iss", "aud"],
+                "verify_exp": True,
+                "verify_aud": True,
+                "verify_iss": True,
+                "verify_iat": True,
+                "verify_nbf": True,
+            },
         )
         return payload
     except jwt.ExpiredSignatureError:
         logger.warning("JWT has expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired.",
+            detail={
+                "error": "authentication_failed",
+                "error_code": "AUTH_TOKEN_EXPIRED",
+                "message": "Token has expired.",
+            },
             headers={"WWW-Authenticate": "Bearer"},
         )
     except jwt.InvalidTokenError as exc:
@@ -134,6 +179,10 @@ def _token_claims_from_context(ctx) -> TokenClaims:
         tenant_id=tenant_uuid,
         user_id=user_id,
         roles=roles,
+        permissions=[
+            permission.value if hasattr(permission, "value") else str(permission)
+            for permission in (ctx.permissions or frozenset())
+        ],
         raw=dict(getattr(ctx, "raw", {}) or {}),
     )
 
@@ -144,7 +193,7 @@ def get_current_user(
     x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
     tenant_id: str | None = Query(
         default=None,
-        description="Tenant UUID — dev/test fallback when JWT is absent",
+        description="Deprecated tenant diagnostic hint. Authenticated tenant comes from JWT context.",
     ),
     settings: Settings = Depends(get_settings),
 ) -> TokenClaims:
@@ -152,13 +201,12 @@ def get_current_user(
     Resolve the caller's identity from the GovernanceMiddleware context.
 
     Primary path (all environments): read ``request.state.governance_context``
-    populated by the canonical ``GovernanceMiddleware`` (JWT / API key /
-    ``X-Tenant-ID`` + HMAC-verified ``X-Service-Auth``).
+    populated by the canonical ``GovernanceMiddleware``.
 
     Dev/test fallback (non-production only, requires
     ``ALLOW_INSECURE_DEV_AUTH_BYPASS=true``): when no middleware context is
-    present, tolerate a legacy direct JWT / ``X-Tenant-ID`` / query-param path
-    to keep existing test fixtures working without weakening production.
+    present, tolerate a legacy direct JWT path to keep existing test fixtures
+    working without weakening production.
 
     Raises HTTP 401 if no valid identity can be resolved.
     """
@@ -174,7 +222,11 @@ def get_current_user(
     if settings.is_production_like or not settings.allow_insecure_dev_auth_bypass:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required.",
+            detail={
+                "error": "authentication_failed",
+                "error_code": "AUTH_REQUIRED",
+                "message": "Authentication required.",
+            },
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -189,10 +241,14 @@ def get_current_user(
             if org_id is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=(
-                        f"JWT is missing the '{settings.jwt_tenant_claim}' claim "
-                        "or it is not a valid UUID."
-                    ),
+                    detail={
+                        "error": "authentication_failed",
+                        "error_code": "AUTH_INVALID_TOKEN",
+                        "message": (
+                            f"JWT is missing the '{settings.jwt_tenant_claim}' claim "
+                            "or it is not a valid UUID."
+                        ),
+                    },
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
@@ -200,6 +256,11 @@ def get_current_user(
             roles = payload.get(settings.jwt_roles_claim, [])
             if isinstance(roles, str):
                 roles = [roles]
+            if x_tenant_id and x_tenant_id != str(org_id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Tenant context mismatch.",
+                )
             record_fallback_usage(
                 "layer5.direct_jwt",
                 tenant_id=org_id,
@@ -208,73 +269,29 @@ def get_current_user(
                 path=str(request.url.path),
             )
 
-            return TokenClaims(
-                tenant_id=org_id,
-                user_id=user_id,
-                roles=roles,
-                raw=payload,
-            )
-
-    # ── 3. Dev/test fallback — X-Tenant-ID header (no user context) ───────
-    # NOTE: This path is reachable only when ALLOW_INSECURE_DEV_AUTH_BYPASS=true
-    # AND the environment is NOT production-like. GovernanceMiddleware rejects
-    # unverified X-Tenant-ID in production by refusing to build a context, and
-    # the fail-closed branch above short-circuits before we get here.
-    if x_tenant_id:
-        enforce_fallback_enabled("layer5.x_tenant_id_header", default=True)
-        try:
-            org_id = UUID(x_tenant_id)
-            record_fallback_usage(
-                "layer5.x_tenant_id_header",
-                tenant_id=org_id,
-                client_id=request.headers.get("X-Client-ID"),
-                service="layer5-ground-truth",
-                path=str(request.url.path),
-            )
-            return TokenClaims(
-                tenant_id=org_id,
-                user_id="service",
-                roles=["service"],
-            )
-        except (ValueError, AttributeError):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"X-Tenant-ID header is not a valid UUID: {x_tenant_id!r}",
-            )
-
-    # ── 4. Dev/test fallback — tenant_id query param ──────────────────────
-    if settings.jwt_fallback_to_query_param and tenant_id:
-        enforce_fallback_enabled("layer5.tenant_query_param", default=True)
-        try:
-            org_id = UUID(tenant_id)
-            logger.debug(
-                "Using tenant_id query param fallback for tenant %s — "
-                "set JWT_FALLBACK_TO_QUERY_PARAM=false in production",
-                org_id,
-            )
-            record_fallback_usage(
-                "layer5.tenant_query_param",
-                tenant_id=org_id,
-                client_id=request.headers.get("X-Client-ID"),
-                service="layer5-ground-truth",
-                path=str(request.url.path),
-            )
-            return TokenClaims(
-                tenant_id=org_id,
-                user_id=None,
-                roles=[],
-            )
-        except (ValueError, AttributeError):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"tenant_id query param is not a valid UUID: {tenant_id!r}",
-            )
+        return TokenClaims(
+            tenant_id=org_id,
+            user_id=user_id,
+            roles=roles,
+            permissions=_derive_permissions(roles),
+            raw=payload,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "error": "authentication_failed",
+                "error_code": "AUTH_INVALID_TOKEN",
+                "message": "Invalid token.",
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail=(
-            "Could not resolve organization identity. "
-            "Provide a valid Bearer JWT or configure GovernanceMiddleware."
-        ),
+        detail={
+            "error": "authentication_failed",
+            "error_code": "AUTH_REQUIRED",
+            "message": "Authentication required.",
+        },
         headers={"WWW-Authenticate": "Bearer"},
     )

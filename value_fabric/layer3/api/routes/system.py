@@ -144,6 +144,28 @@ def _derive_overall_status(
     return "healthy"
 
 
+def _derive_readiness(
+    *,
+    dependencies: list[DependencyStatus],
+    schema_initializer: Any | None,
+    schema_status: dict[str, Any],
+) -> dict[str, Any]:
+    """Return readiness envelope gated by mandatory dependencies only."""
+    if schema_initializer is None or getattr(schema_initializer, "_driver", None) is None:
+        return {"is_ready": False, "reason": "neo4j_uninitialized"}
+
+    neo4j_dependency = next((dep for dep in dependencies if dep.name == "neo4j"), None)
+    if neo4j_dependency is None:
+        return {"is_ready": False, "reason": "neo4j_dependency_missing"}
+    if neo4j_dependency.status != "healthy":
+        return {"is_ready": False, "reason": "dependency_unhealthy"}
+
+    if schema_status.get("status") != "healthy":
+        return {"is_ready": False, "reason": "schema_verification_failed"}
+
+    return {"is_ready": True, "reason": "dependencies_available"}
+
+
 @router.get(
     "/metrics",
     tags=["Monitoring"],
@@ -240,10 +262,11 @@ async def health_check(
     return {
         "status": overall_status,
         "service": "layer3-knowledge",
-        "readiness": {
-            "is_ready": overall_status in {"healthy", "degraded"},
-            "reason": "dependencies_available" if overall_status in {"healthy", "degraded"} else "dependencies_unavailable",
-        },
+        "readiness": _derive_readiness(
+            dependencies=dependencies,
+            schema_initializer=schema_initializer,
+            schema_status=schema_status,
+        ),
         "version": "1.0.0",
         "timestamp": datetime.now(UTC),
         "uptime_seconds": metrics.uptime_seconds,

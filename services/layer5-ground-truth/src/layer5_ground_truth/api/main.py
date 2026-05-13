@@ -17,6 +17,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 import inspect
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
@@ -55,6 +56,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+async def _check_schema_migration_alignment() -> tuple[bool, str]:
+    """Return whether DB Alembic revision is aligned with migration head(s)."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import text
+
+    from ..database import get_engine
+
+    migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
+    alembic_ini = migrations_dir.parents[1] / "alembic.ini"
+
+    alembic_cfg = Config(str(alembic_ini))
+    alembic_cfg.set_main_option("script_location", str(migrations_dir))
+    script = ScriptDirectory.from_config(alembic_cfg)
+    expected_heads = set(script.get_heads())
+
+    engine = get_engine()
+    async with engine.connect() as conn:
+        result = await conn.execute(text("SELECT version_num FROM alembic_version"))
+        db_revisions = {row[0] for row in result if row[0]}
+
+    if not db_revisions or not expected_heads:
+        return False, "unknown"
+    if db_revisions == expected_heads:
+        return True, "aligned"
+    return False, "behind"
+
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
@@ -81,7 +110,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await init_db()
 
     # Production Vault smoke gate
-    if os.getenv("ENVIRONMENT", "development") == "production":
+    if settings.effective_environment == "production":
         vault_addr = os.getenv("VAULT_ADDR")
         if vault_addr and is_vault_healthy is not None:
             logger.info("L5: Checking Vault connectivity at %s", vault_addr)
@@ -98,49 +127,55 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         import redis.asyncio as redis
         from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client = redis.from_url(redis_url, decode_responses=True)
+        redis_client = redis.from_url(settings.redis_url, decode_responses=True)
         # Validate connection before using for rate limiting
         await redis_client.ping()
         app.state.redis_rate_limiter = RedisRateLimiter(redis_client)
         logger.info("L5: Redis rate limiter initialized")
     except Exception as e:
-        env = os.getenv("ENVIRONMENT", "development")
+        env = settings.effective_environment
         redis_required = os.getenv("REDIS_RATE_LIMITING_REQUIRED", "false").lower() == "true"
 
-        if redis_required or env in ("production", "staging"):
+        if redis_required or settings.is_production_like:
             logger.error(f"L5: Redis rate limiting required but unavailable: {e}")
             raise RuntimeError(f"Redis rate limiting required in {env} but unavailable: {e}")
 
         logger.warning(f"L5: Redis rate limiter disabled - {e}")
         app.state.redis_rate_limiter = None
 
-    # Start background freshness monitor task
+    # Optional in-process freshness monitor (disabled by default in production)
     freshness_task: asyncio.Task | None = None
-    try:
-        from ..services.freshness_monitor import FreshnessMonitor
+    enable_in_process_monitor = os.getenv("L5_ENABLE_IN_PROCESS_FRESHNESS_MONITOR", "false").lower() == "true"
+    if enable_in_process_monitor:
+        try:
+            from ..services.freshness_monitor import FreshnessMonitor, run_freshness_check_with_leader_lock
 
-        async def _run_freshness_check_periodically() -> None:
-            """Run freshness check every 24 hours."""
-            monitor = FreshnessMonitor()
-            while True:
-                try:
-                    session_factory = get_session_factory()
-                    async with session_factory() as db:
-                        result = await monitor.check_and_mark_stale(db)
-                        logger.info(
-                            "L5 FreshnessMonitor: checked=%d marked_stale=%d",
-                            result.get("checked", 0),
-                            result.get("marked_stale", 0),
-                        )
-                except Exception as exc:
-                    logger.warning("L5 FreshnessMonitor: check failed: %s", exc)
-                await asyncio.sleep(86400)  # 24 hours
+            async def _run_freshness_check_periodically() -> None:
+                """Run freshness check every 24 hours with leader election guard."""
+                monitor = FreshnessMonitor()
+                while True:
+                    try:
+                        session_factory = get_session_factory()
+                        async with session_factory() as db:
+                            result = await run_freshness_check_with_leader_lock(db, monitor)
+                            if result is None:
+                                logger.info("L5 FreshnessMonitor: skipped; leader lock held by another worker")
+                            else:
+                                logger.info(
+                                    "L5 FreshnessMonitor: checked=%d marked_stale=%d",
+                                    result.get("checked", 0),
+                                    result.get("marked_stale", 0),
+                                )
+                    except Exception as exc:
+                        logger.warning("L5 FreshnessMonitor: check failed: %s", exc)
+                    await asyncio.sleep(86400)  # 24 hours
 
-        freshness_task = asyncio.create_task(_run_freshness_check_periodically())
-        logger.info("L5: FreshnessMonitor background task started")
-    except Exception as exc:
-        logger.warning("L5: Could not start FreshnessMonitor background task: %s", exc)
+            freshness_task = asyncio.create_task(_run_freshness_check_periodically())
+            logger.info("L5: FreshnessMonitor background task started (in-process mode)")
+        except Exception as exc:
+            logger.warning("L5: Could not start FreshnessMonitor background task: %s", exc)
+    else:
+        logger.info("L5: In-process FreshnessMonitor scheduler disabled (use external scheduler or explicit trigger)")
 
     yield
 
@@ -317,7 +352,7 @@ def create_app() -> FastAPI:
             database="ok",
         )
 
-    # Readiness check — verifies database connectivity
+    # Readiness check — verifies database connectivity and migration alignment
     @app.get("/ready", tags=["system"], include_in_schema=False)
     async def readiness() -> JSONResponse:
         from sqlalchemy import text
@@ -327,6 +362,16 @@ def create_app() -> FastAPI:
             engine = get_engine()
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
+            schema_ready, schema_status = await _check_schema_migration_alignment()
+            if not schema_ready:
+                return JSONResponse(
+                    content={
+                        "status": "not_ready",
+                        "database": "ok",
+                        "schema": schema_status,
+                    },
+                    status_code=503,
+                )
             return JSONResponse(
                 content={"status": "ready", "database": "ok"},
                 status_code=200,

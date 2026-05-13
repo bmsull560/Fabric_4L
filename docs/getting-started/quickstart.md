@@ -60,6 +60,19 @@ graph TB
 
 **Data Flow:** Documents → L1 (Ingest) → L2 (Extract) → L3 (Store) → L4 (Agent Analysis) → L5 (Ground Truth) → L6 (Benchmarks)
 
+## Runtime path placement (contributors)
+
+When you add or change Layer 6 runtime logic, place it in the canonical path:
+
+- `value_fabric/layer6/`
+
+Treat `services/layer6-benchmarks/` as the deployable service root (packaging, tests, Docker, migrations). If wrapper files exist under `services/layer6-benchmarks/src/`, keep them thin re-export shims only.
+
+Authoritative policy references:
+
+- `docs/reference/layer-runtime-path-governance.md`
+- `docs/reference/layer3-layer6-wrapper-policy.md`
+
 ---
 
 ## Step 1: Clone and Configure

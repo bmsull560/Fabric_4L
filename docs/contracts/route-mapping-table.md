@@ -150,7 +150,7 @@ Scenario C (fallbacks from `client.ts`):
 ```yaml
 /layer1 → layer1-ingestion:8000
 /layer2 → layer2-extraction:8000
-/layer3 → layer3-knowledge:8001
+/layer3 → layer3-knowledge:8003
 /layer4 → layer4-agents:8000
 /layer5 → layer5-ground-truth:8005
 /layer6 → layer6-benchmarks:8006
@@ -166,7 +166,7 @@ Scenario C (fallbacks from `client.ts`):
 |-----------------|----------------|--------------|
 | `/api/v1/ingest/*` | `layer1-ingestion:8000` | `/*` → `/api/v1/ingestion/*` |
 | `/api/v1/extract/*` | `layer2-extraction:8000` | `/*` → `/v1/*` |
-| `/api/v1/graph/*` | `layer3-knowledge:8001` | `/*` → `/v1/*` |
+| `/api/v1/graph/*` | `layer3-knowledge:8003` | `/*` → `/v1/*` |
 | `/api/v1/agents/*` | `layer4-agents:8000` | `/*` → `/v1/*` |
 | `/api/v1/truths/*` | `layer5-ground-truth:8005` | `/*` → `/api/v1/*` |
 | `/api/v1/benchmarks/*` | `layer6-benchmarks:8006` | `/*` → `/v1/*` |

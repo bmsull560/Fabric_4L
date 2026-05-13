@@ -7,7 +7,7 @@
  * - FormulaBuilder: Variable chip keyboard accessibility
  * - LeftNavigation: No prefetch=intent attribute
  */
-import { test, expect } from '../fixtures/contract-test';
+import { test, expect } from '../fixtures/a11y-test';
 import { AxeBuilder } from "@axe-core/playwright";
 
 test.describe("P2/P3 Fix Regressions", () => {

@@ -201,6 +201,19 @@ class TestVerifyMetricsAccess:
         req = _make_request(client_host="8.8.8.8")
         assert verify_metrics_access(req) is True
 
+    def test_dev_bypass_emits_warning(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        monkeypatch.setenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true")
+
+        with caplog.at_level("WARNING"):
+            assert verify_metrics_access(_make_request(client_host="8.8.8.8")) is True
+
+        assert any(
+            record.message == "metrics_dev_bypass_enabled"
+            and getattr(record, "flag", None) == "ALLOW_INSECURE_DEV_AUTH_BYPASS"
+            for record in caplog.records
+        )
+
     def test_dev_bypass_disabled_in_production(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

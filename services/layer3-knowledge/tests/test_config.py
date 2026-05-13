@@ -36,7 +36,7 @@ class TestSettings:
         settings = Settings()
         
         assert settings.api_host == "0.0.0.0"
-        assert settings.api_port == 8001
+        assert settings.api_port == 8003
         assert settings.api_workers == 1
         assert settings.log_level == "INFO", f"Expected INFO but got {settings.log_level}"
         assert settings.neo4j_uri == "bolt://localhost:7687"

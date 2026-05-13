@@ -155,7 +155,7 @@ C4Container
 | API Gateway | 8000 | Nginx/FastAPI | Horizontal (3+ replicas) | `/health` |
 | Layer 1 | 8000 | Python/FastAPI | Celery worker pools | `/api/v1/health` |
 | Layer 2 | 8000 | Python/FastAPI | Horizontal + GPU workers | `/api/v1/health` |
-| Layer 3 | 8001 | Python/FastAPI | Horizontal + Neo4j cluster | `/api/v1/health` |
+| Layer 3 | 8003 | Python/FastAPI | Horizontal + Neo4j cluster | `/api/v1/health` |
 | Layer 4 | 8002 | Python/FastAPI | Horizontal (stateless) | `/health` |
 | Layer 5 | 8005 | Python/FastAPI | Horizontal | `/api/v1/health` |
 | Layer 6 | 8006 | Python/FastAPI | Horizontal | `/health` |

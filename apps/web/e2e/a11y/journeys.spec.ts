@@ -6,7 +6,7 @@
  * Tests critical user journeys for accessibility violations using axe-core.
  * This complements the component-level smoke tests in accessibility.a11y.spec.tsx.
  */
-import { test, expect } from '../fixtures/contract-test';
+import { test, expect } from '../fixtures/a11y-test';
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import type { AxeResults, Result } from "axe-core";

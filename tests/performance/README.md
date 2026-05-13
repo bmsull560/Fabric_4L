@@ -13,6 +13,10 @@ This suite validates critical runtime paths across all layers with comprehensive
 | **Multi-Tenant** | Tenant isolation under load | `multi-tenant.js` | 5m |
 | **Formula Evaluation** | L3 formula performance | `formula-evaluation.js` | 5m |
 | **Workflow Execution** | L4 workflow lifecycle | `workflow-execution.js` | 10m |
+| **Cold Start** | First-request latency after idle/restart | `l2_l3_l4_critical_paths.js` (single-VU warm/cold runs) | ~2m x2 |
+| **Large Tenant** | High-cardinality tenant dataset behavior | `multi-tenant.js` (`TENANT_COUNT>=200`) | 10m |
+| **Circuit Breaker** | External dependency failure and fast-fail recovery | `tests/chaos/test_external_dependency_failure.py` | ~1m |
+| **Autoscaling Readiness** | Load profile to trigger HPA and verify scale behavior | `stress-test.js` + `tests/k8s/test_workload_validation.py` | 15m + 1m |
 
 ## Covered Critical APIs
 
@@ -115,3 +119,45 @@ The script exits non-zero on:
 - regression over the configured threshold
 
 This behavior is used in CI to fail builds when reliability regresses.
+
+## Targeted scenarios requested by platform validation
+
+### Cold-start check (before and after warmup)
+```bash
+# Cold run (single VU, short duration)
+k6 run \
+  --summary-export artifacts/performance/cold-start-cold.json \
+  --vus 1 --duration 30s \
+  tests/performance/k6/l2_l3_l4_critical_paths.js
+
+# Warm run immediately after
+k6 run \
+  --summary-export artifacts/performance/cold-start-warm.json \
+  --vus 1 --duration 30s \
+  tests/performance/k6/l2_l3_l4_critical_paths.js
+```
+
+### Large-tenant isolation/performance check
+```bash
+k6 run \
+  --summary-export artifacts/performance/large-tenant-summary.json \
+  --env TENANT_COUNT=200 \
+  --env PERF_DURATION=10m \
+  tests/performance/k6/multi-tenant.js
+```
+
+### Circuit-breaker resilience check
+```bash
+pytest tests/chaos/test_external_dependency_failure.py -k circuit -q
+```
+
+### Autoscaling readiness check
+```bash
+# Generate scaling pressure profile
+k6 run \
+  --summary-export artifacts/performance/autoscaling-load-summary.json \
+  tests/performance/k6/stress-test.js
+
+# Validate workload scaling guardrails in manifests/policies
+pytest tests/k8s/test_workload_validation.py -q
+```

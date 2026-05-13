@@ -110,7 +110,7 @@ pip install -e ".[dev]"
 # Set environment variables
 export DATABASE_URL="sqlite+aiosqlite:///./ground_truth.db"
 export DATABASE_URL_SYNC="sqlite:///./ground_truth.db"
-export LAYER3_BASE_URL="http://localhost:8001"
+export LAYER3_BASE_URL="http://localhost:8003"
 
 # Run database migrations
 alembic upgrade head
@@ -131,7 +131,7 @@ layer5-ground-truth:
   environment:
     DATABASE_URL: ${DATABASE_URL}
     DATABASE_URL_SYNC: ${DATABASE_URL_SYNC}
-    LAYER3_BASE_URL: http://layer3-knowledge:8001
+    LAYER3_BASE_URL: http://layer3-knowledge:8003
     LAYER3_SYNC_ENABLED: "true"
   depends_on:
     - postgres
@@ -245,10 +245,11 @@ This keeps API contract evolution explicit, auditable, and aligned with downstre
 |----------|---------|-------------|
 | `DATABASE_URL` | `sqlite+aiosqlite:///./ground_truth.db` | Async DB URL |
 | `DATABASE_URL_SYNC` | `sqlite:///./ground_truth.db` | Sync DB URL (Alembic) |
-| `LAYER3_BASE_URL` | `http://localhost:8001` | Layer 3 API base URL |
+| `LAYER3_BASE_URL` | `http://localhost:8003` | Layer 3 API base URL (must be absolute `http(s)://host[:port]` with no path/query) |
 | `LAYER3_SYNC_ENABLED` | `true` | Enable KG sync on approval |
-| `LAYER3_API_KEY` | — | Bearer token for Layer 3 |
-| `LAYER3_TIMEOUT_SECONDS` | `10` | HTTP timeout for Layer 3 calls |
+| `LAYER3_API_KEY` | — | Optional bearer token for Layer 3 (required when Layer 3 deployment enforces service auth) |
+| `LAYER3_TIMEOUT_SECONDS` | `30` | Per-request Layer 3 timeout in seconds (increase for production if network latency requires) |
+| `LAYER3_RETRY_ATTEMPTS` | `3` (code constant) | Sync client retries transient timeout/5xx failures up to 3 attempts with linear backoff (2s, 4s) and no retry for 4xx. |
 | `MIN_CONFIDENCE_FOR_SUPPORTED` | `0.5` | Confidence threshold for SUPPORTED |
 | `MIN_SOURCES_FOR_CORROBORATED` | `2` | Source count for CORROBORATED |
 | `AUTO_ADVANCE_TO_SUPPORTED` | `true` | Auto-advance on source add |

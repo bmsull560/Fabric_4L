@@ -91,7 +91,7 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8006
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -99,7 +99,7 @@ spec:
             failureThreshold: 3
           startupProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 8006
             initialDelaySeconds: 5
             periodSeconds: 5

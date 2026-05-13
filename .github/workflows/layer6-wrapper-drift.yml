@@ -1,0 +1,41 @@
+name: Layer6 Wrapper Drift
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - 'value_fabric/layer6/**'
+      - 'services/layer6-benchmarks/src/**'
+      - 'scripts/mirrored_files.json'
+      - 'scripts/check_mirrored_files.py'
+      - 'scripts/ci/check_layer6_wrapper_drift.py'
+      - '.github/workflows/layer6-wrapper-drift.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'value_fabric/layer6/**'
+      - 'services/layer6-benchmarks/src/**'
+      - 'scripts/mirrored_files.json'
+      - 'scripts/check_mirrored_files.py'
+      - 'scripts/ci/check_layer6_wrapper_drift.py'
+      - '.github/workflows/layer6-wrapper-drift.yml'
+
+jobs:
+  check-layer6-wrapper-drift:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Layer6 wrappers are shim-only
+        run: python scripts/ci/check_layer6_wrapper_drift.py
+
+      - name: Validate mirrored file parity
+        run: python scripts/check_mirrored_files.py

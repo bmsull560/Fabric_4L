@@ -143,10 +143,11 @@ class HybridSearch:
         query: str,
         entity_type: str | None = None,
         top_k: int = 10,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Pure semantic (vector) search."""
         return await self._vector_search(
-            query, [entity_type] if entity_type else None, top_k
+            query, [entity_type] if entity_type else None, top_k, tenant_id
         )
 
     async def keyword_search(
@@ -259,6 +260,7 @@ class HybridSearch:
         query: str,
         entity_types: list[str] | None,
         top_k: int,
+        tenant_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Execute vector similarity search.
 
@@ -277,6 +279,7 @@ class HybridSearch:
                 query_text=query,
                 entity_type=entity_type,
                 top_k=top_k,
+                tenant_id=self._resolve_tenant_id(tenant_id),
             )
         except Exception as exc:
             logger.warning("Vector search failed: %s", exc)

@@ -25,6 +25,9 @@ from app.main import app
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
+TENANT_TEST = "33333333-3333-4333-8333-333333333333"
+TENANT_A = "44444444-4444-4444-8444-444444444444"
+TENANT_B = "55555555-5555-4555-8555-555555555555"
 
 
 class TestKeycloakJWKSResolution:
@@ -104,24 +107,24 @@ class TestTokenValidation:
         from app.core.database import db
 
         db.users.insert("user-test", User(
-            id="user-test", tenant_id="tenant-test", email="test@test.com",
+            id="user-test", tenant_id=TENANT_TEST, email="test@test.com",
             name="Test", role="admin", status="active", password_hash="$2b$12$dummy",
         ))
         token = create_access_token(
             subject="user-test",
-            tenant_id="tenant-test",
+            tenant_id=TENANT_TEST,
             extra_claims={"roles": ["admin"]},
         )
         resp = client.get("/v1/accounts", headers={
             "Authorization": f"Bearer {token}",
-            "X-Tenant-ID": "tenant-test",
+            "X-Tenant-ID": TENANT_TEST,
         })
         assert resp.status_code in (200, 404)  # 404 = no accounts, which is fine
 
     def test_invalid_signature_rejected(self):
         resp = client.get("/v1/accounts", headers={
             "Authorization": "Bearer invalid.token.here",
-            "X-Tenant-ID": "tenant-test",
+            "X-Tenant-ID": TENANT_TEST,
         })
         assert resp.status_code == 401
 
@@ -129,12 +132,12 @@ class TestTokenValidation:
         from datetime import timedelta
         expired_token = create_access_token(
             subject="user-test",
-            tenant_id="tenant-test",
+            tenant_id=TENANT_TEST,
             expires_delta=timedelta(seconds=-1),  # expired 1 second ago
         )
         resp = client.get("/v1/accounts", headers={
             "Authorization": f"Bearer {expired_token}",
-            "X-Tenant-ID": "tenant-test",
+            "X-Tenant-ID": TENANT_TEST,
         })
         assert resp.status_code == 401
 
@@ -143,7 +146,14 @@ class TestTokenValidation:
         # Manually create a token without tenant_id
         from app.core.config import get_settings
         settings = get_settings()
-        payload = {"sub": "user-test", "exp": int(time.time()) + 3600}
+        payload = {
+            "sub": "user-test",
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_audience,
+            "iat": int(time.time()) - 60,
+            "nbf": int(time.time()) - 60,
+            "exp": int(time.time()) + 3600,
+        }
         bad_token = jose_jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
         resp = client.get("/v1/accounts", headers={
@@ -157,17 +167,17 @@ class TestTokenValidation:
         from app.core.database import db
 
         db.users.insert("user-spoof", User(
-            id="user-spoof", tenant_id="tenant-a", email="a@a.com",
+            id="user-spoof", tenant_id=TENANT_A, email="a@a.com",
             name="A", role="admin", status="active", password_hash="$2b$12$dummy",
         ))
         token = create_access_token(
             subject="user-spoof",
-            tenant_id="tenant-a",
+            tenant_id=TENANT_A,
             extra_claims={"roles": ["admin"]},
         )
         resp = client.get("/v1/accounts", headers={
             "Authorization": f"Bearer {token}",
-            "X-Tenant-ID": "tenant-b",  # forged - doesn't match JWT
+            "X-Tenant-ID": TENANT_B,  # forged - doesn't match JWT
         })
         # Should reject because header doesn't match JWT claim
         assert resp.status_code in (401, 403)

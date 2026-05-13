@@ -237,7 +237,7 @@ class APIConfig(BaseModel):
     """API configuration."""
 
     host: str = Field(default="0.0.0.0", description="API host")
-    port: int = Field(default=8001, description="API port")
+    port: int = Field(default=8003, description="API port")
     workers: int = Field(default=1, description="Number of workers")
     reload: bool = Field(default=False, description="Enable auto-reload")
     debug: bool = Field(default=False, description="Enable debug mode")

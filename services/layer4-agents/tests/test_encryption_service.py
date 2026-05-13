@@ -219,17 +219,25 @@ class TestProductionSafetyGuard:
                 EncryptionService._generate_ephemeral_key()
 
     def test_production_with_opt_in_allowed(self):
-        """ALLOW_EPHEMERAL_ENCRYPTION=true bypasses the production guard."""
+        """Production-like environments ignore ALLOW_EPHEMERAL_ENCRYPTION."""
         env_clean = {k: v for k, v in os.environ.items() if k != "CREDENTIALS_MASTER_KEY"}
         env_clean.update({"ENVIRONMENT": "production", "ALLOW_EPHEMERAL_ENCRYPTION": "true"})
         with patch.dict(os.environ, env_clean, clear=True):
-            key = EncryptionService._generate_ephemeral_key()
-            assert key is not None
+            with pytest.raises(RuntimeError, match="never permitted"):
+                EncryptionService._generate_ephemeral_key()
 
     def test_development_generates_ephemeral_key(self):
-        """Non-production environment generates a key without error."""
+        """Non-production still requires explicit opt-in before using ephemeral keys."""
         env_clean = {k: v for k, v in os.environ.items() if k != "CREDENTIALS_MASTER_KEY"}
         env_clean["ENVIRONMENT"] = "development"
+        with patch.dict(os.environ, env_clean, clear=True):
+            with pytest.raises(RuntimeError, match="ALLOW_EPHEMERAL_ENCRYPTION=true"):
+                EncryptionService._generate_ephemeral_key()
+
+    def test_development_with_opt_in_generates_ephemeral_key(self):
+        """Explicit local-dev opt-in allows ephemeral key generation."""
+        env_clean = {k: v for k, v in os.environ.items() if k != "CREDENTIALS_MASTER_KEY"}
+        env_clean.update({"ENVIRONMENT": "development", "ALLOW_EPHEMERAL_ENCRYPTION": "true"})
         with patch.dict(os.environ, env_clean, clear=True):
             key = EncryptionService._generate_ephemeral_key()
             assert key is not None

@@ -98,6 +98,61 @@ class TenantIdMigration:
             record = await result.single()
             return record["count"] if record else 0
 
+    async def normalize_legacy_tenant_property_names(self) -> dict[str, int]:
+        """Rename legacy `tenantId` property to canonical `tenant_id`.
+
+        Returns:
+            Mapping of label -> nodes normalized.
+        """
+        driver = await self._get_driver()
+        labels = ["Formula", "Variable"]
+        normalized: dict[str, int] = {}
+
+        async with driver.session() as session:
+            for label in labels:
+                result = await session.run(
+                    f"""
+                    MATCH (n:{label})
+                    WHERE n.tenant_id IS NULL AND n.tenantId IS NOT NULL
+                    SET n.tenant_id = n.tenantId
+                    REMOVE n.tenantId
+                    RETURN count(n) as updated
+                    """
+                )
+                record = await result.single()
+                normalized[label] = int(record["updated"]) if record else 0
+
+        return normalized
+
+    async def backfill_tenant_for_expansion_labels(self, default_tenant_id: str) -> dict[str, int]:
+        """Backfill `tenant_id` for labels identified in tenant-isolation expansion audit."""
+        driver = await self._get_driver()
+        labels = [
+            "Formula",
+            "Benchmark",
+            "ValueModel",
+            "BenchmarkPolicy",
+            "FormulaVersion",
+            "SourceBinding",
+        ]
+        updated_by_label: dict[str, int] = {}
+
+        async with driver.session() as session:
+            for label in labels:
+                result = await session.run(
+                    f"""
+                    MATCH (n:{label})
+                    WHERE n.tenant_id IS NULL
+                    SET n.tenant_id = $tenant_id
+                    RETURN count(n) as updated
+                    """,
+                    {"tenant_id": default_tenant_id},
+                )
+                record = await result.single()
+                updated_by_label[label] = int(record["updated"]) if record else 0
+
+        return updated_by_label
+
     async def check_apoc_available(self) -> bool:
         """Check if APOC plugin is available for batched migration."""
         driver = await self._get_driver()
@@ -234,6 +289,10 @@ class TenantIdMigration:
             Migration statistics
         """
         logger.info("Starting tenant_id migration...")
+        alias_updates = await self.normalize_legacy_tenant_property_names()
+        logger.info(f"Legacy tenant property normalization complete: {alias_updates}")
+        expansion_updates = await self.backfill_tenant_for_expansion_labels(default_tenant_id)
+        logger.info(f"Expansion label backfill complete: {expansion_updates}")
         
         # Count nodes needing migration
         count = await self.count_nodes_without_tenant()

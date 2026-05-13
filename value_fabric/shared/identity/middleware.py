@@ -11,8 +11,10 @@ Resolution order (first match wins):
      non-production validation-session flows.
   3. ``X-API-Key`` header — HMAC-SHA256 verified against stored hash; the DB
      record provides tenant_id, user_id, role, permissions.
-  4. ``X-Tenant-ID`` header (UUID) — accepted *only* for internal
-     service-to-service calls; grants the ``system`` role.
+
+``X-Tenant-ID`` and ``X-Organization-ID`` are diagnostic hints only. They never
+create tenant context; when present alongside authenticated context they must
+match the resolved tenant or the request fails closed.
 
 On success, a ``RequestContext`` is stored in the ``ContextVar`` so all
 downstream code can call ``get_request_context()`` or ``require_context()``.
@@ -24,8 +26,6 @@ authentication where required (some endpoints, e.g. ``/health``, are public).
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import inspect
 import logging
 import os
@@ -45,15 +45,7 @@ try:
 except ImportError:
     jwt = None  # type: ignore
 
-from .context import (
-    AUTH_SOURCE_SERVICE_ACCOUNT,
-    RequestContext,
-    clear_current_context,
-    get_current_context,
-    set_current_context,
-    set_request_context,
-    _current_context,
-)
+from .context import RequestContext, set_request_context, _current_context
 from .jwt import decode_jwt as _decode_jwt
 from .permissions import ROLE_PERMISSIONS, Permission, Role, normalize_role_claims
 from .rate_limiter import RedisRateLimiter, RateLimitResult
@@ -135,10 +127,12 @@ def _check_tenant_rate_limit(tenant_id: str, requests_per_minute: int) -> tuple[
     return True, 0
 
 
-# Header names for service-to-service authentication (F-1 P0 fix)
 TENANT_ID_HEADER = "X-Tenant-ID"
-SERVICE_AUTH_HEADER = "X-Service-Auth"
-MIN_SERVICE_SECRET_LENGTH = 32  # Minimum entropy for shared secrets
+ORGANIZATION_ID_HEADER = "X-Organization-ID"
+TENANT_DIAGNOSTIC_HEADERS: tuple[str, ...] = (
+    TENANT_ID_HEADER,
+    ORGANIZATION_ID_HEADER,
+)
 
 # Paths that bypass all authentication checks
 PUBLIC_PATH_ALLOWLIST: frozenset[str] = frozenset(
@@ -274,14 +268,20 @@ async def extract_context_from_api_key(api_key: str) -> RequestContext:
     )
 
 
-def validate_context_consistency(ctx: RequestContext, header_tenant_id: Optional[str]) -> None:
+def validate_context_consistency(
+    ctx: RequestContext,
+    header_tenant_id: Optional[str],
+    *,
+    header_name: str = TENANT_ID_HEADER,
+) -> None:
     """Reject conflicting tenant identifiers across trusted and untrusted inputs.
 
     JWT/API-key tenant claims are authoritative.  A caller-provided
-    ``X-Tenant-ID`` may be present for traceability or legacy clients, but it may
-    not change tenant scope and must either be a canonical UUID or an explicitly
-    allowed legacy test tenant identifier.  Invalid or conflicting headers fail
-    closed before downstream layer routes can read raw request headers.
+    Tenant diagnostic headers may be present for traceability or legacy clients,
+    but they may not change tenant scope and must either be a canonical UUID or
+    an explicitly allowed legacy test tenant identifier. Invalid or conflicting
+    headers fail closed before downstream layer routes can read raw request
+    headers.
     """
     if not header_tenant_id:
         return
@@ -294,9 +294,41 @@ def validate_context_consistency(ctx: RequestContext, header_tenant_id: Optional
         if _allow_legacy_test_tenant_ids() and _LEGACY_TEST_TENANT_ID_RE.fullmatch(raw_header):
             header_value = raw_header
         else:
-            raise ValueError("Invalid tenant_id header") from exc
+            raise ValueError(f"Invalid tenant_id header in {header_name}") from exc
     if str(ctx.tenant_id) != str(header_value):
-        raise ValueError("Conflicting tenant_id between authenticated context and header")
+        raise ValueError(
+            f"Conflicting tenant_id between authenticated context and {header_name}"
+        )
+
+
+def _validate_request_tenant_diagnostics(request: Request, ctx: RequestContext) -> dict[str, str]:
+    diagnostics: dict[str, str] = {}
+    for header_name in TENANT_DIAGNOSTIC_HEADERS:
+        header_value = request.headers.get(header_name)
+        if header_value is None:
+            continue
+        diagnostics[header_name] = header_value
+        validate_context_consistency(ctx, header_value, header_name=header_name)
+    return diagnostics
+
+
+def _strip_tenant_diagnostic_headers(request: Request) -> None:
+    """Remove tenant diagnostic headers after auth resolution.
+
+    Downstream handlers should consume ``request.state.governance_context`` or
+    ``request.state.tenant_header_diagnostics`` instead of re-reading raw
+    headers. Stripping the headers after validation makes that failure mode
+    obvious and prevents accidental header precedence bugs.
+    """
+    scope_headers = request.scope.get("headers")
+    if not scope_headers:
+        return
+    blocked = {header.lower().encode("latin-1") for header in TENANT_DIAGNOSTIC_HEADERS}
+    request.scope["headers"] = [
+        (name, value)
+        for name, value in scope_headers
+        if name.lower() not in blocked
+    ]
 
 
 def _build_context_from_role(
@@ -416,9 +448,12 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
                 request.state.context = ctx
+                request.state.tenant_header_diagnostics = _validate_request_tenant_diagnostics(request, ctx)
+                _strip_tenant_diagnostic_headers(request)
             else:
                 request.state.governance_context = None
                 request.state.context = None
+                request.state.tenant_header_diagnostics = {}
 
             # Rate limiting check (after identity, before request handling)
             if ctx is not None and self._rate_limiter is not None:
@@ -542,7 +577,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             source="jwt",
                             raw=getattr(claims, "extra_claims", {}) or {},
                         )
-                    validate_context_consistency(ctx, request.headers.get(TENANT_ID_HEADER))
                     return ctx
                 except ValueError as exc:
                     logger.warning(
@@ -603,7 +637,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                             source="jwt",
                             raw=getattr(claims, "extra_claims", {}) or {},
                         )
-                    validate_context_consistency(ctx, request.headers.get(TENANT_ID_HEADER))
                     return ctx
                 except ValueError as exc:
                     logger.warning("Session cookie tenant context rejected: %s", exc)
@@ -659,43 +692,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     source="api_key",
                     raw={"rate_limit_per_minute": record.get("rate_limit_per_minute")},
                 )
-
-        # 3. X-Tenant-ID (service-to-service)
-        # P0 FIX: Require X-Service-Auth shared secret to prevent header spoofing
-        x_tenant = request.headers.get(TENANT_ID_HEADER)
-        if x_tenant:
-            expected_secret = os.getenv("SERVICE_AUTH_SECRET")
-            if not expected_secret:
-                logger.warning(
-                    "X-Tenant-ID rejected: SERVICE_AUTH_SECRET not configured"
-                )
-                return None
-            # Validate secret meets minimum length requirement
-            if len(expected_secret) < MIN_SERVICE_SECRET_LENGTH:
-                logger.error(
-                    "SERVICE_AUTH_SECRET too short (%d chars, min %d)",
-                    len(expected_secret),
-                    MIN_SERVICE_SECRET_LENGTH,
-                )
-                return None
-            provided_secret = request.headers.get(SERVICE_AUTH_HEADER, "")
-            if not hmac.compare_digest(provided_secret, expected_secret):
-                logger.warning("X-Tenant-ID rejected: invalid X-Service-Auth")
-                return None
-            try:
-                tenant_id = UUID(x_tenant)
-            except ValueError:
-                logger.debug("Invalid X-Tenant-ID header: %r", x_tenant)
-                return None
-            return _build_context_from_role(
-                tenant_id,
-                user_id="service",
-                roles=[Role.SYSTEM.value],
-                source=AUTH_SOURCE_SERVICE_ACCOUNT,
-                raw={},
-                service_account_id="service-auth-header",
-                service_account_scopes=["tenant:seed", "system:internal"],
-            )
 
         # P0 FIX: Query param tenant authentication removed entirely — never trust client-supplied identity
         return None

@@ -28,7 +28,7 @@ The architecture follows the [Platform Contract](packages/platform-contract/CONT
 └───────────────────────────────┬─────────────────────────────────────────────┘
                                 │ REST
 ┌───────────────────────────────▼─────────────────────────────────────────────┐
-│          LAYER 3: KNOWLEDGE GRAPH & SEMANTIC LAYER (Port 8001)              │
+│          LAYER 3: KNOWLEDGE GRAPH & SEMANTIC LAYER (Port 8003)              │
 │       (Neo4j · GraphRAG · Hybrid Retrieval · pgvector · Subgraph API)       │
 └───────────────────────────────┬─────────────────────────────────────────────┘
                                 │ RDF/Turtle
@@ -630,7 +630,7 @@ Each link records: timestamp, processing version, confidence, evidence quotes.
 |-------|-----------|---------------|---------------|
 | Layer 1 (Ingestion) | Document processing workers | 8001 | 8000 |
 | Layer 2 (Extraction) | LLM-based extraction (GPU-enabled) | 8002 | 8000 |
-| Layer 3 (Knowledge) | API server + Neo4j graph database | 8003 | 8001 |
+| Layer 3 (Knowledge) | API server + Neo4j graph database | 8003 | 8003 |
 | Layer 4 (Agents) | LangGraph agent runtime | 8004 | 8000 |
 | Layer 5 (Ground Truth) | Truth validation service | 8005 | 8005 |
 | Layer 6 (Benchmarks) | Peer comparison service | 8006 | 8006 |

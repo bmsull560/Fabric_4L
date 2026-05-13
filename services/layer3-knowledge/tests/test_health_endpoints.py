@@ -54,6 +54,7 @@ class TestHealthEndpoints:
         configuration: dict[str, Any] = data["configuration"]
         assert "api_host" in configuration
         assert "api_port" in configuration
+        assert configuration["api_port"] == 8003
         assert "log_level" in configuration
         assert "neo4j_database" in configuration
     

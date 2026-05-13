@@ -16,6 +16,8 @@ _TEST_ENV_DEFAULTS = {
     "ENVIRONMENT": "test",
     "APP_ENV": "test",
     "TESTING": "true",
+    "NEO4J_URI": "bolt://localhost:7687",
+    "NEO4J_USER": "neo4j",
     "NEO4J_PASSWORD": "test_password",
     "ALLOW_INSECURE_DEV_AUTH_BYPASS": "true",
     "DEV_AUTH_BYPASS": "true",
