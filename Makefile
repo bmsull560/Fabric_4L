@@ -196,7 +196,8 @@ test-e2e-journeys: ## Layer 2: Run Playwright chained user journeys (live or moc
 test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 	$(PYTEST) tests/contract/test_journey_contracts.py -v
 
-test-backend-integrated-validation: ## Backend milestone: run live-service workflow, persistence, tenant, agent, and resilience validation
+test-backend-integrated-validation: ## Backend milestone: run direct release-policy proofs plus live-service workflow, persistence, tenant, agent, and resilience validation
+	$(PYTEST) services/api/app/tests/test_auth_enforcement.py services/api/app/tests/test_health.py services/api/app/tests/test_i03_durable_persistence_and_llm.py services/api/app/tests/test_production_safety.py tests/contract/test_retention_deletion_contract.py -v
 	$(PYTEST) tests/backend_integrated -m backend_integrated -v
 
 test-backend-integrated-release-smoke: ## Backend milestone: boot full L1-L6 release stack and run release-environment smoke validation
@@ -555,6 +556,7 @@ gates-sign-manifest: ## Sign artifact manifest with SHA-256
 		echo "❌ Artifact directory $(ARTIFACT_DIR) does not exist"; \
 		exit 1; \
 	fi
+	@$(PYTHON) scripts/ops/validate-release-manifest.py $(ARTIFACT_DIR)
 	@FILE_COUNT=$$(find $(ARTIFACT_DIR) -type f -not -path "*/logs/*" -not -name "manifest.sha256" | wc -l); \
 	if [ "$$FILE_COUNT" -eq 0 ]; then \
 		echo "❌ No artifacts to sign in $(ARTIFACT_DIR)"; \

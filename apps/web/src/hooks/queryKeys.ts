@@ -220,6 +220,16 @@ export const QK = {
       ["governance", "lineage", correlationId] as const,
   },
 
+  workspace: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["workspace"] as const,
+    caseId: (accountId: string | null) => ["workspace", "case-id", accountId] as const,
+    tab: (caseId: string | null, tabKey: string) =>
+      ["workspace", "tab", caseId, tabKey] as const,
+    accountTab: (accountId: string, tabKey: string) =>
+      ["workspace", accountId, tabKey] as const,
+  },
+
   versions: {
     layerTag: QUERY_LAYER_TAGS.layer5,
     all: ["versions"] as const,
@@ -403,7 +413,10 @@ export const QK = {
     all: ["ground-truth"] as const,
     list: (filters: unknown) =>
       ["ground-truth", "list", stableKey(filters)] as const,
+    truths: (filters: unknown) =>
+      ["ground-truth", "truths", stableKey(filters)] as const,
     audit: (truthId: string) => ["ground-truth", "audit", truthId] as const,
+    truthAudit: (truthId: string | null) => ["ground-truth", "truth-audit", truthId] as const,
     freshnessSummary: () => ["ground-truth", "freshness-summary"] as const,
     stale: (filters: unknown) =>
       ["ground-truth", "stale", stableKey(filters)] as const,

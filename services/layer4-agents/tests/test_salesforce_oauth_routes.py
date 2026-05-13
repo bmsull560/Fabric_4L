@@ -54,13 +54,13 @@ async def client(app: FastAPI) -> AsyncClient:
 @pytest.mark.asyncio
 async def test_start_salesforce_oauth_returns_authorize_url(client: AsyncClient) -> None:
     response = await client.post(
-        "/v1/integrations/salesforce/oauth/authorize",
+        "/v1/integrations/salesforce/oauth/start",
         json={"return_to": "/context/integrations?provider=salesforce"},
     )
 
     assert response.status_code == 200
     data = response.json()
-    parsed = urlparse(data["authorize_url"])
+    parsed = urlparse(data["authorization_url"])
     params = parse_qs(parsed.query)
     assert parsed.netloc == "login.salesforce.com"
     assert params["client_id"] == ["client-id"]
@@ -87,10 +87,10 @@ async def test_complete_salesforce_oauth_redirects_after_success(client: AsyncCl
     app.dependency_overrides[integrations_route.get_integration_service] = lambda: service
 
     auth_response = await client.post(
-        "/v1/integrations/salesforce/oauth/authorize",
+        "/v1/integrations/salesforce/oauth/start",
         json={"return_to": "/context/integrations?provider=salesforce"},
     )
-    state = parse_qs(urlparse(auth_response.json()["authorize_url"]).query)["state"][0]
+    state = parse_qs(urlparse(auth_response.json()["authorization_url"]).query)["state"][0]
 
     response = await client.get(
         "/v1/integrations/salesforce/oauth/callback",

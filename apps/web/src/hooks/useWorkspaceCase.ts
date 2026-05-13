@@ -60,7 +60,7 @@ export async function persistWorkspaceTab(caseId: string, tabKey: string, payloa
 
 export function useCanonicalCaseId(accountId: string | null) {
   return useQuery<string | null>({
-    queryKey: ['workspace', 'case-id', accountId],
+    queryKey: QK.workspace.caseId(accountId),
     enabled: Boolean(accountId),
     queryFn: async () => {
       if (!accountId) return null;
@@ -72,7 +72,7 @@ export function useCanonicalCaseId(accountId: string | null) {
 
 export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: string) {
   return useQuery<TData>({
-    queryKey: ['workspace', 'tab', caseId, tabKey],
+    queryKey: QK.workspace.tab(caseId, tabKey),
     enabled: Boolean(caseId),
     queryFn: async () => {
       if (!caseId) throw new Error('Missing case_id');

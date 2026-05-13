@@ -1,7 +1,6 @@
 import os
 
 import pytest
-from unittest.mock import AsyncMock
 
 _TEST_ENV_DEFAULTS = {
     "ENVIRONMENT": "test",
@@ -45,14 +44,16 @@ for _key, _value in _TEST_ENV_DEFAULTS.items():
 import value_fabric.layer6.database as database
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
+
 @pytest.fixture(autouse=True)
 def mock_governance_middleware(monkeypatch):
     """Bypass the actual JWT validation in GovernanceMiddleware for tests.
     We rely on app.dependency_overrides[get_request_context] in the test client
     to control the actual tenant_id seen by the endpoints."""
     async def mock_dispatch(self, request, call_next):
-        from value_fabric.shared.identity.context import RequestContext
         from uuid import uuid4
+
+        from value_fabric.shared.identity.context import RequestContext
         
         # Give it a fallback context just in case, though get_request_context should override it
         ctx = RequestContext(

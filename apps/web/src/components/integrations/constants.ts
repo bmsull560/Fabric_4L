@@ -41,29 +41,7 @@ export const PROVIDER_STYLES: Record<CRMProvider, ProviderStyle> = {
     icon: React.createElement(Cloud, { size: 24 }),
     gridIconBg: 'bg-blue-100',
     gridIconText: 'text-blue-600',
-    fields: [
-      {
-        key: 'apiKey',
-        label: 'Access Token',
-        type: 'password',
-        required: true,
-        placeholder: '00D...!ARQA...',
-      },
-      {
-        key: 'apiSecret',
-        label: 'Refresh Token (optional)',
-        type: 'password',
-        required: false,
-        placeholder: 'For automatic token refresh',
-      },
-      {
-        key: 'instanceUrl',
-        label: 'Instance URL',
-        type: 'text',
-        required: true,
-        placeholder: 'https://yourinstance.salesforce.com',
-      },
-    ],
+    fields: [],
   },
   hubspot: {
     name: 'HubSpot',

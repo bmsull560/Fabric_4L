@@ -3,13 +3,15 @@ name: Layer6 Dashboard Metric Drift
 on:
   pull_request:
     paths:
-      - "monitoring/grafana/dashboards/layer6-benchmarks.json"
+      - "monitoring/grafana/dashboards/*.json"
+      - "monitoring/alerting/rules.yml"
       - "contracts/observability/layer6-metrics.json"
       - "scripts/observability/check_layer6_dashboard_metrics.py"
   push:
     branches: [main]
     paths:
-      - "monitoring/grafana/dashboards/layer6-benchmarks.json"
+      - "monitoring/grafana/dashboards/*.json"
+      - "monitoring/alerting/rules.yml"
       - "contracts/observability/layer6-metrics.json"
       - "scripts/observability/check_layer6_dashboard_metrics.py"
 

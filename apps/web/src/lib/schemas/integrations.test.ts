@@ -53,6 +53,7 @@ describe("integrations runtime boundary schemas", () => {
     expect(
       parseSyncTriggerResult({
         sync_id: "sync-1",
+        job_id: "sync-1",
         status: "queued",
         provider: "salesforce",
       })
@@ -62,10 +63,11 @@ describe("integrations runtime boundary schemas", () => {
     });
     expect(
       parseOAuthAuthorizeResult({
-        authorize_url: "https://login.salesforce.com/services/oauth2/authorize?client_id=abc",
+        authorization_url: "https://login.salesforce.com/services/oauth2/authorize?client_id=abc",
         state_expires_at: "2026-05-05T21:10:00.000Z",
       })
     ).toMatchObject({
+      authorization_url: "https://login.salesforce.com/services/oauth2/authorize?client_id=abc",
       authorize_url: "https://login.salesforce.com/services/oauth2/authorize?client_id=abc",
     });
   });
@@ -86,7 +88,7 @@ describe("integrations runtime boundary schemas", () => {
       parseSyncTriggerResult({ sync_id: "sync-1", provider: "salesforce" })
     ).toThrow();
     expect(() =>
-      parseOAuthAuthorizeResult({ authorize_url: "not-a-url", state_expires_at: "later" })
+      parseOAuthAuthorizeResult({ authorization_url: "not-a-url", state_expires_at: "later" })
     ).toThrow();
   });
 });

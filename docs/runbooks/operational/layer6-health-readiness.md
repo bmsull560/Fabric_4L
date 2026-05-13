@@ -29,3 +29,9 @@ Readiness checks are explicit and stable:
 2. If `/ready` fails but `/health` stays green, inspect the `checks` object in the readiness payload first.
 3. For `config` failures, correct the deployment environment or secret/config map inputs and restart the pod.
 4. For `neo4j` or `benchmark_store` failures, restore dependency connectivity before forcing restarts; repeated restarts will not clear a downstream outage.
+
+## Observability checks
+
+- Layer 6 metrics and label contracts live in `contracts/observability/layer6-metrics.json`.
+- Startup drift diagnosis should begin with the `layer6.startup` log record, which includes `version`, `build_sha`, and `config_fingerprint`.
+- Dashboard and alert query drift can be checked with `python scripts/observability/check_layer6_dashboard_metrics.py`.

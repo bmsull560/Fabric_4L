@@ -59,6 +59,8 @@ function getCookie(name: string): string | null {
   return match ? decodeURIComponent(match.slice(key.length)) : null;
 }
 
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 // ============================================================================
 // Environment Configuration with Validation
 // ============================================================================
@@ -97,6 +99,38 @@ function generateRequestId(): string {
   }
   // Fallback for rare legacy runtimes
   return `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+export interface ApiFetchInitOptions extends Omit<RequestInit, 'headers' | 'method'> {
+  headers?: Record<string, string>;
+  method?: string;
+}
+
+export function buildApiFetchInit({
+  headers = {},
+  method = 'GET',
+  credentials = 'include',
+  ...rest
+}: ApiFetchInitOptions = {}): RequestInit {
+  const normalizedMethod = method.toUpperCase();
+  const mergedHeaders: Record<string, string> = {
+    ...headers,
+    'X-Request-ID': headers['X-Request-ID'] ?? generateRequestId(),
+  };
+
+  if (MUTATING_METHODS.has(normalizedMethod) && !mergedHeaders['X-CSRF-Token']) {
+    const csrfToken = getCookie('vf_csrf_token');
+    if (csrfToken) {
+      mergedHeaders['X-CSRF-Token'] = csrfToken;
+    }
+  }
+
+  return {
+    ...rest,
+    method: normalizedMethod,
+    credentials,
+    headers: mergedHeaders,
+  };
 }
 
 /**
@@ -225,7 +259,7 @@ class ApiClient {
           // via withCredentials: true. No Authorization header needed.
 
           const method = (config.method ?? 'get').toUpperCase();
-          if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+          if (MUTATING_METHODS.has(method)) {
             const csrfToken = getCookie('vf_csrf_token');
             if (csrfToken) {
               config.headers['X-CSRF-Token'] = csrfToken;

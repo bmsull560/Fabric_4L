@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../test/mocks/server";
-import { apiClient } from "./client";
+import { apiClient, buildApiFetchInit } from "./client";
 import {
   applySessionServiceTestEnvironment,
   authFixtures,
@@ -106,6 +106,23 @@ describe("ApiClient", () => {
       await apiClient.get("l3", "/test");
       expect(capturedHeaders["x-tenant-id"]).toBeUndefined();
       expect(capturedHeaders.authorization).toBeUndefined();
+    });
+
+    it("builds fetch init with credentials, correlation, and CSRF for mutating requests", () => {
+      document.cookie = "vf_csrf_token=test-csrf-token";
+
+      const init = buildApiFetchInit({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ok: true }),
+      });
+
+      const headers = init.headers as Record<string, string>;
+      expect(init.credentials).toBe("include");
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers["X-CSRF-Token"]).toBe("test-csrf-token");
+      expect(headers["X-Request-ID"]).toMatch(/^req_/);
+      expect(headers["X-Tenant-ID"]).toBeUndefined();
     });
   });
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Btn } from '@/components/WfPrimitives';
 import {
-  Cloud,
   CloudOff,
   Loader2,
   CheckCircle2,
@@ -19,7 +18,7 @@ import type {
   IntegrationCreateRequest,
   CRMProvider,
 } from '@/hooks/useIntegrations';
-import { PROVIDER_STYLES, VALIDATION, PROVIDER_NAMES } from './constants';
+import { PROVIDER_STYLES, VALIDATION } from './constants';
 import { getStatusBadgeClasses, formatLastSync, formatRecordCount } from './utils';
 
 interface EditingConfig {
@@ -59,6 +58,7 @@ export function IntegrationConfigPanel({
   isStartingOAuth,
 }: IntegrationConfigPanelProps) {
   const resolvedProvider = (provider || integration?.provider || 'salesforce') as CRMProvider;
+  const isSalesforce = resolvedProvider === 'salesforce';
   const providerInfo = PROVIDER_STYLES[resolvedProvider];
   const [isEditing, setIsEditing] = useState(false);
   const [editConfig, setEditConfig] = useState<EditingConfig>({
@@ -85,9 +85,9 @@ export function IntegrationConfigPanel({
   const handleSave = () => {
     const requestData: IntegrationCreateRequest = {
       enabled: editConfig.enabled,
-      api_key: editConfig.apiKey,
-      api_secret: editConfig.apiSecret || undefined,
-      instance_url: editConfig.instanceUrl,
+      api_key: isSalesforce ? undefined : editConfig.apiKey,
+      api_secret: isSalesforce ? undefined : (editConfig.apiSecret || undefined),
+      instance_url: editConfig.instanceUrl || undefined,
       sync_interval_minutes: editConfig.syncIntervalMinutes,
       sync_batch_size: editConfig.syncBatchSize,
     };
@@ -99,6 +99,7 @@ export function IntegrationConfigPanel({
   const isConnected = integration?.enabled || false;
   const status = integration?.status || 'idle';
   const errorMessage = integration?.last_error_message;
+  const requiresReconnect = isSalesforce && !!integration && (!integration.has_refresh_token || status === 'degraded');
 
   // Empty state
   if (!integration) {
@@ -112,14 +113,14 @@ export function IntegrationConfigPanel({
         </h3>
         <p className="text-[13px] text-neutral-500 max-w-xs">
           {provider
-            ? resolvedProvider === 'salesforce'
-              ? 'Use OAuth to connect Salesforce securely, or open manual configuration if you need a temporary fallback.'
+            ? isSalesforce
+              ? 'Use OAuth to connect Salesforce securely. Token entry is no longer the primary configuration path.'
               : 'Enter the provider credentials and sync settings to activate this integration.'
             : 'Choose an integration from the grid to view and configure its settings'}
         </p>
         {provider && (
           <div className="mt-6 flex w-full max-w-xs flex-col gap-2">
-            {resolvedProvider === 'salesforce' && (
+            {isSalesforce ? (
               <Btn variant="primary" onClick={onStartOAuth} disabled={isStartingOAuth}>
                 {isStartingOAuth ? (
                   <>
@@ -130,10 +131,11 @@ export function IntegrationConfigPanel({
                   `Connect ${providerInfo.name}`
                 )}
               </Btn>
+            ) : (
+              <Btn variant="ghost" onClick={() => setIsEditing(true)}>
+                Manual Configuration
+              </Btn>
             )}
-            <Btn variant="ghost" onClick={() => setIsEditing(true)}>
-              Manual Configuration
-            </Btn>
           </div>
         )}
       </div>
@@ -197,7 +199,7 @@ export function IntegrationConfigPanel({
       <div className="p-6">
         {isEditing ? (
           <div className="space-y-4">
-            {providerInfo.fields.map((field) => (
+            {!isSalesforce && providerInfo.fields.map((field) => (
               <div key={field.key}>
                 <label className="text-[12px] font-medium text-neutral-700 mb-1.5 block">
                   {field.label}
@@ -212,6 +214,12 @@ export function IntegrationConfigPanel({
                 />
               </div>
             ))}
+
+            {isSalesforce && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-3 text-[12px] text-blue-800">
+                Salesforce credentials are managed through OAuth. This panel only updates operational sync settings.
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4 pt-2">
               <div>
@@ -331,6 +339,20 @@ export function IntegrationConfigPanel({
               </div>
             )}
 
+            {requiresReconnect && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={14} className="text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="text-[11px] font-medium text-amber-900">Reconnect Required</p>
+                    <p className="text-[10px] text-amber-700 mt-0.5">
+                      This Salesforce connection is missing a refresh token or is currently degraded. Reconnect to restore automatic token refresh.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">
               <div className="flex items-center gap-2">
@@ -340,7 +362,7 @@ export function IntegrationConfigPanel({
                   className="flex-1"
                 >
                   <Settings size={14} className="mr-1" />
-                  Edit
+                  {isSalesforce ? 'Sync Settings' : 'Edit'}
                 </Btn>
                 <Btn
                   variant={isSyncing ? "ghost" : "primary"}
@@ -377,6 +399,23 @@ export function IntegrationConfigPanel({
                     "Test Connection"
                   )}
                 </Btn>
+                {isSalesforce && (
+                  <Btn
+                    variant="outline"
+                    onClick={onStartOAuth}
+                    disabled={isStartingOAuth}
+                    className="flex-1"
+                  >
+                    {isStartingOAuth ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin mr-1" />
+                        Redirecting...
+                      </>
+                    ) : (
+                      "Connect OAuth"
+                    )}
+                  </Btn>
+                )}
                 {isConnected && (
                   <Btn
                     variant="outline"

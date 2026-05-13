@@ -44,7 +44,7 @@ export interface IntegrationConfig {
 
 export interface IntegrationCreateRequest {
   enabled: boolean;
-  api_key: string;
+  api_key?: string;
   api_secret?: string;
   instance_url?: string;
   sync_interval_minutes: number;
@@ -184,7 +184,7 @@ export function useStartSalesforceOAuth() {
     mutationFn: async data => {
       const response = await apiPost<unknown>(
         "l4",
-        "/integrations/salesforce/oauth/authorize",
+        "/integrations/salesforce/oauth/start",
         data
       );
       return parseOAuthAuthorizeResult(response.data);

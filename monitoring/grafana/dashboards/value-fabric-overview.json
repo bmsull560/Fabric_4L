@@ -456,7 +456,7 @@
       },
       "targets": [
         {
-          "expr": "layer6_health_status{component=\"api\"} or vector(0)",
+          "expr": "layer6_health_status{service=\"layer6-benchmarks\"} or vector(0)",
           "legendFormat": "L6 Benchmarks",
           "refId": "A"
         }
@@ -530,7 +530,7 @@
           "refId": "E"
         },
         {
-          "expr": "rate(layer6_http_requests_total[5m])",
+          "expr": "sum(rate(layer6_requests_total[5m]))",
           "legendFormat": "L6 Benchmarks",
           "refId": "F"
         }
@@ -601,7 +601,7 @@
           "refId": "E"
         },
         {
-          "expr": "(rate(layer6_http_requests_total{status_code=~\"4..|5..\"}[5m]) / rate(layer6_http_requests_total[5m])) * 100 or vector(0)",
+          "expr": "(sum(rate(layer6_requests_total{status_class=~\"4xx|5xx\"}[5m])) / sum(rate(layer6_requests_total[5m]))) * 100 or vector(0)",
           "legendFormat": "L6 Benchmarks",
           "refId": "F"
         }
@@ -672,7 +672,7 @@
           "refId": "E"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(layer6_http_request_duration_seconds_bucket[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(layer6_request_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "L6 p95",
           "refId": "F"
         }

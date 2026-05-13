@@ -7,6 +7,7 @@
  */
 
 import type { ZodError } from 'zod';
+import { ApiError } from '@/api/client';
 
 // ── Cache duration constants (milliseconds) ───────────────────────────────────
 export const STALE_TIME = {
@@ -54,13 +55,20 @@ export function formatZodError(error: ZodError, context: string): string {
 
 // ── Base API error class ──────────────────────────────────────────────────────
 export class BaseApiError extends Error {
+  public errorCode?: string;
+  public traceId?: string | null;
+
   constructor(
     message: string,
     public statusCode?: number,
-    public responseData?: unknown
+    public responseData?: unknown,
+    errorCode?: string,
+    traceId?: string | null
   ) {
     super(message);
     this.name = 'BaseApiError';
+    this.errorCode = errorCode;
+    this.traceId = traceId;
   }
 }
 
@@ -152,17 +160,14 @@ export async function withApiError<T, E extends BaseApiError>(
   try {
     return await promise;
   } catch (err: unknown) {
-    // Handle ApiError instances (from apiClient interceptor)
-    if (err instanceof Error && 'statusCode' in err) {
-      const apiErr = err as { statusCode?: number; errorCode?: string; traceId?: string | null };
-      const newError = new ErrorClass(
-        err.message,
-        apiErr.statusCode,
-        { code: apiErr.errorCode, traceId: apiErr.traceId }
-      );
+    if (err instanceof ApiError) {
+      const newError = new ErrorClass(err.message, err.statusCode, undefined);
+      newError.errorCode = err.errorCode;
+      newError.traceId = err.traceId;
       newError.cause = err;
       throw newError;
     }
+
     // Handle axios-style errors
     if (err instanceof Error && 'response' in err) {
       const axiosErr = err as { response?: { status?: number; data?: unknown } };
@@ -171,6 +176,11 @@ export async function withApiError<T, E extends BaseApiError>(
         axiosErr.response?.status,
         axiosErr.response?.data
       );
+      if (typeof axiosErr.response?.data === 'object' && axiosErr.response?.data !== null) {
+        const responseData = axiosErr.response.data as Record<string, unknown>;
+        newError.errorCode = typeof responseData.code === 'string' ? responseData.code : undefined;
+        newError.traceId = typeof responseData.trace_id === 'string' ? responseData.trace_id : null;
+      }
       newError.cause = err;
       throw newError;
     }

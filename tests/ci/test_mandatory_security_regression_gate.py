@@ -37,6 +37,7 @@ def _required_suites_from_script() -> list[str]:
     for array_name in (
         "STANDALONE_API_TESTS",
         "ROOT_SECURITY_TESTS",
+        "CROSS_LAYER_TENANT_MATRIX_TESTS",
         "LAYER4_C06_SECURITY_TESTS",
         "CONTRACT_TESTS",
         "K8S_TESTS",
@@ -89,6 +90,7 @@ def test_gate_list_required_mode():
     auth_hijacking = "tests/security/test_auth_session_hijacking.py"
     csrf_comprehensive = "tests/security/test_csrf_comprehensive.py"
     auth_rate_limiting = "tests/security/test_auth_rate_limiting.py"
+    cross_layer_matrix = "tests/security/test_cross_layer_tenant_isolation_matrix.py"
 
     assert layer2_i02 in required_suites, f"I-02 Layer 2 suite missing from required list"
     assert layer5_i02 in required_suites, f"I-02 Layer 5 suite missing from required list"
@@ -97,6 +99,7 @@ def test_gate_list_required_mode():
     assert auth_hijacking in required_suites, "Authentication session hijacking suite missing from required list"
     assert csrf_comprehensive in required_suites, "Comprehensive CSRF suite missing from required list"
     assert auth_rate_limiting in required_suites, "Authentication rate-limit suite missing from required list"
+    assert cross_layer_matrix in required_suites, "Cross-layer tenant isolation matrix suite missing from required list"
 
 
 def test_gate_references_required_i02_layer_suites():
@@ -146,17 +149,21 @@ def test_gate_includes_required_suite_arrays():
 
     assert "STANDALONE_API_TESTS=(" in script_content, "Gate missing API required suite array"
     assert "ROOT_SECURITY_TESTS=(" in script_content, "Gate missing root security suite array"
+    assert "CROSS_LAYER_TENANT_MATRIX_TESTS=(" in script_content, "Gate missing cross-layer tenant matrix suite array"
     assert "LAYER4_C06_SECURITY_TESTS=(" in script_content, "Gate missing Layer 4 C-06 suite array"
 
     # Check for critical security suites
     required_patterns = [
         "test_auth_enforcement",
+        "test_health",
         "test_production_safety",
         "test_tenant_boundary_fails_closed",
         "test_auth_session_hijacking",
         "test_csrf_comprehensive",
         "test_auth_rate_limiting",
         "test_cross_tenant_api",
+        "test_cross_layer_tenant_isolation_matrix",
+        "test_retention_deletion_contract",
         "test_security_policies",
         "test_workload_validation",
         "test_tenant_rate_limits",

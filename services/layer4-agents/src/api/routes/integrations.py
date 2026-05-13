@@ -78,7 +78,7 @@ class IntegrationCreateRequest(BaseModel):
     """
 
     enabled: bool = Field(False, description="Whether to enable the integration")
-    api_key: str = Field(..., description="API key/token for the CRM")
+    api_key: str | None = Field(None, description="API key/token for the CRM")
     api_secret: str | None = Field(None, description="API secret (if required)")
     instance_url: str | None = Field(None, description="CRM instance URL")
     sync_interval_minutes: int = Field(60)
@@ -119,6 +119,7 @@ class SyncTriggerResponse(BaseModel):
     """Manual sync trigger response."""
 
     sync_id: str
+    job_id: str
     status: str
     provider: str
     queued_at: str | None = None
@@ -141,8 +142,30 @@ class SalesforceOAuthAuthorizeRequest(BaseModel):
 
 
 class SalesforceOAuthAuthorizeResponse(BaseModel):
-    authorize_url: str
+    authorization_url: str
+    authorize_url: str | None = Field(default=None, description="Deprecated compatibility alias")
     state_expires_at: str
+
+
+class CRMSyncJobResponse(BaseModel):
+    id: str
+    tenant_id: str
+    provider: str
+    status: str
+    requested_by: str | None = None
+    queued_at: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    records_synced: int = 0
+    records_updated: int = 0
+    records_failed: int = 0
+    error_summary: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class CRMSyncJobListResponse(BaseModel):
+    jobs: list[CRMSyncJobResponse]
 
 
 # -----------------------------------------------------------------------------
@@ -298,7 +321,9 @@ async def create_or_update_integration(
     x_user_id = context.user_id
 
     # Build credentials dict
-    credentials: dict[str, str] = {"api_key": request.api_key}
+    credentials: dict[str, str] = {}
+    if request.api_key:
+        credentials["api_key"] = request.api_key
     if request.api_secret:
         credentials["api_secret"] = request.api_secret
     if request.instance_url:
@@ -467,10 +492,38 @@ async def trigger_sync(
         )
 
 
-@router.post("/salesforce/oauth/authorize", response_model=SalesforceOAuthAuthorizeResponse)
-async def start_salesforce_oauth(
-    request: SalesforceOAuthAuthorizeRequest,
+@router.get("/{provider}/sync-jobs", response_model=CRMSyncJobListResponse)
+async def list_sync_jobs(
+    provider: CRMProvider,
+    limit: int = 20,
     context: RequestContext = Depends(require_authenticated),
+    service: IntegrationService = Depends(get_integration_service),
+) -> CRMSyncJobListResponse:
+    tenant_id = str(context.tenant_id)
+    jobs = await service.list_sync_jobs(tenant_id, provider, limit=limit)
+    return CRMSyncJobListResponse(jobs=[CRMSyncJobResponse(**job.to_dict()) for job in jobs])
+
+
+@router.get("/{provider}/sync-jobs/{job_id}", response_model=CRMSyncJobResponse)
+async def get_sync_job(
+    provider: CRMProvider,
+    job_id: str,
+    context: RequestContext = Depends(require_authenticated),
+    service: IntegrationService = Depends(get_integration_service),
+) -> CRMSyncJobResponse:
+    tenant_id = str(context.tenant_id)
+    job = await service.get_sync_job(tenant_id, provider, job_id)
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No sync job {job_id} found for {provider.value}",
+        )
+    return CRMSyncJobResponse(**job.to_dict())
+
+
+async def _build_salesforce_oauth_response(
+    request: SalesforceOAuthAuthorizeRequest,
+    context: RequestContext,
 ) -> SalesforceOAuthAuthorizeResponse:
     """Generate the Salesforce OAuth authorize URL for the current tenant."""
     tenant_id = str(context.tenant_id)
@@ -500,7 +553,33 @@ async def start_salesforce_oauth(
         )
     )
     expires_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + _OAUTH_STATE_TTL_SECONDS))
-    return SalesforceOAuthAuthorizeResponse(authorize_url=authorize_url, state_expires_at=expires_at)
+    return SalesforceOAuthAuthorizeResponse(
+        authorization_url=authorize_url,
+        authorize_url=authorize_url,
+        state_expires_at=expires_at,
+    )
+
+
+@router.post("/salesforce/oauth/start", response_model=SalesforceOAuthAuthorizeResponse)
+async def start_salesforce_oauth(
+    request: SalesforceOAuthAuthorizeRequest,
+    context: RequestContext = Depends(require_authenticated),
+) -> SalesforceOAuthAuthorizeResponse:
+    """Canonical Salesforce OAuth start route."""
+    return await _build_salesforce_oauth_response(request, context)
+
+
+@router.post(
+    "/salesforce/oauth/authorize",
+    response_model=SalesforceOAuthAuthorizeResponse,
+    deprecated=True,
+)
+async def start_salesforce_oauth_compat(
+    request: SalesforceOAuthAuthorizeRequest,
+    context: RequestContext = Depends(require_authenticated),
+) -> SalesforceOAuthAuthorizeResponse:
+    """Deprecated compatibility alias for the old OAuth start route."""
+    return await _build_salesforce_oauth_response(request, context)
 
 
 @router.get("/salesforce/oauth/callback", include_in_schema=False)

@@ -35,14 +35,23 @@ export const ConnectionTestResultSchema = z.object({
 
 export const SyncTriggerResultSchema = z.object({
   sync_id: z.string(),
+  job_id: z.string(),
   status: z.string(),
   provider: z.string(),
+  queued_at: z.string().optional(),
 });
 
 export const OAuthAuthorizeResultSchema = z.object({
-  authorize_url: z.string().url(),
+  authorization_url: z.string().url().optional(),
+  authorize_url: z.string().url().optional(),
   state_expires_at: z.string(),
-});
+}).refine((value) => Boolean(value.authorization_url || value.authorize_url), {
+  message: "authorization_url or authorize_url is required",
+}).transform((value) => ({
+  authorization_url: value.authorization_url ?? value.authorize_url ?? "",
+  authorize_url: value.authorize_url ?? value.authorization_url ?? "",
+  state_expires_at: value.state_expires_at,
+}));
 
 export type CRMProvider = z.infer<typeof CRMProviderSchema>;
 export type Integration = z.infer<typeof IntegrationSchema>;

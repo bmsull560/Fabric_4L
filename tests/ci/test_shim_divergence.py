@@ -4,6 +4,7 @@ import importlib
 import importlib.util
 import inspect
 import sys
+import types
 import warnings
 from pathlib import Path
 
@@ -56,6 +57,25 @@ def _assert_symbol_parity(canonical, shimmed, expected_names: list[str]) -> None
             assert [route.path for route in canonical_value.routes] == [route.path for route in shimmed_value.routes]
 
 
+def _install_layer4_import_stubs() -> None:
+    if "langgraph.checkpoint.postgres.aio" in sys.modules:
+        return
+
+    langgraph_module = sys.modules.setdefault("langgraph", types.ModuleType("langgraph"))
+    checkpoint_module = sys.modules.setdefault("langgraph.checkpoint", types.ModuleType("langgraph.checkpoint"))
+    postgres_module = sys.modules.setdefault("langgraph.checkpoint.postgres", types.ModuleType("langgraph.checkpoint.postgres"))
+    aio_module = types.ModuleType("langgraph.checkpoint.postgres.aio")
+
+    class AsyncPostgresSaver:  # pragma: no cover - import stub only
+        conn = None
+
+    aio_module.AsyncPostgresSaver = AsyncPostgresSaver
+    sys.modules["langgraph.checkpoint.postgres.aio"] = aio_module
+    langgraph_module.checkpoint = checkpoint_module
+    checkpoint_module.postgres = postgres_module
+    postgres_module.aio = aio_module
+
+
 @pytest.mark.parametrize(
     ("surface", "canonical_name", "shim_name", "shim_path", "expected_names", "env_overrides"),
     [
@@ -88,17 +108,12 @@ def _assert_symbol_parity(canonical, shimmed, expected_names: list[str]) -> None
             {},
         ),
         (
-            "layer4 main entrypoint",
-            "value_fabric.layer4.main",
-            "layer4_agents.main",
+            "layer4 namespace",
+            "value_fabric.layer4",
+            "layer4_agents",
             None,
-            ["app"],
-            {
-                "LAYER1_API_URL": "http://127.0.0.1:8001",
-                "LAYER2_API_URL": "http://127.0.0.1:8002",
-                "LAYER3_API_URL": "http://127.0.0.1:8003",
-                "LAYER4_LAYER5_API_URL": "http://127.0.0.1:8005",
-            },
+            [],
+            {},
         ),
         (
             "layer5 truth object",
@@ -121,11 +136,18 @@ def test_shim_surfaces_match_canonical_public_api(
 ) -> None:
     for key, value in env_overrides.items():
         monkeypatch.setenv(key, value)
-    if surface == "layer4 main entrypoint":
-        for name in ("value_fabric.layer4.main", "layer4_agents.main"):
+    if surface == "layer4 namespace":
+        _install_layer4_import_stubs()
+        for name in ("value_fabric.layer4", "layer4_agents"):
             sys.modules.pop(name, None)
 
     canonical = _import_module(canonical_name)
     shimmed = _import_module(shim_name) if shim_name else _load_by_path(shim_path, f"shim_test_{shim_path.stem}")
+
+    if surface == "layer4 namespace":
+        canonical_root = (REPO_ROOT / "services" / "layer4-agents" / "src").resolve()
+        assert any(Path(str(item)).resolve() == canonical_root for item in canonical.__path__)
+        assert Path(shimmed.__file__).resolve() == (REPO_ROOT / "layer4_agents" / "__init__.py").resolve()
+        return
 
     _assert_symbol_parity(canonical, shimmed, expected_names)

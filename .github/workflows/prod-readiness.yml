@@ -209,9 +209,20 @@ jobs:
           cp "${red_snapshot_file}" "${READINESS_DIR}/red-dashboard-snapshot-metadata.json"
       - name: Evaluate release policy
         run: make gate-release-policy PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - name: Run canonical release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ops/release-gate.sh "${{ needs.determine-profile.outputs.profile }}"
       - name: Sign release manifest
         if: success() && needs.determine-profile.outputs.profile != 'pr-fast'
         run: make gates-sign-manifest
+      - name: Validate canonical release artifacts
+        if: success()
+        run: |
+          test -s artifacts/release/gate-result.json
+          test -s artifacts/release/summary.md
+          python scripts/ops/validate-release-manifest.py artifacts/release
       - uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
@@ -228,5 +239,7 @@ jobs:
       - uses: actions/download-artifact@v4
       - name: Build PR summary
         run: make gates-render-summary
+      - name: Assert machine-readable gate result exists
+        run: test -s artifacts/release/gate-result.json
       - name: Publish summary
         run: cat artifacts/release/summary.md >> $GITHUB_STEP_SUMMARY

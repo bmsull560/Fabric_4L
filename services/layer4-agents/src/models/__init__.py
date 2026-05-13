@@ -53,6 +53,7 @@ from .integration import (
     Integration,
     IntegrationStatus,
 )
+from .crm_sync_job import CRMSyncJob, CRMSyncJobStatus
 from .pain_signal import (
     ErrorCategory,
     EvidenceMatch,
@@ -122,6 +123,8 @@ __all__ = [
     # Integration Models
     "Integration",
     "IntegrationStatus",
+    "CRMSyncJob",
+    "CRMSyncJobStatus",
     # Billing Models
     "BillingCustomer",
     "BillingSubscription",

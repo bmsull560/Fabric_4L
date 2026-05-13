@@ -25,9 +25,9 @@ groups:
             and
             sum(rate(layer5_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer5_http_requests_total[5m])) > 0.05
           ) or (
-            sum(rate(layer6_http_requests_total[5m])) > 0.1
+            sum(rate(layer6_requests_total[5m])) > 0.1
             and
-            sum(rate(layer6_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer6_http_requests_total[5m])) > 0.05
+            sum(rate(layer6_requests_total{status_class="5xx"}[5m])) / sum(rate(layer6_requests_total[5m])) > 0.05
           )
         for: 5m
         labels:
@@ -83,7 +83,7 @@ groups:
             or
             histogram_quantile(0.95, sum(rate(layer5_http_request_duration_seconds_bucket[10m])) by (le)) > 2
             or
-            histogram_quantile(0.95, sum(rate(layer6_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+            histogram_quantile(0.95, sum(rate(layer6_request_duration_seconds_bucket[10m])) by (le)) > 2
           )
         for: 5m
         labels:
@@ -350,7 +350,7 @@ groups:
             or
             layer5_health_status{component="api"} == 0
             or
-            layer6_health_status{component="api"} == 0
+            layer6_health_status{service="layer6-benchmarks"} == 0
           )
         for: 2m
         labels:

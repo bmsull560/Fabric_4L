@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
+import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -34,8 +36,27 @@ def test_layer6_service_required_wrapper_files_exist() -> None:
 
 
 def test_layer6_service_tests_do_not_need_sys_path_hacks() -> None:
-    pytest_ini = (REPO_ROOT / "pytest.ini").read_text(encoding="utf-8")
+    pyproject = (REPO_ROOT / "services" / "layer6-benchmarks" / "pyproject.toml").read_text(encoding="utf-8")
     conftest = (REPO_ROOT / "services" / "layer6-benchmarks" / "tests" / "conftest.py").read_text(encoding="utf-8")
 
-    assert "services/layer6-benchmarks" in pytest_ini
+    assert 'pythonpath = [".", "src", "../..", "../../packages/shared/src"]' in pyproject
     assert "sys.path.insert" not in conftest
+
+
+def test_layer6_service_src_main_import_resolves_from_repo_root() -> None:
+    service_root = REPO_ROOT / "services" / "layer6-benchmarks"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "tests/test_api_wrapper_startup_regression.py",
+            "-q",
+        ],
+        cwd=service_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -53,6 +53,7 @@ function Integrations() {
   const selectedProvider = searchParams.get('provider') as CRMProvider | null;
   const oauthStatus = searchParams.get('oauth_status');
   const oauthError = searchParams.get('error');
+  const oauthErrorDescription = searchParams.get('error_description');
 
   React.useEffect(() => {
     if (oauthStatus === 'connected') {
@@ -60,9 +61,9 @@ function Integrations() {
       refetch();
     }
     if (oauthStatus === 'error') {
-      toast.error(oauthError || 'Salesforce connection failed');
+      toast.error(oauthErrorDescription || oauthError || 'Salesforce connection failed');
     }
-  }, [oauthError, oauthStatus, refetch]);
+  }, [oauthError, oauthErrorDescription, oauthStatus, refetch]);
 
   const setSelectedProvider = (provider: CRMProvider | null) => {
     if (provider) {
@@ -147,7 +148,7 @@ function Integrations() {
       },
       {
         onSuccess: (result) => {
-          window.location.assign(result.authorize_url);
+          window.location.assign(result.authorization_url || result.authorize_url);
         },
         onError: (startError) => {
           toast.error(`Failed to start Salesforce OAuth: ${startError.message}`);

@@ -8,8 +8,10 @@
 ## CI Evidence Inputs
 
 - `make verify`
-- `scripts/release-gate.sh`
-- `scripts/render-release-summary.sh`
+- `scripts/ops/release-gate.sh`
+- `scripts/ops/render-release-summary.sh`
+- `artifacts/release/gate-result.json`
+- `artifacts/release/summary.md`
 - `scripts/ci/platform_contract_lint.py`
 - `scripts/ci/check_tool_contracts.py`
 - `.github/workflows/graph-module-tests.yml` (Graph Query module quality gates on PR + release branches)

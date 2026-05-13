@@ -23,6 +23,7 @@ from ..engine.state_manager import StateManager
 from ..feature_flags.service import FeatureFlagService
 from ..resilience import TenantRateLimiter
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
+from ..services.crm_sync_job_runner import CRMSyncJobRunner
 from ..services.health_tracker import get_health_tracker
 from ..services.value_flow_facade import ValueFlowFacadeService
 from ..tools import create_default_registry
@@ -71,6 +72,7 @@ class RuntimeState:
     state_manager: StateManager | None = None
     checkpoint_saver: AsyncPostgresSaver | None = None
     crm_sync_scheduler: CRMSyncScheduler | None = None
+    crm_sync_job_runner: CRMSyncJobRunner | None = None
     oidc_cleanup_task: "OIDCCleanupTask | None" = None
 
 
@@ -150,6 +152,8 @@ def build_lifespan(
         await health_tracker.stop()
         if runtime_state.crm_sync_scheduler:
             await runtime_state.crm_sync_scheduler.stop()
+        if runtime_state.crm_sync_job_runner:
+            await runtime_state.crm_sync_job_runner.stop()
         if runtime_state.oidc_cleanup_task:
             await runtime_state.oidc_cleanup_task.stop()
         if runtime_state.checkpoint_saver:
@@ -170,6 +174,9 @@ async def start_optional_integrations(app: FastAPI) -> None:
     if settings.enable_crm_scheduler:
         runtime_state.crm_sync_scheduler = await get_crm_sync_scheduler()
         await runtime_state.crm_sync_scheduler.start()
+    if runtime_state.state_manager and getattr(runtime_state.state_manager, "redis_client", None):
+        runtime_state.crm_sync_job_runner = CRMSyncJobRunner(runtime_state.state_manager.redis_client)
+        await runtime_state.crm_sync_job_runner.start()
 
     if settings.enable_oidc_cleanup:
         runtime_state.oidc_cleanup_task = await create_oidc_cleanup_task(

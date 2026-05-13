@@ -339,10 +339,12 @@ echo "Summary: $ARTIFACT_DIR/summary.md"
 echo "========================================"
 
 # Write machine-readable result file for summary renderer
+GIT_SHA="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 cat > "$ARTIFACT_DIR/gate-result.json" <<EOF
 {
   "profile": "$PROFILE",
   "decision": "$FINAL_DECISION",
+  "git_sha": "$GIT_SHA",
   "blocking_pass": $BLOCKING_PASS,
   "blocking_total": $BLOCKING_TOTAL,
   "advisory_pass": $ADVISORY_PASS,

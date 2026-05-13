@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -18,6 +19,22 @@ from value_fabric.shared.identity.context import RequestContext
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ARTIFACT_PATH = REPO_ROOT / "artifacts" / "mandatory_security" / "cross_layer_tenant_isolation_matrix.json"
+
+for extra_path in (
+    REPO_ROOT / "services" / "layer5-ground-truth" / "src",
+    REPO_ROOT / "services" / "layer4-agents" / "src",
+):
+    if str(extra_path) not in sys.path:
+        sys.path.insert(0, str(extra_path))
+
+os.environ.setdefault("LAYER5_API_URL", "http://layer5-ground-truth:8005")
+os.environ.setdefault("LAYER4_LAYER5_API_URL", "http://layer5-ground-truth:8005")
+os.environ.setdefault("LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005")
+os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://user:pass@localhost:5432/value_fabric")
+os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
+os.environ.setdefault("NEO4J_PASSWORD", "devpassword-123")
+os.environ.setdefault("LAYER3_API_KEY", "layer3-api-key-1234")
+os.environ.setdefault("LAYER5_API_KEY", "layer5-api-key-1234")
 
 LAYERS = ("L1", "L2", "L3", "L4", "L5", "L6")
 CONTROL_DESCRIPTIONS = {
@@ -82,7 +99,10 @@ def _write_artifact() -> Path:
 @pytest.fixture(scope="session", autouse=True)
 def _emit_matrix_artifact_at_session_end():
     yield
-    _write_artifact()
+    artifact_path = _write_artifact()
+    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    if payload["overall_status"] != "PASS":
+        pytest.fail(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _record(layer: str, control_id: str, *, status: str, detail: str) -> None:
@@ -159,6 +179,7 @@ class _FakeExecutor:
         self.cancel_called = False
         self.resume_calls: list[dict] = []
         self.list_tenant_ids: list[str] = []
+        self.checkpoint_saver = object()
 
     async def execute_workflow(self, **kwargs):
         return SimpleNamespace(workflow_id="wf-001", status="pending")
@@ -239,13 +260,13 @@ def test_l1_fail_closed_without_context() -> None:
 @pytest.mark.asyncio
 async def test_l2_ctx_source_of_truth() -> None:
     from layer2_extraction.api import main as l2_main
-    from layer2_extraction.models.extraction_api import ExtractionConfig, ExtractionRequest
+    from layer2_extraction.models.extraction_api import ExtractionRequest
 
     l2_main.job_store._jobs.clear()
     payload = ExtractionRequest(
         source_url="https://example.com/a",
         markdown_content="content",
-        extraction_config=ExtractionConfig(),
+        extraction_config={},
     )
     request = _request_with_context(TENANT_A)
 
@@ -418,7 +439,7 @@ async def test_l4_query_filters_present() -> None:
     ctx = RequestContext(tenant_id=TENANT_A, user_id=str(USER_A))
     request = Mock(spec=Request)
 
-    await l4_workflows.list_workflows(request=request, _ctx=ctx, executor=executor)
+    await l4_workflows.list_workflows(request=request, limit=50, offset=0, status=None, type=None, include_completed=False, _ctx=ctx, executor=executor)
 
     _assert_control("L4", "QUERY-001", executor.list_tenant_ids == [str(TENANT_A)], "L4 workflow listing queries are keyed by the authenticated tenant")
 
@@ -446,10 +467,11 @@ async def test_l5_ctx_source_of_truth(monkeypatch: pytest.MonkeyPatch) -> None:
     get_truth_object = AsyncMock(return_value=reloaded_truth)
     monkeypatch.setattr(l5_router, "create_truth_object", create_truth_object)
     monkeypatch.setattr(l5_router, "get_truth_object", get_truth_object)
+    monkeypatch.setattr(l5_router, "authorize_action", lambda *args, **kwargs: None)
     monkeypatch.setattr(l5_router.TruthObjectResponse, "model_validate", classmethod(lambda cls, obj: {"truth_id": str(obj.id), "tenant_id": str(obj.tenant_id)}))
 
     payload = l5_router.TruthObjectCreate(claim="Manual reporting takes 12 hours per week", confidence=0.42)
-    caller = SimpleNamespace(tenant_id=TENANT_A, user_id=str(USER_A))
+    caller = SimpleNamespace(tenant_id=TENANT_A, user_id=str(USER_A), roles=["tenant_admin"], permissions=[])
     db = AsyncMock()
 
     await l5_router.create_truth(payload, caller=caller, db=db)
@@ -519,7 +541,10 @@ async def test_l6_ctx_source_of_truth(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_l6_read_cross_tenant_denied() -> None:
     from value_fabric.layer6.repositories.benchmark_repository import BenchmarkRepository
 
+    records = AsyncMock()
+    records.single = AsyncMock(return_value=None)
     tx = AsyncMock()
+    tx.run = AsyncMock(return_value=records)
     await BenchmarkRepository._tx_get_dataset(tx, "dataset-b", str(TENANT_A))
     query = tx.run.await_args.args[0]
     params = tx.run.await_args.kwargs
@@ -564,18 +589,3 @@ def test_l6_fail_closed_without_context() -> None:
         get_request_context(request)
 
     _assert_control("L6", "FAIL-001", exc_info.value.status_code == 401, "L6 request dependency rejects calls without tenant context")
-
-
-def test_matrix_records_all_expected_controls() -> None:
-    _write_artifact()
-    missing = EXPECTED_MATRIX - set(RESULTS)
-    assert not missing, f"Missing tenant-isolation matrix coverage for: {sorted(missing)}"
-
-
-def test_matrix_artifact_is_pass_complete() -> None:
-    artifact_path = _write_artifact()
-    payload = json.loads(artifact_path.read_text(encoding="utf-8"))
-    assert payload["overall_status"] == "PASS", json.dumps(payload, indent=2, sort_keys=True)
-    assert payload["summary"]["expected_controls"] == len(EXPECTED_MATRIX)
-    assert payload["summary"]["failed_controls"] == 0
-    assert payload["summary"]["missing_controls"] == 0

@@ -3,7 +3,7 @@
  * OpenAI-compatible API for Generative UI streaming
  */
 
-import { apiClient } from './client';
+import { apiClient, buildApiFetchInit } from './client';
 import { createFeatureLogger } from '@/lib/telemetry';
 
 const log = createFeatureLogger('thesysClient');
@@ -75,24 +75,23 @@ export async function* streamC1Response(
   }
 
   const url = `${API_BASE}${L4_PREFIX}/c1/stream`;
-  // Validate tenantId to prevent header injection via XSS-compromised localStorage
-  const rawTenantId = localStorage.getItem('tenantId');
-  const tenantId = rawTenantId && /^[a-zA-Z0-9_-]+$/.test(rawTenantId) ? rawTenantId : 'default';
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Tenant-ID': tenantId,
-      },
-      body: JSON.stringify({
-        messages,
-        business_case_id: businessCaseId,
-        business_case_data: businessCaseData,
-      }),
-      signal,
-    });
+    const response = await fetch(
+      url,
+      buildApiFetchInit({
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+          business_case_id: businessCaseId,
+          business_case_data: businessCaseData,
+        }),
+        signal,
+      })
+    );
 
     if (!response.ok) {
       const text = await response.text();

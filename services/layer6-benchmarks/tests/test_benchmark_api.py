@@ -4,10 +4,9 @@ from decimal import Decimal
 from unittest.mock import AsyncMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-from value_fabric.layer6.api.main import app
 import value_fabric.layer6.api.main as main_module
+from httpx import ASGITransport, AsyncClient
+from value_fabric.layer6.api.main import app
 from value_fabric.layer6.models.benchmark_dataset import (
     BenchmarkDataset,
     BenchmarkMetric,
@@ -20,6 +19,7 @@ def setup_mock_repo(monkeypatch):
     """Set up a deterministic benchmark repository for API tests."""
     mock_repo = AsyncMock()
     monkeypatch.setattr(main_module, "authorize_action", lambda *args, **kwargs: None)
+    monkeypatch.setattr(main_module, "_neo4j_startup_error", None)
 
     dataset = BenchmarkDataset(
         dataset_id="manufacturing-efficiency-2024",

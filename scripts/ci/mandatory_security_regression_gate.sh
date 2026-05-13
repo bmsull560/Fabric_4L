@@ -35,6 +35,7 @@ FABRIC_GATE_TEST_MODE="${FABRIC_GATE_TEST_MODE:-0}"
 
 STANDALONE_API_TESTS=(
   services/api/app/tests/test_auth_enforcement.py
+  services/api/app/tests/test_health.py
   services/api/app/tests/test_production_safety.py
   services/api/app/tests/test_i03_durable_persistence_and_llm.py
 )
@@ -53,6 +54,10 @@ ROOT_SECURITY_TESTS=(
   tests/security/test_rate_limit_safety.py::TestMultiWorkerRateLimitSafety
 )
 
+CROSS_LAYER_TENANT_MATRIX_TESTS=(
+  tests/security/test_cross_layer_tenant_isolation_matrix.py
+)
+
 LAYER4_C06_SECURITY_TESTS=(
   services/layer4-agents/tests/test_tenant_rate_limits.py
   services/layer4-agents/tests/test_security_fixes.py
@@ -61,6 +66,7 @@ LAYER4_C06_SECURITY_TESTS=(
 CONTRACT_TESTS=(
   tests/context/test_tenant_context_contract.py
   tests/contract/test_shared_import_boundary.py
+  tests/contract/test_retention_deletion_contract.py
 )
 
 K8S_TESTS=(
@@ -79,6 +85,7 @@ LAYER5_FAIL_CLOSED_TESTS=(
 FRONTEND_CONTRACT_TEST_DIR="apps/web/src/api/__tests__/contract"
 FRONTEND_PLACEHOLDER_GUARD="apps/web/scripts/security/assert-no-placeholder-contract-tests.mjs"
 FRONTEND_CRITICAL_E2E_GUARD="apps/web/scripts/security/assert-no-skipped-critical-e2e.mjs"
+CROSS_LAYER_TENANT_MATRIX_ARTIFACT="${ARTIFACT_DIR}/cross_layer_tenant_isolation_matrix.json"
 
 write_summary() {
   printf '%s\n' "$*" | tee -a "${SUMMARY_FILE}"
@@ -98,6 +105,7 @@ required_suite_paths() {
   for path in \
     "${STANDALONE_API_TESTS[@]}" \
     "${ROOT_SECURITY_TESTS[@]}" \
+    "${CROSS_LAYER_TENANT_MATRIX_TESTS[@]}" \
     "${LAYER4_C06_SECURITY_TESTS[@]}" \
     "${CONTRACT_TESTS[@]}" \
     "${K8S_TESTS[@]}" \
@@ -262,13 +270,17 @@ run_step "Required suite no-skip/no-xfail source guard" assert_no_skip_or_xfail_
 log_evidence_start
 trap 'log_evidence_complete $?' EXIT
 
-run_step "Standalone API production-safety, durable persistence, and fail-closed provider checks" \
-  bash -c "cd services/api && TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false DATABASE_URL='${DATABASE_URL:-sqlite:///:memory:}' python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/standalone_api_security.xml' app/tests/test_auth_enforcement.py app/tests/test_production_safety.py app/tests/test_i03_durable_persistence_and_llm.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/standalone_api_security.xml'"
-log_suite_result "I-02/I-03 API Production Safety" "pytest app/tests/test_auth_enforcement.py test_production_safety.py test_i03_durable_persistence_and_llm.py" "Yes" "PASS" "${ARTIFACT_DIR}/standalone_api_security.xml"
+run_step "Standalone API production-safety, health, durable persistence, and fail-closed provider checks" \
+  bash -c "cd services/api && TESTING=true ENVIRONMENT=testing DEBUG=false SEED_DEMO_DATA=false DATABASE_URL='${DATABASE_URL:-sqlite:///:memory:}' python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ROOT_DIR}/${ARTIFACT_DIR}/standalone_api_security.xml' app/tests/test_auth_enforcement.py app/tests/test_health.py app/tests/test_production_safety.py app/tests/test_i03_durable_persistence_and_llm.py && cd '${ROOT_DIR}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/standalone_api_security.xml'"
+log_suite_result "I-02/I-03 API Production Safety" "pytest app/tests/test_auth_enforcement.py test_health.py test_production_safety.py test_i03_durable_persistence_and_llm.py" "Yes" "PASS" "${ARTIFACT_DIR}/standalone_api_security.xml"
 
 run_step "Tenant-boundary and auth/security regression checks" \
   run_root_pytest "${ARTIFACT_DIR}/tenant_security.xml" "${ROOT_SECURITY_TESTS[@]}"
 log_suite_result "Tenant/Auth Security Regression" "pytest tests/security/*" "Yes" "PASS" "${ARTIFACT_DIR}/tenant_security.xml"
+
+run_step "Cross-layer tenant isolation matrix checks" \
+  bash -c "CROSS_LAYER_TENANT_MATRIX_ARTIFACT='${ROOT_DIR}/${CROSS_LAYER_TENANT_MATRIX_ARTIFACT}' python -m pytest --tb=short -q -n 0 --timeout=60 --junitxml='${ARTIFACT_DIR}/cross_layer_tenant_matrix.xml' '${CROSS_LAYER_TENANT_MATRIX_TESTS[0]}' && python scripts/ci/assert_no_pytest_skips.py '${ARTIFACT_DIR}/cross_layer_tenant_matrix.xml' && python scripts/ci/validate_cross_layer_tenant_matrix.py '${CROSS_LAYER_TENANT_MATRIX_ARTIFACT}'"
+log_suite_result "Cross-Layer Tenant Isolation Matrix" "pytest tests/security/test_cross_layer_tenant_isolation_matrix.py" "Yes" "PASS" "${CROSS_LAYER_TENANT_MATRIX_ARTIFACT}"
 
 run_step "Layer 4 C-06 tenant rate-limit and security regression checks" \
   run_root_pytest "${ARTIFACT_DIR}/layer4_c06_security.xml" "${LAYER4_C06_SECURITY_TESTS[@]}"
@@ -276,7 +288,7 @@ log_suite_result "Layer 4 C-06 Security Regression" "pytest services/layer4-agen
 
 run_step "Shared tenant context contract and import-boundary checks" \
   run_root_pytest "${ARTIFACT_DIR}/shared_contracts.xml" "${CONTRACT_TESTS[@]}"
-log_suite_result "Tenant Context Contract" "pytest tests/context/test_tenant_context_contract.py tests/contract/test_shared_import_boundary.py" "Yes" "PASS" "${ARTIFACT_DIR}/shared_contracts.xml"
+log_suite_result "Tenant Context Contract" "pytest tests/context/test_tenant_context_contract.py tests/contract/test_shared_import_boundary.py tests/contract/test_retention_deletion_contract.py" "Yes" "PASS" "${ARTIFACT_DIR}/shared_contracts.xml"
 
 if [[ "${FABRIC_GATE_TEST_MODE}" != "1" ]]; then
   run_step "OpenAPI contract drift check" \

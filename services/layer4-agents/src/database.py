@@ -431,6 +431,12 @@ async def _set_local_tenant_context(session: AsyncSession, tenant_id: str) -> No
     _mark_session_tenant_context(session, tenant_id)
 
 
+async def _clear_local_tenant_context(session: AsyncSession) -> None:
+    """Clear the transaction-local tenant context for explicit admin/system bypass."""
+    await session.execute(text("SELECT set_config('app.tenant_id', '', true)"))
+    _mark_session_tenant_bypass(session, reason="system_operation")
+
+
 def _record_privileged_db_session_activation(
     context: RequestContext,
     *,

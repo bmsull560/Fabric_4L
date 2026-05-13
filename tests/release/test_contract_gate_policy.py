@@ -205,10 +205,13 @@ class TestContractGatePolicy:
         required_snippets = {
             "standalone_api_production_safety": "services/api",
             "i03_persistence_and_provider_boundary": "test_i03_durable_persistence_and_llm.py",
+            "health_metrics_proof": "test_health.py",
             "tenant_boundary_security": "test_tenant_boundary_fails_closed.py",
             "cross_tenant_api_security": "test_cross_tenant_api.py",
+            "cross_layer_tenant_matrix": "test_cross_layer_tenant_isolation_matrix.py",
             "shared_tenant_context_contract": "test_tenant_context_contract.py",
             "shared_import_boundary": "test_shared_import_boundary.py",
+            "retention_deletion_contract": "test_retention_deletion_contract.py",
             "openapi_contract_drift": "contract-drift",
             "frontend_contract_placeholder_guard": "assert-no-placeholder-contract-tests.mjs",
             "critical_e2e_skip_guard": "assert-no-skipped-critical-e2e.mjs",
@@ -219,4 +222,26 @@ class TestContractGatePolicy:
         assert not missing, (
             "mandatory security regression gate is missing required launch-blocker surfaces: "
             f"{missing}"
+        )
+
+    def test_backend_integrated_validation_target_includes_direct_release_proofs(self):
+        """Canonical backend-integrated gate must include the documented direct P0 proofs."""
+        makefile = Path("Makefile").read_text(encoding="utf-8")
+        target_start = makefile.index("test-backend-integrated-validation:")
+        next_target = makefile.index("test-backend-integrated-release-smoke:", target_start)
+        target_block = makefile[target_start:next_target]
+
+        required_snippets = {
+            "auth enforcement": "services/api/app/tests/test_auth_enforcement.py",
+            "health proof": "services/api/app/tests/test_health.py",
+            "durable persistence": "services/api/app/tests/test_i03_durable_persistence_and_llm.py",
+            "production safety": "services/api/app/tests/test_production_safety.py",
+            "retention deletion contract": "tests/contract/test_retention_deletion_contract.py",
+            "backend integrated suite": "tests/backend_integrated -m backend_integrated -v",
+        }
+
+        missing = [name for name, snippet in required_snippets.items() if snippet not in target_block]
+        assert not missing, (
+            "test-backend-integrated-validation must include direct release proofs before "
+            f"the live backend-integrated suite: {missing}"
         )

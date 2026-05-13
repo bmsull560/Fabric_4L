@@ -3,17 +3,19 @@
 Tests error handling, input validation, and boundary conditions.
 """
 
-import pytest
-from httpx import ASGITransport, AsyncClient
-
-from value_fabric.layer6.api.main import app
-import value_fabric.layer6.api.main as main_module
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+import value_fabric.layer6.api.main as main_module
+from httpx import ASGITransport, AsyncClient
+from value_fabric.layer6.api.main import app
+
 
 @pytest.fixture(autouse=True)
 def setup_mock_repo(monkeypatch):
     """Setup mock repository before each test."""
     mock_repo = AsyncMock()
+    monkeypatch.setattr(main_module, "authorize_action", lambda *args, **kwargs: None)
     mock_dataset = MagicMock()
     mock_dataset.dataset_id = "manufacturing-efficiency-2024"
     mock_dataset.industry = "manufacturing"

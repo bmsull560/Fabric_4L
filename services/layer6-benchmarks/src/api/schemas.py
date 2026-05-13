@@ -1,3 +1,3 @@
-"""Compatibility shim; canonical Layer 6 schemas live under value_fabric.layer6."""
+"""Compatibility wrapper for value_fabric.layer6.api.schemas."""
 
 from value_fabric.layer6.api.schemas import *

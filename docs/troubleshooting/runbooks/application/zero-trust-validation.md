@@ -39,6 +39,13 @@ Define testable, repeatable checks that prove tenant boundaries are enforced acr
 1. Tenant-scoping primitives present (`TenantScopedMixin`, `TenantScopedCypher`, `tenant_cache_key`).
 2. Identity middleware resolves tenant from verified identity.
 3. Shared identity test suite includes tenant claim validation.
+4. Cross-layer tenant isolation matrix evidence is present at `artifacts/mandatory_security/cross_layer_tenant_isolation_matrix.json`.
+5. Matrix controls pass for every layer `L1` through `L6` and every control ID:
+   - `CTX-001`
+   - `READ-001`
+   - `WRITE-001`
+   - `QUERY-001`
+   - `FAIL-001`
 
 **Pass criteria:** all required primitives and tests are present; any missing control fails gate.
 
@@ -104,5 +111,12 @@ Artifacts are written to `artifacts/zero-trust/`.
 
 1. Inspect `summary.md` in the uploaded artifact.
 2. Identify failing control family (`network`, `tenant-isolation`, `service-auth`).
-3. Patch control and add/adjust tests without weakening existing protections.
-4. Re-run zero-trust validation and confirm green status before re-requesting approval.
+3. For `tenant-isolation` failures, open `artifacts/mandatory_security/cross_layer_tenant_isolation_matrix.json` and locate the failing `layer` + `control_id` tuple.
+4. Use the matrix control mapping for triage:
+   - `CTX-001`: request handler is not treating authenticated tenant context as authoritative.
+   - `READ-001`: representative read path can expose Tenant B data to Tenant A.
+   - `WRITE-001`: representative write or mutation path is accepting Tenant B targeting from Tenant A.
+   - `QUERY-001`: repository or query layer is missing an explicit tenant filter.
+   - `FAIL-001`: endpoint or handler does not fail closed when tenant context is absent.
+5. Patch the affected layer without weakening existing protections, then re-run `bash scripts/ci/mandatory_security_regression_gate.sh`.
+6. Confirm the regenerated matrix artifact reports `overall_status: PASS` before re-requesting approval.

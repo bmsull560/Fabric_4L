@@ -163,6 +163,9 @@
     "vite-plugin-manus-runtime": "^0.0.57",
     "vitest": "^2.1.4"
   },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "packageManager": "pnpm@10.18.1",
   "pnpm": {
     "overrides": {

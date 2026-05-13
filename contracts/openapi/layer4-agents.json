@@ -477,7 +477,7 @@
           "workflows"
         ],
         "summary": "Resume Workflow",
-        "description": "Resume a paused or interrupted workflow from its last checkpoint.\n\nThis endpoint enables human-in-the-loop workflows by allowing execution\nto pause for user input/decisions, then resume from the exact point\nwhere it stopped.\n\nThe workflow state is loaded from Postgres checkpoint storage, and\nexecution continues from the last completed node.\n\nExample:\n    POST /v1/workflows/wf-123/resume\n    {\n        \"resume_data\": {\"approved\": true, \"notes\": \"Proceed with ROI calc\"}\n    }\n\nReturns:\n    200 OK - Workflow resumed and running (or completed if fast)\n    404 Not Found - Workflow not found or no checkpoint exists\n    400 Bad Request - Workflow not in resumable state (completed/failed/cancelled)\n    503 Service Unavailable - Checkpointing not configured",
+        "description": "Resume a paused or interrupted workflow from its last checkpoint.\n\nThis endpoint enables human-in-the-loop workflows by allowing execution\nto pause for user input/decisions, then resume from the exact point\nwhere it stopped.\n\nThe workflow state is loaded from Postgres checkpoint storage, and\nexecution continues from the last completed node.\n\nExample:\n    POST /v1/workflows/wf-123/resume\n    {\n        \"user_id\": \"user-001\",\n        \"resume_data\": {\"approved\": true, \"notes\": \"Proceed with ROI calc\"}\n    }\n\nReturns:\n    200 OK - Workflow resumed and running (or completed if fast)\n    404 Not Found - Workflow not found or no checkpoint exists\n    400 Bad Request - Workflow not in resumable state (completed/failed/cancelled)\n    503 Service Unavailable - Checkpointing not configured",
         "operationId": "resume_workflow_v1_workflows__workflow_id__resume_post",
         "parameters": [
           {
@@ -3301,7 +3301,7 @@
           "CRM Webhooks"
         ],
         "summary": "Salesforce Webhook",
-        "description": "Handle Salesforce outbound message or platform event webhook.\n\nSalesforce sends notifications when Accounts, Opportunities, or Contacts\nare created/updated. We trigger incremental sync for affected records.\n\n**Production Multi-Tenancy:**\nThe `tenant_id` query parameter is required in production. Configure your\nSalesforce outbound message URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.\nThe handler verifies both tenant existence and webhook token authenticity\nbefore syncing to prevent cross-tenant data leakage.\n\nHeaders:\n    X-Webhook-Token: Per-tenant opaque token (preferred)\n    X-Salesforce-Signature: HMAC signature (defense-in-depth)\n\nRequest Body:\n    Salesforce platform event or outbound message payload",
+        "description": "Handle Salesforce outbound message or platform event webhook.\n\nSalesforce sends notifications when Accounts, Opportunities, or Contacts\nare created/updated. We trigger incremental sync for affected records.\n\n**Tenant Binding:**\nConfigure the Salesforce outbound message URL with\n`?tenant_id=<your-tenant-id>&webhook_token=<token>`.\nThe handler requires an authenticated tenant-bound integration for normal\noperation and only allows tenant-free local development flows behind an\nexplicit development-only flag.\n\nHeaders:\n    X-Webhook-Token: Per-tenant opaque token (preferred)\n    X-Salesforce-Signature: HMAC signature (defense-in-depth)\n\nRequest Body:\n    Salesforce platform event or outbound message payload",
         "operationId": "salesforce_webhook_v1_webhooks_crm_salesforce_post",
         "parameters": [
           {
@@ -3405,7 +3405,7 @@
           "CRM Webhooks"
         ],
         "summary": "Hubspot Webhook",
-        "description": "Handle HubSpot webhook for contact/company/deal changes.\n\nHubSpot sends notifications when objects are created, updated, or deleted.\nWe trigger incremental sync for affected company (account) records.\n\n**Production Multi-Tenancy:**\nThe `tenant_id` query parameter is required in production. Configure your\nHubSpot webhook URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.\nThe handler verifies both tenant existence and webhook token authenticity\nbefore syncing to prevent cross-tenant data leakage.\n\nHeaders:\n    X-Webhook-Token: Per-tenant opaque token (preferred)\n    X-HubSpot-Signature: Legacy signature (optional)\n    X-HubSpot-Signature-v3: v3 signature for verification (optional)\n\nRequest Body:\n    Array of subscription notification events:\n    [\n        {\n            \"eventId\": 123,\n            \"subscriptionId\": 456,\n            \"portalId\": 789,\n            \"occurredAt\": 1234567890,\n            \"subscriptionType\": \"company.propertyChange\",\n            \"objectId\": 987654321,\n            \"propertyName\": \"name\",\n            \"propertyValue\": \"New Company Name\"\n        }\n    ]",
+        "description": "Handle HubSpot webhook for contact/company/deal changes.\n\nHubSpot sends notifications when objects are created, updated, or deleted.\nWe trigger incremental sync for affected company (account) records.\n\n**Tenant Binding:**\nConfigure the HubSpot webhook URL with\n`?tenant_id=<your-tenant-id>&webhook_token=<token>`.\nThe handler requires an authenticated tenant-bound integration for normal\noperation and only allows tenant-free local development flows behind an\nexplicit development-only flag.\n\nHeaders:\n    X-Webhook-Token: Per-tenant opaque token (preferred)\n    X-HubSpot-Signature: Legacy signature (optional)\n    X-HubSpot-Signature-v3: v3 signature for verification (optional)\n\nRequest Body:\n    Array of subscription notification events:\n    [\n        {\n            \"eventId\": 123,\n            \"subscriptionId\": 456,\n            \"portalId\": 789,\n            \"occurredAt\": 1234567890,\n            \"subscriptionType\": \"company.propertyChange\",\n            \"objectId\": 987654321,\n            \"propertyName\": \"name\",\n            \"propertyValue\": \"New Company Name\"\n        }\n    ]",
         "operationId": "hubspot_webhook_v1_webhooks_crm_hubspot_post",
         "parameters": [
           {
@@ -3600,6 +3600,12 @@
               }
             }
           },
+          "403": {
+            "description": "Workflow out of tenant scope"
+          },
+          "404": {
+            "description": "Workflow not found"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -3652,6 +3658,12 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Workflow out of tenant scope"
+          },
+          "404": {
+            "description": "Workflow/checkpoint not found"
           },
           "422": {
             "description": "Validation Error",
@@ -3707,6 +3719,12 @@
               }
             }
           },
+          "403": {
+            "description": "Workflow out of tenant scope"
+          },
+          "404": {
+            "description": "Workflow/checkpoint not found"
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -3760,6 +3778,12 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Workflow out of tenant scope"
+          },
+          "404": {
+            "description": "Workflow/checkpoint not found"
           },
           "422": {
             "description": "Validation Error",
@@ -4552,14 +4576,115 @@
         }
       }
     },
-    "/v1/integrations/salesforce/oauth/authorize": {
+    "/v1/integrations/{provider}/sync-jobs": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "List Sync Jobs",
+        "operationId": "list_sync_jobs_v1_integrations__provider__sync_jobs_get",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CRMProvider"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CRMSyncJobListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/integrations/{provider}/sync-jobs/{job_id}": {
+      "get": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Get Sync Job",
+        "operationId": "get_sync_job_v1_integrations__provider__sync_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CRMProvider"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CRMSyncJobResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/integrations/salesforce/oauth/start": {
       "post": {
         "tags": [
           "Integrations"
         ],
         "summary": "Start Salesforce Oauth",
-        "description": "Generate the Salesforce OAuth authorize URL for the current tenant.",
-        "operationId": "start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post",
+        "description": "Canonical Salesforce OAuth start route.",
+        "operationId": "start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4592,6 +4717,49 @@
             }
           }
         }
+      }
+    },
+    "/v1/integrations/salesforce/oauth/authorize": {
+      "post": {
+        "tags": [
+          "Integrations"
+        ],
+        "summary": "Start Salesforce Oauth Compat",
+        "description": "Deprecated compatibility alias for the old OAuth start route.",
+        "operationId": "start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesforceOAuthAuthorizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesforceOAuthAuthorizeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "deprecated": true
       }
     },
     "/v1/tenant/context": {
@@ -11514,7 +11682,6 @@
             "title": "Archived At"
           }
         },
-        "additionalProperties": true,
         "type": "object",
         "required": [
           "workflow_id",
@@ -12428,6 +12595,142 @@
         ],
         "title": "CRMProvider",
         "description": "Supported CRM providers."
+      },
+      "CRMSyncJobListResponse": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/CRMSyncJobResponse"
+            },
+            "type": "array",
+            "title": "Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobs"
+        ],
+        "title": "CRMSyncJobListResponse"
+      },
+      "CRMSyncJobResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "queued_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queued At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "records_synced": {
+            "type": "integer",
+            "title": "Records Synced",
+            "default": 0
+          },
+          "records_updated": {
+            "type": "integer",
+            "title": "Records Updated",
+            "default": 0
+          },
+          "records_failed": {
+            "type": "integer",
+            "title": "Records Failed",
+            "default": 0
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "provider",
+          "status"
+        ],
+        "title": "CRMSyncJobResponse"
       },
       "CaseListItem": {
         "properties": {
@@ -15284,7 +15587,14 @@
             "default": false
           },
           "api_key": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Api Key",
             "description": "API key/token for the CRM"
           },
@@ -15336,9 +15646,6 @@
           }
         },
         "type": "object",
-        "required": [
-          "api_key"
-        ],
         "title": "IntegrationCreateRequest",
         "description": "Request to create/update an integration.\n\nSECURITY: Never accept access_token, refresh_token, or auth_code\nfrom frontend requests. Tokens are obtained via OAuth callback\nor internal service mechanisms only."
       },
@@ -16156,6 +16463,7 @@
             "description": "Pre-fetched evidence (flagged as unverified)"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "account_id"
@@ -16843,7 +17151,6 @@
             "title": "Value Path Category"
           }
         },
-        "additionalProperties": true,
         "type": "object",
         "required": [
           "status",
@@ -17622,6 +17929,15 @@
             ],
             "title": "Org Id"
           },
+          "workspace_id": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
           "tenant_role": {
             "anyOf": [
               {
@@ -17674,6 +17990,17 @@
               }
             ],
             "title": "Privileged Session Start"
+          },
+          "impersonator_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impersonator Id"
           },
           "_locked": {
             "type": "boolean",
@@ -17751,13 +18078,13 @@
             "description": "Node IDs to skip on resume"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "checkpoint_id"
         ],
         "title": "ResumeFromCheckpointRequest",
-        "description": "Request to resume from a specific checkpoint.",
-        "additionalProperties": false
+        "description": "Request to resume from a specific checkpoint."
       },
       "ResumeFromCheckpointResponse": {
         "properties": {
@@ -17912,9 +18239,21 @@
       },
       "SalesforceOAuthAuthorizeResponse": {
         "properties": {
-          "authorize_url": {
+          "authorization_url": {
             "type": "string",
-            "title": "Authorize Url"
+            "title": "Authorization Url"
+          },
+          "authorize_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorize Url",
+            "description": "Deprecated compatibility alias"
           },
           "state_expires_at": {
             "type": "string",
@@ -17923,7 +18262,7 @@
         },
         "type": "object",
         "required": [
-          "authorize_url",
+          "authorization_url",
           "state_expires_at"
         ],
         "title": "SalesforceOAuthAuthorizeResponse"
@@ -18792,6 +19131,10 @@
             "type": "string",
             "title": "Sync Id"
           },
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -18815,6 +19158,7 @@
         "type": "object",
         "required": [
           "sync_id",
+          "job_id",
           "status",
           "provider"
         ],
@@ -20512,7 +20856,7 @@
           "workflow_type"
         ],
         "title": "WorkflowCreateRequest",
-        "description": "Request to submit a new workflow - OpenAPI spec compliant.\n\nSpec requires:\n- workflow_type: enum [whitespace_analysis, business_case_generation]\n- tenant_id: string\n- user_id: string\n- inputs: object"
+        "description": "Request to submit a new workflow - OpenAPI spec compliant.\n\nSpec requires:\n- workflow_type: enum [whitespace_analysis, business_case_generation]\n- inputs: object"
       },
       "WorkflowCreateResponse": {
         "properties": {

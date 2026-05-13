@@ -94,6 +94,7 @@ def _required_suite_paths_from_script(gate_script_path: Path) -> list[str]:
     suite_names = [
         "STANDALONE_API_TESTS",
         "ROOT_SECURITY_TESTS",
+        "CROSS_LAYER_TENANT_MATRIX_TESTS",
         "LAYER4_C06_SECURITY_TESTS",
         "CONTRACT_TESTS",
         "K8S_TESTS",
@@ -145,9 +146,12 @@ class TestGateFailClosedBehavior:
             suites = result.stdout.strip().split("\n")
         # Verify some known required suites are listed
         assert any("test_auth_enforcement.py" in s for s in suites)
+        assert any("test_health.py" in s for s in suites)
         assert any("test_production_safety.py" in s for s in suites)
         assert any("test_i03_durable_persistence_and_llm.py" in s for s in suites)
+        assert any("test_retention_deletion_contract.py" in s for s in suites)
         assert any("test_production_fail_closed_i02.py" in s for s in suites)
+        assert "tests/security/test_cross_layer_tenant_isolation_matrix.py" in suites
         assert "services/layer4-agents/tests/test_tenant_rate_limits.py" in suites
         assert "services/layer4-agents/tests/test_security_fixes.py" in suites
 
@@ -328,6 +332,7 @@ class TestGateRequiredSuites:
         content = gate_script_path.read_text(encoding="utf-8")
         assert "STANDALONE_API_TESTS=(" in content
         assert "ROOT_SECURITY_TESTS=(" in content
+        assert "CROSS_LAYER_TENANT_MATRIX_TESTS=(" in content
         assert "LAYER4_C06_SECURITY_TESTS=(" in content
         assert ")" in content
 
@@ -337,9 +342,12 @@ class TestGateRequiredSuites:
         """Verify required suites include critical security tests."""
         content = gate_script_path.read_text(encoding="utf-8")
         assert "test_auth_enforcement.py" in content
+        assert "test_health.py" in content
         assert "test_production_safety.py" in content
         assert "test_tenant_boundary_fails_closed.py" in content
         assert "test_cross_tenant_api.py" in content
+        assert "test_cross_layer_tenant_isolation_matrix.py" in content
+        assert "test_retention_deletion_contract.py" in content
 
     def test_required_suites_includes_i02_tests(self, gate_script_path: Path) -> None:
         """Verify required suites include I-02 production fail-closed tests."""

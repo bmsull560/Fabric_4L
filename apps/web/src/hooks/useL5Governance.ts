@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { ApiError, buildApiFetchInit } from '@/api/client';
+import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
 
 export interface L5Truth {
@@ -41,12 +43,10 @@ export interface L5TruthQueryParams {
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(path, {
-    credentials: 'same-origin',
-  });
+  const response = await fetch(path, buildApiFetchInit());
 
   if (!response.ok) {
-    throw new Error(`L5 request failed (${response.status})`);
+    throw new ApiError(`L5 request failed (${response.status})`, response.status);
   }
 
   return response.json() as Promise<T>;
@@ -66,7 +66,7 @@ function buildTruthsPath(params: L5TruthQueryParams = {}): string {
 
 export function useL5Truths(params: L5TruthQueryParams = {}) {
   return useQuery({
-    queryKey: ['l5-governance', 'truths', params] as const,
+    queryKey: QK.groundTruth.truths(params),
     queryFn: () => fetchJson<L5TruthListResponse>(buildTruthsPath(params)),
     staleTime: STALE_TIME.poll,
   });
@@ -74,7 +74,7 @@ export function useL5Truths(params: L5TruthQueryParams = {}) {
 
 export function useL5MaturityLadder() {
   return useQuery({
-    queryKey: ['l5-governance', 'maturity-ladder'] as const,
+    queryKey: QK.groundTruth.maturityLadder(),
     queryFn: () => fetchJson<L5MaturityLevel[]>('/api/v1/maturity-ladder'),
     staleTime: STALE_TIME.reference,
   });
@@ -82,7 +82,7 @@ export function useL5MaturityLadder() {
 
 export function useL5TruthAudit(truthId: string | null) {
   return useQuery({
-    queryKey: ['l5-governance', 'truth-audit', truthId] as const,
+    queryKey: QK.groundTruth.truthAudit(truthId),
     queryFn: () => fetchJson<L5TruthAuditEntry[]>(`/api/v1/truths/${encodeURIComponent(truthId || '')}/audit`),
     enabled: Boolean(truthId),
     staleTime: STALE_TIME.activity,

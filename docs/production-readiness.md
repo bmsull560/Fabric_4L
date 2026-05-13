@@ -48,3 +48,10 @@ The MVP uses mock persistence and is suitable for local development and demos.
 ## Production Gates Policy
 
 See `.fabric/prod-gates.policy.yaml` for the current gate evaluation policy.
+
+## Canonical Release Artifacts
+
+- `scripts/ops/release-gate.sh`
+- `scripts/ops/render-release-summary.sh`
+- `artifacts/release/gate-result.json`
+- `artifacts/release/summary.md`

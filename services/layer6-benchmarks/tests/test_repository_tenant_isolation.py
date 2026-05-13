@@ -1,23 +1,22 @@
 """Hostile cross-tenant isolation tests for the Neo4j BenchmarkRepository."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from decimal import Decimal
-from value_fabric.shared.database import MissingTenantContextError
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from value_fabric.layer6.models.benchmark_dataset import (
     BenchmarkDataset,
     BenchmarkMetric,
     StatisticalProfile,
 )
 from value_fabric.layer6.repositories.benchmark_repository import BenchmarkRepository
+from value_fabric.shared.database import MissingTenantContextError
 
 HOSTILE_TENANT_ID = "00000000-0000-0000-0000-000000000222"
 ISOLATED_TENANT_ID = "00000000-0000-0000-0000-000000000111"
 
 @pytest.fixture
 def mock_driver():
-    from unittest.mock import MagicMock
     driver = MagicMock()
     session = AsyncMock()
     # Support async with

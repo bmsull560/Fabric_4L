@@ -3261,6 +3261,38 @@
       ]
     },
     {
+      "route_id": "POST /v1/integrations/salesforce/oauth/start",
+      "backend_route_files": [],
+      "openapi_path": "/v1/integrations/salesforce/oauth/start",
+      "method": "POST",
+      "operation_id": "start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post",
+      "request_schema": {
+        "$ref": "#/components/schemas/SalesforceOAuthAuthorizeRequest"
+      },
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema": {
+            "$ref": "#/components/schemas/SalesforceOAuthAuthorizeResponse"
+          }
+        }
+      ],
+      "error_envelope_schemas": [
+        {
+          "status_code": "422",
+          "description": "Validation Error",
+          "schema": {
+            "$ref": "#/components/schemas/HTTPValidationError"
+          }
+        }
+      ],
+      "sse_event_channels": [],
+      "frontend_consumers": [
+        "apps/web/src/pages/Integrations.tsx"
+      ]
+    },
+    {
       "route_id": "POST /v1/integrations/salesforce/oauth/authorize",
       "backend_route_files": [],
       "openapi_path": "/v1/integrations/salesforce/oauth/authorize",
@@ -3413,6 +3445,66 @@
       "sse_event_channels": [],
       "frontend_consumers": [
         "apps/web/src/pages/ValuePacks.test.tsx"
+      ]
+    },
+    {
+      "route_id": "GET /v1/integrations/{provider}/sync-jobs",
+      "backend_route_files": [],
+      "openapi_path": "/v1/integrations/{provider}/sync-jobs",
+      "method": "GET",
+      "operation_id": "list_sync_jobs_v1_integrations__provider__sync_jobs_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema": {
+            "$ref": "#/components/schemas/CRMSyncJobListResponse"
+          }
+        }
+      ],
+      "error_envelope_schemas": [
+        {
+          "status_code": "422",
+          "description": "Validation Error",
+          "schema": {
+            "$ref": "#/components/schemas/HTTPValidationError"
+          }
+        }
+      ],
+      "sse_event_channels": [],
+      "frontend_consumers": [
+        "apps/web/src/pages/Integrations.tsx"
+      ]
+    },
+    {
+      "route_id": "GET /v1/integrations/{provider}/sync-jobs/{job_id}",
+      "backend_route_files": [],
+      "openapi_path": "/v1/integrations/{provider}/sync-jobs/{job_id}",
+      "method": "GET",
+      "operation_id": "get_sync_job_v1_integrations__provider__sync_jobs__job_id__get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema": {
+            "$ref": "#/components/schemas/CRMSyncJobResponse"
+          }
+        }
+      ],
+      "error_envelope_schemas": [
+        {
+          "status_code": "422",
+          "description": "Validation Error",
+          "schema": {
+            "$ref": "#/components/schemas/HTTPValidationError"
+          }
+        }
+      ],
+      "sse_event_channels": [],
+      "frontend_consumers": [
+        "apps/web/src/pages/Integrations.tsx"
       ]
     },
     {

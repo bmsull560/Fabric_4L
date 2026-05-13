@@ -7,7 +7,6 @@ validation, and audit logging. Supports Salesforce and HubSpot.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -24,11 +23,14 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..metrics import get_metrics
 from ..models.account import CRMProvider
+from ..models.crm_sync_job import CRMSyncJob, CRMSyncJobStatus
 from ..models.integration import Integration, IntegrationStatus
+from .crm_sync_job_runner import enqueue_crm_sync_job
 from .encryption_service import DEFAULT_KEY_ID, EncryptionService
 
 
 class IntegrationService_trigger_syncResult(TypedDictModel):
+    job_id: Any
     provider: Any
     queued_at: Any
     status: str
@@ -61,7 +63,6 @@ SALESFORCE_API_VERSION = "v58.0"
 HUBSPOT_API_VERSION = "v3"
 
 logger = logging.getLogger(__name__)
-_SYNC_JOBS: dict[str, asyncio.Task[None]] = {}
 
 # URL validation pattern for instance URLs
 _INSTANCE_URL_PATTERN = re.compile(
@@ -103,6 +104,14 @@ class IntegrationService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def _manual_salesforce_config_allowed() -> bool:
+        env = (os.getenv("ENVIRONMENT") or os.getenv("APP_ENV") or "development").strip().lower()
+        if env in {"", "local", "dev", "development", "test", "testing", "ci"}:
+            return True
+        flag = (os.getenv("ALLOW_SALESFORCE_MANUAL_CONFIG") or "").strip().lower()
+        return flag in {"1", "true", "yes"}
 
     async def list_integrations(
         self, tenant_id: str, provider: CRMProvider | None = None
@@ -178,14 +187,35 @@ class IntegrationService:
         Raises:
             IntegrationValidationError: If configuration is invalid
         """
-        # Validate configuration
-        self._validate_config(
-            enabled, credentials, sync_interval_minutes, sync_batch_size, instance_url
-        )
-
         # Check if integration exists
         existing = await self.get_integration(tenant_id, provider)
         is_update = existing is not None
+
+        if provider == CRMProvider.SALESFORCE and not self._manual_salesforce_config_allowed():
+            if not is_update:
+                raise IntegrationValidationError(
+                    "Salesforce manual credential entry is disabled. Use the OAuth connect flow."
+                )
+            if credentials.get("api_key") or credentials.get("api_secret"):
+                raise IntegrationValidationError(
+                    "Salesforce manual credential updates are disabled. Use the OAuth reconnect flow."
+                )
+
+        merged_credentials = dict(credentials)
+        if provider == CRMProvider.SALESFORCE and is_update and not merged_credentials.get("api_key"):
+            try:
+                existing_credentials = await self.decrypt_credentials(existing)
+            except Exception:
+                existing_credentials = {}
+            if existing_credentials.get("api_key"):
+                merged_credentials["api_key"] = existing_credentials["api_key"]
+            if existing_credentials.get("instance_url") and not instance_url:
+                instance_url = existing_credentials["instance_url"]
+
+        # Validate configuration
+        self._validate_config(
+            enabled, merged_credentials, sync_interval_minutes, sync_batch_size, instance_url
+        )
 
         # Preserve or generate webhook token
         if is_update:
@@ -195,14 +225,14 @@ class IntegrationService:
             except Exception:
                 existing_webhook_token = None
             if existing_webhook_token:
-                credentials["webhook_token"] = existing_webhook_token
+                merged_credentials["webhook_token"] = existing_webhook_token
             else:
-                credentials["webhook_token"] = secrets.token_hex(32)
+                merged_credentials["webhook_token"] = secrets.token_hex(32)
         else:
-            credentials["webhook_token"] = secrets.token_hex(32)
+            merged_credentials["webhook_token"] = secrets.token_hex(32)
 
         # Encrypt credentials
-        credentials_json = json.dumps(credentials)
+        credentials_json = json.dumps(merged_credentials)
         encrypted_creds = await EncryptionService.encrypt(credentials_json, key_id=DEFAULT_KEY_ID)
 
         if is_update:
@@ -549,62 +579,33 @@ class IntegrationService:
         if not integration.enabled:
             raise IntegrationValidationError("Integration is disabled")
 
-        # Generate sync job ID and enqueue background task
-        sync_id = str(uuid.uuid4())
-        queued_at = datetime.now(UTC).isoformat()
+        queued_at_dt = datetime.now(UTC)
+        queued_at = queued_at_dt.isoformat()
 
         # Mark as pending until the worker starts
         integration.sync_status = IntegrationStatus.PENDING
+        job = CRMSyncJob(
+            tenant_id=tenant_id,
+            provider=provider,
+            status=CRMSyncJobStatus.QUEUED,
+            requested_by=user_id,
+            queued_at=queued_at_dt,
+        )
+        self.db.add(job)
         await self.db.commit()
-
-        async def _run_sync_job() -> None:
-            from value_fabric.shared.identity.context import RequestContext
-
-            from ..database import db_session_for_context
-            from .crm_sync_service import CRMSyncService
-
-            context = RequestContext(tenant_id=tenant_id)
-            async with db_session_for_context(context) as bg_db:
-                bg_integration_service = IntegrationService(bg_db)
-                bg_integration = await bg_integration_service.get_integration(tenant_id, provider)
-                if not bg_integration:
-                    return
-
-                bg_integration.sync_status = IntegrationStatus.RUNNING
-                await bg_db.commit()
-
-                try:
-                    sync_service = CRMSyncService(bg_db)
-                    stats = await sync_service.sync_provider(provider, tenant_id=tenant_id)
-
-                    bg_integration.records_synced = stats["synced"] + stats["updated"]
-                    bg_integration.records_updated = stats["updated"]
-                    bg_integration.records_failed = stats["failed"]
-                    bg_integration.last_sync_at = datetime.now(UTC)
-
-                    if stats["failed"] > 0:
-                        bg_integration.sync_status = IntegrationStatus.FAILED
-                        bg_integration.last_error_message = "; ".join(stats["errors"][:3]) or "Sync failed"
-                    else:
-                        bg_integration.sync_status = IntegrationStatus.IDLE
-                        bg_integration.last_successful_sync_at = datetime.now(UTC)
-                        bg_integration.last_error_message = None
-                    await bg_db.commit()
-                except Exception as exc:
-                    logger.exception(
-                        "Background CRM sync job failed: tenant=%s provider=%s sync_id=%s",
-                        tenant_id,
-                        provider.value,
-                        sync_id,
-                    )
-                    bg_integration.sync_status = IntegrationStatus.FAILED
-                    bg_integration.last_sync_at = datetime.now(UTC)
-                    bg_integration.last_error_message = str(exc)[:1000]
-                    await bg_db.commit()
+        await self.db.refresh(job)
 
         try:
-            _SYNC_JOBS[sync_id] = asyncio.create_task(_run_sync_job())
+            await enqueue_crm_sync_job(
+                redis_client=None,
+                job_id=str(job.id),
+                tenant_id=tenant_id,
+                provider=provider.value,
+            )
         except Exception as exc:
+            job.status = CRMSyncJobStatus.FAILED
+            job.finished_at = datetime.now(UTC)
+            job.error_summary = f"Failed to enqueue sync: {exc}"
             integration.sync_status = IntegrationStatus.FAILED
             integration.last_error_message = f"Failed to enqueue sync: {exc}"
             await self.db.commit()
@@ -614,16 +615,50 @@ class IntegrationService:
             "Sync queued for tenant=%s provider=%s sync_id=%s by user=%s",
             tenant_id,
             provider.value,
-            sync_id,
+            str(job.id),
             user_id,
         )
 
         return IntegrationService_trigger_syncResult.model_validate({
-            "sync_id": sync_id,
+            "sync_id": str(job.id),
+            "job_id": str(job.id),
             "status": "queued",
             "provider": provider.value,
             "queued_at": queued_at,
         })
+
+    async def list_sync_jobs(
+        self,
+        tenant_id: str,
+        provider: CRMProvider,
+        *,
+        limit: int = 20,
+    ) -> list[CRMSyncJob]:
+        result = await self.db.execute(
+            select(CRMSyncJob)
+            .where(
+                CRMSyncJob.tenant_id == tenant_id,
+                CRMSyncJob.provider == provider,
+            )
+            .order_by(CRMSyncJob.queued_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
+    async def get_sync_job(
+        self,
+        tenant_id: str,
+        provider: CRMProvider,
+        job_id: str,
+    ) -> CRMSyncJob | None:
+        result = await self.db.execute(
+            select(CRMSyncJob).where(
+                CRMSyncJob.id == job_id,
+                CRMSyncJob.tenant_id == tenant_id,
+                CRMSyncJob.provider == provider,
+            )
+        )
+        return result.scalar_one_or_none()
 
 
     def _validate_config(

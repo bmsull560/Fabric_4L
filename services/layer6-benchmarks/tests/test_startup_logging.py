@@ -1,7 +1,6 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 import value_fabric.layer6.api.main as main_module
 from value_fabric.layer6.api.startup_logging import config_fingerprint, emit_startup_metadata
 
@@ -34,10 +33,11 @@ def test_emit_startup_metadata_logs_version_and_build(caplog) -> None:
 
 @pytest.mark.asyncio
 async def test_lifespan_emits_startup_metadata(monkeypatch) -> None:
-    emit_mock = AsyncMock()
+    emit_mock = MagicMock()
     monkeypatch.setattr(main_module, "emit_startup_metadata", emit_mock)
     monkeypatch.setattr(main_module, "get_driver", AsyncMock(side_effect=RuntimeError("neo4j unavailable")))
     monkeypatch.setattr(main_module, "close_driver", AsyncMock())
+    original_startup_error = main_module._neo4j_startup_error
 
     async with main_module.lifespan(main_module.app):
         pass
@@ -48,3 +48,4 @@ async def test_lifespan_emits_startup_metadata(monkeypatch) -> None:
     assert kwargs["version"]
     assert kwargs["build_sha"]
     assert "database_scheme" in kwargs["config"]
+    main_module._neo4j_startup_error = original_startup_error

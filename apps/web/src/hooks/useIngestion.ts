@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
 import { apiGet, apiPost, apiDelete } from '@/api/typedClient';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
@@ -135,6 +134,23 @@ type ComplianceLogsResponse = {
 type JobDetailResponse = l1.components['schemas']['ScrapingJobDetail'] & {
   updated_at?: string | null;
 };
+
+function asObject(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function asNumberRecord(value: unknown): Record<string, number> {
+  const source = asObject(value);
+  return Object.fromEntries(
+    Object.entries(source).filter((entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1]))
+  );
+}
 
 function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
   return {
@@ -279,21 +295,21 @@ export function useIngestionJobList(filters: JobListFilters = {}) {
       const response = await apiGet<l1.components['schemas']['JobListResponse']>('l1', `/jobs?${params.toString()}`);
       const data = response.data;
       const jobs = parseIngestionJobs(data.data);
-      const pagination = data.pagination as Record<string, unknown>;
-      const aggregation = data.aggregation as Record<string, unknown>;
+      const pagination = asObject(data.pagination);
+      const aggregation = asObject(data.aggregation);
 
       return {
         jobs: jobs.map(mapIngestionJob),
         pagination: {
-          page: (pagination.page as number) || page,
-          limit: (pagination.limit as number) || limit,
-          total: (pagination.total as number) || 0,
-          totalPages: (pagination.totalPages as number) || 0,
+          page: asNumber(pagination.page, page),
+          limit: asNumber(pagination.limit, limit),
+          total: asNumber(pagination.total, 0),
+          totalPages: asNumber(pagination.totalPages, 0),
         },
         aggregation: {
-          byStatus: (aggregation.by_status as Record<string, number>) || {},
-          totalExecutionTimeMs: (aggregation.total_execution_time_ms as number) || 0,
-          totalRecordsExtracted: (aggregation.total_records_extracted as number) || 0,
+          byStatus: asNumberRecord(aggregation.by_status),
+          totalExecutionTimeMs: asNumber(aggregation.total_execution_time_ms, 0),
+          totalRecordsExtracted: asNumber(aggregation.total_records_extracted, 0),
         },
       };
     },
@@ -380,7 +396,7 @@ export function useJobComplianceLogs(jobId: string | null) {
     queryKey: jobId ? QK.ingestion.logs(jobId) : ['ingestion', 'logs', 'null'],
     queryFn: async () => {
       if (!jobId) throw new Error('Job ID is required');
-      const response = await apiClient.get<ComplianceLogsResponse>('l1', `/compliance/logs?job_id=${jobId}`);
+      const response = await apiGet<ComplianceLogsResponse>('l1', `/compliance/logs?job_id=${jobId}`);
       const items = response.data.items || [];
 
       return items.map(item => ({
@@ -459,7 +475,7 @@ export function useBatchOperation() {
 
   return useMutation<BatchOperationResponse, Error, BatchOperationRequest>({
     mutationFn: async (request: BatchOperationRequest) => {
-      const response = await apiClient.post<BatchOperationResponse>('l1', '/jobs/batch', request);
+      const response = await apiPost<BatchOperationResponse>('l1', '/jobs/batch', request);
       return response.data;
     },
     onSuccess: () => {

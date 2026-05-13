@@ -20,6 +20,11 @@ on:
         default: 'ghcr.io'
         required: false
         type: string
+      prod_readiness_verified:
+        description: 'Set to true only when the canonical prod-readiness workflow has produced a matching release packet.'
+        required: false
+        type: boolean
+        default: false
 
   workflow_dispatch:
     inputs:
@@ -107,6 +112,14 @@ jobs:
           # Check if previous deployment is healthy before proceeding
           echo "Environment health check placeholder"
           # curl -fsS "https://api.${{ env.ENVIRONMENT }}.value-fabric.com/health"
+
+      - name: Block unverified production promotion
+        if: env.ENVIRONMENT == 'production'
+        run: |
+          if [[ "${{ inputs.prod_readiness_verified }}" != "true" ]]; then
+            echo "Production deploys must come from a successful prod-readiness workflow with canonical release artifacts."
+            exit 1
+          fi
 
   # ============================================
   # Deploy to Environment

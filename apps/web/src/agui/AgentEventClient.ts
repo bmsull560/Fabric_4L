@@ -22,7 +22,7 @@
  *   - AbortSignal support for cancellation.
  */
 
-import { apiClient } from "@/api/client";
+import { apiClient, buildApiFetchInit } from "@/api/client";
 import { AgentEventType, type AgentEvent, type RunMetadata } from "./events";
 import { createFeatureLogger } from "@/lib/telemetry";
 import { parseAgentEventJson } from "./eventSchemas";
@@ -185,6 +185,25 @@ export interface RightRailContextEnvelope {
   workspaceTab: string;
 }
 
+interface AgentChatAction {
+  label: string;
+  page_action: {
+    entityType: "signal" | "evidence" | "hypothesis" | "scenario";
+    entityId: string;
+    accountId: string;
+    caseId: string;
+    tenantId?: string;
+    intendedOperation: "signal_review" | "evidence_attach" | "hypothesis_convert" | "scenario_update";
+    payload?: Record<string, unknown>;
+  };
+}
+
+interface AgentChatResponse {
+  content?: string;
+  metadata?: BackendRunMetadata;
+  actions?: AgentChatAction[];
+}
+
 export function buildRightRailContextEnvelope(options: AgentEventClientOptions): RightRailContextEnvelope {
   return {
     accountId: options.accountId ?? null,
@@ -253,15 +272,17 @@ export async function* sendAgentMessage(
     const base = import.meta.env.VITE_API_BASE || "/api/v1";
     const url = `${base}${prefix}/agent-stream/chat/stream`;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Tenant-ID": localStorage.getItem("tenantId") || "default",
-      },
-      body: JSON.stringify(body),
-      signal,
-    });
+    const response = await fetch(
+      url,
+      buildApiFetchInit({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+        signal,
+      })
+    );
 
     if (response.ok && response.headers.get("content-type")?.includes("text/event-stream")) {
       // Backend supports SSE — consume the stream
@@ -317,24 +338,7 @@ export async function* sendAgentMessage(
   }
 
   try {
-    const response = (await apiClient.post("l4", "/agent-stream/chat", body)) as {
-      data?: {
-        content?: string;
-        metadata?: BackendRunMetadata;
-        actions?: Array<{
-          label: string;
-          page_action: {
-            entityType: "signal" | "evidence" | "hypothesis" | "scenario";
-            entityId: string;
-            accountId: string;
-            caseId: string;
-            tenantId?: string;
-            intendedOperation: "signal_review" | "evidence_attach" | "hypothesis_convert" | "scenario_update";
-            payload?: Record<string, unknown>;
-          };
-        }>;
-      };
-    };
+    const response = await apiClient.post<AgentChatResponse>("l4", "/agent-stream/chat", body);
 
     if (signal?.aborted) return;
 
@@ -463,12 +467,15 @@ export async function* streamAgentEvents(
   body: Record<string, unknown>,
   signal?: AbortSignal
 ): AsyncGenerator<AgentEvent, void, unknown> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal,
-  });
+  const response = await fetch(
+    url,
+    buildApiFetchInit({
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    })
+  );
 
   if (!response.ok) {
     yield {
