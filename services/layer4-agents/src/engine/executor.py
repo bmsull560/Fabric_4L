@@ -37,7 +37,7 @@ from ..agents.base import BaseAgent
 from ..messaging.bus import InMemoryMessageBus, MessageBus
 from ..messaging.router import MessageRouter
 from ..messaging.types import MessageType
-from ..registry.service import resolve_llm_model
+from ..registry.service import FALLBACK_LLM_MODEL, resolve_llm_model
 from ..tools.registry import ToolRegistry
 from ..workflows import WORKFLOW_TYPES, create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
@@ -48,8 +48,6 @@ from .execution_persistence import mark_workflow_running, persist_workflow_failu
 from .execution_checkpointing import persist_interruption_if_needed
 from ..observability import Layer4EventContext, Layer4LifecycleLogger
 
-sys.modules["src.engine.executor"] = sys.modules[__name__]
-sys.modules["value_fabric.layer4.engine.executor"] = sys.modules[__name__]
 
 
 class OrchestrationController_get_resultResult(TypedDictModel):
@@ -145,6 +143,16 @@ class OrchestrationController:
             priority=TaskPriority.HIGH,
         )
     """
+
+    @staticmethod
+    def _fmt_enum(value: Any) -> str:
+        """Serialize an enum-like value consistently."""
+        return value.value if hasattr(value, "value") else str(value)
+
+    @staticmethod
+    def _fmt_dt(dt: datetime | None) -> str | None:
+        """Serialize a datetime to ISO format."""
+        return dt.isoformat() if dt else None
 
     def __init__(
         self,
@@ -253,11 +261,9 @@ class OrchestrationController:
     async def resolve_model(self, tenant_id: UUID, provider: str = "openai") -> str:
         """Resolve the active production LLM model for a tenant.
 
-        Falls back to ``os.getenv('LLM_MODEL', 'gpt-4o')`` if no production
-        model is registered or the lookup fails.
+        Falls back to :data:`~registry.service.FALLBACK_LLM_MODEL` if no
+        production model is registered or the lookup fails.
         """
-        import os
-
         try:
             from value_fabric.shared.identity.context import RequestContext
 
@@ -273,10 +279,10 @@ class OrchestrationController:
                 type(exc).__name__,
                 exc,
             )
-            return os.getenv("LLM_MODEL", "gpt-4o")
+            return FALLBACK_LLM_MODEL
         except Exception:
             logger.exception("Unexpected error resolving LLM model for tenant %s, using fallback", tenant_id)
-            return os.getenv("LLM_MODEL", "gpt-4o")
+            return FALLBACK_LLM_MODEL
 
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller.
@@ -470,20 +476,16 @@ class OrchestrationController:
         if "workflow_id" not in persisted_metadata:
             persisted_metadata["workflow_id"] = state.workflow_id
         if "workflow_type" not in persisted_metadata:
-            persisted_metadata["workflow_type"] = (
-                state.workflow_type.value
-                if hasattr(state.workflow_type, "value")
-                else str(state.workflow_type)
-            )
+            persisted_metadata["workflow_type"] = self._fmt_enum(state.workflow_type)
 
         return OrchestrationController_get_resultResult.model_validate({
             "workflow_id": state.workflow_id,
             "output": dict(state.output_data or {}),
             "metadata": persisted_metadata,
-            "status": state.status.value if hasattr(state.status, "value") else str(state.status),
-            "created_at": state.started_at.isoformat() if state.started_at else None,
-            "started_at": state.started_at.isoformat() if state.started_at else None,
-            "completed_at": state.completed_at.isoformat() if state.completed_at else None,
+            "status": self._fmt_enum(state.status),
+            "created_at": self._fmt_dt(state.started_at),
+            "started_at": self._fmt_dt(state.started_at),
+            "completed_at": self._fmt_dt(state.completed_at),
         })
 
 
@@ -647,14 +649,12 @@ class OrchestrationController:
 
         return OrchestrationController_get_workflow_statusResult.model_validate({
             "workflow_id": workflow_id,
-            "workflow_type": state.workflow_type.value
-            if hasattr(state.workflow_type, "value")
-            else str(state.workflow_type),
-            "status": state.status.value if hasattr(state.status, "value") else str(state.status),
+            "workflow_type": self._fmt_enum(state.workflow_type),
+            "status": self._fmt_enum(state.status),
             "current_node": state.current_node,
             "progress_percentage": self._calculate_progress(state),
-            "started_at": state.started_at.isoformat() if state.started_at else None,
-            "completed_at": state.completed_at.isoformat() if state.completed_at else None,
+            "started_at": self._fmt_dt(state.started_at),
+            "completed_at": self._fmt_dt(state.completed_at),
             "estimated_duration_seconds": metadata.get("estimated_duration"),
             "error_count": len(state.errors),
             "has_output": bool(state.output_data),

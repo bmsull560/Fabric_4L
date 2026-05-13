@@ -39,7 +39,7 @@ def init_telemetry() -> TracerProvider | None:
 def create_app() -> FastAPI:
     app = create_fabric_app(
         service_name="layer4-agents",
-        title="Layer 4: Agentic Workflow Engine",
+        title="Layer 4: Agentic Workflow Orchestrator",
         description="LangGraph-powered workflow orchestration for Value Fabric with multi-agent support",
         version="0.2.0",
         lifespan=build_lifespan(

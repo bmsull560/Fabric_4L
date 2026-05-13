@@ -195,7 +195,7 @@ class TestFailedAgentCalls:
         mock_workflow = Mock()
         mock_workflow.run = AsyncMock(side_effect=WorkflowExecutionError("Tool call failed"))
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             with pytest.raises(WorkflowExecutionError):
                 await controller.resume_workflow(workflow_id=workflow_id, user_id="user")
 
@@ -258,7 +258,7 @@ class TestCheckpointFailureModes:
         mock_workflow = Mock()
         mock_workflow.run = AsyncMock(return_value=state)
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             # Should not raise unhandled exception
             try:
                 await controller.resume_workflow(workflow_id=workflow_id, user_id="user")
@@ -292,7 +292,7 @@ class TestCheckpointFailureModes:
         mock_workflow = Mock()
         mock_workflow.run = AsyncMock(return_value=state)
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             # Should work without checkpoint saver
             result = await controller.resume_workflow(workflow_id=workflow_id, user_id="user")
             assert result is not None
@@ -409,7 +409,7 @@ class TestPartialResume:
         )
         mock_workflow.run = AsyncMock(return_value=completed_state)
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="user",

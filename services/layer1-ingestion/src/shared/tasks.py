@@ -708,7 +708,7 @@ def post_processing_stage(self, prev_result: dict):
                             job_id=job_id,
                             target_id=job.target_id,
                             event_type=ComplianceEventType.PII_DETECTED.value,
-                            severity="WARNING" if scan_result else "INFO",
+                            severity="WARNING",
                             pii_detection={
                                 "detection_method": "REGEX",
                                 "patterns_detected": [

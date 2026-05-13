@@ -25,6 +25,24 @@ WORKFLOW_TYPES = {
 }
 
 
+def register_workflow_type(workflow_type: str, workflow_class: type[BaseWorkflow]) -> None:
+    """Register a new workflow type dynamically.
+
+    Allows packs and extensions to inject workflows without modifying
+    core code. Existing types may not be overwritten.
+
+    Args:
+        workflow_type: Unique type identifier
+        workflow_class: Workflow class inheriting from BaseWorkflow
+
+    Raises:
+        ValueError: If the type identifier is already registered
+    """
+    if workflow_type in WORKFLOW_TYPES:
+        raise ValueError(f"Workflow type {workflow_type!r} is already registered")
+    WORKFLOW_TYPES[workflow_type] = workflow_class
+
+
 def create_workflow(workflow_type: str, tool_registry, checkpoint_saver=None) -> BaseWorkflow:
     """Create a workflow instance by type.
 
@@ -80,5 +98,6 @@ __all__ = [
     # Factory
     "create_workflow",
     "list_workflow_types",
+    "register_workflow_type",
     "WORKFLOW_TYPES",
 ]

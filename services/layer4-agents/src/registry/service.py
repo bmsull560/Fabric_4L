@@ -22,6 +22,9 @@ from .models import ModelPromotionLog, ModelVersion
 
 logger = logging.getLogger(__name__)
 
+FALLBACK_LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o")
+"""Default LLM model when registry lookup fails or is unavailable."""
+
 
 class PromotionError(Exception):
     """Raised when a model promotion is not allowed."""
@@ -231,4 +234,4 @@ async def resolve_llm_model(
     model = await ModelRegistryService.get_active_production_model(db, tenant_id, provider)
     if model:
         return model.model_name
-    return os.getenv("LLM_MODEL", "gpt-4o")
+    return FALLBACK_LLM_MODEL

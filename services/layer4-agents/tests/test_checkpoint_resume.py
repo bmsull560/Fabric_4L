@@ -133,7 +133,7 @@ class TestResumeWorkflow:
         )
         mock_workflow.run = AsyncMock(return_value=mock_result)
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="test-user",
@@ -187,7 +187,7 @@ class TestResumeWorkflow:
 
         resume_data = {"approved": True, "notes": "Proceed with caution"}
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="test-user",
@@ -333,7 +333,7 @@ class TestCheckpointIntegration:
         )
         mock_workflow.run = AsyncMock(return_value=completed_state)
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow):
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="test-user",
@@ -358,7 +358,7 @@ class TestCheckpointIntegration:
         mock_workflow = Mock(spec=BaseWorkflow)
         mock_workflow.run = AsyncMock(side_effect=mock_run)
 
-        with patch("src.engine.executor.create_workflow", return_value=mock_workflow) as mock_create:
+        with patch("value_fabric.layer4.engine.executor.create_workflow", return_value=mock_workflow) as mock_create:
             result1 = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="user-1",
@@ -369,6 +369,103 @@ class TestCheckpointIntegration:
         assert result1.output_data["resume_decision"] == {"iteration": 1}
         mock_create.assert_called_once()
         assert mock_create.call_args.args[2] is mock_checkpoint_saver
+
+
+@pytest.mark.unit
+class TestOrchestrationControllerEdgeCases:
+    """Edge-case tests for controller lifecycle methods."""
+
+    @pytest.mark.asyncio
+    async def test_recover_workflows_marks_orphaned_as_interrupted(
+        self, state_manager, mock_tool_registry
+    ):
+        """Orphaned workflows from a previous pod are marked INTERRUPTED."""
+        from datetime import UTC
+        from value_fabric.layer4.models.agent_state import WorkflowStatus
+
+        controller = OrchestrationController(
+            tool_registry=mock_tool_registry,
+            state_manager=state_manager,
+        )
+
+        # Seed an "orphaned" workflow in state manager (not in _active_workflows)
+        orphaned_id = "orphaned-wf-001"
+        orphaned_state = BaseAgentState(
+            workflow_id=orphaned_id,
+            workflow_type=TEST_WORKFLOW_TYPE,
+            status=WorkflowStatus.RUNNING,
+            input_data={},
+            output_data={},
+            errors=[],
+        )
+        await state_manager.save_state(orphaned_id, orphaned_state)
+
+        recovered = await controller.recover_workflows()
+        assert len(recovered) == 1
+        assert recovered[0]["workflow_id"] == orphaned_id
+        assert recovered[0]["status"] == "interrupted"
+        assert recovered[0]["recovery_available"] is True
+
+        # Verify persisted state was updated
+        updated = await state_manager.load_state(orphaned_id)
+        assert updated.status == WorkflowStatus.INTERRUPTED
+        assert any("pod restart" in e for e in updated.errors)
+
+    @pytest.mark.asyncio
+    async def test_pause_completed_workflow_raises(self, state_manager, completed_workflow_state):
+        """Pause on a completed workflow must raise ValueError."""
+        controller = OrchestrationController(
+            tool_registry=ToolRegistry(),
+            state_manager=state_manager,
+        )
+        await state_manager.save_state(completed_workflow_state.workflow_id, completed_workflow_state)
+        controller._workflow_metadata[completed_workflow_state.workflow_id] = {}
+
+        with pytest.raises(ValueError, match="cannot be paused"):
+            await controller.pause_workflow(
+                completed_workflow_state.workflow_id, user_id="test-user"
+            )
+
+    @pytest.mark.asyncio
+    async def test_pause_already_paused_workflow_raises(self, state_manager):
+        """Pause on an already-paused workflow must raise ValueError."""
+        from value_fabric.layer4.models.agent_state import WorkflowStatus
+
+        wf_id = "already-paused-wf"
+        paused_state = BaseAgentState(
+            workflow_id=wf_id,
+            workflow_type=TEST_WORKFLOW_TYPE,
+            status=WorkflowStatus.PAUSED,
+            input_data={},
+            output_data={},
+            errors=[],
+        )
+        controller = OrchestrationController(
+            tool_registry=ToolRegistry(),
+            state_manager=state_manager,
+        )
+        await state_manager.save_state(wf_id, paused_state)
+        controller._workflow_metadata[wf_id] = {}
+
+        with pytest.raises(ValueError, match="already paused"):
+            await controller.pause_workflow(wf_id, user_id="test-user")
+
+    @pytest.mark.asyncio
+    async def test_resume_completed_workflow_raises(self, state_manager, completed_workflow_state):
+        """Resume on a completed workflow must raise WorkflowExecutionError."""
+        controller = OrchestrationController(
+            tool_registry=ToolRegistry(),
+            state_manager=state_manager,
+        )
+        await state_manager.save_state(
+            completed_workflow_state.workflow_id, completed_workflow_state
+        )
+        controller._workflow_metadata[completed_workflow_state.workflow_id] = {}
+
+        with pytest.raises(WorkflowExecutionError, match="cannot be resumed"):
+            await controller.resume_workflow(
+                completed_workflow_state.workflow_id, user_id="test-user"
+            )
 
 
 # Fixtures moved to conftest.py:

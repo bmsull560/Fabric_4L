@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed
+Accepted — 2026-05-13
+
+Supersedes: ADR-027-draft (Proposed, 2026-05-12)
+
+## Unified Direction
+
+**Service-first canonical path model.** The `services/` tree contains actual implementations; `value_fabric/` serves as a thin namespace shim for backward compatibility only. This eliminates the dual-path ambiguity that caused the ADR-027 incident and aligns all layers with the proven Layer 4/5 pattern.
 
 ## Context
 
@@ -28,64 +34,75 @@ This indirection provides no value and creates a single point of failure: if `va
 - Fixed test-drift and field-name mismatches uncovered by the restoration
 - All 13 Layer 3 tests now pass
 
-**Long-term:**
+**Long-term (Accepted):**
 
-- **Keep `value_fabric/layer3/` as the canonical runtime implementation** for now
-- **Do not consolidate paths in the same PR** as the P0 recovery
-- Track a future migration to eliminate the wrapper layer under `services/layer3-knowledge/src/api/`
+- **Adopt service-first canonical paths for all layers.** `services/layer*-*/src/` is the authoritative implementation tree.
+- **`value_fabric/layerX/` becomes a thin namespace shim only** — no implementation logic, only `__init__.py` path appending for backward compatibility.
+- **Migrate Layer 1 first** (already partially migrated; use as pilot)
+- **Layers 2, 3, 6 follow** in priority order by incident history
+- **Layer 4 is already compliant** — use as the template
+
+**Migration Strategy:**
+
+1. For each layer, move implementation logic from `value_fabric/layerX/` to `services/layerX-*/src/`
+2. Replace `value_fabric/layerX/` files with thin `__init__.py` shims that append the service source path
+3. Update cross-layer imports to use service packages directly (or keep namespace imports during transition)
+4. Run contract tests (`tests/arch/test_canonical_module_sentinels.py`, `tests/contract/test_import_topology.py`) after each layer
+5. Remove shim appending from `value_fabric/__init__.py` once all consumers have migrated
+
+**Rollback Plan:**
+If a layer migration fails, revert only that layer's `value_fabric/layerX/__init__.py` to restore path appending for the affected service. Do not roll back the entire decision.
 
 ## Options Considered
 
-### Option A: Keep `value_fabric/layer3/` as canonical (selected)
+### Option A: Service-first canonical paths (selected)
 
 **Pros:**
 
-- Already established as the runtime source of truth per `AGENTS.md` canonical paths
-- Cross-layer imports from Layer 2, Layer 4, Layer 5 depend on `value_fabric.layer3.*`
-- Minimal disruption to current architecture
-- Tests, OpenAPI exports, and Docker entrypoints already reference this path
+- Eliminates the dual-path ambiguity that caused the ADR-027 deletion incident
+- Aligns all layers with the proven Layer 4/5 pattern
+- Reduces cognitive load: "the implementation lives in the service directory, period"
+- Enables each service to be self-contained and independently deployable
+- `value_fabric/` namespace can be deprecated incrementally without breaking consumers
 
 **Cons:**
 
-- Duplicate wrapper layer in `services/layer3-knowledge/src/api/` adds confusion
-- Risk of future accidental deletion if broad operations touch `value_fabric/`
+- Requires staged migration across layers (not a single-PR change)
+- Cross-layer imports must be updated layer-by-layer
+- Tests and CI scripts need temporary dual-path awareness during transition
 
-### Option B: Migrate canonical implementation into `services/layer3-knowledge/src/`
+### Option B: Keep `value_fabric/layer3/` as canonical (rejected)
 
-**Pros:**
+**Reason for rejection:** Perpetuates the root cause. The `value_fabric/` directory is vulnerable to broad operations and accidental deletion, and the wrapper indirection provides no value.
 
-- Eliminates the wrapper indirection layer
-- Aligns with the deployable service pattern used by Layers 1, 2, 5, 6
+### Option C: Keep both paths with bidirectional compatibility (rejected)
 
-**Cons:**
-
-- Massive cross-layer impact: every `from value_fabric.layer3 import ...` across the codebase must be rewritten
-- Breaks `AGENTS.md` canonical path governance until all references are updated
-- Requires simultaneous changes to tests, OpenAPI scripts, Docker entrypoints, CI workflows, and docs
-- High risk of introducing new drift during migration
-
-### Option C: Keep both paths with bidirectional compatibility
-
-**Pros:**
-
-- Maximum compatibility during transition
-
-**Cons:**
-
-- Creates permanent technical debt
-- Increases maintenance burden
-- Still vulnerable to accidental deletion of either path
+**Reason for rejection:** Creates permanent technical debt. We accept temporary dual-path awareness during migration, but the end state must be unambiguous.
 
 ## Consequences
 
-- **value_fabric/layer3/ remains the runtime source of truth**
-- **services/layer3-knowledge/src/api/ wrappers are tolerated** as a service-local indirection layer
-- **Future migration to Option B** should be planned as a dedicated project with:
+- **`services/layer*-*/src/` is the runtime source of truth** for all layers
+- **`value_fabric/layerX/` is a backward-compatibility shim only** — no new implementation logic may be added
+- **Cross-layer imports should migrate** from `value_fabric.layerX.*` to direct service package imports where possible
+- **CI contract tests enforce shim discipline:** `tests/arch/test_canonical_module_sentinels.py` verifies compatibility modules contain only re-exports
+- **Future migration checklist per layer:**
 
-  - Complete inventory of all `value_fabric.layer3` imports across layers
-  - Staged PRs per consumer layer
-  - Contract tests to verify no API behavior changes
-  - ADR ratification before implementation
+  - Inventory all `value_fabric.layerX` imports across the codebase
+  - Move implementation files to `services/layerX-*/src/`
+  - Replace `value_fabric/layerX/` with thin `__init__.py` path appender
+  - Staged PR with contract tests passing
+  - Remove service path from `value_fabric/__init__.py` once layer is fully migrated
+
+## Migration Status
+
+| Layer | Status | Service Path | Notes |
+| :---- | :----- | :----------- | :---- |
+| 1 | In Progress | `services/layer1-ingestion/src/` | Already partially migrated; `skills/` package added directly in service |
+| 2 | Pending | `services/layer2-extraction/src/` | Awaiting Layer 1 pilot completion |
+| 3 | Pending | `services/layer3-knowledge/src/` | Incident layer; high priority |
+| 4 | Compliant | `services/layer4-agents/src/` | Template for other layers |
+| 5 | Compliant | `services/layer5-ground-truth/src/` | Template for other layers |
+| 6 | Pending | `services/layer6-benchmarks/src/` | Low incident history; lowest priority |
 
 ## Incident Root Cause
 

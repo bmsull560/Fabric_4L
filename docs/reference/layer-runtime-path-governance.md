@@ -23,16 +23,15 @@ Use this before creating files so we avoid drift into archived, compatibility-on
 ## Layer path matrix
 
 | Layer | Canonical runtime paths | Legacy / compatibility paths (no net-new logic) | Allowed new development target | Deprecation owner / date |
-|---|---|---|---|---|
-| Layer 1 — Ingestion | `value_fabric/layer1/` | `services/layer1-ingestion/src/` (service wrapper + compatibility glue) | `value_fabric/layer1/` | Layer 1 Maintainers — target review by **2026-09-30** |
-| Layer 2 — Extraction | `value_fabric/layer2/` | `services/layer2-extraction/src/` (legacy service-local module path) | `value_fabric/layer2/` | Layer 2 Maintainers — target review by **2026-09-30** |
-| Layer 3 — Knowledge Graph | `value_fabric/layer3/` | `services/layer3-knowledge/src/` (deployable wrapper + compatibility imports) | `value_fabric/layer3/` | Layer 3 Maintainers — target review by **2026-09-30** |
-| Layer 4 — Agents | `value_fabric/layer4/` (canonical runtime namespace; resolves into `services/layer4-agents/src/`) | `layer4_agents/` (deprecated compatibility shim), `services/layer4-agents/src/` (deployable source tree) | `value_fabric/layer4/` | Layer 4 Maintainers — `layer4_agents/` deprecation started **2026-05-12**, removal review by **2026-09-30** |
-| Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal target review by **2026-09-30** |
-| Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility wrappers only) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
+| :---- | :---------------------- | :---------------------------------------------- | :----------------------------- | :----------------------- |
+| Layer 1 — Ingestion | `services/layer1-ingestion/src/` | `value_fabric/layer1/` (namespace shim only) | `services/layer1-ingestion/src/` | Layer 1 Maintainers — shim removal review by **2026-09-30** |
+| Layer 2 — Extraction | `services/layer2-extraction/src/` | `value_fabric/layer2/` (namespace shim only) | `services/layer2-extraction/src/` | Layer 2 Maintainers — shim removal review by **2026-09-30** |
+| Layer 3 — Knowledge Graph | `services/layer3-knowledge/src/` | `value_fabric/layer3/` (namespace shim only) | `services/layer3-knowledge/src/` | Layer 3 Maintainers — shim removal review by **2026-09-30** |
+| Layer 4 — Agents | `services/layer4-agents/src/` | `value_fabric/layer4/` (namespace shim only), `layer4_agents/` (deprecated) | `services/layer4-agents/src/` | Layer 4 Maintainers — `layer4_agents/` deprecation started **2026-05-12**, shim removal review by **2026-09-30** |
+| Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal review by **2026-09-30** |
+| Layer 6 — Benchmarks | `services/layer6-benchmarks/src/` | `value_fabric/layer6/` (namespace shim only) | `services/layer6-benchmarks/src/` | Layer 6 Maintainers — shim removal review by **2026-09-30** |
 
 Layer 6 note: when compatibility wrappers are present under `services/layer6-benchmarks/src/`, they are wrapper-only and cannot contain local domain logic; CI enforces this via `scripts/ci/check_layer6_wrapper_drift.py`, and `scripts/check_mirrored_files.py` enforces byte-alignment against the manifest-declared wrapper template in `scripts/mirrored_files.json`.
-
 
 ## Cross-root import policy (allowed vs forbidden)
 

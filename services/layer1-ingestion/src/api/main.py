@@ -2230,19 +2230,7 @@ async def get_source_corpus(
     )
     if not corpus:
         raise HTTPException(status_code=404, detail="Corpus not found")
-    return SourceCorpusResponse(
-        id=corpus.id,
-        tenant_id=corpus.tenant_id,
-        company_id=corpus.company_id,
-        company_name=corpus.company_name,
-        corpus_type=corpus.corpus_type,
-        source_groups=corpus.source_groups or [],
-        candidate_concepts=corpus.candidate_concepts or [],
-        provenance=corpus.provenance or [],
-        extraction_status=corpus.extraction_status,
-        created_at=corpus.created_at,
-        updated_at=corpus.updated_at,
-    )
+    return _source_corpus_to_response(corpus)
 
 
 @router.get("/intelligence-packets/{packet_id}", response_model=AccountIntelligencePacketResponse)
@@ -2259,22 +2247,7 @@ async def get_account_intelligence_packet(
     )
     if not packet:
         raise HTTPException(status_code=404, detail="Intelligence packet not found")
-    return AccountIntelligencePacketResponse(
-        id=packet.id,
-        tenant_id=packet.tenant_id,
-        account_id=packet.account_id,
-        account_name=packet.account_name,
-        packet_type=packet.packet_type,
-        company_profile=packet.company_profile or {},
-        observed_signals=packet.observed_signals or [],
-        likely_pain_areas=packet.likely_pain_areas or [],
-        likely_stakeholders=packet.likely_stakeholders or [],
-        source_references=packet.source_references or [],
-        confidence_summary=packet.confidence_summary or {},
-        next_recommended_events=packet.next_recommended_events or [],
-        created_at=packet.created_at,
-        updated_at=packet.updated_at,
-    )
+    return _account_packet_to_response(packet)
 
 
 @router.get("/jobs/{job_id}/skill-output")
@@ -2305,19 +2278,7 @@ async def get_job_skill_output(
             raise HTTPException(status_code=404, detail="SourceCorpus not yet available")
         return {
             "output_contract": "SourceCorpus",
-            "data": SourceCorpusResponse(
-                id=corpus.id,
-                tenant_id=corpus.tenant_id,
-                company_id=corpus.company_id,
-                company_name=corpus.company_name,
-                corpus_type=corpus.corpus_type,
-                source_groups=corpus.source_groups or [],
-                candidate_concepts=corpus.candidate_concepts or [],
-                provenance=corpus.provenance or [],
-                extraction_status=corpus.extraction_status,
-                created_at=corpus.created_at,
-                updated_at=corpus.updated_at,
-            ).model_dump(),
+            "data": _source_corpus_to_response(corpus).model_dump(),
         }
 
     if job.output_contract == "AccountIntelligencePacket":
@@ -2330,22 +2291,7 @@ async def get_job_skill_output(
             raise HTTPException(status_code=404, detail="AccountIntelligencePacket not yet available")
         return {
             "output_contract": "AccountIntelligencePacket",
-            "data": AccountIntelligencePacketResponse(
-                id=packet.id,
-                tenant_id=packet.tenant_id,
-                account_id=packet.account_id,
-                account_name=packet.account_name,
-                packet_type=packet.packet_type,
-                company_profile=packet.company_profile or {},
-                observed_signals=packet.observed_signals or [],
-                likely_pain_areas=packet.likely_pain_areas or [],
-                likely_stakeholders=packet.likely_stakeholders or [],
-                source_references=packet.source_references or [],
-                confidence_summary=packet.confidence_summary or {},
-                next_recommended_events=packet.next_recommended_events or [],
-                created_at=packet.created_at,
-                updated_at=packet.updated_at,
-            ).model_dump(),
+            "data": _account_packet_to_response(packet).model_dump(),
         }
 
     raise HTTPException(status_code=400, detail=f"Unknown output_contract: {job.output_contract}")
