@@ -34,7 +34,7 @@
  *   - App.tsx route definitions
  *   - IntelligenceShell.tsx / ValueStudioShell.tsx (AccountHeader)
  */
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Page, type Route } from '../fixtures/contract-test';
 import { setUserTier, clearUserTier, seedAuthState, clearAuthState } from '../fixtures';
 import {
   setSelectedAccount,

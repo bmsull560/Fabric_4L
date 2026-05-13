@@ -40,7 +40,7 @@
  *   - Layout.tsx NAV_SPINE (Governance, Settings domains)
  *   - App.tsx route definitions
  */
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Page, type Route } from '../fixtures/contract-test';
 import { setUserTier, clearUserTier, seedAuthState, clearAuthState } from '../fixtures';
 
 // ── API Mock Helpers ───────────────────────────────────────────────────────

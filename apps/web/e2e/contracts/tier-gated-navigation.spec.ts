@@ -24,7 +24,7 @@
  *   - Layout.tsx NAV_DOMAINS
  *   - CONTRACT.md §2.6 UI State Machine
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/contract-test';
 import { setUserTier, clearUserTier, seedAuthState, clearAuthState } from '../fixtures';
 
 test.describe('Contract: Tier-Gated Navigation', () => {

@@ -101,9 +101,10 @@ class TestAuditMutatingMethods:
     """Verify all mutating HTTP methods trigger audit logging."""
 
     def test_post_triggers_audit(self):
-        with patch("app.core.audit.logger.info") as mock_info:
+        # Unauthenticated POST to /v1/auth/login returns 401, which triggers WARNING-level audit
+        with patch("app.core.audit.logger.warning") as mock_warn:
             client.post("/v1/auth/login", json={"email": "a@b.com", "password": "x"})
-            assert mock_info.called
+            assert mock_warn.called
 
     def test_get_does_not_trigger_audit(self):
         with patch("app.core.audit.logger.info") as mock_info:

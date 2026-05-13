@@ -646,7 +646,10 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         # 3. X-API-Key header
         raw_api_key = request.headers.get("X-API-Key")
         if raw_api_key and self._api_key_resolver is not None:
-            record = await self._api_key_resolver(raw_api_key)
+            if inspect.iscoroutinefunction(self._api_key_resolver):
+                record = await self._api_key_resolver(raw_api_key)
+            else:
+                record = self._api_key_resolver(raw_api_key)
             if record and record.get("enabled", True):
                 try:
                     tenant_id = UUID(str(record["tenant_id"]))

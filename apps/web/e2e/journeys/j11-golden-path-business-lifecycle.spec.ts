@@ -6,7 +6,7 @@
  * the end-to-end validation contract for the account-to-approved-business-case
  * lifecycle against seeded data.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/contract-test';
 import {
   expectAnyVisible,
   expectButtonStateIfVisible,

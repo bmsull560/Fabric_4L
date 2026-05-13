@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/contract-test';
 
 test('debug sidebar @debug', async ({ page }) => {
   const consoleLogs: string[] = [];

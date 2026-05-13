@@ -31,8 +31,8 @@ type LayerKey = 'l1' | 'l2' | 'l3' | 'l4' | 'l5' | 'l6';
 export interface MockEndpoint {
   /** HTTP method (GET, POST, etc.) */
   method?: string;
-  /** URL glob pattern for Playwright route matching */
-  pattern: string;
+  /** URL glob pattern or RegExp for Playwright route matching */
+  pattern: string | RegExp;
   /** Response body (will be JSON.stringify'd) */
   body: unknown;
   /** HTTP status code (default: 200) */
@@ -80,14 +80,16 @@ const EMPTY_WORKSPACE_TAB = {
 };
 
 const DEFAULT_MOCKS: MockEndpoint[] = [
-  // Account endpoints
+  // Account endpoints (regex to reliably match query parameters)
   {
-    pattern: '**/api/v1/agents/accounts/*',
-    body: EMPTY_ACCOUNT,
-  },
-  {
-    pattern: '**/api/v1/agents/accounts',
-    body: [EMPTY_ACCOUNT],
+    pattern: /.*\/api\/v1\/agents\/accounts.*/,
+    body: {
+      items: [EMPTY_ACCOUNT],
+      total: 1,
+      page: 1,
+      page_size: 100,
+      has_more: false,
+    },
   },
   // Workspace tab data (signals, drivers, etc.)
   {
@@ -181,6 +183,22 @@ const DEFAULT_MOCKS: MockEndpoint[] = [
   },
 ];
 
+// ── Glob → RegExp helper ────────────────────────────────────────────────────
+
+/**
+ * Convert a Playwright-style glob pattern to a RegExp.
+ * Supports `**` (any path segments) and `*` (any chars except `/`).
+ */
+function globToRegExp(glob: string): RegExp {
+  let regex = glob
+    .replace(/\*\*/g, '<<<DOUBLESTAR>>>')
+    .replace(/\*/g, '[^/]*')
+    .replace(/<<<DOUBLESTAR>>>/g, '.*');
+  // Anchor to full URL
+  regex = '^' + regex + '$';
+  return new RegExp(regex);
+}
+
 // ── Harness Implementation ──────────────────────────────────────────────────
 
 /**
@@ -202,32 +220,31 @@ export async function installApiHarness(
 
   const allMocks = [...DEFAULT_MOCKS, ...(options.mocks || [])];
 
-  // Register a catch-all FIRST (Playwright matches last-registered-first).
-  // This ensures specific routes registered after take priority.
-  if (options.strictMocking) {
-    await page.route('**/api/v1/**', async (route: Route) => {
-      const url = route.request().url();
-      console.warn(`[API Harness] Unmatched request aborted: ${url}`);
-      await route.abort('connectionrefused');
-    });
-  } else {
-    await page.route('**/api/v1/**', async (route: Route) => {
-      // Return empty 200 for any unmatched API request
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({}),
-      });
-    });
-  }
+  /**
+   * Playwright's route matching order is NOT guaranteed when multiple
+   * page.route() calls overlap. To avoid race conditions where the
+   * catch-all fires before a specific mock, we use a SINGLE route
+   * handler and do our own pattern matching.
+   */
+  await page.route('**/api/v1/**', async (route: Route) => {
+    const url = route.request().url();
+    const method = route.request().method();
 
-  // Register specific mocks AFTER the catch-all (so they take priority)
-  for (const mock of allMocks) {
-    await page.route(mock.pattern, async (route: Route) => {
-      if (mock.method && route.request().method() !== mock.method.toUpperCase()) {
-        await route.fallback();
-        return;
+    const mock = allMocks.find((m) => {
+      const matchesMethod = !m.method || method === m.method.toUpperCase();
+      if (!matchesMethod) return false;
+
+      if (typeof m.pattern === 'string') {
+        // Playwright glob — delegate to Playwright's internal matching
+        // by falling back; this route only fires when the glob already
+        // matched '**/api/v1/**', so we need to do more precise matching.
+        // For simplicity, convert common glob patterns to RegExp.
+        return globToRegExp(m.pattern).test(url);
       }
+      return m.pattern.test(url);
+    });
+
+    if (mock) {
       if (mock.delay) {
         await new Promise((resolve) => setTimeout(resolve, mock.delay));
       }
@@ -236,8 +253,20 @@ export async function installApiHarness(
         contentType: 'application/json',
         body: JSON.stringify(mock.body),
       });
-    });
-  }
+      return;
+    }
+
+    if (options.strictMocking) {
+      console.warn(`[API Harness] Unmatched request aborted: ${url}`);
+      await route.abort('connectionrefused');
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      });
+    }
+  });
 
   // Return teardown function
   return async () => {

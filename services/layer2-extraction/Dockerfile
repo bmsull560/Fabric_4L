@@ -6,7 +6,7 @@ FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \

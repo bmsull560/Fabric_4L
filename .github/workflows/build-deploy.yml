@@ -46,6 +46,7 @@ jobs:
       attestations: write
       security-events: write
     strategy:
+      fail-fast: false
       matrix:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
         include:

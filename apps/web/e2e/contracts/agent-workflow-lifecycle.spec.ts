@@ -22,7 +22,7 @@
  *   - UI Contracts: Data, Behavior, Rendering
  *   - CONTRACT.md §2.6 (UI State Machine)
  */
-import { test, expect, type Page, type Route } from '@playwright/test';
+import { test, expect, type Page, type Route } from '../fixtures/contract-test';
 import { setUserTier, clearUserTier, seedAuthState, clearAuthState } from '../fixtures';
 import {
   mockAgentStreamChat,

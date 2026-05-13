@@ -31,16 +31,38 @@ def _get_testclient():
 
 # Test configuration constants
 # JWT_SECRET is the canonical env var name used across CI and all layers
-TEST_JWT_SECRET = os.getenv("JWT_SECRET", os.getenv("TEST_JWT_SECRET", "test-secret-key"))
+# SECURITY: Use a 32+ byte secret so PyJWT HS256 does not emit InsecureKeyLengthWarning.
+TEST_JWT_SECRET = os.getenv(
+    "JWT_SECRET",
+    os.getenv("TEST_JWT_SECRET", "test-secret-key-must-be-at-least-32-bytes!!"),
+)
 DEFAULT_REDIS_PORT = 6379
 DEFAULT_REDIS_DB = 0
+
+# Ensure legacy non-UUID tenant IDs are accepted during security test execution.
+# This matches the pytest.ini intent (TESTING=true) when pytest-env is absent.
+os.environ.setdefault("TESTING", "true")
 
 
 @pytest.fixture
 def jwt_encoder() -> Callable[[dict], str]:
-    """JWT encoding fixture for creating test tokens."""
+    """JWT encoding fixture for creating test tokens.
+
+    Tokens include ``iat``, ``exp``, ``iss``, and ``aud`` so they pass
+    ``decode_jwt`` validation in both dev and test environments.
+    """
+    import time
+
     def encode(payload: dict) -> str:
-        return jwt.encode(payload, TEST_JWT_SECRET, algorithm="HS256")
+        now = int(time.time())
+        claims = {
+            "iat": now,
+            "exp": now + 3600,
+            "iss": os.getenv("JWT_ISSUER", "value-fabric-internal"),
+            "aud": os.getenv("JWT_AUDIENCE", "value-fabric-services"),
+        }
+        claims.update(payload)
+        return jwt.encode(claims, TEST_JWT_SECRET, algorithm="HS256")
     return encode
 
 

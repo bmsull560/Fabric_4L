@@ -1,0 +1,162 @@
+[
+  {
+    "label": "L1 Unit - Models",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\services\\layer1-ingestion\\tests\\unit\\test_models.py",
+    "passed": 6,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "============================= test session starts =============================\ncollecting ... collected 6 items\n\nservices\\layer1-ingestion\\tests\\unit\\test_models.py::TestRawContent::test_content_creation PASSED [ 16%]\nservices\\layer1-ingestion\\tests\\unit\\test_models.py::TestScrapingJob::test_job_status_enum PASSED [ 33%]\nservices\\layer1-ingestion\\tests\\unit\\test_models.py::TestScrapingJob::test_create_scraping_job PASSED [ 50%]\nservices\\layer1-ingestion\\tests\\unit\\test_models.py::TestCrawlQueueItem::test_create_queue_item PASSED [ 66%]\nservices\\layer1-ingestion\\tests\\unit\\test_models.py::TestScrapingTarget::test_create_scraping_target PASSED [ 83%]\nservices\\layer1-ingestion\\tests\\unit\\test_models.py::TestScrapingTarget::test_create_scraping_target_with_source_category PASSED [100%]\n\n============================== 6 passed in 0.48s =============================="
+  },
+  {
+    "label": "L1 Unit - Crawler Config",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\services\\layer1-ingestion\\tests\\unit\\test_crawler_config.py",
+    "passed": 12,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "============================= test session starts =============================\ncollecting ... collected 12 items\n\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfigYamlLoading::test_load_nonexistent_file_raises PASSED [  8%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfigYamlLoading::test_load_valid_yaml PASSED [ 16%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfigYamlLoading::test_invalid_max_concurrent_raises PASSED [ 25%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfigYamlLoading::test_invalid_timeout_raises PASSED [ 33%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfigYamlLoading::test_to_yaml_roundtrip PASSED [ 41%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfigYamlLoading::test_unknown_fields_logged_and_ignored PASSED [ 50%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfig::test_browser_args_default PASSED [ 58%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfig::test_blocked_resource_patterns PASSED [ 66%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfig::test_default_values PASSED [ 75%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestCrawlerConfig::test_viewport_property PASSED [ 83%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestLoadConfig::test_load_config_with_explicit_path PASSED [ 91%]\nservices\\layer1-ingestion\\tests\\unit\\test_crawler_config.py::TestLoadConfig::test_load_config_defaults_when_no_file_found PASSED [100%]\n\n============================= 12 passed in 0.45s =============================="
+  },
+  {
+    "label": "L1 Unit - Scheduler",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\services\\layer1-ingestion\\tests\\unit\\test_scheduler.py",
+    "passed": 6,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "============================= test session starts =============================\ncollecting ... collected 6 items\n\nservices\\layer1-ingestion\\tests\\unit\\test_scheduler.py::TestPriorityScheduler::test_rate_limiting PASSED [ 16%]\nservices\\layer1-ingestion\\tests\\unit\\test_scheduler.py::TestPriorityScheduler::test_priority_ordering PASSED [ 33%]\nservices\\layer1-ingestion\\tests\\unit\\test_scheduler.py::TestPriorityScheduler::test_depth_affects_priority PASSED [ 50%]\nservices\\layer1-ingestion\\tests\\unit\\test_scheduler.py::TestPriorityScheduler::test_add_url PASSED [ 66%]\nservices\\layer1-ingestion\\tests\\unit\\test_scheduler.py::TestPriorityScheduler::test_get_queue_stats PASSED [ 83%]\nservices\\layer1-ingestion\\tests\\unit\\test_scheduler.py::TestRoundRobinScheduler::test_round_robin_selection PASSED [100%]\n\n============================== warnings summary ===============================\npackages\\shared\\src\\value_fabric\\shared\\security\\config.py:52\n  C:\\Users\\BBB\\Fabric_4L\\packages\\shared\\src\\value_fabric\\shared\\security\\config.py:52: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/\n    class SecurityConfig(BaseModel):\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================== 6 passed, 1 warning in 0.61s ========================="
+  },
+  {
+    "label": "L1 Unit - Adapters",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\services\\layer1-ingestion\\tests\\unit\\test_adapters.py",
+    "passed": 13,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "============================= test session starts =============================\ncollecting ... collected 13 items\n\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestXBRLParser::test_parse_revenue_fact PASSED [  7%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestXBRLParser::test_extract_key_metrics PASSED [ 15%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestXBRLParser::test_parse_empty PASSED [ 23%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestAdapterRegistry::test_get_adapter_caching PASSED [ 30%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestAdapterRegistry::test_register_adapter PASSED [ 38%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestAdapterRegistry::test_get_sec_edgar_adapter PASSED [ 46%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_get_company_cik_not_found PASSED [ 53%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_fetch_document_not_found PASSED [ 61%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_adapter_type PASSED [ 69%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_search_filings PASSED [ 76%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_rate_limiting_config PASSED [ 84%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_supported_formats PASSED [ 92%]\nservices\\layer1-ingestion\\tests\\unit\\test_adapters.py::TestSECEdgarAdapter::test_get_company_cik_success PASSED [100%]\n\n============================= 13 passed in 2.30s =============================="
+  },
+  {
+    "label": "L2 Unit - Deduplicator",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\services\\layer2-extraction\\tests\\test_deduplicator.py",
+    "passed": 8,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "============================= test session starts =============================\ncollected 8 items\n\nservices\\layer2-extraction\\tests\\test_deduplicator.py ........           [100%]\n\n============================== 8 passed in 0.34s =============================="
+  },
+  {
+    "label": "L2 Unit - Chunker",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\services\\layer2-extraction\\tests\\test_chunker.py",
+    "passed": 24,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "============================= test session starts =============================\ncollected 24 items\n\nservices\\layer2-extraction\\tests\\test_chunker.py ....................... [ 95%]\n.                                                                        [100%]\n\n============================= 24 passed in 0.30s =============================="
+  },
+  {
+    "label": "L3 Unit - Graph Queries",
+    "target": "services/layer3-knowledge/tests/unit/test_graph_queries.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": -1,
+    "output_tail": "File not found"
+  },
+  {
+    "label": "L4 Unit - Rate Limiting",
+    "target": "services/layer4-agents/tests/unit/test_rate_limiting.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": -1,
+    "output_tail": "File not found"
+  },
+  {
+    "label": "L5 Unit - Label Validation",
+    "target": "services/layer5-ground-truth/tests/unit/test_label_validation.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": -1,
+    "output_tail": "File not found"
+  },
+  {
+    "label": "L6 Unit - API Wrapper",
+    "target": "services/layer6-benchmarks/tests/unit/test_api_wrapper.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": -1,
+    "output_tail": "File not found"
+  },
+  {
+    "label": "Arch - Tenant Architecture",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\tests\\arch\\test_tenant_architecture.py",
+    "passed": 3,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 1,
+    "output_tail": "tests\\arch\\test_tenant_architecture.py:148: in test_tenant_required_api_dependencies_reject_missing_and_invalid_tenant\n    assert _function_mentions_names(\nE   AssertionError: require_authenticated should raise HTTPException with status metadata\nE   assert False\nE    +  where False = _function_mentions_names(AsyncFunctionDef(name='require_authenticated', args=arguments(posonlyargs=[], args=[arg(arg='ctx', annotation=Subscript(...), type_comment=None)], vararg=None, kwonlyargs=[arg(arg='context', annotation=Subscript(...), type_comment=None)], kw_defaults=[Call(func=Name(...), args=[Name(...)], keywords=[])], kwarg=None, defaults=[Call(func=Name(...), args=[Name(...)], keywords=[])]), body=[Expr(value=Constant(value='Require an authenticated context with a valid, non-unknown auth source.', kind=None)), ..., Return(value=Name(id='ctx', ctx=Load(...)))], decorator_list=[], returns=Name(id='RequestContext', ctx=Load()), type_comment=None, type_params=[]), {'HTTPException', 'status'})\n============================== warnings summary ===============================\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ===========================\nFAILED tests/arch/test_tenant_architecture.py::test_tenant_required_api_dependencies_reject_missing_and_invalid_tenant - AssertionError: require_authenticated should raise HTTPException with status metadata\nassert False\n +  where False = _function_mentions_names(AsyncFunctionDef(name='require_authenticated', args=arguments(posonlyargs=[], args=[arg(arg='ctx', annotation=Subscript(...), type_comment=None)], vararg=None, kwonlyargs=[arg(arg='context', annotation=Subscript(...), type_comment=None)], kw_defaults=[Call(func=Name(...), args=[Name(...)], keywords=[])], kwarg=None, defaults=[Call(func=Name(...), args=[Name(...)], keywords=[])]), body=[Expr(value=Constant(value='Require an authenticated context with a valid, non-unknown auth source.', kind=None)), ..., Return(value=Name(id='ctx', ctx=Load(...)))], decorator_list=[], returns=Name(id='RequestContext', ctx=Load()), type_comment=None, type_params=[]), {'HTTPException', 'status'})\n=================== 1 failed, 3 passed, 2 warnings in 0.72s ==================="
+  },
+  {
+    "label": "Arch - Testability",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\tests\\arch\\test_testability_architecture.py",
+    "passed": 14,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "output_tail": "tests/arch/test_testability_architecture.py::TestProtocolRuntimeCheckable::test_implementations_satisfy_protocols[SequentialIDGenerator-IDGenerator] PASSED [ 50%]\ntests/arch/test_testability_architecture.py::TestProtocolRuntimeCheckable::test_implementations_satisfy_protocols[SystemClock-Clock] PASSED [ 57%]\ntests/arch/test_testability_architecture.py::TestProtocolRuntimeCheckable::test_implementations_satisfy_protocols[UUIDGenerator-IDGenerator] PASSED [ 64%]\ntests/arch/test_testability_architecture.py::TestSharedTestabilityExports::test_all_exports_importable PASSED [ 71%]\ntests/arch/test_testability_architecture.py::TestIDGeneratorCompliance::test_uuid_generator_is_unique PASSED [ 78%]\ntests/arch/test_testability_architecture.py::TestIDGeneratorCompliance::test_sequential_generator_custom_start PASSED [ 85%]\ntests/arch/test_testability_architecture.py::TestIDGeneratorCompliance::test_sequential_generator_is_deterministic PASSED [ 92%]\ntests/arch/test_testability_architecture.py::TestIDGeneratorCompliance::test_uuid_generator_returns_string PASSED [100%]\n\n============================== warnings summary ===============================\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================= 14 passed, 2 warnings in 0.36s ========================"
+  },
+  {
+    "label": "Security - Tenant Isolation",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\tests\\security\\test_tenant_isolation.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 1,
+    "output_tail": "    result = call_fixture_func(fixturefunc, request, kwargs)\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\_pytest\\fixtures.py\", line 908, in call_fixture_func\n    fixture_result = next(generator)\n  File \"C:\\Users\\BBB\\Fabric_4L\\tests\\security\\conftest.py\", line 178, in redis_client\n    client.ping()\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\commands\\core.py\", line 1250, in ping\n    return self.execute_command(\"PING\", **kwargs)\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\client.py\", line 716, in execute_command\n    return self._execute_command(*args, **options)\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\client.py\", line 722, in _execute_command\n    conn = self.connection or pool.get_connection()\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\utils.py\", line 236, in wrapper\n    return func(*args, **kwargs)\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\connection.py\", line 3041, in get_connection\n    connection.connect()\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\connection.py\", line 976, in connect\n    self.retry.call_with_retry(\n  File \"C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\redis\\retry.py\", line 135, in call_with_retry\n    sleep(backoff)\n+++++++++++++++++++++++++++++++++++ Timeout +++++++++++++++++++++++++++++++++++"
+  },
+  {
+    "label": "Security - Injection",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\tests\\security\\test_injection.py",
+    "passed": 1,
+    "failed": 7,
+    "errors": 0,
+    "skipped": 0,
+    "exit_code": 1,
+    "output_tail": "-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ===========================\nFAILED tests/security/test_injection.py::TestJSONSecurity::test_deeply_nested_json_blocked - assert 401 in [200, 400]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE80A70E0>.status_code\nFAILED tests/security/test_injection.py::TestJSONSecurity::test_large_json_array_blocked - assert 401 in [200, 400, 413, 429]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE901D1D0>.status_code\nFAILED tests/security/test_injection.py::TestXSSPrevention::test_xss_in_query_params_blocked - assert 401 in [200, 400]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE901F110>.status_code\nFAILED tests/security/test_injection.py::TestCommandInjectionPrevention::test_command_injection_blocked - AssertionError: Payload should be blocked: ; cat /etc/passwd\nassert 401 in [200, 400]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE9005F50>.status_code\nFAILED tests/security/test_injection.py::TestSQLInjectionPrevention::test_sql_injection_in_json_body_blocked - AssertionError: Payload failed: ' OR '1'='1\nassert 401 in [200, 400]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE9006E50>.status_code\nFAILED tests/security/test_injection.py::TestSQLInjectionPrevention::test_sql_injection_in_query_params_blocked - AssertionError: Payload failed: ' OR '1'='1\nassert 401 in [200, 400]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE92B5400>.status_code\nFAILED tests/security/test_injection.py::TestNoSQLInjectionPrevention::test_nosql_injection_blocked - assert 401 in [200, 400]\n +  where 401 = <tests.security.conftest._AwaitableResponse object at 0x000001EAE92B7020>.status_code\n=================== 7 failed, 1 passed, 2 warnings in 1.63s ==================="
+  },
+  {
+    "label": "Contract - L2-L3",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\tests\\contract\\test_l2_l3_contract.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 4,
+    "exit_code": 0,
+    "output_tail": "\ntests/contract/test_l2_l3_contract.py::TestL2ToL3PayloadContract::test_l2_payload_shape_validates_against_l3_openapi_schema[payload0-IngestRequest] SKIPPEDhttp://layer5:8005/api/v1/health']) [ 25%]\ntests/contract/test_l2_l3_contract.py::TestL2ToL3PayloadContract::test_l2_entity_sample_validates_against_entity_jsonschema SKIPPEDissing:\n['http://layer3:8003/health', 'http://localhost:8004/health',\n'http://layer5:8005/api/v1/health'])                                     [ 50%]\ntests/contract/test_l2_l3_contract.py::TestL3ContractDriftDetection::test_l3_ingestion_and_query_endpoints_are_present_in_openapi_contract SKIPPEDttp://layer5:8005/api/v1/health']) [ 75%]\ntests/contract/test_l2_l3_contract.py::TestL3ContractDriftDetection::test_l2_client_and_l3_contract_stay_aligned_on_ingest_route SKIPPEDth',\n'http://layer5:8005/api/v1/health'])                                     [100%]\n\n============================== warnings summary ===============================\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================= 4 skipped, 2 warnings in 9.93s ========================"
+  },
+  {
+    "label": "Contract - L3 Graph",
+    "target": "C:\\Users\\BBB\\Fabric_4L\\tests\\contract\\test_l3_graph_contract.py",
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 14,
+    "exit_code": 0,
+    "output_tail": "['http://layer3:8003/health', 'http://localhost:8004/health',\n'http://layer5:8005/api/v1/health'])                                     [ 85%]\ntests/contract/test_l3_graph_contract.py::TestL3EntityTraversalContracts::test_traversal_direction_enum_values SKIPPEDissing:\n['http://layer3:8003/health', 'http://localhost:8004/health',\n'http://layer5:8005/api/v1/health'])                                     [ 92%]\ntests/contract/test_l3_graph_contract.py::TestL3EntityTraversalContracts::test_entity_traversal_response_matches_openapi SKIPPEDissing:\n['http://layer3:8003/health', 'http://localhost:8004/health',\n'http://layer5:8005/api/v1/health'])                                     [100%]\n\n============================== warnings summary ===============================\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n..\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263\n  C:\\Users\\BBB\\AppData\\Roaming\\Python\\Python314\\site-packages\\pydantic\\main.py:263: RuntimeWarning: API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).\n    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n======================= 14 skipped, 2 warnings in 9.84s ======================="
+  }
+]

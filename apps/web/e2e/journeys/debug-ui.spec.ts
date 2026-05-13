@@ -8,7 +8,7 @@
  * - Collect diagnostics for any failures
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../fixtures/contract-test';
 
 test.describe('UI End-User Satisfaction @debug', () => {
   test('login and explore core pages successfully', async ({ page }) => {

@@ -63,8 +63,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest pytest-xdist pytest-timeout pytest-cov httpx pytest-asyncio
-          if [ -f "shared/pyproject.toml" ]; then
-            pip install -e shared/
+          if [ -f "packages/shared/pyproject.toml" ]; then
+            pip install -e packages/shared/
           fi
 
       - name: Wait for services to be healthy
@@ -84,6 +84,7 @@ jobs:
       - name: Run unit tests
         run: pytest -m unit -n auto --timeout=60
         env:
+          PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:test@localhost:5432/fabric_test
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
@@ -93,6 +94,7 @@ jobs:
       - name: Run integration tests
         run: pytest -m integration --timeout=120
         env:
+          PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:test@localhost:5432/fabric_test
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
@@ -102,6 +104,7 @@ jobs:
       - name: Run contract tests
         run: pytest -m contract --timeout=60
         env:
+          PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:test@localhost:5432/fabric_test
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687
@@ -111,6 +114,7 @@ jobs:
       - name: Run security tests
         run: pytest -m security --timeout=60
         env:
+          PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:test@localhost:5432/fabric_test
           REDIS_URL: redis://localhost:6379
           NEO4J_URL: bolt://localhost:7687

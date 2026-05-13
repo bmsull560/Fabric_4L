@@ -4,7 +4,7 @@
  *
  * Run: cd frontend && pnpm exec playwright test e2e/journeys/full-ui-debug.spec.ts --project=journeys --reporter=list
  */
-import { test, expect, type ConsoleMessage, type Page } from '@playwright/test';
+import { test, expect, type ConsoleMessage, type Page } from '../fixtures/contract-test';
 import { setUserTier, seedAuthState, clearUserTier, clearAuthState } from '../fixtures';
 
 type RouteStatus = 'ok' | '404' | 'error' | 'redirect' | 'timeout' | 'crash';

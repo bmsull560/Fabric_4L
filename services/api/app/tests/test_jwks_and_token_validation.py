@@ -57,9 +57,13 @@ class TestKeycloakJWKSResolution:
         static_jwks = {"keys": [{"kid": "test-kid", "kty": "RSA", "n": "abc", "e": "AQAB", "alg": "RS256"}]}
         with patch.dict(os.environ, {"OIDC_JWKS_JSON": json.dumps(static_jwks)}, clear=False):
             with patch("value_fabric.shared.identity.jwt._fetch_jwks_from_url") as mock_fetch:
-                header = {"kid": "test-kid", "alg": "RS256"}
-                _resolve_external_key(header, "test-issuer")
-                mock_fetch.assert_not_called()
+                with patch("jwt.algorithms.get_default_algorithms") as mock_algs:
+                    mock_alg_instance = MagicMock()
+                    mock_algs.return_value = {"RS256": mock_alg_instance}
+                    header = {"kid": "test-kid", "alg": "RS256"}
+                    _resolve_external_key(header, "test-issuer")
+                    mock_fetch.assert_not_called()
+                    mock_alg_instance.from_jwk.assert_called_once()
 
     def test_jwks_resolution_order_explicit_url_second(self):
         """Explicit OIDC_JWKS_URL is used when static JSON is absent."""
@@ -122,10 +126,11 @@ class TestTokenValidation:
         assert resp.status_code == 401
 
     def test_expired_token_rejected(self):
+        from datetime import timedelta
         expired_token = create_access_token(
             subject="user-test",
             tenant_id="tenant-test",
-            expires_delta=-1,  # expired 1 second ago
+            expires_delta=timedelta(seconds=-1),  # expired 1 second ago
         )
         resp = client.get("/v1/accounts", headers={
             "Authorization": f"Bearer {expired_token}",
