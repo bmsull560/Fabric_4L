@@ -7,7 +7,7 @@ RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 WORKDIR /app
 
 # Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Install uv from official image
 COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/

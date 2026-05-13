@@ -6,7 +6,7 @@ FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075
 WORKDIR /app
 
 # Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -31,7 +31,7 @@ COPY src/ ./src/
 FROM ghcr.io/value-fabric/base-images/python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
 
 # Install only runtime library (libpq for psycopg2)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 

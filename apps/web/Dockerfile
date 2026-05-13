@@ -6,7 +6,7 @@ RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./
 # Remove workspace-only devDependency not resolvable in standalone Docker build
-RUN node -e "const p=require('./package.json'); delete (p.devDependencies||{})['eslint-plugin-fabric-contracts']; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2))"
+RUN node -e "const p=require('./package.json'); delete (p.devDependencies||{})['eslint-plugin-fabric-contracts']; delete (p.scripts||{})['preinstall']; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2))"
 RUN pnpm install --no-frozen-lockfile
 
 COPY . .
@@ -23,7 +23,7 @@ RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./
 # Remove workspace-only devDependency not resolvable in standalone Docker build
-RUN node -e "const p=require('./package.json'); delete (p.devDependencies||{})['eslint-plugin-fabric-contracts']; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2))"
+RUN node -e "const p=require('./package.json'); delete (p.devDependencies||{})['eslint-plugin-fabric-contracts']; delete (p.scripts||{})['preinstall']; require('fs').writeFileSync('package.json', JSON.stringify(p,null,2))"
 RUN pnpm install --no-frozen-lockfile --prod
 
 # Security: Run as non-root user (node is built-in to node:alpine images)

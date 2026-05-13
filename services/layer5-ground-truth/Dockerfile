@@ -5,7 +5,7 @@ LABEL maintainer="Value Fabric Engineering"
 LABEL description="Layer 5 — Ground Truth Service"
 
 # System dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
