@@ -8,7 +8,7 @@ Covers:
 - Per-tenant webhook token validation (constant-time comparison)
 - Missing token rejection (fail-closed)
 - Invalid token rejection
-- Global HMAC fallback (with warning)
+- Development-only signature fallback (explicitly gated)
 - HMAC signature mismatch (defense-in-depth)
 """
 
@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -47,13 +48,17 @@ async def _authenticate_webhook(
         token_valid = hmac.compare_digest(stored_webhook_token, provided_token)
 
     if not token_valid:
-        # Fallback: global HMAC secret (if no per-tenant token is configured)
-        if app_state_webhook_secret and provided_signature:
+        if (
+            os.getenv("CRM_WEBHOOKS_ALLOW_DEV_RELAXED_TENANT_RESOLUTION", "").lower()
+            in ("true", "1", "yes", "on")
+            and app_state_webhook_secret
+            and provided_signature
+        ):
             expected = hmac.new(
                 app_state_webhook_secret.encode(), body, hashlib.sha256
             ).hexdigest()
             if hmac.compare_digest(expected, provided_signature):
-                return  # Allow via global HMAC
+                return json.loads(decrypted), "dev_signature_fallback"
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid webhook credentials",
@@ -69,6 +74,7 @@ async def _authenticate_webhook(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid webhook signature",
             )
+    return json.loads(decrypted), "token"
 
 
 async def _mock_encryption_decrypt(ciphertext: str, key_id: str) -> str:
@@ -201,24 +207,26 @@ class TestWebhookHMACAuth:
         assert "Invalid webhook signature" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_global_hmac_fallback_accepts(self):
-        """No per-tenant token but valid global HMAC → accepted."""
+    async def test_dev_signature_fallback_accepts_only_when_enabled(self):
+        """Local dev fallback requires an explicit flag and a valid signature."""
         integration = _make_integration(webhook_token=None)
         body = b'{"test": "payload"}'
         secret = "global-secret"
         expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 
-        await _authenticate_webhook(
-            integration,
-            provided_token=None,
-            provided_signature=expected,
-            body=body,
-            app_state_webhook_secret=secret,
-        )
+        with patch.dict(os.environ, {"CRM_WEBHOOKS_ALLOW_DEV_RELAXED_TENANT_RESOLUTION": "true"}):
+            _, auth_mode = await _authenticate_webhook(
+                integration,
+                provided_token=None,
+                provided_signature=expected,
+                body=body,
+                app_state_webhook_secret=secret,
+            )
+        assert auth_mode == "dev_signature_fallback"
 
     @pytest.mark.asyncio
-    async def test_global_hmac_fallback_rejects_bad_sig(self):
-        """No per-tenant token and bad global HMAC → rejected."""
+    async def test_missing_token_without_dev_fallback_rejects(self):
+        """Missing token stays fail-closed unless the explicit dev flag is set."""
         integration = _make_integration(webhook_token=None)
         body = b'{"test": "payload"}'
         secret = "global-secret"

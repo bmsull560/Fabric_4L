@@ -106,10 +106,20 @@ class Settings(BaseSettings):
         default="redis://localhost:6379/0",
         alias="REDIS_URL",
     )
+    redis_rate_limiting_required: bool = Field(
+        default=False,
+        alias="REDIS_RATE_LIMITING_REQUIRED",
+        description="Require Redis-backed rate limiting during startup.",
+    )
     redis_cache_ttl_seconds: int = Field(
         default=3600,
         alias="REDIS_CACHE_TTL_SECONDS",
         description="Default TTL for cached reference data in seconds (1 hour)",
+    )
+    vault_addr: str | None = Field(
+        default=None,
+        alias="VAULT_ADDR",
+        description="Optional Vault address used for production-like startup health checks.",
     )
 
     # Layer 3 Knowledge Graph Integration
@@ -169,10 +179,12 @@ class Settings(BaseSettings):
     jwt_issuer: str = Field(
         default="value-fabric-internal",
         alias="JWT_ISSUER",
+        description="Expected JWT issuer for Layer 5 auth",
     )
     jwt_audience: str = Field(
         default="value-fabric-services",
         alias="JWT_AUDIENCE",
+        description="Expected JWT audience for Layer 5 auth",
     )
     jwt_tenant_claim: str = Field(
         default="tenant_id",
@@ -280,6 +292,7 @@ class Settings(BaseSettings):
             return self
 
         errors: list[str] = []
+        layer3_host = (urlparse(self.layer3_base_url).hostname or "").strip().lower()
         if self.debug:
             errors.append("DEBUG must be false")
         if len(self.jwt_secret) < 32 or self.jwt_secret.strip().lower() in WEAK_JWT_SECRETS:
@@ -308,6 +321,8 @@ class Settings(BaseSettings):
             errors.append("DATABASE_URL must point to non-local PostgreSQL with non-default credentials")
         if _is_local_database_url(self.database_url_sync) or _has_default_database_credentials(self.database_url_sync):
             errors.append("DATABASE_URL_SYNC must point to non-local PostgreSQL with non-default credentials")
+        if layer3_host in LOCALHOST_HOSTS:
+            errors.append("LAYER3_BASE_URL must not point to localhost in production-like environments")
 
         origins = _parse_cors_origins(self.cors_origins)
         if not origins:

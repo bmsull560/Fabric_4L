@@ -173,14 +173,22 @@ async def graph_rag_query_impl(
         raise map_exception_to_http_error(exc, context=context)
 
 
-async def graph_rag_query_stream_impl(query: GraphRAGQuery, graph_rag: Any) -> StreamingResponse:
+async def graph_rag_query_stream_impl(
+    query: GraphRAGQuery,
+    graph_rag: Any,
+    *,
+    ctx: RequestContext | None = None,
+) -> StreamingResponse:
     async def event_generator() -> Any:
         try:
+            if not (ctx and ctx.tenant_id):
+                raise ValueError("tenant context required for graph_rag_query_stream")
             async for event in graph_rag.query_stream(
                 query_text=query.query,
                 entity_type=query.entity_type,
                 max_hops=query.max_hops,
                 max_results=query.max_results,
+                tenant_id=str(ctx.tenant_id),
             ):
                 event_data = {
                     "event_type": event["event_type"],
@@ -190,7 +198,7 @@ async def graph_rag_query_stream_impl(query: GraphRAGQuery, graph_rag: Any) -> S
                 }
                 yield f"data: {json.dumps(event_data)}\\n\\n"
         except (AsyncTimeoutError, TimeoutError, RuntimeError, ValueError, TypeError) as exc:
-            logger.error("Streaming GraphRAG query failed", extra={"context": {"tenant": "unknown", "endpoint": "/v1/query/stream", "operation": "graph_rag_query_stream", "error_type": exc.__class__.__name__}}, exc_info=True)
+            logger.error("Streaming GraphRAG query failed", extra={"context": {"tenant": str(ctx.tenant_id) if ctx and ctx.tenant_id else "unknown", "endpoint": "/v1/query/stream", "operation": "graph_rag_query_stream", "error_type": exc.__class__.__name__}}, exc_info=True)
             trace_id = None
             if isinstance(exc, Exception):
                 trace_id = getattr(exc, "trace_id", None) or getattr(exc, "correlation_id", None)

@@ -35,14 +35,14 @@ async def analyze_entity(
         Analysis results or None if entity not found
     """
     # Get entity (maintains tenant context)
-    entity_data = await get_entity(entity_id=entity_id)
+    entity_data = await get_entity(entity_id=entity_id, context=context)
     
     if not entity_data:
         logger.warning(f"Entity {entity_id} not found")
         return None
     
     # Compute metrics (maintains tenant context)
-    metrics = await compute_metrics(entity_data=entity_data)
+    metrics = await compute_metrics(entity_data=entity_data, context=context)
     
     return analyze_entityResult.model_validate({
         "entity": entity_data,
@@ -64,7 +64,7 @@ async def read_and_update(
         Updated entity or None if not found/permission denied
     """
     # Get entity
-    entity_data = await get_entity(entity_id=entity_id)
+    entity_data = await get_entity(entity_id=entity_id, context=context)
     
     if not entity_data:
         logger.warning(f"Entity {entity_id} not found")

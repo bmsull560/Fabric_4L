@@ -14,7 +14,7 @@ This checklist covers readiness for a **controlled pilot** with a small number o
 - [x] `SALESFORCE_CLIENT_SECRET` configured
 - [x] `SALESFORCE_REDIRECT_URI` configured and matches Connected App
 - [x] `SALESFORCE_WEBHOOK_SECRET` configured
-- [x] `CRM_WEBHOOKS_REQUIRE_TENANT_ID=true` in production
+- [x] `CRM_WEBHOOKS_ALLOW_DEV_RELAXED_TENANT_RESOLUTION` remains unset/false outside local development
 - [x] `ALLOW_ENV_CRM_FALLBACK` removed — no env fallback exists
 - [x] `.env.example` updated with all CRM variables
 
@@ -138,7 +138,7 @@ The Salesforce CRM integration is **approved for controlled pilot** with a small
 2. Admins accept manual token entry for initial Salesforce connection (OAuth flow missing).
 3. Single-replica deployment is acceptable (no Celery/Redis yet).
 4. Webhook URLs are configured with `?tenant_id=<tenant-id>` and per-tenant `webhook_token`.
-5. `CRM_WEBHOOKS_REQUIRE_TENANT_ID=true` is enforced in production.
+5. Production does not enable `CRM_WEBHOOKS_ALLOW_DEV_RELAXED_TENANT_RESOLUTION`; webhook requests stay tenant-bound.
 6. `ALLOW_ENV_CRM_FALLBACK` does not exist — all credentials come from tenant integration table only.
 
 **GA Roadmap (blockers for general availability):**

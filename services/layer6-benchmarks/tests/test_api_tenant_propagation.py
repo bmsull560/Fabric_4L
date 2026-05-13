@@ -10,9 +10,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from src.api.main import app
-from src.api.deps import get_request_context
-from src.models.benchmark_dataset import BenchmarkDataset, BenchmarkMetric, StatisticalProfile
+from value_fabric.layer6.api.deps import get_request_context
+from value_fabric.layer6.api.main import app
+from value_fabric.layer6.models.benchmark_dataset import (
+    BenchmarkDataset,
+    BenchmarkMetric,
+    StatisticalProfile,
+)
 from value_fabric.shared.identity.context import RequestContext
 
 
@@ -69,7 +73,7 @@ def clear_dependency_overrides():
 @pytest.fixture
 def mock_repo_hostile():
     """Create a pristine mock repo for asserting call arguments."""
-    with patch("src.api.main._benchmark_repo") as repo:
+    with patch("value_fabric.layer6.api.main._benchmark_repo") as repo:
         repo.list_datasets = AsyncMock(return_value=[])
         repo.get_dataset = AsyncMock(return_value=None)
         yield repo
@@ -211,7 +215,7 @@ async def test_list_industries_propagates_tenant(isolated_client: AsyncClient, m
 @pytest.mark.asyncio
 async def test_hostile_cross_tenant_access_blocked(isolated_client: AsyncClient, monkeypatch):
     """Verify a hostile tenant cannot access another tenant's benchmark data via the API."""
-    import src.api.main as main_module
+    import value_fabric.layer6.api.main as main_module
     
     # Create a mock repo that simulates returning data ONLY for a specific tenant
     mock_repo = AsyncMock()

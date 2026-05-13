@@ -5,31 +5,17 @@ import argparse
 import csv
 import datetime as dt
 import json
-import re
 import subprocess
-from dataclasses import dataclass
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.ci.compatibility_registry import parse_registry
+
 REGISTRY = ROOT / "docs/governance/compatibility-debt-registry.md"
-ROW_RE = re.compile(r"^\|\s*([^|]+?)\s*\|\s*`([^`]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|$")
-
-@dataclass
-class Shim:
-    shim_id: str
-    path: str
-    owner: str
-    target_removal_date: dt.date
-
-
-def parse_registry() -> list[Shim]:
-    items: list[Shim] = []
-    for line in REGISTRY.read_text(encoding="utf-8").splitlines():
-        m = ROW_RE.match(line.strip())
-        if not m:
-            continue
-        items.append(Shim(m.group(1), m.group(2), m.group(4), dt.date.fromisoformat(m.group(6))))
-    return items
 
 
 def rg_count(pattern: str) -> int:
@@ -55,14 +41,14 @@ def main() -> int:
 
     rows = []
     today = dt.date.today().isoformat()
-    for shim in parse_registry():
+    for shim in parse_registry(REGISTRY):
         count = max(0, rg_count(shim.path) - 1)  # subtract registry self-reference
         rows.append({
             "date": today,
             "shim_id": shim.shim_id,
             "path": shim.path,
             "owner": shim.owner,
-            "target_removal_date": shim.target_removal_date.isoformat(),
+            "target_removal_date": shim.target_removal_date,
             "remaining_callsites": count,
         })
 

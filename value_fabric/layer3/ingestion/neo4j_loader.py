@@ -14,6 +14,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from neo4j import AsyncDriver
 from rdflib import Graph, Literal, Namespace, URIRef
@@ -37,6 +38,39 @@ VECTOR_ENTITY_TYPES = {"Capability", "UseCase", "Persona", "ValueDriver"}
 
 class RDFLoadError(Exception):
     """Raised when RDF loading fails."""
+
+
+class TenantValidationError(ValueError):
+    """Raised when tenant context is missing or malformed for ingestion."""
+
+
+def validate_ingestion_tenant_id(tenant_id: str | None) -> str:
+    """Validate public ingestion tenant scope.
+
+    Public Layer 3 ingestion paths are tenant-bound and must not implicitly
+    default to platform scope. The accepted format is a non-empty UUID string.
+    """
+    if tenant_id is None:
+        raise TenantValidationError("tenant_id is required for Layer 3 ingestion")
+
+    normalized = str(tenant_id).strip()
+    if not normalized:
+        raise TenantValidationError("tenant_id is required for Layer 3 ingestion")
+
+    try:
+        return str(UUID(normalized))
+    except ValueError as exc:
+        raise TenantValidationError(
+            f"Invalid tenant_id format: {tenant_id}. Expected UUID."
+        ) from exc
+
+
+def _validate_internal_system_tenant_id(tenant_id: str) -> str:
+    """Validate the explicit internal-only platform ingestion scope."""
+    normalized = str(tenant_id).strip().lower()
+    if normalized != "system":
+        raise TenantValidationError("internal system ingestion requires tenant_id='system'")
+    return normalized
 
 
 class Neo4jLoader:
@@ -91,11 +125,12 @@ class Neo4jLoader:
             rdf_graph: RDFLib Graph containing triples
             source_id: ID of the source document
             extraction_job_id: ID of the extraction job that generated this data
-            tenant_id: Tenant ID for isolation (defaults to "system")
+            tenant_id: Validated tenant UUID for isolation
 
         Returns:
             Dictionary with load statistics
         """
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
         driver = await self._get_driver()
         stats = {
             "entities_loaded": 0,
@@ -110,7 +145,12 @@ class Neo4jLoader:
             entities = self._extract_entities_from_rdf(rdf_graph)
             for entity_type, entity_data in entities.items():
                 loaded = await self._load_entities_batch(
-                    session, entity_type, entity_data, source_id, extraction_job_id, tenant_id
+                    session,
+                    entity_type,
+                    entity_data,
+                    source_id,
+                    extraction_job_id,
+                    validated_tenant_id,
                 )
                 stats["entities_loaded"] += loaded
 
@@ -119,7 +159,11 @@ class Neo4jLoader:
                 rdf_graph, source_id, extraction_job_id
             )
             loaded = await self._load_relationships_batch(
-                session, relationships, source_id, extraction_job_id, tenant_id
+                session,
+                relationships,
+                source_id,
+                extraction_job_id,
+                validated_tenant_id,
             )
             stats["relationships_loaded"] += loaded
 
@@ -146,7 +190,7 @@ class Neo4jLoader:
             turtle_data: RDF data in Turtle format
             source_id: ID of the source document
             extraction_job_id: ID of the extraction job
-            tenant_id: Tenant ID for isolation (defaults to "system")
+            tenant_id: Validated tenant UUID for isolation
 
         Returns:
             Dictionary with load statistics
@@ -426,6 +470,8 @@ class Neo4jLoader:
         if not entities:
             return 0
 
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
+
         # Validate required fields (Community Edition compatibility)
         for entity in entities:
             entity_id = entity.get("id", "unknown")
@@ -440,7 +486,7 @@ class Neo4jLoader:
 
         # Inject tenant_id into each entity
         for entity in entities:
-            entity["tenant_id"] = tenant_id or "system"
+            entity["tenant_id"] = validated_tenant_id
 
         entity_data = {
             "entities": entities,
@@ -474,7 +520,6 @@ class Neo4jLoader:
             """
 
         try:
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             result = await session.run(query, entity_data)
             record = await result.single()
             return record["loaded"] if record else 0
@@ -498,7 +543,7 @@ class Neo4jLoader:
 
         Args:
             relationships: Dict mapping relationship type to list of relationship dicts
-            tenant_id: Tenant ID for isolation (defaults to "system")
+            tenant_id: Validated tenant UUID for isolation
         """
         # Flatten all relationships into a single list
         all_relationships = []
@@ -508,14 +553,19 @@ class Neo4jLoader:
         if not all_relationships:
             return 0
 
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
+
         # Inject tenant_id into each relationship
-        effective_tenant_id = tenant_id or "system"
         for rel in all_relationships:
-            rel["tenant_id"] = effective_tenant_id
+            rel["tenant_id"] = validated_tenant_id
 
         if not self.use_apoc:
             return await self._load_relationships_native(
-                session, all_relationships, source_id, extraction_job_id, effective_tenant_id
+                session,
+                all_relationships,
+                source_id,
+                extraction_job_id,
+                validated_tenant_id,
             )
 
         # APOC path (opt-in) - use flattened list
@@ -546,7 +596,6 @@ class Neo4jLoader:
         """
 
         try:
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             result = await session.run(query, rel_data)
             record = await result.single()
             return record["loaded"] if record else 0
@@ -574,6 +623,7 @@ class Neo4jLoader:
         """
         loaded_at = datetime.utcnow().isoformat()
         by_type: dict[str, list[dict]] = defaultdict(list)
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
 
         for rel in relationships:
             predicate = (
@@ -590,14 +640,13 @@ class Neo4jLoader:
                 )
 
         total_loaded = 0
-        effective_tenant_id = tenant_id or "system"
         for rel_type, rels in by_type.items():
             params = {
                 "relationships": rels,
                 "source_id": source_id,
                 "extraction_job_id": extraction_job_id,
                 "loaded_at": loaded_at,
-                "tenant_id": effective_tenant_id,
+                "tenant_id": validated_tenant_id,
             }
             # rel_type is validated against RELATIONSHIP_TYPES above — safe to
             # interpolate into the query string.
@@ -637,7 +686,6 @@ class Neo4jLoader:
             RETURN count(r) AS loaded
             """
             try:
-                # tenant-scope: system - reviewed operational ingestion metadata boundary
                 result = await session.run(query, params)
                 record = await result.single()
                 total_loaded += record["loaded"] if record else 0
@@ -651,18 +699,17 @@ class Neo4jLoader:
 
         Args:
             source_id: Source document ID to delete
-            tenant_id: Tenant ID for isolation (defaults to "system")
+            tenant_id: Validated tenant UUID for isolation
 
         Returns:
             Dictionary with deletion statistics
         """
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
         driver = await self._get_driver()
         stats = {"entities_deleted": 0, "relationships_deleted": 0}
-        effective_tenant_id = tenant_id or "system"
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Delete relationships first (match through nodes to ensure tenant isolation)
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             rel_result = await session.run(
                 """
                 MATCH (n)-[r]->(m)
@@ -670,13 +717,12 @@ class Neo4jLoader:
                 DELETE r
                 RETURN count(r) as deleted
                 """,
-                {"source_id": source_id, "tenant_id": effective_tenant_id},
+                {"source_id": source_id, "tenant_id": validated_tenant_id},
             )
             record = await rel_result.single()
             stats["relationships_deleted"] = record["deleted"] if record else 0
 
             # Delete entities
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             entity_result = await session.run(
                 """
                 MATCH (n)
@@ -684,7 +730,7 @@ class Neo4jLoader:
                 DELETE n
                 RETURN count(n) as deleted
                 """,
-                {"source_id": source_id, "tenant_id": effective_tenant_id},
+                {"source_id": source_id, "tenant_id": validated_tenant_id},
             )
             record = await entity_result.single()
             stats["entities_deleted"] = record["deleted"] if record else 0
@@ -692,7 +738,7 @@ class Neo4jLoader:
         logger.info(
             f"Deleted {stats['entities_deleted']} entities and "
             f"{stats['relationships_deleted']} relationships for source {source_id} "
-            f"in tenant {effective_tenant_id}"
+            f"in tenant {validated_tenant_id}"
         )
 
         return stats

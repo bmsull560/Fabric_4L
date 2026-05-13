@@ -96,6 +96,9 @@ async def get_ingestion_source_compatibility_boundary(
     record = _INGESTION_SOURCE_COMPAT_STORE.get(source_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Source not found")
+    if str(record.get("tenant_id")) != str(ctx.tenant_id):
+        # Fail closed and do not disclose whether another tenant owns the record.
+        raise HTTPException(status_code=404, detail="Source not found")
     return record
 
 

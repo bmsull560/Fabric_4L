@@ -112,17 +112,16 @@ Contract drift detected! Run 'python scripts/export_openapi.py' locally and comm
 **Triggers**: Pull requests and pushes affecting backend APIs or frontend generation scripts
 
 **What it does**:
-1. Runs `pnpm run generate:api` to regenerate TypeScript clients
-2. Checks if generated files changed
-3. Fails if drift detected
+1. Runs the repository-owned contract gate in fast mode on pull requests and full mode on merge/release branches
+2. Regenerates OpenAPI plus TypeScript outputs together
+3. Fails on committed drift or incompatible frontend type usage for touched APIs
 
 **Failure message**:
 ```
 Generated API client files are stale.
 To fix locally:
-  pnpm run generate:api
-  git add apps/web/src/api/generated
-  git commit
+  pnpm run generate:contracts
+  pnpm run check:contract-compliance -- --mode fast
 ```
 
 ## Drift Assessor Agent
@@ -194,13 +193,12 @@ After refactoring APIs, schemas, or components:
 
 Before pushing changes:
 ```bash
-# Check for contract drift locally
-python scripts/export_openapi.py
-git diff contracts/openapi/
+# Required for API contract and generated-client changes
+pnpm run generate:contracts
+pnpm run check:contract-compliance -- --mode fast
 
-# Check for generated API drift locally
-cd apps/web && pnpm run generate:api
-git diff src/api/generated/
+# Use the full gate before merge/release work
+pnpm run check:contract-compliance
 ```
 
 ## Troubleshooting
@@ -213,9 +211,10 @@ git diff src/api/generated/
 
 **Fix**:
 ```bash
-python scripts/export_openapi.py
-git add contracts/openapi/
-git commit -m "chore: update openapi contracts"
+pnpm run generate:contracts
+pnpm run check:contract-compliance -- --mode fast
+git add contracts/openapi/ packages/platform-contract/src/typescript/generated/ apps/web/src/api/generated/
+git commit -m "chore: refresh generated contracts"
 ```
 
 ### CI Fails with Generated API Drift
@@ -226,10 +225,10 @@ git commit -m "chore: update openapi contracts"
 
 **Fix**:
 ```bash
-cd apps/web
-pnpm run generate:api
-git add apps/web/src/api/generated/
-git commit -m "chore: regenerate api clients"
+pnpm run generate:contracts
+pnpm run check:contract-compliance -- --mode fast
+git add packages/platform-contract/src/typescript/generated/ apps/web/src/api/generated/
+git commit -m "chore: refresh generated api artifacts"
 ```
 
 ### Documentation Appears Outdated

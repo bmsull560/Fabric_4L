@@ -11,9 +11,11 @@ import os
 from typing import Any
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from neo4j import AsyncGraphDatabase
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
-from value_fabric.shared.identity.context import RequestContext, require_context
+from value_fabric.shared.identity.context import RequestContext, get_request_context
+from value_fabric.shared.identity.policy_registry import authorize_action
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +34,15 @@ def _get_driver():
     return _DRIVER
 
 
-def _resolve_tenant_id(context: RequestContext | None = None) -> str:
-    """Resolve tenant ID from explicit context or ambient request context."""
-    if context and context.tenant_id:
-        return str(context.tenant_id)
-
-    try:
-        return str(require_context().tenant_id)
-    except RuntimeError:
-        # Non-request execution path (e.g., tests/background jobs)
-        return "default"
+def _require_tool_context(context: RequestContext | None = None) -> RequestContext:
+    """Resolve the explicit or ambient request context and fail closed otherwise."""
+    ctx = context or get_request_context()
+    if ctx is None or not getattr(ctx, "tenant_id", None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tenant-scoped tool execution requires authenticated context",
+        )
+    return ctx
 
 
 def _tenant_uuid_or_none(tenant_id: str) -> UUID | None:
@@ -62,7 +63,8 @@ async def get_entity(
     context: RequestContext | None = None
 ) -> dict | None:
     """Get entity by ID with tenant scoping."""
-    tenant_id = _resolve_tenant_id(context)
+    context = authorize_action("layer4.tool.knowledge.read_entity", _require_tool_context(context))
+    tenant_id = str(context.tenant_id)
 
     if "'" in entity_id or "--" in entity_id or "OR" in entity_id.upper():
         logger.warning("Invalid characters in entity_id: %s", entity_id)
@@ -111,19 +113,8 @@ async def update_entity(
     context: RequestContext | None = None
 ) -> dict | None:
     """Update entity with tenant scoping."""
-    tenant_id = _resolve_tenant_id(context)
-
-    if context and "write" not in context.permissions:
-        emit_audit_event(
-            action=AuditAction.KG_NODE_UPDATED,
-            outcome=AuditOutcome.FAILURE,
-            resource_type="entity",
-            resource_id=entity_id,
-            tenant_id=_tenant_uuid_or_none(tenant_id),
-            details={"operation": "update_entity", "reason": "denied"},
-        )
-        logger.warning("Write permission required for update_entity")
-        return None
+    context = authorize_action("layer4.tool.knowledge.update_entity", _require_tool_context(context))
+    tenant_id = str(context.tenant_id)
 
     safe_updates = {k: v for k, v in updates.items() if k not in {"id", "tenant_id"}}
     outcome = AuditOutcome.FAILURE
@@ -168,19 +159,8 @@ async def delete_entity(
     context: RequestContext | None = None
 ) -> bool:
     """Delete entity with tenant scoping."""
-    tenant_id = _resolve_tenant_id(context)
-
-    if context and "delete" not in context.permissions:
-        emit_audit_event(
-            action=AuditAction.KG_NODE_DELETED,
-            outcome=AuditOutcome.FAILURE,
-            resource_type="entity",
-            resource_id=entity_id,
-            tenant_id=_tenant_uuid_or_none(tenant_id),
-            details={"operation": "delete_entity", "reason": "denied"},
-        )
-        logger.warning("Delete permission required for delete_entity")
-        return False
+    context = authorize_action("layer4.tool.knowledge.delete_entity", _require_tool_context(context))
+    tenant_id = str(context.tenant_id)
 
     outcome = AuditOutcome.FAILURE
     reason = "not_found"
@@ -223,7 +203,8 @@ async def search_entities(
     context: RequestContext | None = None
 ) -> list[dict]:
     """Search entities with tenant scoping."""
-    tenant_id = _resolve_tenant_id(context)
+    context = authorize_action("layer4.tool.knowledge.read_entity", _require_tool_context(context))
+    tenant_id = str(context.tenant_id)
 
     if len(query) > 10000:
         logger.warning("Query too large: %s characters (max 10000)", len(query))
@@ -258,7 +239,8 @@ async def list_entities(
     context: RequestContext | None = None
 ) -> list[dict]:
     """List entities with tenant scoping."""
-    tenant_id = _resolve_tenant_id(context)
+    context = authorize_action("layer4.tool.knowledge.read_entity", _require_tool_context(context))
+    tenant_id = str(context.tenant_id)
     try:
         driver = _get_driver()
         async with driver.session(database=_NEO4J_DATABASE) as session:

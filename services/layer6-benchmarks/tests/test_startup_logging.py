@@ -1,4 +1,9 @@
-from src.api.startup_logging import config_fingerprint, emit_startup_metadata
+from unittest.mock import AsyncMock
+
+import pytest
+
+import value_fabric.layer6.api.main as main_module
+from value_fabric.layer6.api.startup_logging import config_fingerprint, emit_startup_metadata
 
 
 def test_config_fingerprint_is_stable() -> None:
@@ -25,3 +30,21 @@ def test_emit_startup_metadata_logs_version_and_build(caplog) -> None:
         and getattr(rec, "config_fingerprint", None)
         for rec in caplog.records
     )
+
+
+@pytest.mark.asyncio
+async def test_lifespan_emits_startup_metadata(monkeypatch) -> None:
+    emit_mock = AsyncMock()
+    monkeypatch.setattr(main_module, "emit_startup_metadata", emit_mock)
+    monkeypatch.setattr(main_module, "get_driver", AsyncMock(side_effect=RuntimeError("neo4j unavailable")))
+    monkeypatch.setattr(main_module, "close_driver", AsyncMock())
+
+    async with main_module.lifespan(main_module.app):
+        pass
+
+    emit_mock.assert_called_once()
+    _, kwargs = emit_mock.call_args
+    assert kwargs["service"] == "layer6-benchmarks"
+    assert kwargs["version"]
+    assert kwargs["build_sha"]
+    assert "database_scheme" in kwargs["config"]

@@ -6,15 +6,20 @@ from unittest.mock import AsyncMock
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-import src.api.main as main_module
-from src.api.main import app
-from src.models.benchmark_dataset import BenchmarkDataset, BenchmarkMetric, StatisticalProfile
+from value_fabric.layer6.api.main import app
+import value_fabric.layer6.api.main as main_module
+from value_fabric.layer6.models.benchmark_dataset import (
+    BenchmarkDataset,
+    BenchmarkMetric,
+    StatisticalProfile,
+)
 
 
 @pytest.fixture(autouse=True)
 def setup_mock_repo(monkeypatch):
     """Set up a deterministic benchmark repository for API tests."""
     mock_repo = AsyncMock()
+    monkeypatch.setattr(main_module, "authorize_action", lambda *args, **kwargs: None)
 
     dataset = BenchmarkDataset(
         dataset_id="manufacturing-efficiency-2024",
@@ -88,13 +93,20 @@ async def test_health_check(client: AsyncClient):
     data = response.json()
     assert data["status"] == "healthy"
     assert data["service"] == "layer6-benchmarks"
+    assert "checks" not in data
 
 
 @pytest.mark.asyncio
 async def test_ready_check(client: AsyncClient):
     response = await client.get("/ready")
     assert response.status_code == 200
-    assert response.json() == {"status": "ready"}
+    data = response.json()
+    assert data["status"] == "ready"
+    assert data["service"] == "layer6-benchmarks"
+    assert data["checks"]["config"]["status"] == "ok"
+    assert data["checks"]["neo4j"]["status"] == "ok"
+    assert data["checks"]["benchmark_store"]["status"] == "ok"
+    assert data["checks"]["startup"]["status"] == "ok"
 
 
 @pytest.mark.asyncio
@@ -197,24 +209,79 @@ async def test_returns_503_when_repo_is_unavailable(
     monkeypatch.setattr(main_module, "_benchmark_repo", None)
     response = await client.request(method, path, json=payload)
     assert response.status_code == 503
-    assert response.json()["detail"] == "Benchmark store not initialized"
+    assert "Benchmark store not initialized" in str(response.json())
 
 
 @pytest.mark.asyncio
 async def test_ready_returns_503_when_dependency_health_check_fails(client: AsyncClient, monkeypatch):
     async def failing_health(*args, **kwargs):
-        return {"status": "unhealthy"}
+        return {"status": "unhealthy", "error": "neo4j down"}
 
     monkeypatch.setattr(main_module, "neo4j_health_check", failing_health)
     response = await client.get("/ready")
     assert response.status_code == 503
+    assert response.json() == {
+        "status": "not_ready",
+        "service": "layer6-benchmarks",
+        "timestamp": response.json()["timestamp"],
+        "version": "1.0.0",
+        "checks": {
+            "config": {"status": "ok"},
+            "neo4j": {"status": "failed", "detail": "neo4j down"},
+            "benchmark_store": {"status": "ok", "detail": None, "datasets_loaded": 1},
+            "startup": {"status": "ok", "detail": None},
+        },
+    }
 
 
 @pytest.mark.asyncio
 async def test_health_remains_liveness_only_when_dependency_degraded(client: AsyncClient, monkeypatch):
     async def failing_health(*args, **kwargs):
-        return {"status": "unhealthy"}
+        return {"status": "unhealthy", "error": "neo4j down"}
 
     monkeypatch.setattr(main_module, "neo4j_health_check", failing_health)
     response = await client.get("/health")
     assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+
+
+@pytest.mark.asyncio
+async def test_ready_returns_503_with_startup_degraded_state(client: AsyncClient, monkeypatch):
+    monkeypatch.setattr(main_module, "_benchmark_repo", None)
+    monkeypatch.setattr(main_module, "_neo4j_startup_error", "startup dependency failed")
+
+    response = await client.get("/ready")
+
+    assert response.status_code == 503
+    data = response.json()
+    assert data["status"] == "not_ready"
+    assert data["checks"]["neo4j"] == {
+        "status": "failed",
+        "detail": "startup dependency failed",
+    }
+    assert data["checks"]["benchmark_store"] == {
+        "status": "failed",
+        "detail": "startup dependency failed",
+    }
+    assert data["checks"]["startup"] == {
+        "status": "failed",
+        "detail": "startup dependency failed",
+    }
+
+
+@pytest.mark.asyncio
+async def test_ready_returns_503_when_config_validation_fails(client: AsyncClient, monkeypatch):
+    def failing_settings_validation():
+        raise RuntimeError("missing required setting")
+
+    monkeypatch.setattr(main_module, "validate_layer6_startup_settings", failing_settings_validation)
+
+    response = await client.get("/ready")
+
+    assert response.status_code == 503
+    data = response.json()
+    assert data["status"] == "not_ready"
+    assert data["checks"]["config"] == {
+        "status": "failed",
+        "detail": "missing required setting",
+    }

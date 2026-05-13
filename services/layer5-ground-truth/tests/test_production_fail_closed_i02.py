@@ -16,6 +16,7 @@ from layer5_ground_truth.config import Settings
 VALID_JWT_SECRET = "layer5-production-secret-with-more-than-32-characters"
 VALID_DATABASE_URL = "postgresql://layer5_app:strong-password@layer5-db.internal:5432/layer5_prod"
 VALID_CORS_ORIGINS = "https://fabric.example.com,https://admin.fabric.example.com"
+VALID_LAYER3_BASE_URL = "https://layer3.internal"
 
 
 VALID_SERVICE_AUTH_SECRET = "layer5-service-auth-secret-with-more-than-32-characters"
@@ -48,6 +49,7 @@ def _set_valid_production_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CORS_ORIGINS", VALID_CORS_ORIGINS)
     monkeypatch.setenv("DATABASE_URL", VALID_DATABASE_URL)
     monkeypatch.setenv("DATABASE_URL_SYNC", VALID_DATABASE_URL.replace("postgresql://", "postgresql+psycopg://"))
+    monkeypatch.setenv("LAYER3_BASE_URL", VALID_LAYER3_BASE_URL)
     monkeypatch.setenv("DEFAULT_TENANT_ID", "11111111-1111-4111-8111-111111111111")
     monkeypatch.setenv("SERVICE_AUTH_SECRET", VALID_SERVICE_AUTH_SECRET)
     monkeypatch.setenv("JWT_ISSUER", "value-fabric-internal")
@@ -193,6 +195,18 @@ class TestLayer5ProductionSettingsFailClosed:
         message = _validation_message(exc_info)
         assert "DATABASE_URL must point to non-local PostgreSQL with non-default credentials" in message
         assert "DATABASE_URL_SYNC must point to non-local PostgreSQL with non-default credentials" in message
+
+    def test_production_rejects_localhost_layer3_base_url(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _set_valid_production_env(monkeypatch)
+        monkeypatch.setenv("LAYER3_BASE_URL", "http://localhost:8003")
+
+        with pytest.raises(ValidationError) as exc_info:
+            Settings()
+
+        assert (
+            "LAYER3_BASE_URL must not point to localhost in production-like environments"
+            in _validation_message(exc_info)
+        )
 
     def test_non_production_logs_warning_when_jwt_secret_missing(
         self,

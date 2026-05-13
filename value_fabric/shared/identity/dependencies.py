@@ -119,6 +119,7 @@ from value_fabric.shared.identity.context import (
     get_request_context,
 )
 from value_fabric.shared.identity.permissions import Permission, Role
+from value_fabric.shared.identity.policy_registry import authorize_action
 from value_fabric.shared.security.config import validate_jwt_config
 
 # Compatibility alias required by legacy tests and routes that patch/import
@@ -276,6 +277,14 @@ def require_all_permissions(*permissions: Permission | str) -> Callable[[Request
     return dependency
 
 
+def require_action(action: str) -> Callable[[RequestContext | None], object]:
+    async def dependency(context: RequestContext | None = None) -> RequestContext:
+        ctx = await require_authenticated(context)
+        return authorize_action(action, ctx)
+
+    return dependency
+
+
 async def require_admin(context: RequestContext | None = None) -> RequestContext:
     """Require an administrative role or explicit administrative permission."""
 
@@ -401,6 +410,7 @@ __all__ = [
     "require_permission",
     "require_any_permission",
     "require_all_permissions",
+    "require_action",
     "require_admin",
     "require_privileged_access",
     "require_super_admin",

@@ -73,6 +73,12 @@ Authoritative policy references:
 - `docs/reference/layer-runtime-path-governance.md`
 - `docs/reference/layer3-layer6-wrapper-policy.md`
 
+Required guardrails when adding a new Layer 6 module:
+
+- implement it under `value_fabric/layer6/`
+- add the corresponding compatibility wrapper entry in `scripts/mirrored_files.json`
+- keep `services/layer6-benchmarks/src/` files to the generated re-export template only
+
 ---
 
 ## Step 1: Clone and Configure

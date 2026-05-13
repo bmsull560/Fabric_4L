@@ -74,6 +74,9 @@ jobs:
         run: |
           python scripts/ci/validate_final_testing_launch_gate.py
           python scripts/ci/validate_core_ga_launch_evidence.py
+      - name: Enforce release launch governance checklist
+        if: startsWith(github.ref_name, 'release/')
+        run: python scripts/ci/check_release_launch_governance.py
       - id: stage
         run: echo "passed=true" >> "$GITHUB_OUTPUT"
 

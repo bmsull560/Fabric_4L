@@ -70,6 +70,7 @@ REQUIRED_VECTOR_INDEXES = {
     "persona_embedding_idx",
     "valuedriver_embedding_idx",
 }
+TEST_TENANT_ID = "12345678-1234-1234-1234-123456789abc"
 
 
 @pytest_asyncio.fixture(scope="module")
@@ -294,6 +295,7 @@ class TestEntityIngestion:
             rdf_graph=rdf_graph,
             source_id="test-source",
             extraction_job_id="test-job-001",
+            tenant_id=TEST_TENANT_ID,
         )
         
         assert stats["entities_loaded"] >= 1
@@ -345,6 +347,7 @@ class TestEntityIngestion:
             rdf_graph=rdf_graph,
             source_id="test-source",
             extraction_job_id="test-job-002",
+            tenant_id=TEST_TENANT_ID,
         )
         
         assert stats["entities_loaded"] >= 2
@@ -557,6 +560,7 @@ class TestAPIEndpoints:
                 "rdf_data": rdf_data,
                 "source_id": "api-test-source",
                 "extraction_job_id": "api-test-job-001",
+                "tenant_id": TEST_TENANT_ID,
             },
         )
 
@@ -589,6 +593,7 @@ class TestAPIEndpoints:
                 "rdf_data": rdf_data,
                 "source_id": "query-test-source",
                 "extraction_job_id": "query-test-job",
+                "tenant_id": TEST_TENANT_ID,
             },
         )
         assert ingest_resp.status_code == 200
@@ -637,6 +642,7 @@ class TestAPIEndpoints:
                 "rdf_data": rdf_data,
                 "source_id": "search-test-source",
                 "extraction_job_id": "search-test-job",
+                "tenant_id": TEST_TENANT_ID,
             },
         )
         assert ingest_resp.status_code == 200
@@ -704,6 +710,7 @@ class TestE2ECompletePipeline:
             rdf_graph=rdf_graph,
             source_id="e2e-test",
             extraction_job_id="e2e-job-001",
+            tenant_id=TEST_TENANT_ID,
         )
 
         # Assert: Verify ingestion stats
@@ -736,6 +743,7 @@ class TestE2ECompletePipeline:
             rdf_graph=rdf_graph,
             source_id="query-test",
             extraction_job_id="query-job-001",
+            tenant_id=TEST_TENANT_ID,
         )
 
         # Act: Query with GraphRAG
@@ -787,6 +795,7 @@ class TestE2ECompletePipeline:
             rdf_graph=rdf_graph,
             source_id="integrity-test",
             extraction_job_id="integrity-job-001",
+            tenant_id=TEST_TENANT_ID,
         )
 
         # Act & Assert: Verify data integrity in Neo4j

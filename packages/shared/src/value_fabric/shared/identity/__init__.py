@@ -34,12 +34,20 @@ from .dependencies import (
     require_permission,
     require_any_permission,
     require_all_permissions,
+    require_action,
     require_tenant,
     get_optional_context,
 )
 from .middleware import GovernanceMiddleware
 from .models import APIKeyModel, TenantModel, UserModel
 from .permissions import Permission, Role, ROLE_PERMISSIONS
+from .policy_registry import (
+    ACTION_POLICIES,
+    authorize_action,
+    get_action_policy,
+    get_tool_action,
+    list_action_policies,
+)
 
 from .dependencies import (
     require_tenant_admin,
@@ -116,6 +124,7 @@ __all__ = [
     "require_permission",
     "require_any_permission",
     "require_all_permissions",
+    "require_action",
     "require_tenant",
     "get_optional_context",
     # Middleware
@@ -128,6 +137,11 @@ __all__ = [
     "Permission",
     "Role",
     "ROLE_PERMISSIONS",
+    "ACTION_POLICIES",
+    "authorize_action",
+    "get_action_policy",
+    "get_tool_action",
+    "list_action_policies",
     # Auth mode
     "assert_safe_jwt_and_bypass_configuration",
     "is_dev_bypass_enabled",

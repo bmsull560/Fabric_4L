@@ -1,3 +1,3 @@
-"""Compatibility shim; canonical Layer 6 startup logging lives under value_fabric.layer6."""
+"""Compatibility wrapper for value_fabric.layer6.api.startup_logging."""
 
 from value_fabric.layer6.api.startup_logging import *

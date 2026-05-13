@@ -104,8 +104,21 @@ class PipelineStatusResponse(BaseModel):
     completed_at: str | None = None
 
 
+def _require_authenticated_tenant(request: Request) -> str:
+    """Return the canonical tenant from GovernanceMiddleware or fail closed."""
+    ctx = getattr(request.state, "governance_context", None)
+    tenant_id = getattr(ctx, "tenant_id", None)
+    if not tenant_id:
+        raise HTTPException(status_code=401, detail="Tenant context required")
+    return str(tenant_id)
+
+
 @app.post("/v1/extract-and-ingest", response_model=ExtractAndIngestResponse)
-async def extract_and_ingest(payload: ExtractionRequest) -> ExtractAndIngestResponse:
+async def extract_and_ingest(
+    payload: ExtractionRequest,
+    request: Request,
+) -> ExtractAndIngestResponse:
+    tenant_id = _require_authenticated_tenant(request)
     job_id = str(uuid.uuid4())
     job = PipelineJob(
         job_id=job_id,
@@ -113,6 +126,7 @@ async def extract_and_ingest(payload: ExtractionRequest) -> ExtractAndIngestResp
         overall_status="pending",
         extraction_status="pending",
         ingestion_status="pending",
+        tenant_id=tenant_id,
     )
     await job_store.set_job(job)
     await run_extract_and_ingest(
@@ -130,9 +144,10 @@ async def extract_and_ingest(payload: ExtractionRequest) -> ExtractAndIngestResp
 
 
 @app.get("/v1/extract/status/{job_id}", response_model=PipelineStatusResponse)
-async def get_pipeline_status(job_id: str) -> PipelineStatusResponse:
+async def get_pipeline_status(job_id: str, request: Request) -> PipelineStatusResponse:
+    tenant_id = _require_authenticated_tenant(request)
     try:
-        job = await job_store.get_job(job_id)
+        job = await job_store.get_job(job_id, tenant_id=tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Job not found")
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hmac
 import logging
 import os
 import threading
@@ -96,27 +95,6 @@ def _from_request_context(ctx: RequestContext) -> SyncRequestContext:
     )
 
 
-def _service_auth_context(x_tenant_id: str, x_service_auth: Optional[str]) -> SyncRequestContext:
-    expected_secret = os.getenv("SERVICE_AUTH_SECRET", "")
-    if not expected_secret or not x_service_auth or not hmac.compare_digest(x_service_auth, expected_secret):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid service authentication")
-    try:
-        tenant_id = UUID(str(x_tenant_id))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid X-Tenant-ID header") from exc
-    return SyncRequestContext(
-        tenant_id=tenant_id,
-        user_id=None,
-        roles=[Role.SYSTEM.value],
-        permissions=frozenset(ROLE_PERMISSIONS[Role.SYSTEM].permissions),
-        source=AUTH_SOURCE_SERVICE_ACCOUNT,
-        auth_source=AUTH_SOURCE_SERVICE_ACCOUNT,
-        service_account_id="service-auth-header",
-        service_account_scopes=["internal:service-to-service"],
-        raw={"service_auth_header": True},
-    )
-
-
 def _reject_spoofed_organization_header(x_organization_id: Optional[str], tenant_id: Optional[UUID | str]) -> None:
     if not x_organization_id or tenant_id is None:
         return
@@ -128,10 +106,26 @@ def _reject_spoofed_organization_header(x_organization_id: Optional[str], tenant
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization header does not match authenticated tenant")
 
 
+def _reject_spoofed_tenant_header(x_tenant_id: Optional[str], tenant_id: Optional[UUID | str]) -> None:
+    if not x_tenant_id or tenant_id is None:
+        return
+    try:
+        header_uuid = UUID(str(x_tenant_id))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid X-Tenant-ID header",
+        ) from exc
+    if str(header_uuid) != str(tenant_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="X-Tenant-ID does not match authenticated tenant",
+        )
+
+
 def get_request_context_sync(
     request: Request,
     x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID"),
-    x_service_auth: Optional[str] = Header(None, alias="X-Service-Auth"),
     x_organization_id: Optional[str] = Header(None, alias="X-Organization-ID"),
 ) -> SyncRequestContext:
     """Return a sync context bridged from canonical governance state."""
@@ -141,13 +135,9 @@ def get_request_context_sync(
             validation_errors = list(governance_context.validate())
             if validation_errors:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Request identity context failed validation")
+        _reject_spoofed_tenant_header(x_tenant_id, governance_context.tenant_id)
         _reject_spoofed_organization_header(x_organization_id, governance_context.tenant_id)
         return _from_request_context(governance_context)
-
-    if x_tenant_id:
-        ctx = _service_auth_context(x_tenant_id, x_service_auth)
-        _reject_spoofed_organization_header(x_organization_id, ctx.tenant_id)
-        return ctx
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
@@ -155,10 +145,13 @@ def get_request_context_sync(
 def require_request_context_sync(
     request: Request,
     x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID"),
-    x_service_auth: Optional[str] = Header(None, alias="X-Service-Auth"),
     x_organization_id: Optional[str] = Header(None, alias="X-Organization-ID"),
 ) -> SyncRequestContext:
-    return get_request_context_sync(request, x_tenant_id=x_tenant_id, x_service_auth=x_service_auth, x_organization_id=x_organization_id)
+    return get_request_context_sync(
+        request,
+        x_tenant_id=x_tenant_id,
+        x_organization_id=x_organization_id,
+    )
 
 
 class GovernanceMiddlewareSync:
@@ -168,7 +161,6 @@ class GovernanceMiddlewareSync:
         self.app = app
         self._api_key_resolver = api_key_resolver
         self._jwt_secret = jwt_secret or os.getenv("JWT_SECRET", "")
-        self._service_auth_secret = os.getenv("SERVICE_AUTH_SECRET", "")
 
     def __call__(self, environ: dict, start_response: Callable) -> Any:
         request_path = environ.get("PATH_INFO", "")
@@ -178,7 +170,6 @@ class GovernanceMiddlewareSync:
             auth_header=environ.get("HTTP_AUTHORIZATION"),
             api_key_header=environ.get("HTTP_X_API_KEY"),
             x_tenant_header=environ.get("HTTP_X_TENANT_ID"),
-            x_service_auth=environ.get("HTTP_X_SERVICE_AUTH", ""),
         )
         _thread_local.request_context = ctx
         _thread_local.request_id = ctx.request_id if ctx else str(uuid4())
@@ -191,7 +182,7 @@ class GovernanceMiddlewareSync:
     def _is_public_path(self, path: str) -> bool:
         return path in self._PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc")
 
-    def _resolve_identity_sync(self, *, auth_header: str | None = None, api_key_header: str | None = None, x_tenant_header: str | None = None, x_service_auth: str = "", **_: Any) -> SyncRequestContext | None:
+    def _resolve_identity_sync(self, *, auth_header: str | None = None, api_key_header: str | None = None, x_tenant_header: str | None = None, **_: Any) -> SyncRequestContext | None:
         from .jwt import decode_jwt
         if auth_header and auth_header.startswith("Bearer "):
             token_str = auth_header[7:]
@@ -210,11 +201,6 @@ class GovernanceMiddlewareSync:
                     return self._build_context_from_api_key_sync(record)
             except Exception as exc:
                 logger.debug("API key resolution failed: %s", exc)
-        if x_tenant_header and self._service_auth_secret and hmac.compare_digest(x_service_auth, self._service_auth_secret):
-            try:
-                return _service_auth_context(x_tenant_header, x_service_auth)
-            except HTTPException:
-                return None
         return None
 
     def _build_context_from_jwt_sync(self, payload: dict[str, Any]) -> SyncRequestContext:

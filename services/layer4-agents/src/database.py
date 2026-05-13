@@ -25,6 +25,7 @@ from .config.settings import settings
 DEFAULT_ISOLATION_TIER = "shared"
 
 from fastapi import Depends, Header, HTTPException, status
+from fastapi import Request
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -45,6 +46,11 @@ _tenant_validation_metrics = {
     "missing_context_errors": 0,
     "empty_tenant_errors": 0,
 }
+_privileged_db_session_metrics = {
+    "activations_total": 0,
+    "denials_total": 0,
+    "missing_reason_total": 0,
+}
 
 
 def get_tenant_validation_metrics() -> dict[str, int]:
@@ -64,6 +70,18 @@ def reset_tenant_validation_metrics() -> None:
         "uuid_format_errors": 0,
         "missing_context_errors": 0,
         "empty_tenant_errors": 0,
+    })
+
+
+def get_privileged_db_session_metrics() -> dict[str, int]:
+    return _privileged_db_session_metrics.copy()
+
+
+def reset_privileged_db_session_metrics() -> None:
+    _privileged_db_session_metrics.update({
+        "activations_total": 0,
+        "denials_total": 0,
+        "missing_reason_total": 0,
     })
 
 
@@ -152,6 +170,7 @@ _session_factory: async_sessionmaker["TenantEnforcedAsyncSession"] | None = None
 _TENANT_CONTEXT_STATE_KEY = "tenant_context_state"
 _TENANT_CONTEXT_VALUE_KEY = "tenant_context_value"
 _TENANT_BYPASS_REASON_KEY = "tenant_context_bypass_reason"
+_PRIVILEGED_REASON_HEADER = "X-Privileged-Reason"
 _RLS_SUPPORTED_SCHEMES = frozenset({"postgresql", "postgres", "postgresql+asyncpg", "postgresql+psycopg"})
 _RLS_SUPERUSER_NAMES = frozenset({"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"})
 
@@ -210,7 +229,7 @@ def _mark_session_tenant_context(session: AsyncSession, tenant_id: str) -> None:
 
 def _mark_session_tenant_bypass(session: AsyncSession, *, reason: str) -> None:
     session.info[_TENANT_CONTEXT_STATE_KEY] = "bypass"
-    session.info[_TENANT_CONTEXT_VALUE_KEY] = ""
+    session.info[_TENANT_CONTEXT_VALUE_KEY] = None
     session.info[_TENANT_BYPASS_REASON_KEY] = reason
 
 
@@ -412,10 +431,57 @@ async def _set_local_tenant_context(session: AsyncSession, tenant_id: str) -> No
     _mark_session_tenant_context(session, tenant_id)
 
 
-async def _clear_local_tenant_context(session: AsyncSession) -> None:
-    """Clear the transaction-local tenant context using an asyncpg-safe statement."""
-    await session.execute(text("SELECT set_config('app.tenant_id', '', true)"))
-    _mark_session_tenant_bypass(session, reason="explicit_bypass")
+def _record_privileged_db_session_activation(
+    context: RequestContext,
+    *,
+    mode: str,
+    reason: str,
+) -> None:
+    """Record privileged cross-tenant activation in logs and metrics."""
+    _privileged_db_session_metrics["activations_total"] += 1
+    logger.warning(
+        "Privileged cross-tenant DB session activated",
+        extra={
+            "request_id": context.request_id,
+            "actor_id": context.user_id or context.api_key_id or context.service_account_id,
+            "tenant_id": str(context.tenant_id) if context.tenant_id is not None else None,
+            "mode": mode,
+            "reason": reason,
+        },
+    )
+    try:
+        from .metrics import get_metrics
+
+        metrics = get_metrics()
+        if metrics is not None:
+            metrics.increment_privileged_db_session_activation(
+                str(context.tenant_id) if context.tenant_id is not None else None,
+                mode,
+            )
+    except Exception as exc:  # pragma: no cover - metrics must not block authz
+        logger.debug("Privileged DB activation metric emission failed: %s", exc)
+
+
+def _require_privileged_cross_tenant_reason(
+    request: Request,
+    context: RequestContext,
+) -> str:
+    """Require explicit super-admin context plus an audited reason for cross-tenant DB access."""
+    if not context.is_super_admin():
+        _privileged_db_session_metrics["denials_total"] += 1
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cross-tenant database access requires super admin role.",
+        )
+
+    reason = (request.headers.get(_PRIVILEGED_REASON_HEADER) or "").strip()
+    if not reason:
+        _privileged_db_session_metrics["missing_reason_total"] += 1
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cross-tenant database access requires {_PRIVILEGED_REASON_HEADER} header.",
+        )
+    return reason
 
 
 async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None) -> None:
@@ -588,6 +654,7 @@ async def get_db_from_context(
 
 
 async def get_db_with_optional_tenant(
+    request: Request,
     context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for DB sessions with optional tenant context (Task 1.3).
@@ -624,17 +691,11 @@ async def get_db_with_optional_tenant(
 
     factory = get_session_factory()
     async with factory() as session:
-        # Super admins can bypass tenant context (empty tenant_id for RLS)
         is_bypass = False
         bypass_reason = None
         effective_tenant_id = None
 
-        if context.is_super_admin():
-            await _clear_local_tenant_context(session)
-            is_bypass = True
-            bypass_reason = "super_admin_bypass"
-            effective_tenant_id = ""
-        elif context.tenant_id:
+        if context.tenant_id:
             # Regular users must have tenant context
             try:
                 effective_tenant_id = validate_tenant_id(context.tenant_id)
@@ -644,10 +705,20 @@ async def get_db_with_optional_tenant(
                     detail=str(e),
                 ) from e
             await _set_local_tenant_context(session, effective_tenant_id)
+        elif context.is_super_admin():
+            bypass_reason = _require_privileged_cross_tenant_reason(request, context)
+            is_bypass = True
+            _mark_session_tenant_bypass(session, reason=f"privileged_cross_tenant:{bypass_reason}")
+            _record_privileged_db_session_activation(
+                context,
+                mode="cross_tenant_admin",
+                reason=bypass_reason,
+            )
         else:
+            _privileged_db_session_metrics["denials_total"] += 1
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Tenant context required. Use get_db_from_context for endpoints requiring tenant isolation.",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cross-tenant database access requires super admin role.",
             )
 
         # Task 3.1: Emit tenant context set audit event (with bypass flag for super-admin)
@@ -790,17 +861,14 @@ async def db_session(
     elif tenant_id is not None:
         # Validate even when require_tenant=False, if a tenant_id was provided
         tenant_id = validate_tenant_id(tenant_id)
-    # If require_tenant=False and tenant_id is None, we skip validation (admin bypass)
+    # If require_tenant=False and tenant_id is None, we permit only system-level bypass.
     
     factory = get_session_factory()
     async with factory() as session:
-        # P0-08: Set tenant context for RLS
-        # Empty string for admin bypass, validated tenant_id otherwise
         if tenant_id is None:
-            await _clear_local_tenant_context(session)
+            _mark_session_tenant_bypass(session, reason="system_operation")
         else:
-            normalized = str(tenant_id)
-            await _set_local_tenant_context(session, normalized)
+            await _set_local_tenant_context(session, str(tenant_id))
         try:
             yield session
             await session.commit()

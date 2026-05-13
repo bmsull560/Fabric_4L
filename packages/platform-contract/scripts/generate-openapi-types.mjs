@@ -22,6 +22,32 @@ const SPECS = [
   'signals.json',
 ];
 
+const requestedSpecs = [];
+for (let index = 2; index < process.argv.length; index += 1) {
+  const arg = process.argv[index];
+  if (arg === '--spec') {
+    const spec = process.argv[index + 1];
+    if (!spec) {
+      throw new Error('Missing value for --spec');
+    }
+    requestedSpecs.push(spec);
+    index += 1;
+    continue;
+  }
+  throw new Error(`Unsupported argument: ${arg}`);
+}
+
+if (requestedSpecs.length > 0) {
+  const unknownSpecs = requestedSpecs.filter((spec) => !SPECS.includes(spec));
+  if (unknownSpecs.length > 0) {
+    throw new Error(`Unknown OpenAPI spec(s): ${unknownSpecs.join(', ')}`);
+  }
+}
+
+const selectedSpecs = requestedSpecs.length === 0
+  ? SPECS
+  : SPECS.filter((spec) => requestedSpecs.includes(spec));
+
 if (!existsSync(OUTPUT_DIR)) mkdirSync(OUTPUT_DIR, { recursive: true });
 if (!existsSync(WEB_OUTPUT_DIR)) mkdirSync(WEB_OUTPUT_DIR, { recursive: true });
 
@@ -41,25 +67,32 @@ const webExports = [];
 for (const spec of SPECS) {
   const key = spec.replace('.json', '').replace(/-/g, '_');
   const out = join(OUTPUT_DIR, `${key}.ts`);
-  execSync(`pnpm exec openapi-typescript "${join(OPENAPI_DIR, spec)}" -o "${out}"`, {
-    cwd: WEB_APP_DIR,
-    stdio: 'pipe',
-  });
-  const content = readFileSync(out, 'utf8');
-  writeFileSync(out, `// @generated from contracts/openapi/${spec}\n` + content);
+  if (selectedSpecs.includes(spec)) {
+    execSync(`pnpm exec openapi-typescript "${join(OPENAPI_DIR, spec)}" -o "${out}"`, {
+      cwd: WEB_APP_DIR,
+      stdio: 'pipe',
+    });
+    const content = readFileSync(out, 'utf8');
+    writeFileSync(out, `// @generated from contracts/openapi/${spec}\n` + content);
+
+    const webDir = WEB_LAYER_DIRS[key];
+    if (webDir) {
+      const webLayerDir = join(WEB_OUTPUT_DIR, webDir);
+      if (!existsSync(webLayerDir)) mkdirSync(webLayerDir, { recursive: true });
+      const webOut = join(webLayerDir, 'index.ts');
+      writeFileSync(webOut, [
+        '// @generated — This file is auto-generated from the OpenAPI spec.',
+        '// Do not edit manually. Run `pnpm run generate:types` to regenerate.',
+        `// Source: contracts/openapi/${spec}`,
+        content,
+      ].join('\n'));
+    }
+  }
+
   exports.push(`export * as ${key} from './${key}.js';`);
 
   const webDir = WEB_LAYER_DIRS[key];
   if (webDir) {
-    const webLayerDir = join(WEB_OUTPUT_DIR, webDir);
-    if (!existsSync(webLayerDir)) mkdirSync(webLayerDir, { recursive: true });
-    const webOut = join(webLayerDir, 'index.ts');
-    writeFileSync(webOut, [
-      '// @generated — This file is auto-generated from the OpenAPI spec.',
-      '// Do not edit manually. Run `pnpm run generate:types` to regenerate.',
-      `// Source: contracts/openapi/${spec}`,
-      content,
-    ].join('\n'));
     webExports.push(`export * as ${webDir} from './${webDir}';`);
   }
 }

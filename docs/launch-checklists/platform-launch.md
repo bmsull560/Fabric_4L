@@ -351,6 +351,12 @@ This checklist covers readiness for a controlled production launch of the Value 
 - [ ] Rollback documentation prepared
 - [ ] Launch checklist (this document) complete
 
+### 9.4 Governance Drift Prevention
+
+- [x] Contributor onboarding links to the canonical platform contract in `docs/contract.md`
+- [x] PR template requires explicit confirmations for contract shape, tenant isolation, and compatibility shim impact
+- [x] Launch drift prevention approvals are documented in `docs/governance/launch-drift-prevention-sop.md`
+
 ---
 
 ## 10. Rollback Plan

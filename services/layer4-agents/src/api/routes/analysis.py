@@ -17,6 +17,7 @@ from value_fabric.shared.audit import AuditAction, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.identity.jwt import encode_jwt
+from value_fabric.shared.identity.policy_registry import authorize_action
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...config.settings import settings
@@ -437,6 +438,7 @@ def _require_validation_seed_allowed(http_request: Request, context: RequestCont
 
 def _context_tenant_uuid(context: RequestContext) -> UUID:
     """Return the authenticated tenant UUID or fail closed."""
+    authorize_action("layer4.analysis.roi", context)
     try:
         return UUID(str(context.tenant_id))
     except (TypeError, ValueError) as exc:
@@ -581,6 +583,7 @@ async def seed_validation_auth_context(
     keeping runtime secrets sourced exclusively from environment or a secret
     manager.
     """
+    authorize_action("layer4.analysis.seed_auth_context", context)
     _require_validation_seed_allowed(http_request, context)
     tenant_id = _context_tenant_uuid(context)
     if payload.tenant_id is not None and payload.tenant_id != tenant_id:
@@ -643,6 +646,7 @@ async def issue_validation_session(
     canonical JWT and CSRF cookie mechanics, and returns only non-secret UI
     metadata.
     """
+    authorize_action("layer4.analysis.create_validation_session", context)
     _require_validation_seed_allowed(http_request, context)
 
     token = encode_jwt(
@@ -876,6 +880,7 @@ async def quick_whitespace_analysis(
             "prospect_needs": "We need to automate invoice processing and get real-time visibility into cash flow"
         }
     """
+    authorize_action("layer4.analysis.whitespace", context)
     try:
         input_data = WhitespaceInputData(
             prospect_id=request.prospect_id,
@@ -926,6 +931,7 @@ async def generate_business_case(
             "output_format": "pdf"
         }
     """
+    authorize_action("layer4.analysis.generate_case", context)
     try:
         try:
             raw_body = await http_request.json()
@@ -1022,6 +1028,7 @@ async def regenerate_business_case(
     context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Regenerate a business case with latest inputs and preserve revision lineage."""
+    authorize_action("layer4.analysis.regenerate_case", context)
     if request.previous_case_id != case_id:
         raise HTTPException(status_code=400, detail="previous_case_id must match route case_id")
     previous_result = await executor.get_result(case_id)
@@ -1053,6 +1060,7 @@ async def get_business_case(
     context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Get a generated business case by ID."""
+    authorize_action("layer4.analysis.read_case", context)
     result = await executor.get_result(case_id)
 
     if not result:
@@ -1109,6 +1117,7 @@ async def seed_business_case_lifecycle(
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Seed deterministic business-case lifecycle state for non-production E2E validation."""
+    authorize_action("layer4.analysis.seed_case_lifecycle", context)
     _require_validation_seed_allowed(http_request, context)
     await _require_tenant_account(db, payload.account_id, context)
 
@@ -1243,6 +1252,7 @@ async def export_business_case(
     1. Truth-gating / blocking behavior
     2. Provenance manifest generation, storage upload, and audit events
     """
+    authorize_action("layer4.analysis.export_case", context)
     record = await db.get(BusinessCaseRecord, case_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
@@ -1578,6 +1588,7 @@ async def list_cases(
 
     Returns all cases associated with the specified account.
     """
+    authorize_action("layer4.analysis.list_cases", context)
     account_uuid = _parse_case_account_uuid(account_id)
     tenant_id = str(context.tenant_id)
 
@@ -1618,6 +1629,7 @@ async def create_case(
 
     Creates a case workspace for the specified account.
     """
+    authorize_action("layer4.analysis.write_case", context)
     return await _create_workspace_case_record(request, db, context)
 
 
@@ -1628,6 +1640,7 @@ async def list_saved_scenarios(
     context: RequestContext = Depends(require_authenticated),
 ) -> list[SavedScenarioSummary]:
     """List saved scenario metadata for a business case."""
+    authorize_action("layer4.analysis.read_case", context)
     tenant_id = str(context.tenant_id)
     result = await db.execute(
         select(SavedBusinessCaseScenario)
@@ -1660,6 +1673,7 @@ async def save_scenario(
     context: RequestContext = Depends(require_authenticated),
 ) -> SavedScenarioDetail:
     """Persist a business-case what-if scenario server-side."""
+    authorize_action("layer4.analysis.write_case", context)
     now = datetime.now(UTC)
     record = SavedBusinessCaseScenario(
         scenario_id=f"scenario_{uuid4().hex}",
@@ -1686,6 +1700,7 @@ async def get_saved_scenario(
     context: RequestContext = Depends(require_authenticated),
 ) -> SavedScenarioDetail:
     """Fetch a saved scenario with sensitive adjustments from server storage."""
+    authorize_action("layer4.analysis.read_case", context)
     result = await db.execute(
         select(SavedBusinessCaseScenario).where(
             SavedBusinessCaseScenario.case_id == case_id,
@@ -1712,6 +1727,7 @@ async def delete_saved_scenario(
     context: RequestContext = Depends(require_authenticated),
 ) -> None:
     """Delete a saved scenario only within the authenticated tenant scope."""
+    authorize_action("layer4.analysis.write_case", context)
     result = await db.execute(
         delete(SavedBusinessCaseScenario).where(
             SavedBusinessCaseScenario.case_id == case_id,
@@ -1729,6 +1745,7 @@ async def get_workspace_evidence(
     db: AsyncSession = Depends(get_route_db),
     context: RequestContext = Depends(require_authenticated),
 ) -> WorkspaceEvidenceResponse:
+    authorize_action("layer4.analysis.read_case", context)
     from sqlalchemy import select
     from ...models.workspace_tab_data import WorkspaceTabData
 
@@ -1773,6 +1790,7 @@ async def get_workspace_tab(
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get persisted workspace tab data."""
+    authorize_action("layer4.analysis.read_case", context)
     valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative", "intake", "evidence-links"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
@@ -1804,6 +1822,7 @@ async def update_workspace_tab(
     context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Update persisted workspace tab data."""
+    authorize_action("layer4.analysis.write_case", context)
     valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative", "intake", "evidence-links"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
@@ -1846,6 +1865,7 @@ async def generate_workspace_intelligence(
     from ...models.business_case_record import BusinessCaseRecord
     from ...models.workspace_tab_data import WorkspaceTabData as WorkspaceTabDataModel
 
+    authorize_action("layer4.analysis.write_case", context)
     record = await db.get(BusinessCaseRecord, case_id)
     if not record:
         raise HTTPException(status_code=404, detail=f"Case {case_id} not found")

@@ -11,6 +11,7 @@ on:
       - 'scripts/mirrored_files.json'
       - 'scripts/check_mirrored_files.py'
       - 'scripts/ci/check_layer6_wrapper_drift.py'
+      - 'tests/ci/test_mirrored_files_drift_guard.py'
       - '.github/workflows/layer6-wrapper-drift.yml'
   push:
     branches: [main]
@@ -20,6 +21,7 @@ on:
       - 'scripts/mirrored_files.json'
       - 'scripts/check_mirrored_files.py'
       - 'scripts/ci/check_layer6_wrapper_drift.py'
+      - 'tests/ci/test_mirrored_files_drift_guard.py'
       - '.github/workflows/layer6-wrapper-drift.yml'
 
 jobs:
@@ -39,3 +41,9 @@ jobs:
 
       - name: Validate mirrored file parity
         run: python scripts/check_mirrored_files.py
+
+      - name: Validate Layer6 service src structure
+        run: python -m pytest tests/ci/test_layer6_service_src_presence.py -q
+
+      - name: Validate Layer6 wrapper manifest guards
+        run: python -m pytest tests/ci/test_mirrored_files_drift_guard.py -q

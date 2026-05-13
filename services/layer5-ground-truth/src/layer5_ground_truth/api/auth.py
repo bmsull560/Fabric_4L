@@ -37,6 +37,19 @@ from value_fabric.shared.identity.policy_registry import authorize_action as aut
 from ..config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
+_AUTH_REQUIRED = "authentication_required"
+
+
+def _auth_http_exception(status_code: int, *, error_code: str, message: str) -> HTTPException:
+    return HTTPException(
+        status_code=status_code,
+        detail={
+            "error": _AUTH_REQUIRED,
+            "error_code": error_code,
+            "message": message,
+        },
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -96,19 +109,27 @@ def authorize_action(action: str, caller: TokenClaims) -> TokenClaims:
     return caller
 
 
-def _decode_jwt(token: str, settings: Settings) -> dict | None:
+def _decode_jwt(token: str, settings: Settings) -> dict:
     """
     Decode and verify a JWT using the configured secret.
 
-    Returns the payload dict on success, None on any failure.
+    Returns the payload dict on success and raises 401 on any validation failure.
     """
     try:
         header = jwt.get_unverified_header(token)
         header_alg = header.get("alg")
         if not isinstance(header_alg, str) or not header_alg.strip():
-            return None
+            raise _auth_http_exception(
+                status.HTTP_401_UNAUTHORIZED,
+                error_code="AUTH_INVALID_TOKEN",
+                message="Invalid token.",
+            )
         if header_alg.upper() != settings.jwt_algorithm.upper():
-            return None
+            raise _auth_http_exception(
+                status.HTTP_401_UNAUTHORIZED,
+                error_code="AUTH_INVALID_TOKEN",
+                message="Invalid token.",
+            )
         payload = jwt.decode(
             token,
             settings.jwt_secret,
@@ -127,18 +148,18 @@ def _decode_jwt(token: str, settings: Settings) -> dict | None:
         return payload
     except jwt.ExpiredSignatureError:
         logger.warning("JWT has expired")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "authentication_failed",
-                "error_code": "AUTH_TOKEN_EXPIRED",
-                "message": "Token has expired.",
-            },
-            headers={"WWW-Authenticate": "Bearer"},
+        raise _auth_http_exception(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_TOKEN_EXPIRED",
+            message="Token has expired.",
         )
     except jwt.InvalidTokenError as exc:
         logger.debug("JWT validation failed: %s", exc)
-        return None
+        raise _auth_http_exception(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_INVALID_TOKEN",
+            message="Invalid token.",
+        ) from exc
 
 
 def _extract_org_id_from_payload(payload: dict, settings: Settings) -> UUID | None:
@@ -220,55 +241,53 @@ def get_current_user(
     # In any production-like runtime, a missing middleware context is a
     # fail-closed 401 — no header or query-param fallback is permitted.
     if settings.is_production_like or not settings.allow_insecure_dev_auth_bypass:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "authentication_failed",
-                "error_code": "AUTH_REQUIRED",
-                "message": "Authentication required.",
-            },
-            headers={"WWW-Authenticate": "Bearer"},
+        raise _auth_http_exception(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_REQUIRED",
+            message="Authentication required.",
         )
 
     # ── 2. Dev/test fallback — direct Bearer JWT verification ─────────────
-    if authorization and authorization.startswith("Bearer "):
+    if authorization:
+        if not authorization.startswith("Bearer "):
+            raise _auth_http_exception(
+                status.HTTP_401_UNAUTHORIZED,
+                error_code="AUTH_INVALID_TOKEN",
+                message="Invalid token.",
+            )
         enforce_fallback_enabled("layer5.direct_jwt", default=True)
-        token = authorization[7:]
+        token = authorization[7:].strip()
+        if not token:
+            raise _auth_http_exception(
+                status.HTTP_401_UNAUTHORIZED,
+                error_code="AUTH_INVALID_TOKEN",
+                message="Invalid token.",
+            )
         payload = _decode_jwt(token, settings)
-
-        if payload is not None:
-            org_id = _extract_org_id_from_payload(payload, settings)
-            if org_id is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail={
-                        "error": "authentication_failed",
-                        "error_code": "AUTH_INVALID_TOKEN",
-                        "message": (
-                            f"JWT is missing the '{settings.jwt_tenant_claim}' claim "
-                            "or it is not a valid UUID."
-                        ),
-                    },
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-
-            user_id = payload.get(settings.jwt_user_claim)
-            roles = payload.get(settings.jwt_roles_claim, [])
-            if isinstance(roles, str):
-                roles = [roles]
-            if x_tenant_id and x_tenant_id != str(org_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Tenant context mismatch.",
-                )
-            record_fallback_usage(
-                "layer5.direct_jwt",
-                tenant_id=org_id,
-                client_id=request.headers.get("X-Client-ID"),
-                service="layer5-ground-truth",
-                path=str(request.url.path),
+        org_id = _extract_org_id_from_payload(payload, settings)
+        if org_id is None:
+            raise _auth_http_exception(
+                status.HTTP_401_UNAUTHORIZED,
+                error_code="AUTH_INVALID_TOKEN",
+                message="Invalid token.",
             )
 
+        user_id = payload.get(settings.jwt_user_claim)
+        roles = payload.get(settings.jwt_roles_claim, [])
+        if isinstance(roles, str):
+            roles = [roles]
+        if x_tenant_id and x_tenant_id != str(org_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant context mismatch.",
+            )
+        record_fallback_usage(
+            "layer5.direct_jwt",
+            tenant_id=org_id,
+            client_id=request.headers.get("X-Client-ID"),
+            service="layer5-ground-truth",
+            path=str(request.url.path),
+        )
         return TokenClaims(
             tenant_id=org_id,
             user_id=user_id,
@@ -276,22 +295,64 @@ def get_current_user(
             permissions=_derive_permissions(roles),
             raw=payload,
         )
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "authentication_failed",
-                "error_code": "AUTH_INVALID_TOKEN",
-                "message": "Invalid token.",
-            },
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={
-            "error": "authentication_failed",
-            "error_code": "AUTH_REQUIRED",
-            "message": "Authentication required.",
-        },
-        headers={"WWW-Authenticate": "Bearer"},
+    # ── 3. Dev/test fallback — X-Tenant-ID header (no user context) ───────
+    # NOTE: This path is reachable only when ALLOW_INSECURE_DEV_AUTH_BYPASS=true
+    # AND the environment is NOT production-like. GovernanceMiddleware rejects
+    # unverified X-Tenant-ID in production by refusing to build a context, and
+    # the fail-closed branch above short-circuits before we get here.
+    if x_tenant_id:
+        enforce_fallback_enabled("layer5.x_tenant_id_header", default=True)
+        try:
+            org_id = UUID(x_tenant_id)
+            record_fallback_usage(
+                "layer5.x_tenant_id_header",
+                tenant_id=org_id,
+                client_id=request.headers.get("X-Client-ID"),
+                service="layer5-ground-truth",
+                path=str(request.url.path),
+            )
+            return TokenClaims(
+                tenant_id=org_id,
+                user_id="service",
+                roles=["service"],
+            )
+        except (ValueError, AttributeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"X-Tenant-ID header is not a valid UUID: {x_tenant_id!r}",
+            )
+
+    # ── 4. Dev/test fallback — tenant_id query param ──────────────────────
+    if settings.jwt_fallback_to_query_param and tenant_id:
+        enforce_fallback_enabled("layer5.tenant_query_param", default=True)
+        try:
+            org_id = UUID(tenant_id)
+            logger.debug(
+                "Using tenant_id query param fallback for tenant %s — "
+                "set JWT_FALLBACK_TO_QUERY_PARAM=false in production",
+                org_id,
+            )
+            record_fallback_usage(
+                "layer5.tenant_query_param",
+                tenant_id=org_id,
+                client_id=request.headers.get("X-Client-ID"),
+                service="layer5-ground-truth",
+                path=str(request.url.path),
+            )
+            return TokenClaims(
+                tenant_id=org_id,
+                user_id=None,
+                roles=[],
+            )
+        except (ValueError, AttributeError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"tenant_id query param is not a valid UUID: {tenant_id!r}",
+            )
+
+    raise _auth_http_exception(
+        status.HTTP_401_UNAUTHORIZED,
+        error_code="AUTH_REQUIRED",
+        message="Authentication required.",
     )

@@ -4,21 +4,28 @@ P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 SECURITY: Fail-safe tenant isolation - tenant context is mandatory
 """
 
+import logging
 import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import settings
+from ..metrics.prometheus_metrics import get_metrics
 
 # Database connection pool configuration from environment
 # Tune these based on your load: pool_size + max_overflow = max concurrent connections
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+logger = logging.getLogger(__name__)
+_PRIVILEGED_REASON_HEADER = "X-Privileged-Reason"
+_TENANT_CONTEXT_STATE_KEY = "tenant_context_state"
+_TENANT_CONTEXT_VALUE_KEY = "tenant_context_value"
+_TENANT_BYPASS_REASON_KEY = "tenant_context_bypass_reason"
 
 # Create engine with configurable pool settings
 engine = create_engine(
@@ -49,6 +56,24 @@ class TenantContextError(Exception):
 # SECURITY: Fail-safe mode - require explicit tenant context
 # Set to False only for admin/system operations with proper role validation
 FAIL_SAFE_MODE = True
+
+_privileged_db_session_metrics = {
+    "activations_total": 0,
+    "denials_total": 0,
+    "missing_reason_total": 0,
+}
+
+
+def get_privileged_db_session_metrics() -> dict[str, int]:
+    return _privileged_db_session_metrics.copy()
+
+
+def reset_privileged_db_session_metrics() -> None:
+    _privileged_db_session_metrics.update({
+        "activations_total": 0,
+        "denials_total": 0,
+        "missing_reason_total": 0,
+    })
 
 
 def validate_tenant_id(tenant_id: UUID | str | None) -> str:
@@ -120,6 +145,54 @@ def set_tenant_context(session: Session, tenant_id: UUID | str | None) -> None:
         text("SET LOCAL app.tenant_id = :tenant_id"),
         {"tenant_id": normalized_id}
     )
+    _mark_session_tenant_context(session, normalized_id)
+
+
+def _mark_session_tenant_context(session: Session, tenant_id: str) -> None:
+    session.info[_TENANT_CONTEXT_STATE_KEY] = "set"
+    session.info[_TENANT_CONTEXT_VALUE_KEY] = tenant_id
+    session.info.pop(_TENANT_BYPASS_REASON_KEY, None)
+
+
+def _mark_session_tenant_bypass(session: Session, *, reason: str) -> None:
+    session.info[_TENANT_CONTEXT_STATE_KEY] = "bypass"
+    session.info[_TENANT_CONTEXT_VALUE_KEY] = None
+    session.info[_TENANT_BYPASS_REASON_KEY] = reason
+
+
+def _record_privileged_db_session_activation(context, *, mode: str, reason: str) -> None:
+    _privileged_db_session_metrics["activations_total"] += 1
+    logger.warning(
+        "Privileged cross-tenant DB session activated",
+        extra={
+            "request_id": getattr(context, "request_id", None),
+            "actor_id": getattr(context, "user_id", None) or getattr(context, "api_key_id", None),
+            "tenant_id": str(getattr(context, "tenant_id", None)) if getattr(context, "tenant_id", None) is not None else None,
+            "mode": mode,
+            "reason": reason,
+        },
+    )
+    metrics = get_metrics()
+    if metrics is not None:
+        metrics.increment_privileged_db_session_activation(mode)
+
+
+def _require_privileged_cross_tenant_reason(request: Request, context) -> str:
+    if not context.is_super_admin():
+        _privileged_db_session_metrics["denials_total"] += 1
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cross-tenant database access requires super admin role.",
+        )
+
+    reason = (request.headers.get(_PRIVILEGED_REASON_HEADER) or "").strip()
+    if not reason:
+        _privileged_db_session_metrics["missing_reason_total"] += 1
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cross-tenant database access requires {_PRIVILEGED_REASON_HEADER} header.",
+        )
+    return reason
 
 
 @contextmanager
@@ -148,17 +221,18 @@ def get_db_session(
     elif tenant_id is not None:
         # Validate even when require_tenant=False, if a tenant_id was provided
         tenant_id = validate_tenant_id(tenant_id)
-    # If require_tenant=False and tenant_id is None, we skip validation (admin bypass)
+    # If require_tenant=False and tenant_id is None, this is a system-level bypass.
     
     session = SessionLocal()
     try:
-        # P0-08: Set tenant context for RLS
-        # Empty string for admin bypass, validated tenant_id otherwise
-        normalized = str(tenant_id) if tenant_id is not None else ""
-        session.execute(
-            text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": normalized}
-        )
+        if tenant_id is not None:
+            session.execute(
+                text("SET LOCAL app.tenant_id = :tenant_id"),
+                {"tenant_id": str(tenant_id)}
+            )
+            _mark_session_tenant_context(session, str(tenant_id))
+        else:
+            _mark_session_tenant_bypass(session, reason="system_operation")
         yield session
         session.commit()
     except Exception:
@@ -174,11 +248,9 @@ def get_db() -> Generator[Session, None, None]:
     SECURITY: Use only for health checks or admin operations with proper
     role authentication. All production endpoints should use get_db_with_tenant.
     """
-    # SECURITY: Bypass tenant validation for health checks (admin role required in DB)
     session = SessionLocal()
     try:
-        # Clear tenant context - RLS bypass only works for admin/system roles
-        session.execute(text("SET LOCAL app.tenant_id = ''"))
+        _mark_session_tenant_bypass(session, reason="system_operation")
         yield session
         session.commit()
     except Exception:
@@ -189,16 +261,13 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def get_db_with_tenant(
-    x_tenant_id: str = Header(..., alias="X-Tenant-ID", description="Tenant UUID for RLS isolation")
+    request: Request,
 ) -> Generator[Session, None, None]:
     """
     FastAPI dependency that yields a database session with RLS tenant context.
     
-    SECURITY: Mandatory tenant context - X-Tenant-ID header is required.
-    Fail-safe: Rejects requests without explicit tenant identification.
-
-    Automatically extracts X-Tenant-ID header and sets PostgreSQL app.tenant_id
-    for Row-Level Security policies.
+    SECURITY: Mandatory tenant context from authenticated request context.
+    Fail-safe: Rejects requests without validated tenant identification.
 
     Usage::
 
@@ -207,26 +276,27 @@ def get_db_with_tenant(
             ...
     
     Raises:
-        HTTPException: 400 if X-Tenant-ID header is missing or invalid
+        HTTPException: 401 if authenticated tenant context is missing
     """
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx is None or not getattr(ctx, "tenant_id", None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
     try:
-        # SECURITY: Fail-safe validation via validate_tenant_id
-        # This checks for empty values and validates UUID format
-        validate_tenant_id(x_tenant_id)
+        tenant_id = validate_tenant_id(ctx.tenant_id)
     except TenantContextError as e:
-        # Convert TenantContextError to HTTP 400 for FastAPI
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
-    
-    # SECURITY: Use session directly since we already validated tenant_id
-    # Avoid double validation in get_db_session
+
     session = SessionLocal()
     try:
         session.execute(
             text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": x_tenant_id}
+            {"tenant_id": tenant_id}
         )
         yield session
         session.commit()
@@ -336,6 +406,7 @@ def get_db_from_context_sync(
 
 
 def get_db_with_optional_tenant_sync(
+    request: Request,
     context: "SyncRequestContext" = Depends(get_request_context_sync),  # type: ignore
 ) -> Generator[Session, None, None]:
     """DB session with optional tenant for super-admin operations (Sprint 5).
@@ -362,10 +433,7 @@ def get_db_with_optional_tenant_sync(
 
     session = SessionLocal()
     try:
-        # Super admins can bypass tenant context
-        if context.is_super_admin():
-            session.execute(text("SET LOCAL app.tenant_id = ''"))
-        elif context.tenant_id:
+        if context.tenant_id:
             try:
                 tenant_id = validate_tenant_id(context.tenant_id)
             except TenantContextError as e:
@@ -377,10 +445,20 @@ def get_db_with_optional_tenant_sync(
                 text("SET LOCAL app.tenant_id = :tenant_id"),
                 {"tenant_id": tenant_id}
             )
+            _mark_session_tenant_context(session, tenant_id)
+        elif context.is_super_admin():
+            reason = _require_privileged_cross_tenant_reason(request, context)
+            _mark_session_tenant_bypass(session, reason=f"privileged_cross_tenant:{reason}")
+            _record_privileged_db_session_activation(
+                context,
+                mode="cross_tenant_admin",
+                reason=reason,
+            )
         else:
+            _privileged_db_session_metrics["denials_total"] += 1
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Tenant context required or super_admin role.",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cross-tenant database access requires super admin role.",
             )
         yield session
         session.commit()

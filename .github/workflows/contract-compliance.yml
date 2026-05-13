@@ -30,6 +30,28 @@ on:
       - 'tests/contract/**'
       - 'scripts/ci/platform_contract_lint.py'
       - 'scripts/ci/check_agent_registry.py'
+      - 'scripts/export_openapi.py'
+      - 'scripts/ci/contract_compliance_gate.py'
+      - '.github/workflows/contract-compliance.yml'
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+    paths:
+      - 'apps/web/**'
+      - 'examples/canonical/**'
+      - 'packages/eslint-plugin-fabric-contracts/**'
+      - 'packages/shared/**'
+      - 'services/**/src/**'
+      - 'packages/platform-contract/**'
+      - 'contracts/openapi/**'
+      - 'contracts/agent-registry/**'
+      - 'tests/contract/**'
+      - 'scripts/ci/platform_contract_lint.py'
+      - 'scripts/ci/check_agent_registry.py'
+      - 'scripts/export_openapi.py'
+      - 'scripts/ci/contract_compliance_gate.py'
       - '.github/workflows/contract-compliance.yml'
   schedule:
     # Run daily at 03:00 UTC (consolidated from 02:00 and 03:00)
@@ -41,6 +63,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  contract-compliance:
+    name: contract-compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10.18.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run contract freshness and compatibility gate
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python scripts/ci/contract_compliance_gate.py --mode fast --base-ref origin/${{ github.base_ref }}
+          else
+            python scripts/ci/contract_compliance_gate.py --mode full
+          fi
+
   # ==========================================================================
   # Build and Test ESLint Plugin
   # ==========================================================================
@@ -496,6 +555,29 @@ jobs:
             .pytest_cache/
             test-results.xml
 
+  contract-shape-regression:
+    name: Contract Shape Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: contract-compliance
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pytest httpx
+
+      - name: Run representative shape regression tests
+        run: pytest tests/contract/test_api_shape_regression.py -v --tb=short
+        env:
+          CONTRACT_TEST_MODE: mock
+
   # ==========================================================================
   # Deprecation Register Validation
   # ==========================================================================
@@ -652,7 +734,7 @@ jobs:
   summary:
     name: Contract Compliance Summary
     runs-on: ubuntu-latest
-    needs: [plugin-tests, validate-dependabot-coverage, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, validate-deprecations, contract-scorecard]
+    needs: [contract-compliance, plugin-tests, validate-dependabot-coverage, lint-frontend, validate-canonical, platform-contract-tests, python-lint, generate-openapi, detect-drift, openapi-contract-tests, contract-shape-regression, validate-deprecations, contract-scorecard]
     if: always()
 
     steps:
@@ -667,6 +749,7 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Plugin Tests | ${{ needs.plugin-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract Compliance Gate | ${{ needs.contract-compliance.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Validate Dependabot Coverage | ${{ needs.validate-dependabot-coverage.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint Frontend | ${{ needs.lint-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Validate Canonical | ${{ needs.validate-canonical.result }} |" >> $GITHUB_STEP_SUMMARY
@@ -680,6 +763,7 @@ jobs:
           echo "| Generate OpenAPI | ${{ needs.generate-openapi.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Detect Drift | ${{ needs.detect-drift.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Contract Tests | ${{ needs.openapi-contract-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract Shape Regression | ${{ needs.contract-shape-regression.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Contract Enforcement Status" >> $GITHUB_STEP_SUMMARY
           echo "| Contract | ESLint | CI Gate | Runtime | Score |" >> $GITHUB_STEP_SUMMARY

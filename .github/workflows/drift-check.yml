@@ -36,12 +36,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install fastapi uvicorn pydantic neo4j psycopg2-binary
+          pip install fastapi uvicorn pydantic neo4j psycopg2-binary pytest
           # Install layer dependencies for proper export
           pip install -e services/layer1-ingestion/
           pip install -e services/layer2-extraction/
           pip install -e services/layer3-knowledge/
           pip install -e services/layer4-agents/
+          pip install -e services/layer5-ground-truth/
 
 
       - name: Check Layer 3 app_monolith shim drift
@@ -55,6 +56,14 @@ jobs:
       - name: Deprecation drift
         run: |
           python3 scripts/ci/check_deprecation_drift.py --strict --use-baseline
+
+      - name: Compatibility launch-freeze policy
+        run: |
+          python3 scripts/ci/check_compatibility_launch_freeze.py --strict
+
+      - name: Shim divergence suite
+        run: |
+          python3 -m pytest tests/ci/test_shim_divergence.py
 
       - name: Migration safety drift
         run: |

@@ -20,7 +20,7 @@ from sqlalchemy import select
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from ..database import db_session_for_context, get_session_factory
+from ..database import _clear_local_tenant_context, db_session_for_context, get_session_factory
 from ..engine.scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from ..models.account import CRMProvider
 from ..models.integration import Integration
@@ -158,7 +158,7 @@ to avoid impacting user-facing workflows.
             # SECURITY: This query runs with admin context to enumerate tenants.
             # The actual syncs use per-tenant sessions with RLS.
             # Use a raw connection without tenant filter to find all integrations.
-            await admin_db.execute("SET LOCAL app.tenant_id = ''")
+            await _clear_local_tenant_context(admin_db)
 
             try:
                 result = await admin_db.execute(

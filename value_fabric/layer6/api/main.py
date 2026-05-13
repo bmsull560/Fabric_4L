@@ -1,42 +1,28 @@
-"""Layer 6 Benchmark Service - FastAPI main application.
+"""Layer 6 Benchmark Service FastAPI application."""
 
-Standalone service on port 8006 for comparative intelligence.
-P1-29: OpenTelemetry tracing integration for observability.
-"""
+from __future__ import annotations
 
 import logging
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
+from urllib.parse import parse_qs, urlparse
 
-# Logger defined early so lifespan() and module-level instrumentation can use it.
-logger = logging.getLogger(__name__)
-
-try:
-    from value_fabric.shared.secrets import load_infisical_secrets
-    load_infisical_secrets()
-except ImportError:
-    pass  # shared package not available; env vars used directly
-
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import Response
 
 from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.identity.policy_registry import authorize_action
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from ..shared_bootstrap import (
-    SecurityConfig,
-    add_security_middleware,
-    build_health_response,
-    create_fabric_app,
-    install_metrics_middleware,
-    register_health_endpoint,
-    resolve_cors_policy,
-    validate_production_safety,
-    verify_metrics_access,
-)
+try:
+    from value_fabric.shared.secrets import load_infisical_secrets
+
+    load_infisical_secrets()
+except ImportError:
+    pass
 
 from ..database import close_driver, get_driver
 from ..database import health_check as neo4j_health_check
@@ -51,18 +37,85 @@ from ..models.benchmark_dataset import (
     StatisticalProfile,
 )
 from ..repositories.benchmark_repository import BenchmarkRepository
-from ..settings import validate_layer6_startup_settings
+from ..settings import Layer6Settings, validate_layer6_startup_settings
+from ..shared_bootstrap import (
+    SecurityConfig,
+    add_security_middleware,
+    build_health_response,
+    create_fabric_app,
+    install_metrics_middleware,
+    register_health_endpoint,
+    resolve_cors_policy,
+    validate_production_safety,
+    verify_metrics_access,
+)
 from .routes import benchmarks, system
+from .schemas import (
+    ComparisonRequestPayload,
+    ComparisonResponse,
+    DatasetDetail,
+    DatasetSummary,
+    ValidationRequestPayload,
+    ValidationResponse,
+)
+from .startup_logging import emit_startup_metadata, runtime_metadata_from_env
 
-# Neo4j-backed repository (initialized in lifespan)
+logger = logging.getLogger(__name__)
+
+SERVICE_NAME = "layer6-benchmarks"
+SERVICE_VERSION = "1.0.0"
+_SETTINGS: Layer6Settings = validate_layer6_startup_settings()
 _benchmark_repo: BenchmarkRepository | None = None
 _neo4j_startup_error: str | None = None
 
-validate_layer6_startup_settings()
+
+class health_checkResult(TypedDictModel):
+    response_time_ms: Any
+    service: str
+    status: str
+    timestamp: Any
+    version: str
 
 
-def _build_dataset_from_seed(seed: dict) -> BenchmarkDataset:
-    """Construct a BenchmarkDataset from a seed dict."""
+class list_industriesResult(TypedDictModel):
+    industries: Any
+
+
+class readiness_checkResult(TypedDictModel):
+    checks: dict[str, Any]
+    service: str
+    status: str
+    timestamp: str
+    version: str
+
+
+def _public_startup_config() -> dict[str, Any]:
+    db_url = urlparse(_SETTINGS.database_url)
+    neo4j_url = urlparse(_SETTINGS.neo4j_uri)
+    return {
+        "environment": _SETTINGS.environment,
+        "testing": _SETTINGS.testing,
+        "auth_required": _SETTINGS.auth_required,
+        "allow_insecure_dev_auth_bypass": _SETTINGS.allow_insecure_dev_auth_bypass,
+        "dev_auth_bypass": _SETTINGS.dev_auth_bypass,
+        "auth_bypass_enabled": _SETTINGS.auth_bypass_enabled,
+        "jwt_fallback_to_query_param": _SETTINGS.jwt_fallback_to_query_param,
+        "allow_ephemeral_encryption": _SETTINGS.allow_ephemeral_encryption,
+        "database_scheme": db_url.scheme,
+        "database_host": db_url.hostname,
+        "database_sslmode": parse_qs(db_url.query).get("sslmode", ["unset"])[0],
+        "neo4j_scheme": neo4j_url.scheme,
+        "neo4j_host": neo4j_url.hostname,
+    }
+
+
+def _record_compare_metric(*, industry: str, outcome: str) -> None:
+    metrics = get_metrics()
+    if metrics is not None:
+        metrics.increment_dataset_comparisons(industry=industry, outcome=outcome)
+
+
+def _build_dataset_from_seed(seed: dict[str, Any]) -> BenchmarkDataset:
     dataset = BenchmarkDataset(
         dataset_id=seed["dataset_id"],
         name=seed["name"],
@@ -95,51 +148,52 @@ def _build_dataset_from_seed(seed: dict) -> BenchmarkDataset:
     return dataset
 
 
-async def _init_seed_data():
-    """Initialize with all benchmark reference datasets."""
+async def _init_seed_data() -> None:
     seeds = [
         MANUFACTURING_BENCHMARK_SEED,
         SAAS_B2B_BENCHMARK_SEED,
         HEALTHCARE_BENCHMARK_SEED,
         FINANCIAL_SERVICES_BENCHMARK_SEED,
     ]
-
-    if _benchmark_repo is not None:
-        for seed in seeds:
-            dataset = _build_dataset_from_seed(seed)
-            await _benchmark_repo.save_dataset(dataset)
+    if _benchmark_repo is None:
+        return
+    for seed in seeds:
+        await _benchmark_repo.save_dataset(_build_dataset_from_seed(seed))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager."""
     validate_production_safety()
+    runtime_metadata = runtime_metadata_from_env(default_version=SERVICE_VERSION)
+    emit_startup_metadata(
+        service=runtime_metadata["service"],
+        version=runtime_metadata["version"],
+        build_sha=runtime_metadata["build_sha"],
+        config=_public_startup_config(),
+    )
 
     if app.state.telemetry_provider is not None:
         logger.info("L6: OpenTelemetry tracing initialized")
 
     metrics = getattr(app.state, "metrics", None)
-    if metrics:
+    if metrics is not None:
         logger.info("Prometheus metrics initialized")
+        metrics.set_build_info(
+            service=runtime_metadata["service"],
+            version=runtime_metadata["version"],
+            build_sha=runtime_metadata["build_sha"],
+        )
 
-    # Startup: initialize Neo4j and seed data. Neo4j can be slow to accept
-    # Bolt connections in constrained release-smoke environments even after the
-    # HTTP health endpoint reports healthy. Keep the API process alive in a
-    # degraded state so Docker Compose readiness and explicit service probes can
-    # observe the service instead of treating a transient graph-store delay as a
-    # process crash. Request handlers that need benchmarks still return 503 while
-    # the repository is unavailable.
     global _benchmark_repo, _neo4j_startup_error
     dataset_count = 0
     try:
         driver = await get_driver()
         _benchmark_repo = BenchmarkRepository(driver)
         await _init_seed_data()
-        datasets = await _benchmark_repo.list_datasets(tenant_id="system")
-        dataset_count = len(datasets)
+        dataset_count = len(await _benchmark_repo.list_datasets(tenant_id="system"))
         _neo4j_startup_error = None
         logger.info("Layer 6 Benchmark Service started with %d datasets", dataset_count)
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover - exercised through readiness tests
         _benchmark_repo = None
         _neo4j_startup_error = str(exc)
         logger.warning(
@@ -147,29 +201,25 @@ async def lifespan(app: FastAPI):
             exc,
         )
 
-    if metrics:
-        metrics.set_datasets_loaded(dataset_count)
     yield
-    # Shutdown
     await close_driver()
     _benchmark_repo = None
 
 
 app = create_fabric_app(
-    service_name="layer6-benchmarks",
+    service_name=SERVICE_NAME,
     title="Value Fabric - Benchmark Service",
     description="Comparative intelligence and peer benchmarking API",
-    version="1.0.0",
+    version=SERVICE_VERSION,
     lifespan=lifespan,
     cors_policy=resolve_cors_policy(),
-    telemetry_service_name="layer6-benchmarks",
+    telemetry_service_name=SERVICE_NAME,
     instrument_telemetry=True,
 )
 
 if app.state.telemetry_provider is not None:
     logger.info("L6: FastAPI instrumented with OpenTelemetry")
 
-# Initialize Prometheus metrics and middleware at module level (before app starts)
 install_metrics_middleware(
     app,
     metrics=initialize_metrics(),
@@ -177,184 +227,137 @@ install_metrics_middleware(
     logger=logger,
 )
 
-# SecurityMiddleware — input validation and security headers (before CORS)
-# Probe endpoints stay unauthenticated for platform health/readiness checks.
 _security_config_l6 = SecurityConfig.from_env(
     skip_validation_paths=frozenset({"/health", "/ready", "/metrics"}),
     strict_mode=True,
 )
 add_security_middleware(app, config=_security_config_l6)
 
-# GovernanceMiddleware — provides auth and tenant context
 try:
     from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
     from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
     app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported)
 except ImportError:
-    if os.getenv("ENVIRONMENT") in ("production", "staging"):
+    if _SETTINGS.environment in ("production", "staging"):
         raise RuntimeError(
-            "GovernanceMiddleware is required in production/staging — "
-            "shared.identity must be importable"
+            "GovernanceMiddleware is required in production/staging — shared.identity must be importable"
         )
-    logging.getLogger(__name__).warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in dev."
-    )
+    logger.warning("shared.identity not importable — GovernanceMiddleware skipped in dev.")
 
-# Custom metrics endpoint using our PrometheusMetrics class
+
 @app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
 async def metrics_endpoint(request: Request):
-    """Prometheus-compatible metrics endpoint.
-
-    Internal-only — access is gated by ``shared.observability.verify_metrics_access``
-    so that scrape-token auth and private-network rules stay aligned across layers.
-    """
     if not verify_metrics_access(request):
         raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
 
     metrics = get_metrics()
-
-    if not metrics:
+    if metrics is None:
         return Response(
             content="# Metrics collection is disabled",
             status_code=503,
-            media_type="text/plain"
+            media_type="text/plain",
         )
 
     try:
-        metrics_data = metrics.get_metrics()
         return Response(
-            content=metrics_data,
-            media_type="text/plain; version=0.0.4; charset=utf-8"
+            content=metrics.get_metrics(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
         )
-    except Exception as e:
-        logger.error(f"Error generating metrics: {e}")
+    except Exception as exc:  # pragma: no cover - defensive only
+        logger.error("Error generating metrics: %s", exc)
         return Response(
-            content=f"# Error: {e}",
+            content=f"# Error: {exc}",
             status_code=500,
-            media_type="text/plain"
+            media_type="text/plain",
         )
-
-
-# Pydantic models for API (defined in schemas.py to avoid circular imports)
-# API Routes
-import time
-
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
-from .schemas import (
-    ComparisonRequestPayload,
-    ComparisonResponse,
-    DatasetDetail,
-    DatasetSummary,
-    ValidationRequestPayload,
-    ValidationResponse,
-)
-
-
-class health_checkResult(TypedDictModel):
-    datasets_loaded: Any
-    dependencies: Any
-    readiness: dict[str, Any]
-    response_time_ms: Any
-    service: str
-    status: Any
-    system: dict[str, Any]
-    timestamp: Any
-    version: str
-
-class list_industriesResult(TypedDictModel):
-    industries: Any
 
 
 def _require_tenant_id(ctx: RequestContext | None) -> str:
-    """Fail closed when a benchmark handler is invoked without tenant context."""
     if ctx is None or not getattr(ctx, "tenant_id", None):
         raise HTTPException(status_code=401, detail="Tenant context required")
     return str(ctx.tenant_id)
 
 
 async def health_check(request: Request):
-    """Health check endpoint with dependency and system status."""
-    import psutil  # type: ignore[import-untyped]
+    if request.app.state.metrics:
+        request.app.state.metrics.set_health_status(True, service=SERVICE_NAME)
+    return health_checkResult.model_validate(
+        build_health_response(
+            service_name=SERVICE_NAME,
+            status="healthy",
+            version=SERVICE_VERSION,
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            response_time_ms=0.0,
+        )
+    )
 
-    start_time = time.time()
 
-    # Neo4j connectivity check. Avoid opening a fresh blocking Bolt retry loop
-    # on lightweight health requests after startup already established that the
-    # benchmark store is unavailable.
+async def readiness_check() -> readiness_checkResult:
+    checks: dict[str, dict[str, Any]] = {}
+
+    try:
+        validate_layer6_startup_settings()
+        checks["config"] = {"status": "ok"}
+    except Exception as exc:
+        checks["config"] = {"status": "failed", "detail": str(exc)}
+
     if _benchmark_repo is None and _neo4j_startup_error:
-        neo4j_status = {"status": "unavailable", "error": _neo4j_startup_error}
+        neo4j_status = {"status": "unhealthy", "error": _neo4j_startup_error}
     else:
         neo4j_status = await neo4j_health_check()
-    neo4j_healthy = neo4j_status.get("status") == "healthy"
+    neo4j_ready = neo4j_status.get("status") == "healthy"
+    checks["neo4j"] = {
+        "status": "ok" if neo4j_ready else "failed",
+        "detail": None if neo4j_ready else neo4j_status.get("error", "Neo4j health check failed"),
+    }
 
-    dataset_count = 0
-    if _benchmark_repo is not None:
+    if _benchmark_repo is None:
+        checks["benchmark_store"] = {
+            "status": "failed",
+            "detail": _neo4j_startup_error or "Benchmark store not initialized",
+        }
+    else:
         try:
-            datasets = await _benchmark_repo.list_datasets(tenant_id="system")
-            dataset_count = len(datasets)
+            dataset_count = len(await _benchmark_repo.list_datasets(tenant_id="system"))
+            checks["benchmark_store"] = {
+                "status": "ok" if dataset_count > 0 else "failed",
+                "detail": None if dataset_count > 0 else "No benchmark datasets are loaded",
+                "datasets_loaded": dataset_count,
+            }
         except Exception as exc:
-            logger.warning("Health check: failed to list datasets: %s", exc)
+            checks["benchmark_store"] = {"status": "failed", "detail": str(exc)}
 
-    # System metrics
-    memory_info = psutil.virtual_memory()
-    cpu_percent = psutil.cpu_percent(interval=None)
-
-    dependencies = [
+    checks["startup"] = {
+        "status": "ok" if _neo4j_startup_error is None else "failed",
+        "detail": _neo4j_startup_error,
+    }
+    status = "ready" if all(check["status"] == "ok" for check in checks.values()) else "not_ready"
+    return readiness_checkResult.model_validate(
         {
-            "name": "neo4j",
-            "status": "healthy" if neo4j_healthy else "degraded",
-            "response_time_ms": 0,
-            "error": None if neo4j_healthy else neo4j_status.get("error"),
-        },
-        {
-            "name": "benchmark_dataset_store",
-            "status": "healthy" if dataset_count > 0 else "degraded",
-            "response_time_ms": 0,
-            "error": None if dataset_count > 0 else "No benchmark datasets are loaded",
-        },
-    ]
-
-    overall_status = "healthy" if all(d["status"] == "healthy" for d in dependencies) else "degraded"
-    response_time_ms = round((time.time() - start_time) * 1000, 2)
-
-    # Update Prometheus health metrics if available
-    if request and hasattr(request.app.state, "metrics") and request.app.state.metrics:
-        request.app.state.metrics.set_health_status(overall_status == "healthy", component="api")
-        request.app.state.metrics.set_datasets_loaded(dataset_count)
-
-    return health_checkResult.model_validate(build_health_response(
-        service_name="layer6-benchmarks",
-        status=overall_status,
-        version="1.0.0",
-        timestamp=datetime.utcnow().isoformat(),
-        response_time_ms=response_time_ms,
-        datasets_loaded=dataset_count,
-        dependencies=dependencies,
-        readiness={
-            "is_ready": overall_status in {"healthy", "degraded"},
-            "reason": "dependencies_available" if overall_status in {"healthy", "degraded"} else "dependencies_unavailable",
-        },
-        system={
-            "memory_usage_mb": round(memory_info.used / (1024 * 1024), 2),
-            "memory_percent": memory_info.percent,
-            "cpu_percent": cpu_percent,
-        },
-    ))
+            "status": status,
+            "service": SERVICE_NAME,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "version": SERVICE_VERSION,
+            "checks": checks,
+        }
+    )
 
 
 async def list_datasets(
-    industry: Optional[str] = None,
-    segment: Optional[str] = None,
+    industry: str | None = None,
+    segment: str | None = None,
     ctx: RequestContext = Depends(get_request_context),
 ):
-    """List available benchmark datasets."""
     authorize_action("layer6.benchmarks.list", ctx)
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
     tenant_id = _require_tenant_id(ctx)
-    datasets = await _benchmark_repo.list_datasets(industry=industry, segment=segment, tenant_id=tenant_id)
+    datasets = await _benchmark_repo.list_datasets(
+        industry=industry,
+        segment=segment,
+        tenant_id=tenant_id,
+    )
     return [
         DatasetSummary(
             dataset_id=d.dataset_id,
@@ -373,7 +376,6 @@ async def list_datasets(
 
 
 async def get_dataset(dataset_id: str, ctx: RequestContext = Depends(get_request_context)):
-    """Get benchmark dataset by ID."""
     authorize_action("layer6.benchmarks.read", ctx)
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
@@ -391,12 +393,12 @@ async def get_dataset(dataset_id: str, ctx: RequestContext = Depends(get_request
         geography=dataset.geography,
         metrics={
             name: {
-                "name": m.name,
-                "unit": m.unit,
-                "description": m.description,
-                "profile": m.profile.to_dict(),
+                "name": metric.name,
+                "unit": metric.unit,
+                "description": metric.description,
+                "profile": metric.profile.to_dict(),
             }
-            for name, m in dataset.metrics.items()
+            for name, metric in dataset.metrics.items()
         },
         version=dataset.version,
         data_source=dataset.data_source,
@@ -404,27 +406,27 @@ async def get_dataset(dataset_id: str, ctx: RequestContext = Depends(get_request
 
 
 async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depends(get_request_context)):
-    """Execute peer comparison."""
     authorize_action("layer6.benchmarks.compare", ctx)
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
     tenant_id = _require_tenant_id(ctx)
     dataset = await _benchmark_repo.get_dataset(payload.dataset_id, tenant_id=tenant_id)
     if not dataset:
+        _record_compare_metric(industry=payload.industry, outcome="dataset_not_found")
         raise HTTPException(status_code=404, detail="Dataset not found")
 
     metric = dataset.get_metric(payload.metric)
     if not metric:
+        _record_compare_metric(industry=dataset.industry, outcome="metric_not_found")
         raise HTTPException(status_code=404, detail=f"Metric '{payload.metric}' not found")
 
     try:
         company_value = Decimal(payload.company_value)
     except Exception:
+        _record_compare_metric(industry=dataset.industry, outcome="invalid_input")
         raise HTTPException(status_code=400, detail="Invalid company_value format")
 
     profile = metric.profile
-
-    # Calculate percentile (simplified)
     if company_value <= profile.p10:
         percentile = 5
     elif company_value <= profile.p25:
@@ -438,7 +440,6 @@ async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depen
     else:
         percentile = 95
 
-    # Assessment
     if percentile >= 80:
         assessment = "top performer"
     elif percentile >= 60:
@@ -450,7 +451,6 @@ async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depen
     else:
         assessment = "needs improvement"
 
-    # Confidence based on sample size
     if profile.sample_size >= 1000:
         confidence = "high"
     elif profile.sample_size >= 500:
@@ -458,6 +458,7 @@ async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depen
     else:
         confidence = "low"
 
+    _record_compare_metric(industry=dataset.industry, outcome="success")
     return ComparisonResponse(
         percentile=percentile,
         peer_median=str(profile.p50),
@@ -469,7 +470,6 @@ async def compare(payload: ComparisonRequestPayload, ctx: RequestContext = Depen
 
 
 async def validate(payload: ValidationRequestPayload, ctx: RequestContext = Depends(get_request_context)):
-    """Validate value against benchmark range."""
     authorize_action("layer6.benchmarks.validate", ctx)
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
@@ -488,23 +488,13 @@ async def validate(payload: ValidationRequestPayload, ctx: RequestContext = Depe
         raise HTTPException(status_code=400, detail="Invalid value format")
 
     profile = metric.profile
-
-    # Calculate expected range with tolerance
     tolerance_factor = Decimal(payload.tolerance_percent) / Decimal(100)
     range_min = profile.p10 * (Decimal(1) - tolerance_factor)
     range_max = profile.p90 * (Decimal(1) + tolerance_factor)
-
-    # Check if within range
     is_valid = range_min <= value <= range_max
 
-    # Calculate deviation
     median = profile.p50
-    if value != median:
-        deviation_percent = float((value - median) / median * 100)
-    else:
-        deviation_percent = 0.0
-
-    # Determine severity
+    deviation_percent = 0.0 if value == median else float((value - median) / median * 100)
     if is_valid:
         severity = "info"
         message = f"Value {value} is within expected range ({range_min} - {range_max})"
@@ -531,18 +521,15 @@ async def validate(payload: ValidationRequestPayload, ctx: RequestContext = Depe
 
 
 async def list_industries(ctx: RequestContext = Depends(get_request_context)):
-    """List available industries."""
     authorize_action("layer6.benchmarks.industries", ctx)
     if _benchmark_repo is None:
         raise HTTPException(status_code=503, detail="Benchmark store not initialized")
     tenant_id = _require_tenant_id(ctx)
     datasets = await _benchmark_repo.list_datasets(tenant_id=tenant_id)
-    industries = {d.industry for d in datasets}
-    return list_industriesResult.model_validate({"industries": sorted(industries)})
+    return list_industriesResult.model_validate({"industries": sorted({d.industry for d in datasets})})
 
 
-register_health_endpoint(app, service_name="layer6-benchmarks", handler=health_check)
-
+register_health_endpoint(app, service_name=SERVICE_NAME, handler=health_check)
 app.include_router(system.router)
 app.include_router(benchmarks.router)
 

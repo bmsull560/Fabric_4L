@@ -27,6 +27,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from value_fabric.layer1.crawler.decision_store import CrawlDecisionRepository
 from value_fabric.shared.error_handling.handlers import (
     get_request_trace_id,
     global_exception_handler as shared_global_exception_handler,
@@ -505,28 +506,17 @@ def _require_validation_seed_allowed(request: Request) -> tuple[UUID, UUID]:
 
 def get_tenant_id(request: Request) -> UUID:
     """Extract organization (tenant) ID from the GovernanceMiddleware context.
-
-    Falls back to the X-Organization-ID header for backward compatibility
-    with existing integration tests.
     """
     ctx = getattr(request.state, "governance_context", None)
+    header_value = request.headers.get("X-Organization-ID")
     if ctx is not None:
+        if header_value and str(header_value) != str(ctx.tenant_id):
+            raise HTTPException(status_code=403, detail="X-Organization-ID does not match authenticated tenant")
         return ctx.tenant_id
 
-    # Legacy header fallback (integration tests / dev only)
-    header_value = request.headers.get("X-Organization-ID")
     if header_value:
-        enforce_fallback_enabled("layer1.organization_header", default=True)
         try:
-            tenant_id = UUID(header_value)
-            record_fallback_usage(
-                "layer1.organization_header",
-                tenant_id=tenant_id,
-                client_id=request.headers.get("X-Client-ID"),
-                service="layer1-ingestion",
-                path=str(request.url.path),
-            )
-            return tenant_id
+            UUID(header_value)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid X-Organization-ID header format")
 
@@ -1865,8 +1855,6 @@ async def get_target_decisions(
     Returns the most recent crawl decisions across all jobs
     for this target, showing routing choices and outcomes.
     """
-    from ..crawler.decision_store import CrawlDecisionRepository
-
     # Verify target exists and belongs to org
     target = db.query(ScrapingTarget).filter(
         ScrapingTarget.id == target_id,
@@ -1917,8 +1905,6 @@ async def get_job_router_report(
     Provides metrics on routing accuracy, fallback rates,
     and performance characteristics for analysis.
     """
-    from ..crawler.decision_store import CrawlDecisionRepository
-
     # Verify job exists and belongs to org
     job = db.query(ScrapingJob).filter(
         ScrapingJob.id == job_id,
@@ -1959,8 +1945,6 @@ async def get_domain_fallback_stats(
     domain, helping identify SPA-heavy sites or routing issues.
     """
     from datetime import timedelta
-
-    from ..crawler.decision_store import CrawlDecisionRepository
 
     # Verify org has crawled this domain (basic authorization check)
     has_access = db.query(CrawlDecision).filter(

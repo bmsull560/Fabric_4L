@@ -82,8 +82,14 @@ class Settings(BaseSettings):
     debug: bool = False
     secret_key: str = _DEFAULT_DEV_SECRET
     algorithm: str = "HS256"
-    jwt_issuer: str = "value-fabric-internal"
-    jwt_audience: str = "value-fabric-services"
+    jwt_issuer: str = Field(
+        default="value-fabric-internal",
+        validation_alias=AliasChoices("JWT_ISSUER"),
+    )
+    jwt_audience: str = Field(
+        default="value-fabric-services",
+        validation_alias=AliasChoices("JWT_AUDIENCE"),
+    )
     access_token_expire_minutes: int = 60
     mock_persistence: bool = False
     database_url: str | None = None

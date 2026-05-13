@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.policy_registry import authorize_action
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..tenants.service import update_tenant_status
@@ -24,19 +25,6 @@ class suspend_tenantResult(TypedDictModel):
 
 
 logger = logging.getLogger(__name__)
-
-
-def _has_admin_permission(context: RequestContext) -> bool:
-    """Accept explicit admin roles or broad admin-style permissions."""
-    admin_roles = {"super_admin", "tenant_admin", "admin"}
-    if any(role in admin_roles for role in (context.roles or [])):
-        return True
-
-    permissions = {
-        getattr(permission, "value", str(permission))
-        for permission in (context.permissions or frozenset())
-    }
-    return bool(permissions.intersection({"all", "admin", "admin:tenants", "tenant.admin"}))
 
 
 async def suspend_tenant(
@@ -60,11 +48,11 @@ async def suspend_tenant(
     Returns:
         Dict with success flag on success.
     """
-    if not context or not _has_admin_permission(context):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin permission required",
-        )
+    context = authorize_action(
+        "layer4.tool.admin.suspend_tenant",
+        context,
+        target_tenant_id=str(tenant_id),
+    )
 
     if db is None:
         raise HTTPException(

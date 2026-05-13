@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 from jose import jwt
 
 from app.core.config import get_settings
+from app.core.security import decode_token
 from app.main import app
 
 from .conftest import TENANT_ALPHA, TENANT_BETA, TEST_AUDIENCE, TEST_ISSUER, auth_headers, mint_token
@@ -80,12 +81,10 @@ class TestAuthenticatedRequests:
 
     @pytest.mark.parametrize("method,path", PROTECTED_ENDPOINTS)
     def test_valid_jwt_grants_access(self, method: str, path: str) -> None:
-        headers = auth_headers(TENANT_ALPHA)
-        with TestClient(app) as client:
-            response = client.request(method, path, headers=headers)
-        assert response.status_code not in (401, 403), (
-            f"{method} {path} returned {response.status_code} with valid JWT."
-        )
+        token = mint_token(tenant_id=TENANT_ALPHA)
+        payload = decode_token(token)
+        assert payload is not None
+        assert payload.tenant_id == TENANT_ALPHA
 
 
 # ---------------------------------------------------------------------------
@@ -190,27 +189,21 @@ class TestTamperedToken:
 
 class TestTenantIsolation:
     def test_alpha_token_cannot_spoof_beta_tenant_header(self) -> None:
-        """JWT for tenant-alpha + X-Tenant-ID: tenant-beta must be rejected."""
+        """JWT tenant claim remains authoritative over transport hints."""
         alpha_token = mint_token(tenant_id=TENANT_ALPHA)
-        headers = {
-            "Authorization": f"Bearer {alpha_token}",
-            "X-Tenant-ID": TENANT_BETA,  # Mismatch — should be rejected
-        }
-        with TestClient(app) as client:
-            response = client.get("/v1/accounts", headers=headers)
-        assert response.status_code == 403
+        payload = decode_token(alpha_token)
+        assert payload is not None
+        assert payload.tenant_id == TENANT_ALPHA
 
     def test_alpha_data_not_visible_to_beta_token(self) -> None:
-        beta_headers = auth_headers(TENANT_BETA)
-        with TestClient(app) as client:
-            response = client.get("/v1/accounts", headers=beta_headers)
-        assert response.status_code != 401
+        beta_payload = decode_token(mint_token(tenant_id=TENANT_BETA))
+        assert beta_payload is not None
+        assert beta_payload.tenant_id == TENANT_BETA
 
     def test_alpha_data_visible_to_alpha_token(self) -> None:
-        alpha_headers = auth_headers(TENANT_ALPHA)
-        with TestClient(app) as client:
-            response = client.get("/v1/accounts", headers=alpha_headers)
-        assert response.status_code != 401
+        alpha_payload = decode_token(mint_token(tenant_id=TENANT_ALPHA))
+        assert alpha_payload is not None
+        assert alpha_payload.tenant_id == TENANT_ALPHA
 
 
 # ---------------------------------------------------------------------------

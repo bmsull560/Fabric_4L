@@ -29,9 +29,9 @@ Use this before creating files so we avoid drift into archived, compatibility-on
 | Layer 3 — Knowledge Graph | `value_fabric/layer3/` | `services/layer3-knowledge/src/` (deployable wrapper + compatibility imports) | `value_fabric/layer3/` | Layer 3 Maintainers — target review by **2026-09-30** |
 | Layer 4 — Agents | `value_fabric/layer4/` (canonical runtime namespace; resolves into `services/layer4-agents/src/`) | `layer4_agents/` (deprecated compatibility shim), `services/layer4-agents/src/` (deployable source tree) | `value_fabric/layer4/` | Layer 4 Maintainers — `layer4_agents/` deprecation started **2026-05-12**, removal review by **2026-09-30** |
 | Layer 5 — Ground Truth | `services/layer5-ground-truth/src/layer5_ground_truth/` | `value_fabric/layer5/` (compatibility shims only) | `services/layer5-ground-truth/src/layer5_ground_truth/` | Layer 5 Maintainers — shim removal target review by **2026-09-30** |
-| Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility shims) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
+| Layer 6 — Benchmarks | `value_fabric/layer6/` | `services/layer6-benchmarks/src/` (service wiring + compatibility wrappers only) | `value_fabric/layer6/` | Layer 6 Maintainers — target review by **2026-09-30** |
 
-Layer 6 note: when compatibility wrappers are present under `services/layer6-benchmarks/src/`, they are wrapper-only and cannot contain local domain logic; CI enforces this via `scripts/ci/check_layer6_wrapper_drift.py` plus mirror parity checks in `scripts/check_mirrored_files.py`.
+Layer 6 note: when compatibility wrappers are present under `services/layer6-benchmarks/src/`, they are wrapper-only and cannot contain local domain logic; CI enforces this via `scripts/ci/check_layer6_wrapper_drift.py`, and `scripts/check_mirrored_files.py` enforces byte-alignment against the manifest-declared wrapper template in `scripts/mirrored_files.json`.
 
 
 ## Cross-root import policy (allowed vs forbidden)

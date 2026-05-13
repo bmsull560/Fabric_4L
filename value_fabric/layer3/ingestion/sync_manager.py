@@ -9,7 +9,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
-from .neo4j_loader import Neo4jLoader, RDFLoadError
+from .neo4j_loader import Neo4jLoader, RDFLoadError, validate_ingestion_tenant_id
 
 
 class SyncManager_sync_extraction_resultResult(TypedDictModel):
@@ -82,12 +82,13 @@ class SyncManager:
             extraction_job_id: ID of the extraction job
             content_hash: Hash of the content for change detection
             force_full_sync: If True, performs full reload regardless of hash
-            tenant_id: Tenant ID for data isolation (defaults to "system")
+            tenant_id: Validated tenant UUID for data isolation
 
         Returns:
             Dictionary with sync statistics
         """
         start_time = datetime.utcnow()
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
 
         # Compute content hash if not provided
         if content_hash is None:
@@ -95,7 +96,7 @@ class SyncManager:
 
         # Check if sync is needed
         if not force_full_sync:
-            existing_hash = await self._get_source_hash(source_id, tenant_id=tenant_id)
+            existing_hash = await self._get_source_hash(source_id, tenant_id=validated_tenant_id)
             if existing_hash == content_hash:
                 logger.info(f"Source {source_id} unchanged, skipping sync")
                 return SyncManager_sync_extraction_resultResult.model_validate({
@@ -120,7 +121,9 @@ class SyncManager:
             # For now, we do a full delete and reload for simplicity
             if force_full_sync:
                 # Delete existing data from this source
-                delete_stats = await self.loader.delete_by_source(source_id)
+                delete_stats = await self.loader.delete_by_source(
+                    source_id, tenant_id=validated_tenant_id
+                )
                 stats["deleted"] = delete_stats
 
             # Load new data with tenant isolation
@@ -128,13 +131,17 @@ class SyncManager:
                 rdf_data,
                 source_id=source_id,
                 extraction_job_id=extraction_job_id,
-                tenant_id=tenant_id,
+                tenant_id=validated_tenant_id,
             )
             stats.update(load_stats)
 
             # Update sync metadata
             await self._update_sync_metadata(
-                source_id, extraction_job_id, content_hash, "success", tenant_id=tenant_id
+                source_id,
+                extraction_job_id,
+                content_hash,
+                "success",
+                tenant_id=validated_tenant_id,
             )
 
             stats["completed_at"] = datetime.utcnow().isoformat()
@@ -150,7 +157,12 @@ class SyncManager:
             stats["status"] = "failed"
             stats["error"] = str(e)
             await self._update_sync_metadata(
-                source_id, extraction_job_id, content_hash, "failed", str(e), tenant_id=tenant_id
+                source_id,
+                extraction_job_id,
+                content_hash,
+                "failed",
+                str(e),
+                tenant_id=validated_tenant_id,
             )
             raise
 
@@ -166,12 +178,10 @@ class SyncManager:
         Returns:
             Sync status dictionary or None if not found
         """
-        if not tenant_id:
-            raise ValueError("tenant_id is required for sync status lookup")
+        tenant_id = validate_ingestion_tenant_id(tenant_id)
         driver = await self.loader._get_driver()
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             result = await session.run(
                 """
                 MATCH (s:SyncMetadata {source_id: $source_id, tenant_id: $tenant_id})
@@ -207,13 +217,11 @@ class SyncManager:
         Returns:
             List of sync status dictionaries
         """
-        if not tenant_id:
-            raise ValueError("tenant_id is required for listing synced sources")
+        tenant_id = validate_ingestion_tenant_id(tenant_id)
         driver = await self.loader._get_driver()
         sources = []
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             result = await session.run(
                 """
                 MATCH (s:SyncMetadata {tenant_id: $tenant_id})
@@ -240,28 +248,29 @@ class SyncManager:
 
         return sources
 
-    async def delete_source(self, source_id: str) -> dict:
+    async def delete_source(self, source_id: str, tenant_id: str | None) -> dict:
         """Delete all data from a source and its sync metadata.
 
         Args:
             source_id: Source document ID
+            tenant_id: Validated tenant UUID for deletion scope
 
         Returns:
             Deletion statistics
         """
+        validated_tenant_id = validate_ingestion_tenant_id(tenant_id)
         # Delete entities and relationships
-        stats = await self.loader.delete_by_source(source_id)
+        stats = await self.loader.delete_by_source(source_id, tenant_id=validated_tenant_id)
 
         # Delete sync metadata
         driver = await self.loader._get_driver()
         async with driver.session(database=self.settings.neo4j_database) as session:
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             await session.run(
                 """
-                MATCH (s:SyncMetadata {source_id: $source_id})
+                MATCH (s:SyncMetadata {source_id: $source_id, tenant_id: $tenant_id})
                 DELETE s
                 """,
-                {"source_id": source_id},
+                {"source_id": source_id, "tenant_id": validated_tenant_id},
             )
 
         stats["source_id"] = source_id
@@ -313,8 +322,7 @@ class SyncManager:
             error: Error message if failed
             tenant_id: Tenant context required for metadata updates
         """
-        if not tenant_id:
-            raise ValueError("tenant_id is required for sync metadata updates")
+        tenant_id = validate_ingestion_tenant_id(tenant_id)
         driver = await self.loader._get_driver()
 
         metadata = {
@@ -330,7 +338,6 @@ class SyncManager:
             metadata["error"] = error
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            # tenant-scope: system - reviewed operational ingestion metadata boundary
             await session.run(
                 """
                 CREATE (s:SyncMetadata $metadata)

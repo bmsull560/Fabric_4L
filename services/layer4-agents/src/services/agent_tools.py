@@ -14,6 +14,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.policy_registry import authorize_action
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,8 +39,14 @@ class AgentToolRegistry:
         account_id: str,
         signal_id: str,
         value_path_category: str | None = None,
+        context: RequestContext | None = None,
     ) -> dict[str, Any]:
         """Promote a pain signal to a value hypothesis."""
+        authorize_action(
+            "layer4.agent_tool.promote_signal",
+            context,
+            target_tenant_id=tenant_id,
+        )
         if not self._driver:
             return {"success": False, "error": "Neo4j driver not available"}
 
@@ -67,8 +76,14 @@ class AgentToolRegistry:
         hypothesis_id: str,
         new_status: str,
         feedback: str = "",
+        context: RequestContext | None = None,
     ) -> dict[str, Any]:
         """Validate or reject a value hypothesis."""
+        authorize_action(
+            "layer4.agent_tool.validate_hypothesis",
+            context,
+            target_tenant_id=tenant_id,
+        )
         if not self._driver:
             return {"success": False, "error": "Neo4j driver not available"}
 

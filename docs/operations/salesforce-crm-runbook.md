@@ -35,8 +35,7 @@ Ensure these are set in your secrets manager (Infisical/Vault) or environment:
 | `SALESFORCE_CLIENT_SECRET` | ✅ Yes | Connected App Consumer Secret |
 | `SALESFORCE_REDIRECT_URI` | ✅ Yes | OAuth callback URL |
 | `SALESFORCE_WEBHOOK_SECRET` | ⚠️ Recommended | Shared secret for webhook HMAC verification |
-| `CRM_WEBHOOKS_REQUIRE_TENANT_ID` | ✅ Yes | `true` in production |
-| `ALLOW_ENV_CRM_FALLBACK` | ❌ No | Must be `false` in production |
+| `CRM_WEBHOOKS_ALLOW_DEV_RELAXED_TENANT_RESOLUTION` | ❌ No | Development-only escape hatch for local testing without `tenant_id`; must remain unset/false outside local dev |
 
 ---
 
@@ -154,7 +153,7 @@ jq 'select(.message | contains("webhook rejected"))'
    WHERE tenant_id = '<tenant-id>' AND provider = 'salesforce';
    ```
    The `credentials_encrypted` blob must contain a `webhook_token` field.
-4. If no per-tenant token is configured, check that `SALESFORCE_WEBHOOK_SECRET` matches the secret configured in Salesforce outbound message (global HMAC fallback).
+4. If the token is missing or incorrect, rotate the tenant integration and reissue the webhook URL. Webhook processing no longer falls back to an implicit/default tenant or a global-only auth path in normal operation.
 
 ### 4.3 "Token refresh failed"
 
@@ -213,9 +212,9 @@ alembic downgrade 020
 ## 6. Security Checklist
 
 - [ ] `CREDENTIALS_MASTER_KEY` is 43 chars and stored in secrets manager
-- [ ] `CRM_WEBHOOKS_REQUIRE_TENANT_ID` is `true` in production
+- [ ] `CRM_WEBHOOKS_ALLOW_DEV_RELAXED_TENANT_RESOLUTION` is unset or `false` in production
 - [ ] Webhook URLs include `?tenant_id=<tenant-id>`
 - [ ] Each pilot tenant has a unique `webhook_token` stored encrypted in `integrations.credentials_encrypted`
 - [ ] Salesforce Connected App uses minimal OAuth scopes
-- [ ] Global HMAC webhook secret is rotated quarterly
+- [ ] Global HMAC webhook secret is rotated quarterly and never used as a substitute for tenant-bound webhook credentials in production
 - [ ] RLS policies are enabled on `integrations`, `accounts`, `account_sync_status`

@@ -39,3 +39,12 @@ def test_layer3_base_url_rejects_malformed_or_unsafe_values(
 
     with pytest.raises(ValidationError):
         Settings()
+
+
+def test_layer3_base_url_trims_trailing_slash(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_layer3_env(monkeypatch)
+    monkeypatch.setenv("LAYER3_BASE_URL", "http://localhost:8003/")
+
+    settings = Settings()
+
+    assert settings.layer3_base_url == "http://localhost:8003"

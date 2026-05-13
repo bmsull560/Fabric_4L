@@ -42,6 +42,26 @@ make verify
 
 ---
 
+## Canonical Contract And Governance
+
+Before making architecture, API, frontend, or tenant-boundary changes, read the canonical platform
+contract in [`docs/contract.md`](docs/contract.md). It defines the repo's enforced direction for
+tenant context propagation, database isolation, middleware/auth flow, tool boundaries, agent output
+shape, and UI route/state progression.
+
+Use these companion governance references during onboarding and before opening a PR:
+
+- [`docs/governance.md`](docs/governance.md) for the engineering governance entry points
+- [`docs/governance/launch-drift-prevention-sop.md`](docs/governance/launch-drift-prevention-sop.md)
+  for required approvals on contract, tenant-isolation, and compatibility-shim changes
+- [`.github/pull_request_template.md`](.github/pull_request_template.md) for the required PR
+  confirmations covering contract-shape, tenant-isolation, and compatibility-shim impact
+
+If your change affects backend routes, frontend API consumers, or compatibility shims, complete the
+governance confirmations in the PR body and update linked contracts, docs, and tests before review.
+
+---
+
 
 ## Workspace scope: canonical vs experimental
 
@@ -54,6 +74,17 @@ The monorepo defaults are scoped to **canonical production roots only**:
 Directories such as `archive/` and `prototypes/` are treated as **experimental/non-canonical** and are intentionally excluded from default workspace commands. If you need to work there, invoke those paths explicitly instead of relying on root scripts.
 
 Before adding compatibility wrappers or legacy aliases in runtime code, add/update an entry in `docs/governance/compatibility-debt-registry.md` (owner, reason, target removal date).
+
+### Layer 6 placement rule
+
+- Canonical Layer 6 runtime code belongs in `value_fabric/layer6/`.
+- `services/layer6-benchmarks/src/` is wrapper-only. Do not add business logic there.
+- When a new Layer 6 module needs a compatibility import path, register the wrapper in `scripts/mirrored_files.json` and run:
+
+```bash
+python scripts/ci/check_layer6_wrapper_drift.py
+python scripts/check_mirrored_files.py
+```
 
 Before opening a PR, run:
 
@@ -116,6 +147,19 @@ Before submitting a PR:
 
 ```bash
 make verify   # lint + type-check + unit tests + contract tests
+```
+
+If your change touches API routes, OpenAPI contracts, generated clients, or frontend consumers of generated API types, the local pre-push sequence is required:
+
+```bash
+pnpm run generate:contracts
+pnpm run check:contract-compliance -- --mode fast
+```
+
+Use full mode before merge or release preparation:
+
+```bash
+pnpm run check:contract-compliance
 ```
 
 For agent or skill changes, also run:

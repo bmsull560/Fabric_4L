@@ -14,6 +14,7 @@ from sqlalchemy import text
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
+from value_fabric.shared.identity.policy_registry import authorize_action
 
 from ...config.settings import settings
 from ...contracts.tool_dto import ToolCategoriesResponse, ToolSchemaResponse
@@ -121,6 +122,7 @@ async def list_tools(
         category: Filter by category (knowledge, calculation, crm, generation, integration, utility)
         search: Search in tool name/description
     """
+    authorize_action("layer4.tools.list", ctx)
     cat = None
     if category:
         try:
@@ -149,6 +151,7 @@ async def get_tool_schema(
     ctx: RequestContext = Depends(require_authenticated),
 ) -> ToolSchemaResponse:
     """Get detailed schema for a specific tool."""
+    authorize_action("layer4.tools.read_schema", ctx)
     if not registry.has_tool(tool_name):
         raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
 
@@ -185,6 +188,7 @@ async def invoke_tool(
             }
         }
     """
+    authorize_action("layer4.tools.invoke", ctx)
     if not registry.has_tool(request.tool_name):
         raise HTTPException(status_code=404, detail=f"Tool '{request.tool_name}' not found")
 
@@ -296,6 +300,7 @@ async def export_document_tool(
             "include_provenance": true
         }
     """
+    authorize_action("layer4.tools.export_document", context)
     try:
         if not settings.export_storage_endpoint:
             raise HTTPException(
@@ -491,6 +496,7 @@ async def list_export_audit_events(
     context: RequestContext = Depends(require_authenticated),
 ) -> list[ExportAuditRecord]:
     """List immutable audit records related to export governance."""
+    authorize_action("layer4.tools.read_export_audit", context)
     query = """
         SELECT
             id,
@@ -539,6 +545,7 @@ async def list_tool_categories(
     ctx: RequestContext = Depends(require_authenticated),
 ) -> ToolCategoriesResponse:
     """List available tool categories."""
+    authorize_action("layer4.tools.list", ctx)
     categories = [
         {"id": cat.value, "name": cat.value.replace("_", " ").title()} for cat in ToolCategory
     ]

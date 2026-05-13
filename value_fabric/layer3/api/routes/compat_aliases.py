@@ -65,7 +65,7 @@ async def graph_rag_query_stream_alias(
 ):
     _assert_legacy_alias_enabled(request, "/v1/query/graph/stream")
     _record_route_hit(request, "/v1/query/graph/stream", tenant_id=str(ctx.tenant_id))
-    return await query_search.graph_rag_query_stream_impl(query, graph_rag)
+    return await query_search.graph_rag_query_stream_impl(query, graph_rag, ctx=ctx)
 
 
 @router.post("/search/hybrid", response_model=SearchResponse, deprecated=True)

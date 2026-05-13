@@ -18,19 +18,26 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 _SESSION_COOKIE = "vf_session"
+_DEFAULT_JWT_ISSUER = "value-fabric-internal"
+_DEFAULT_JWT_AUDIENCE = "value-fabric-services"
+_AUTH_REQUIRED = "authentication_required"
 
 
 class TokenPayload(BaseModel):
     sub: str
     tenant_id: str
     exp: datetime | None = None
+    iat: datetime | None = None
+    nbf: datetime | None = None
+    iss: str
+    aud: str | list[str]
 
 
-def _auth_error(message: str, *, error_code: str) -> HTTPException:
+def _auth_error(status_code: int, *, error_code: str, message: str) -> HTTPException:
     return HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=status_code,
         detail={
-            "error": "authentication_failed",
+            "error": _AUTH_REQUIRED,
             "error_code": error_code,
             "message": message,
         },
@@ -65,19 +72,19 @@ def create_access_token(
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
     settings = get_settings()
+    issued_at = datetime.now(UTC)
     if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
+        expire = issued_at + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-    now = datetime.now(UTC)
+        expire = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
         "sub": subject,
         "tenant_id": tenant_id,
-        "iss": settings.jwt_issuer,
-        "aud": settings.jwt_audience,
-        "iat": int(now.timestamp()),
-        "nbf": int(now.timestamp()),
+        "iat": issued_at,
+        "nbf": issued_at,
         "exp": expire,
+        "iss": settings.jwt_issuer or _DEFAULT_JWT_ISSUER,
+        "aud": settings.jwt_audience or _DEFAULT_JWT_AUDIENCE,
     }
     if extra_claims:
         payload.update(extra_claims)
@@ -153,7 +160,19 @@ def decode_token(token: str) -> TokenPayload | None:
         tenant_id = data.get("tenant_id")
         if not isinstance(tenant_id, str) or not tenant_id.strip():
             return None
-        return TokenPayload(sub=data["sub"].strip(), tenant_id=tenant_id.strip(), exp=data.get("exp"))
+        if not isinstance(data.get("iss"), str) or not data["iss"].strip():
+            return None
+        if data.get("aud") in (None, "", []):
+            return None
+        return TokenPayload(
+            sub=data["sub"].strip(),
+            tenant_id=tenant_id.strip(),
+            exp=data.get("exp"),
+            iat=data.get("iat"),
+            nbf=data.get("nbf"),
+            iss=data["iss"],
+            aud=data["aud"],
+        )
     except ExpiredSignatureError:
         raise TokenExpiredError("Token has expired")
     except JWTError:
@@ -184,13 +203,25 @@ def require_authenticated(
     """
     raw = _extract_token(request, bearer, vf_session)
     if not raw:
-        raise _auth_error("Authentication required", error_code="AUTH_REQUIRED")
+        raise _auth_error(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_REQUIRED",
+            message="Authentication required.",
+        )
     try:
         payload = decode_token(raw)
     except TokenExpiredError:
-        raise _auth_error("Token has expired", error_code="AUTH_TOKEN_EXPIRED")
+        raise _auth_error(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_TOKEN_EXPIRED",
+            message="Token has expired.",
+        )
     if payload is None:
-        raise _auth_error("Invalid token", error_code="AUTH_INVALID_TOKEN")
+        raise _auth_error(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_INVALID_TOKEN",
+            message="Invalid token.",
+        )
     return payload
 
 
@@ -200,5 +231,9 @@ async def get_current_user(
     """Resolve the authenticated user from the database using the JWT payload."""
     user = db.users.get(auth.sub, tenant_id=auth.tenant_id)
     if user is None:
-        raise _auth_error("User not found", error_code="AUTH_SUBJECT_NOT_FOUND")
+        raise _auth_error(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_USER_NOT_FOUND",
+            message="Authenticated user was not found.",
+        )
     return user

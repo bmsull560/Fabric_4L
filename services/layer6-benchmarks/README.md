@@ -58,6 +58,20 @@ and be enforced by:
 
 Use canonical imports (`value_fabric.layer6.*`) for all new Layer 6 runtime code.
 
+Contributor placement rule:
+
+- Add or change Layer 6 runtime logic in `value_fabric/layer6/`.
+- Touch `services/layer6-benchmarks/src/` only when service-local wrapper coverage must track the canonical module tree.
+- Wrapper files under `services/layer6-benchmarks/src/` are byte-aligned to a generated re-export template declared in `scripts/mirrored_files.json`; local implementation code there is a CI failure.
+
+Targeted validation for wrapper drift:
+
+```bash
+python scripts/ci/check_layer6_wrapper_drift.py
+python scripts/check_mirrored_files.py
+pytest tests/ci/test_mirrored_files_drift_guard.py
+```
+
 
 ## Dependency locking
 
@@ -85,30 +99,56 @@ See `docs/operations/layer6/observability.md` for Layer 6 metrics, SLO indicator
 
 - `/health` is a **lightweight liveness probe**: it reports whether the process is up and able to serve HTTP. It must not perform expensive or flaky downstream checks.
 - `/ready` is a **readiness probe**: it validates critical dependencies and startup invariants such as database connectivity, graph connectivity, and required runtime configuration.
-- Deterministic failure behavior: if any critical readiness dependency fails, `/ready` returns HTTP `503` with a stable not-ready payload; `/health` remains `200` unless the process itself is unhealthy.
+- `/ready` evaluates these deterministic checks:
+  - `config`: fail-fast startup configuration validation
+  - `neo4j`: graph connectivity health
+  - `benchmark_store`: repository availability plus seeded benchmark presence
+  - `startup`: whether canonical startup completed without a recorded dependency failure
+- Deterministic failure behavior: if any critical readiness dependency fails, `/ready` returns HTTP `503` with a stable `{"status":"not_ready", ...}` payload including per-check status; `/health` remains `200` unless the process itself is unhealthy.
 - Alerting expectations:
   - Page on sustained `/ready` failures because the service should be removed from traffic until dependencies recover.
   - Treat `/health` failures as process-level incidents; investigate restart loops or repeated liveness failures immediately.
+  - Do not page solely because `/health` remains green during a dependency outage; that split is expected by design.
 
 ## Environment variables (Layer 6)
 
-The Layer 6 service uses a centralized Pydantic settings module at `value_fabric/layer6/settings.py` with a compatibility shim at `services/layer6-benchmarks/src/settings.py`. Startup should call `validate_layer6_startup_settings()` to fail fast on missing or invalid critical configuration.
+The Layer 6 service uses a centralized Pydantic settings module at `value_fabric/layer6/settings.py` with a compatibility shim at `services/layer6-benchmarks/src/settings.py`. Startup calls `validate_layer6_startup_settings()` at import time so missing or invalid critical configuration fails closed before the API begins serving traffic.
+
+Use the service-local template at `services/layer6-benchmarks/.env.example` for local bootstrapping and mirror the same variables in deployment secrets/config maps.
 
 | Variable | Required | Default | Example | Security notes |
 |---|---|---|---|---|
-| `ENVIRONMENT` | Optional | `development` | `production` | In `staging`/`production`, strict TLS validation is enforced for DB/Neo4j URLs. |
-| `TESTING` | Optional | `false` | `true` | Test-only toggle; do not enable in production deployments. |
-| `AUTH_REQUIRED` | Optional | `true` | `true` | Keep enabled in production to prevent unauthenticated access paths. |
-| `DATABASE_URL` | Required | none | `postgresql://app:***@postgres:5432/benchmarks?sslmode=verify-full` | Must be PostgreSQL. In `staging`/`production`, `sslmode` is required and must be `require`, `verify-ca`, or `verify-full`. Treat as sensitive credential material. |
-| `NEO4J_URI` | Required | none | `neo4j+s://neo4j.example.com:7687` | In `staging`/`production`, only TLS schemes (`neo4j+s://` or `bolt+s://`) are accepted. |
-| `NEO4J_USER` | Optional | `neo4j` | `app_reader` | Non-secret identifier; use least privilege accounts. |
-| `NEO4J_PASSWORD` | Required | none | `<vault-managed-secret>` | Secret; minimum 12 characters enforced. Never commit to source control. |
-| `JWT_SECRET` | Required | none | `<openssl rand -hex 32>` | Secret; minimum 32 characters enforced. Rotation invalidates existing JWTs. |
-| `API_KEY_HMAC_SECRET` | Required | none | `<openssl rand -hex 32>` | Secret; minimum 32 characters enforced. Required for API key verification. |
-| `SERVICE_AUTH_SECRET` | Required | none | `<openssl rand -hex 32>` | Secret; minimum 32 characters enforced. Required for service-to-service authentication. |
-| `ALLOW_INSECURE_DEV_AUTH_BYPASS` | Optional | `false` | `true` | Local-dev only. Layer 6 startup rejects this flag in `staging` or `production`. |
-| `DEV_AUTH_BYPASS` | Optional | `false` | `true` | Test-only. Keep isolated to test harnesses; startup rejects it in production-like environments. |
-| `AUTH_BYPASS_ENABLED` | Optional | `false` | `true` | Local-dev only compatibility flag. Never ship it in shared deployment config. |
-| `JWT_FALLBACK_TO_QUERY_PARAM` | Optional | `false` | `true` | Test-only fallback. Startup rejects it in production-like environments. |
-| `ALLOW_EPHEMERAL_ENCRYPTION` | Optional | `false` | `true` | Local-dev only. Production-like startup rejects it and Layer 4 runtime no longer permits it there. |
-| `ALLOW_DEV_AUTH_BYPASS` | Optional | none | `I_UNDERSTAND_RISK` | Legacy explicit opt-in token for test harnesses only. Production-like startup rejects it. |
+| `ENVIRONMENT` | Optional | `development` | `production` | `staging` and `production` enable strict fail-closed validation. |
+| `APP_ENV` | Optional | none | `staging` | Compatibility alias for environment detection; keep aligned with `ENVIRONMENT` if used. |
+| `TESTING` | Optional | `false` | `true` | Test-only toggle; do not enable in shared deployments. |
+| `AUTH_REQUIRED` | Optional | `true` | `true` | Must stay `true` in `staging`/`production`. |
+| `PORT` | Optional | `8006` | `8006` | Must match `API_PORT` when both are set. |
+| `API_PORT` | Optional | `8006` | `8006` | Keep identical to `PORT` to avoid drift between launcher and settings. |
+| `API_HOST` | Optional | `0.0.0.0` | `0.0.0.0` | Bind address only; not secret. |
+| `LOG_LEVEL` | Optional | `INFO` | `WARNING` | Operational only; avoid verbose debug logging in production. |
+| `LAYER6_SERVICE_NAME` | Optional | `layer6-benchmarks` | `layer6-benchmarks` | Used in startup metadata; not secret. |
+| `LAYER6_VERSION` | Optional | `dev` | `1.4.2` | Build metadata only; not secret. |
+| `LAYER6_BUILD_SHA` | Optional | `unknown` | `abc123def456` | Build metadata only; not secret. |
+| `DATABASE_URL` | Required | none | `postgresql+asyncpg://layer6_app:***@postgres:5432/benchmarks?sslmode=verify-full` | Must target PostgreSQL. In `staging`/`production`, `sslmode` is required and must be `require`, `verify-ca`, or `verify-full`. |
+| `DATABASE_URL_SYNC` | Required | none | `postgresql+psycopg2://layer6_app:***@postgres:5432/benchmarks?sslmode=verify-full` | Required for migrations/admin tooling. Apply the same TLS rules as `DATABASE_URL`. |
+| `DB_HOST` | Optional | none | `postgres.value-fabric.svc.cluster.local` | Deployment metadata only; treat as infrastructure inventory, not auth. |
+| `DB_PORT` | Optional | none | `5432` | Deployment metadata only; integer validation enforced when set. |
+| `DB_NAME` | Optional | none | `benchmarks` | Deployment metadata only; keep consistent with DB URLs. |
+| `DB_USER` | Optional | none | `layer6_app` | Deployment metadata only; do not use superuser credentials in shared environments. |
+| `DB_PASSWORD` | Optional | none | `<vault-managed-secret>` | Sensitive deployment metadata; never commit. |
+| `NEO4J_URI` | Required | none | `neo4j+s://xxxx.databases.neo4j.io` | In `staging`/`production`, startup requires managed Neo4j Aura over `neo4j+s://`. |
+| `NEO4J_USER` | Optional | `neo4j` | `layer6_reader` | Non-secret identifier; use least-privilege accounts. |
+| `NEO4J_PASSWORD` | Required | none | `<vault-managed-secret>` | Secret; minimum 12 chars and no default password values. |
+| `NEO4J_DATABASE` | Optional | `neo4j` | `neo4j` | Database name only; not secret. |
+| `NEO4J_MAX_POOL_SIZE` | Optional | `50` | `25` | Integer range validation enforced. |
+| `JWT_SECRET` | Required | none | `<openssl rand -hex 32>` | Secret; minimum 32 chars and weak placeholder values are rejected. |
+| `API_KEY_HMAC_SECRET` | Required | none | `<openssl rand -hex 32>` | Secret; minimum 32 chars and weak placeholder values are rejected. |
+| `SERVICE_AUTH_SECRET` | Required | none | `<openssl rand -hex 32>` | Secret; minimum 32 chars and weak placeholder values are rejected. |
+| `LAYER3_API_KEY` | Required | none | `<vault-managed-secret>` | Secret used for inter-service auth; missing values fail startup. |
+| `LAYER5_API_KEY` | Required | none | `<vault-managed-secret>` | Secret used for inter-service auth; missing values fail startup. |
+| `ALLOW_INSECURE_DEV_AUTH_BYPASS` | Optional | `false` | `true` | Local-dev only; rejected in `staging`/`production`. |
+| `DEV_AUTH_BYPASS` | Optional | `false` | `true` | Test-only; rejected in `staging`/`production`. |
+| `AUTH_BYPASS_ENABLED` | Optional | `false` | `true` | Local-dev compatibility flag only; rejected in `staging`/`production`. |
+| `JWT_FALLBACK_TO_QUERY_PARAM` | Optional | `false` | `true` | Test-only fallback; rejected in `staging`/`production`. |
+| `ALLOW_EPHEMERAL_ENCRYPTION` | Optional | `false` | `true` | Local-dev only; rejected in `staging`/`production`. |
+| `ALLOW_DEV_AUTH_BYPASS` | Optional | none | `I_UNDERSTAND_RISK` | Legacy explicit opt-in token; rejected in `staging`/`production`. |

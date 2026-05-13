@@ -9,7 +9,6 @@ Or via Docker:
 
 """
 
-import asyncio
 import logging
 import os
 import re
@@ -42,7 +41,7 @@ except ImportError:
 from metrics import MetricsMiddleware, get_metrics, initialize_metrics
 
 from ..config import get_settings
-from ..database import close_db, get_session_factory, init_db
+from ..database import close_db, init_db
 from .router import router
 from .schemas import HealthResponse
 
@@ -57,32 +56,165 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def _check_schema_migration_alignment() -> tuple[bool, str]:
-    """Return whether DB Alembic revision is aligned with migration head(s)."""
-    from alembic.config import Config
-    from alembic.script import ScriptDirectory
+MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
+ALEMBIC_INI_PATH = MIGRATIONS_DIR.parents[1] / "alembic.ini"
+
+
+async def _check_database_connectivity() -> None:
+    """Raise if the readiness database probe cannot establish a connection."""
     from sqlalchemy import text
 
     from ..database import get_engine
 
-    migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
-    alembic_ini = migrations_dir.parents[1] / "alembic.ini"
+    engine = get_engine()
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
 
-    alembic_cfg = Config(str(alembic_ini))
-    alembic_cfg.set_main_option("script_location", str(migrations_dir))
+
+def _get_expected_migration_heads() -> tuple[str, ...]:
+    """Return the Alembic head revision(s) declared by Layer 5 migrations."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    alembic_cfg = Config(str(ALEMBIC_INI_PATH))
+    alembic_cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
     script = ScriptDirectory.from_config(alembic_cfg)
-    expected_heads = set(script.get_heads())
+    return tuple(script.get_heads())
+
+
+async def _get_database_migration_heads() -> tuple[str, ...]:
+    """Return the current Alembic head revision(s) recorded in the database."""
+    from alembic.migration import MigrationContext
+
+    from ..database import get_engine
 
     engine = get_engine()
     async with engine.connect() as conn:
-        result = await conn.execute(text("SELECT version_num FROM alembic_version"))
-        db_revisions = {row[0] for row in result if row[0]}
+        return tuple(
+            await conn.run_sync(
+                lambda sync_conn: MigrationContext.configure(sync_conn).get_current_heads()
+            )
+        )
 
-    if not db_revisions or not expected_heads:
-        return False, "unknown"
-    if db_revisions == expected_heads:
-        return True, "aligned"
-    return False, "behind"
+
+async def _check_schema_migration_alignment() -> dict[str, object]:
+    """Return the readiness state for DB Alembic revision alignment."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    expected_heads = _get_expected_migration_heads()
+    alembic_cfg = Config(str(ALEMBIC_INI_PATH))
+    alembic_cfg.set_main_option("script_location", str(MIGRATIONS_DIR))
+    script = ScriptDirectory.from_config(alembic_cfg)
+
+    if len(expected_heads) != 1:
+        logger.error("Layer 5 readiness requires a single Alembic head, found %s", expected_heads)
+        return {
+            "ready": False,
+            "schema": "inconsistent",
+            "reason": "schema_revision_inconsistent",
+            "current_revisions": [],
+            "expected_heads": sorted(expected_heads),
+        }
+
+    expected_head = expected_heads[0]
+
+    try:
+        current_heads = await _get_database_migration_heads()
+    except Exception as exc:
+        logger.warning("Readiness schema probe could not determine Alembic revision: %s", exc)
+        return {
+            "ready": False,
+            "schema": "inconsistent",
+            "reason": "schema_revision_inconsistent",
+            "current_revisions": [],
+            "expected_heads": [expected_head],
+        }
+
+    if not current_heads:
+        return {
+            "ready": False,
+            "schema": "behind",
+            "reason": "schema_revision_behind",
+            "current_revisions": [],
+            "expected_heads": [expected_head],
+        }
+
+    if len(current_heads) != 1:
+        return {
+            "ready": False,
+            "schema": "inconsistent",
+            "reason": "schema_revision_inconsistent",
+            "current_revisions": sorted(current_heads),
+            "expected_heads": [expected_head],
+        }
+
+    current_head = current_heads[0]
+    if current_head == expected_head:
+        return {
+            "ready": True,
+            "schema": "aligned",
+            "reason": "schema_aligned",
+            "current_revisions": [current_head],
+            "expected_heads": [expected_head],
+        }
+
+    try:
+        current_revision = script.get_revision(current_head)
+    except Exception:
+        logger.warning(
+            "Layer 5 readiness found Alembic revision outside known history: current=%s expected=%s",
+            current_head,
+            expected_head,
+        )
+        return {
+            "ready": False,
+            "schema": "inconsistent",
+            "reason": "schema_revision_inconsistent",
+            "current_revisions": [current_head],
+            "expected_heads": [expected_head],
+        }
+
+    if current_revision is None:
+        return {
+            "ready": False,
+            "schema": "inconsistent",
+            "reason": "schema_revision_inconsistent",
+            "current_revisions": [current_head],
+            "expected_heads": [expected_head],
+        }
+
+    try:
+        for revision in script.walk_revisions(base="base", head=expected_head):
+            if revision.revision == current_head:
+                return {
+                    "ready": False,
+                    "schema": "behind",
+                    "reason": "schema_revision_behind",
+                    "current_revisions": [current_head],
+                    "expected_heads": [expected_head],
+                }
+    except Exception:
+        logger.exception(
+            "Layer 5 readiness could not compare Alembic revisions: current=%s expected=%s",
+            current_head,
+            expected_head,
+        )
+        return {
+            "ready": False,
+            "schema": "inconsistent",
+            "reason": "schema_revision_inconsistent",
+            "current_revisions": [current_head],
+            "expected_heads": [expected_head],
+        }
+
+    return {
+        "ready": False,
+        "schema": "inconsistent",
+        "reason": "schema_revision_inconsistent",
+        "current_revisions": [current_head],
+        "expected_heads": [expected_head],
+    }
 
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
@@ -110,8 +242,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await init_db()
 
     # Production Vault smoke gate
-    if settings.effective_environment == "production":
-        vault_addr = os.getenv("VAULT_ADDR")
+    if settings.is_production_like:
+        vault_addr = settings.vault_addr
         if vault_addr and is_vault_healthy is not None:
             logger.info("L5: Checking Vault connectivity at %s", vault_addr)
             health_result = is_vault_healthy(vault_addr)
@@ -134,7 +266,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("L5: Redis rate limiter initialized")
     except Exception as e:
         env = settings.effective_environment
-        redis_required = os.getenv("REDIS_RATE_LIMITING_REQUIRED", "false").lower() == "true"
+        redis_required = settings.redis_rate_limiting_required
 
         if redis_required or settings.is_production_like:
             logger.error(f"L5: Redis rate limiting required but unavailable: {e}")
@@ -143,49 +275,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning(f"L5: Redis rate limiter disabled - {e}")
         app.state.redis_rate_limiter = None
 
-    # Optional in-process freshness monitor (disabled by default in production)
-    freshness_task: asyncio.Task | None = None
-    enable_in_process_monitor = os.getenv("L5_ENABLE_IN_PROCESS_FRESHNESS_MONITOR", "false").lower() == "true"
-    if enable_in_process_monitor:
-        try:
-            from ..services.freshness_monitor import FreshnessMonitor, run_freshness_check_with_leader_lock
-
-            async def _run_freshness_check_periodically() -> None:
-                """Run freshness check every 24 hours with leader election guard."""
-                monitor = FreshnessMonitor()
-                while True:
-                    try:
-                        session_factory = get_session_factory()
-                        async with session_factory() as db:
-                            result = await run_freshness_check_with_leader_lock(db, monitor)
-                            if result is None:
-                                logger.info("L5 FreshnessMonitor: skipped; leader lock held by another worker")
-                            else:
-                                logger.info(
-                                    "L5 FreshnessMonitor: checked=%d marked_stale=%d",
-                                    result.get("checked", 0),
-                                    result.get("marked_stale", 0),
-                                )
-                    except Exception as exc:
-                        logger.warning("L5 FreshnessMonitor: check failed: %s", exc)
-                    await asyncio.sleep(86400)  # 24 hours
-
-            freshness_task = asyncio.create_task(_run_freshness_check_periodically())
-            logger.info("L5: FreshnessMonitor background task started (in-process mode)")
-        except Exception as exc:
-            logger.warning("L5: Could not start FreshnessMonitor background task: %s", exc)
-    else:
-        logger.info("L5: In-process FreshnessMonitor scheduler disabled (use external scheduler or explicit trigger)")
+    logger.info(
+        "L5: FreshnessMonitor background scheduler not started in API workers; "
+        "use an external cron/job runner or the explicit trigger endpoint"
+    )
 
     yield
-
-    if freshness_task is not None:
-        freshness_task.cancel()
-        try:
-            await freshness_task
-        except asyncio.CancelledError:
-            pass
-        logger.info("L5: FreshnessMonitor background task stopped")
 
     logger.info("Shutting down Layer 5 Ground Truth service")
     await close_db()
@@ -355,20 +450,21 @@ def create_app() -> FastAPI:
     # Readiness check — verifies database connectivity and migration alignment
     @app.get("/ready", tags=["system"], include_in_schema=False)
     async def readiness() -> JSONResponse:
-        from sqlalchemy import text
-        from ..database import get_engine
-
         try:
-            engine = get_engine()
-            async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
-            schema_ready, schema_status = await _check_schema_migration_alignment()
-            if not schema_ready:
+            await _check_database_connectivity()
+            schema_state = await _check_schema_migration_alignment()
+            if not schema_state["ready"]:
                 return JSONResponse(
                     content={
                         "status": "not_ready",
                         "database": "ok",
-                        "schema": schema_status,
+                        "schema": schema_state["schema"],
+                        "not_ready": {
+                            "component": "schema",
+                            "reason": schema_state["reason"],
+                            "current_revisions": schema_state["current_revisions"],
+                            "expected_heads": schema_state["expected_heads"],
+                        },
                     },
                     status_code=503,
                 )

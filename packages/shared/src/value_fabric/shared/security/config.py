@@ -19,6 +19,40 @@ _BYPASS_FLAGS = (
     "ALLOW_DEV_AUTH_BYPASS",
     "AUTH_BYPASS_ENABLED",
 )
+_BYPASS_FLAG_METADATA: dict[str, dict[str, str]] = {
+    "ALLOW_INSECURE_DEV_AUTH_BYPASS": {
+        "classification": "local-dev only",
+        "surface": "auth",
+    },
+    "DEV_AUTH_BYPASS": {
+        "classification": "test-only",
+        "surface": "auth",
+    },
+    "ALLOW_DEV_AUTH_BYPASS": {
+        "classification": "test-only",
+        "surface": "auth",
+    },
+    "AUTH_BYPASS_ENABLED": {
+        "classification": "local-dev only",
+        "surface": "auth",
+    },
+    "JWT_FALLBACK_TO_QUERY_PARAM": {
+        "classification": "test-only",
+        "surface": "auth",
+    },
+    "ALLOW_EPHEMERAL_ENCRYPTION": {
+        "classification": "local-dev only",
+        "surface": "encryption",
+    },
+    "ALLOW_MOCK_LLM": {
+        "classification": "test-only",
+        "surface": "llm",
+    },
+    "MOCK_PERSISTENCE": {
+        "classification": "test-only",
+        "surface": "persistence",
+    },
+}
 
 # Minimum JWT secret length for production (NIST SP 800-117 recommends >= 256 bits)
 _MIN_JWT_SECRET_LENGTH = 32
@@ -127,6 +161,48 @@ def is_production_like_environment(environment: str | None = None) -> bool:
     return env not in _DEV_ENVIRONMENTS
 
 
+def _is_bypass_flag_enabled(flag_name: str) -> bool:
+    raw_value = os.getenv(flag_name, "")
+    normalized = raw_value.strip().lower()
+    if flag_name == "ALLOW_DEV_AUTH_BYPASS":
+        return normalized == "i_understand_risk"
+    return normalized in _BYPASS_TRUE_VALUES
+
+
+def _active_bypass_flags() -> list[dict[str, str]]:
+    active: list[dict[str, str]] = []
+    for flag_name, metadata in _BYPASS_FLAG_METADATA.items():
+        if not _is_bypass_flag_enabled(flag_name):
+            continue
+        active.append(
+            {
+                "flag": flag_name,
+                "classification": metadata["classification"],
+                "surface": metadata["surface"],
+            }
+        )
+    return active
+
+
+def log_non_production_bypass_activation(environment: str | None = None) -> None:
+    """Emit a structured warning when a risky bypass is enabled outside production."""
+    env = (environment or detect_environment()).strip().lower()
+    if is_production_like_environment(env):
+        return
+
+    for active_flag in _active_bypass_flags():
+        logger.warning(
+            "non_production_bypass_enabled",
+            extra={
+                "event": "non_production_bypass_enabled",
+                "environment": env,
+                "flag": active_flag["flag"],
+                "classification": active_flag["classification"],
+                "surface": active_flag["surface"],
+            },
+        )
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Production Safety Validator
 # ═══════════════════════════════════════════════════════════════════════════
@@ -178,17 +254,12 @@ class ProductionSafetyValidator:
 
         # Auth bypass flags must never be enabled in production-like envs
         for bypass_flag in _BYPASS_FLAGS:
-            raw_value = os.getenv(bypass_flag, "")
-            normalized = raw_value.strip().lower()
-            is_enabled = normalized in _BYPASS_TRUE_VALUES or (
-                bypass_flag == "ALLOW_DEV_AUTH_BYPASS" and normalized == "i_understand_risk"
-            )
-            if is_enabled:
+            if _is_bypass_flag_enabled(bypass_flag):
                 self.errors.append(
                     f"{bypass_flag} must be false or unset in production-like environments. "
                     "Authentication bypass flags are forbidden outside local development."
                 )
-        if os.getenv("JWT_FALLBACK_TO_QUERY_PARAM", "").lower() in ("true", "1", "yes"):
+        if _is_bypass_flag_enabled("JWT_FALLBACK_TO_QUERY_PARAM"):
             self.errors.append(
                 "JWT_FALLBACK_TO_QUERY_PARAM must be false or unset in production-like environments. "
                 "Passing tokens in query strings leaks credentials to logs and proxies."
@@ -245,7 +316,7 @@ class ProductionSafetyValidator:
             )
 
         # Mock persistence must not be enabled
-        if os.getenv("MOCK_PERSISTENCE", "").lower() in ("true", "1", "yes"):
+        if _is_bypass_flag_enabled("MOCK_PERSISTENCE"):
             self.errors.append(
                 "MOCK_PERSISTENCE must be false or unset in production-like environments. "
                 "Mock persistence destroys data durability and tenant isolation guarantees."
@@ -271,8 +342,7 @@ class ProductionSafetyValidator:
                 "Set a strong 256-bit base64-encoded Fernet key."
             )
 
-        allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_ENCRYPTION", "").lower() in ("true", "1", "yes")
-        if allow_ephemeral:
+        if _is_bypass_flag_enabled("ALLOW_EPHEMERAL_ENCRYPTION"):
             self.errors.append(
                 "ALLOW_EPHEMERAL_ENCRYPTION must be false or unset in production-like environments."
             )
@@ -404,7 +474,7 @@ class ProductionSafetyValidator:
                 "LLM_PROVIDER='mock' is not permitted in production-like environments. "
                 "Configure a real inference endpoint (e.g., openai, anthropic, azure)."
             )
-        if os.getenv("ALLOW_MOCK_LLM", "").lower() in ("true", "1", "yes"):
+        if _is_bypass_flag_enabled("ALLOW_MOCK_LLM"):
             self.errors.append(
                 "ALLOW_MOCK_LLM must be false or unset in production-like environments."
             )
@@ -430,6 +500,7 @@ class ProductionSafetyValidator:
     def validate(self) -> None:
         """Run all production-safety checks."""
         if not self.is_production_like:
+            log_non_production_bypass_activation(self.environment)
             # In dev/test environments, run validations as warnings only
             self._run_all()
             if self.errors:

@@ -425,9 +425,9 @@ const routeManifest: RouteManifest = {
 
 ### 4.5 Organizational Integration
 - [ ] Architecture review checklist includes CONTRACT.md verification
-- [ ] Onboarding docs include canonical contract section
-- [ ] PR templates include contract compliance checkbox
-- [ ] Engineering wiki has contract governance page
+- [x] Onboarding docs include canonical contract section (`CONTRIBUTING.md`)
+- [x] PR templates include contract compliance checkbox (`.github/pull_request_template.md`)
+- [x] Engineering wiki has contract governance page (`docs/governance.md`, `docs/governance/launch-drift-prevention-sop.md`)
 - [ ] Quarterly review meeting scheduled
 
 ---
@@ -511,3 +511,4 @@ Status progression: proposed → ratified → enforced
 |------|--------|--------|-----------|
 | 2026-04-23 | Platform Team | Initial draft | Establish canonical contracts for six cross-layer concerns |
 | 2026-04-25 | Platform Team | Ratify Section 2.2 | RLS via SET LOCAL ratified as Enforced Canon per Unified Recommendation memo; TenantAwarePool moved to experimental |
+| 2026-05-13 | Platform Team | Close organizational governance controls | Link contributor onboarding, PR governance confirmations, and engineering governance SOP to the canonical contract |

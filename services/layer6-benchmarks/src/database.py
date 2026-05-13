@@ -1,6 +1,3 @@
-"""Compatibility shim for Layer 6 database helpers.
+"""Compatibility shim; canonical Layer 6 database helpers live under value_fabric.layer6."""
 
-Canonical implementation lives in ``value_fabric.layer6.database``.
-"""
-
-from value_fabric.layer6.database import *  # noqa: F401,F403
+from value_fabric.layer6.database import *

@@ -40,6 +40,8 @@ _DEFAULT_INTERNAL_AUDIENCE = "value-fabric-services"
 _DEVELOPMENT_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _ENV_KEYS = ("ENVIRONMENT", "ENV", "APP_ENV", "VF_ENV", "VALUE_FABRIC_ENV", "PYTHON_ENV")
 _LEGACY_TEST_TENANT_ID_RE = re.compile(r"^tenant-[a-z0-9]+(?:-[a-z0-9]+)*$")
+_REQUIRED_REGISTERED_CLAIMS = ("exp", "iss", "aud")
+_ALLOWED_EXTERNAL_ALGORITHMS = {"RS256", "ES256"}
 
 
 def _detect_environment() -> str:
@@ -178,11 +180,14 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
 
     try:
         header = jwt.get_unverified_header(token)
+<<<<<<< HEAD
         header_alg = header.get("alg")
         if not isinstance(header_alg, str) or not header_alg.strip():
             return None
         if header_alg.upper() != algorithm.upper():
             return None
+=======
+>>>>>>> 03209e4f (docs(governance,security): add Layer 1 Alembic revalidation report and harden JWT validation with action-based authorization)
         unverified = jwt.decode(
             token,
             options={
@@ -190,9 +195,21 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
                 "verify_exp": False,
                 "verify_aud": False,
                 "verify_iss": False,
+<<<<<<< HEAD
             },
         )
+=======
+                "verify_iat": False,
+                "verify_nbf": False,
+            },
+        )
+        header_alg = str(header.get("alg", "")).strip().upper()
+        if not header_alg:
+            return None
+>>>>>>> 03209e4f (docs(governance,security): add Layer 1 Alembic revalidation report and harden JWT validation with action-based authorization)
         issuer = unverified.get("iss")
+        if any(unverified.get(claim) in (None, "") for claim in _REQUIRED_REGISTERED_CLAIMS):
+            return None
         audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
         expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
 
@@ -206,7 +223,11 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             return None
 
         if expected_issuer == oidc_issuer:
+<<<<<<< HEAD
             if header_alg.upper() not in {"RS256", "ES256"}:
+=======
+            if header_alg not in _ALLOWED_EXTERNAL_ALGORITHMS:
+>>>>>>> 03209e4f (docs(governance,security): add Layer 1 Alembic revalidation report and harden JWT validation with action-based authorization)
                 return None
             verify_key = _resolve_external_key(header, issuer)
             if verify_key is None:
@@ -214,11 +235,19 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             payload = jwt.decode(
                 token,
                 verify_key,
+<<<<<<< HEAD
                 algorithms=[header_alg.upper()],
                 audience=audience,
                 issuer=expected_issuer,
                 options={
                     "require": ["exp", "iss", "aud"],
+=======
+                algorithms=[header_alg],
+                audience=audience,
+                issuer=expected_issuer,
+                options={
+                    "require": list(_REQUIRED_REGISTERED_CLAIMS),
+>>>>>>> 03209e4f (docs(governance,security): add Layer 1 Alembic revalidation report and harden JWT validation with action-based authorization)
                     "verify_exp": True,
                     "verify_aud": True,
                     "verify_iss": True,
@@ -227,6 +256,8 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
                 },
             )
         else:
+            if header_alg != algorithm:
+                return None
             verify_keys = keyset["verify"]
             if kid and kid in verify_keys:
                 candidates = [verify_keys[kid]]
@@ -244,7 +275,11 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
                         audience=audience,
                         issuer=expected_issuer,
                         options={
+<<<<<<< HEAD
                             "require": ["exp", "iss", "aud"],
+=======
+                            "require": list(_REQUIRED_REGISTERED_CLAIMS),
+>>>>>>> 03209e4f (docs(governance,security): add Layer 1 Alembic revalidation report and harden JWT validation with action-based authorization)
                             "verify_exp": True,
                             "verify_aud": True,
                             "verify_iss": True,

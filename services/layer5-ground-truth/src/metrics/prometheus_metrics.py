@@ -183,6 +183,13 @@ class PrometheusMetrics:
             registry=self.config.registry,
         )
 
+        self._metrics["privileged_db_session_activations_total"] = Counter(
+            f"{prefix}privileged_db_session_activations_total",
+            "Total privileged cross-tenant database session activations",
+            ["mode"],
+            registry=self.config.registry,
+        )
+
         # Build info
         self._metrics["build_info"] = Info(
             f"{prefix}build_info", "Build information", registry=self.config.registry
@@ -282,6 +289,10 @@ class PrometheusMetrics:
             self._metrics["errors_total"].labels(
                 error_type=error_type, component=component
             ).inc()
+
+    def increment_privileged_db_session_activation(self, mode: str) -> None:
+        if self.config.enabled:
+            self._metrics["privileged_db_session_activations_total"].labels(mode=mode).inc()
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""

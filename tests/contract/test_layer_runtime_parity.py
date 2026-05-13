@@ -59,8 +59,8 @@ LAYER_PARITY_RULES: dict[str, dict[str, object]] = {
         "service_routes": REPO_ROOT / "services/layer6-benchmarks/src/api/routes/__init__.py",
         "service_main": REPO_ROOT / "services/layer6-benchmarks/src/api/main.py",
         "canonical_import": "value_fabric.layer6.api.routes.__init__",
-        "service_interface": REPO_ROOT / "value_fabric/layer6/services/benchmark_service.py",
-        "repository_interface": REPO_ROOT / "value_fabric/layer6/storage/benchmark_repository.py",
+        "service_interface": REPO_ROOT / "value_fabric/layer6/api/routes/benchmarks.py",
+        "repository_interface": REPO_ROOT / "value_fabric/layer6/repositories/benchmark_repository.py",
         "middleware_anchor": REPO_ROOT / "value_fabric/layer6/api/main.py",
     },
 }

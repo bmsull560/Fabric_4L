@@ -5,7 +5,9 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
+    "generate:contracts": "python scripts/ci/contract_compliance_gate.py --mode full --refresh-only",
     "generate:api": "pnpm --filter ./apps/web run generate:types",
+    "check:contract-compliance": "python scripts/ci/contract_compliance_gate.py --mode full",
     "check:api-types": "pnpm run generate:api && git diff --exit-code apps/web/src/api/generated",
     "lint": "python scripts/ci/run_root_aggregate_checks.py lint",
     "test": "python scripts/ci/run_root_aggregate_checks.py test",

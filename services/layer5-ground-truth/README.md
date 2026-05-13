@@ -84,6 +84,7 @@ The service runs on **port 8005** and exposes a fully documented OpenAPI interfa
 | `GET` | `/api/v1/truths/{id}/audit` | Full immutable audit log |
 | `DELETE` | `/api/v1/truths/{id}` | Soft delete |
 | `POST` | `/api/v1/truths/sync-kg` | Bulk sync approved objects to Layer 3 KG |
+| `POST` | `/api/v1/truths/check-stale` | Manually trigger guarded freshness reconciliation |
 | `GET` | `/api/v1/maturity-ladder` | Reference: full ladder definition |
 | `GET` | `/api/v1/health` | Health check |
 
@@ -117,7 +118,16 @@ alembic upgrade head
 
 # Start the service
 uvicorn layer5_ground_truth.api.main:app --host 0.0.0.0 --port 8005 --reload
+
+# Run one freshness reconciliation pass from an external scheduler
+layer5-freshness-reconciliation
 ```
+
+Freshness reconciliation is intentionally not started inside API worker
+processes. Run `layer5-freshness-reconciliation` from cron, a Kubernetes
+CronJob, or an equivalent external scheduler. The runner reuses the same
+leader-lock guard as the API-triggered path, so only one PostgreSQL-backed
+worker executes the reconciliation pass at a time.
 
 ### Docker Compose
 
@@ -247,14 +257,16 @@ This keeps API contract evolution explicit, auditable, and aligned with downstre
 | `DATABASE_URL_SYNC` | `sqlite:///./ground_truth.db` | Sync DB URL (Alembic) |
 | `LAYER3_BASE_URL` | `http://localhost:8003` | Layer 3 API base URL (must be absolute `http(s)://host[:port]` with no path/query) |
 | `LAYER3_SYNC_ENABLED` | `true` | Enable KG sync on approval |
-| `LAYER3_API_KEY` | — | Optional bearer token for Layer 3 (required when Layer 3 deployment enforces service auth) |
-| `LAYER3_TIMEOUT_SECONDS` | `30` | Per-request Layer 3 timeout in seconds (increase for production if network latency requires) |
-| `LAYER3_RETRY_ATTEMPTS` | `3` (code constant) | Sync client retries transient timeout/5xx failures up to 3 attempts with linear backoff (2s, 4s) and no retry for 4xx. |
-| `MIN_CONFIDENCE_FOR_SUPPORTED` | `0.5` | Confidence threshold for SUPPORTED |
+| `LAYER3_API_KEY` | — | Optional bearer token for Layer 3 in development; required in deployments where Layer 3 enforces service-to-service auth. |
+| `LAYER3_TIMEOUT_SECONDS` | `30` | Per-request Layer 3 timeout in seconds. Production deployments should keep this explicit and raise it only when network latency or Layer 3 workload requires it. |
+| `LAYER3_RETRY_ATTEMPTS` | `3` (code constant) | Sync client retries transient timeout/5xx failures up to 3 total attempts with exponential backoff between retries (1s, 2s). 4xx responses are not retried. |
+| `MIN_CONFIDENCE_FOR_SUPPORTED` | `0.6` | Confidence threshold for SUPPORTED |
 | `MIN_SOURCES_FOR_CORROBORATED` | `2` | Source count for CORROBORATED |
 | `AUTO_ADVANCE_TO_SUPPORTED` | `true` | Auto-advance on source add |
 | `DEBUG` | `false` | Enable debug mode + auto table creation |
 | `API_PORT` | `8005` | Service port |
+
+Production deployment expectation: local development defaults use `http://localhost:8003`, but deployed Layer 5 instances should set `LAYER3_BASE_URL` to the approved Layer 3 service DNS (for example `http://layer3-knowledge:8003`). Production-like runtimes fail closed when `LAYER3_BASE_URL` still points at localhost.
 
 ---
 
@@ -273,6 +285,60 @@ alembic downgrade -1
 # Show current revision
 alembic current
 ```
+
+### Migration Drift Readiness and Remediation
+
+`GET /ready` now checks two conditions before reporting readiness:
+
+1. The Layer 5 database is reachable.
+2. The current database Alembic revision matches the Layer 5 Alembic head from:
+   - `services/layer5-ground-truth/alembic.ini`
+   - `services/layer5-ground-truth/src/layer5_ground_truth/migrations/`
+
+If the service can reach the database but the schema is not at the expected head, `/ready` returns HTTP `503` with one of these states:
+
+- `{"status":"not_ready","database":"ok","schema":"behind"}`: the database is on an older revision and migrations must be applied.
+- `{"status":"not_ready","database":"ok","schema":"inconsistent"}`: the database revision is unknown, branched, or otherwise does not line up with the checked-in migration history.
+
+Recommended prestart check sequence for deploys and restarts:
+
+```bash
+cd services/layer5-ground-truth
+
+# Confirm the checked-in migration head
+alembic heads
+
+# Confirm the target database revision before starting new app pods
+alembic current
+
+# Apply pending migrations before routing traffic
+alembic upgrade head
+
+# Verify the app reports ready only after schema alignment
+curl -fsS http://localhost:8005/ready
+```
+
+Recommended rollout ordering:
+
+1. Deploy migration artifacts and application code together from the same commit.
+2. Run `alembic upgrade head` against the target Layer 5 database before or during the release job.
+3. Wait for migration completion.
+4. Start or rotate Layer 5 application instances.
+5. Route traffic only after `/ready` returns `200`.
+
+Remediation procedure when `/ready` reports migration drift:
+
+1. Stop the rollout or keep new Layer 5 pods out of service discovery.
+2. From `services/layer5-ground-truth/`, run `alembic current` and `alembic heads` against the same target database.
+3. If the database is simply behind, run `alembic upgrade head`, then recheck `/ready`.
+4. If the database is inconsistent, do not force-start the service. Investigate the revision history mismatch first:
+   - confirm the deployment is using the expected repository commit,
+   - confirm `DATABASE_URL_SYNC` points at the intended database,
+   - inspect the `alembic_version` table,
+   - compare the applied revision(s) with the migration files under `src/layer5_ground_truth/migrations/versions/`.
+5. Only resume the rollout after `alembic current` matches `alembic heads` and `/ready` returns `200`.
+
+Operational note: in multi-service releases that depend on Layer 5 data, complete the Layer 5 migration step before promoting downstream services that assume the new schema.
 
 ---
 

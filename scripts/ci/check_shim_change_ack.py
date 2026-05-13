@@ -3,23 +3,21 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.ci.compatibility_registry import parse_registry
+
 REGISTRY = ROOT / "docs/governance/compatibility-debt-registry.md"
 REQUIRED_LABELS = {"compat-shim-change", "compat-owner-ack"}
 
 
 def shim_paths() -> set[str]:
-    paths: set[str] = set()
-    pattern = re.compile(r"\|\s*[^|]+\s*\|\s*`([^`]+)`\s*\|")
-    for line in REGISTRY.read_text(encoding="utf-8").splitlines():
-        m = pattern.search(line)
-        if m:
-            paths.add(m.group(1).strip("/"))
-    return paths
+    return {entry.normalized_path for entry in parse_registry(REGISTRY)}
 
 
 def main() -> int:

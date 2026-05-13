@@ -2,6 +2,15 @@
 
 - Describe what changed and why.
 
+## Governance Impact (Required for backend/frontend/API changes)
+
+- **Contract shape impact:** None | Additive | Breaking | Docs/tests only
+- **Tenant isolation impact:** None | Reviewed-no-impact | Behavior changed and covered
+- **Compatibility shim impact:** None | Added | Modified | Removed
+- [ ] I updated contract definitions/types/tests/docs for any contract-shape change.
+- [ ] I verified tenant scoping and authenticated context handling for affected backend data paths.
+- [ ] I updated shim tracking or deprecation evidence for any compatibility-shim change.
+
 ## Change Type
 
 - [ ] Feature

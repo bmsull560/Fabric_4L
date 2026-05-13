@@ -137,6 +137,11 @@ class Settings(BaseSettings):
         errors: list[str] = []
 
         if production_like:
+            redis_url = self.redis_url.strip()
+            s3_endpoint = self.s3_endpoint.strip()
+            s3_access_key = self.s3_access_key.strip()
+            s3_secret_key = self.s3_secret_key.strip()
+
             if self.debug:
                 errors.append("Debug mode must be disabled in production-like environments")
             insecure_defaults = ["changeme", "changeme-in-production", "valuefabric", "postgres", "secret", "password"]
@@ -146,17 +151,39 @@ class Settings(BaseSettings):
                 errors.append("JWT secret must be >= 32 characters in production-like environments")
             if "postgres:postgres@" in self.database_url or "password" in self.database_url.lower():
                 errors.append("Database URL contains default/insecure credentials")
-            if self.redis_url.strip() == "redis://localhost:6379/0":
+            parsed_redis = urlparse(redis_url)
+            redis_host = (parsed_redis.hostname or "").lower()
+            if not redis_url:
+                errors.append(
+                    "REDIS_URL must be set in production-like environments. "
+                    "Configure REDIS_URL to a managed Redis endpoint with authentication/TLS from your secret manager."
+                )
+            elif self.redis_url.strip() == "redis://localhost:6379/0":
                 errors.append(
                     "REDIS_URL is using default localhost value 'redis://localhost:6379/0'. "
                     "Set REDIS_URL to a managed Redis endpoint with authentication/TLS for production deployment."
                 )
-            if self.s3_access_key.strip().lower() == "minioadmin" or self.s3_secret_key.strip().lower() == "minioadmin":
+            elif parsed_redis.scheme not in {"redis", "rediss"} or not parsed_redis.hostname:
+                errors.append(
+                    "REDIS_URL is invalid for a production-like environment. "
+                    "Use a full redis:// or rediss:// endpoint with a hostname, credentials, and TLS where supported."
+                )
+            elif redis_host in {"localhost", "127.0.0.1", "::1"}:
+                errors.append(
+                    "REDIS_URL cannot target localhost in production-like environments. "
+                    "Point REDIS_URL at the managed Redis service reachable from the deployment environment."
+                )
+            if not s3_access_key or not s3_secret_key:
+                errors.append(
+                    "S3_ACCESS_KEY and S3_SECRET_KEY must be set in production-like environments. "
+                    "Load non-placeholder object storage credentials from your secret manager."
+                )
+            elif s3_access_key.lower() == "minioadmin" or s3_secret_key.lower() == "minioadmin":
                 errors.append(
                     "S3 credentials use default placeholder value 'minioadmin'. "
                     "Set S3_ACCESS_KEY and S3_SECRET_KEY to production credentials from your secret manager."
                 )
-            parsed_endpoint = urlparse(self.s3_endpoint.strip())
+            parsed_endpoint = urlparse(s3_endpoint)
             if not parsed_endpoint.scheme or not parsed_endpoint.hostname:
                 errors.append(
                     "S3_ENDPOINT is missing or invalid. "

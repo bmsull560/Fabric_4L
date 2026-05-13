@@ -55,6 +55,8 @@ _PRODUCTION_LIKE_MARKER_KEYS = (
     "DYNO",
 )
 _PRODUCTION_LIKE_ENVIRONMENTS = {"prod", "production", "staging", "stage", "preprod", "pre-production"}
+_REQUIRED_REGISTERED_CLAIMS = ("exp", "iss", "aud")
+_ALLOWED_EXTERNAL_ALGORITHMS = {"RS256", "ES256"}
 
 
 def _detect_environment() -> str:
@@ -246,14 +248,6 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
 
     try:
         header = jwt.get_unverified_header(token)
-        header_alg = header.get("alg")
-        if not isinstance(header_alg, str) or not header_alg.strip():
-            return None
-        if oidc_issuer:
-            if header_alg.upper() not in {"RS256", "ES256", algorithm.upper()}:
-                return None
-        elif header_alg.upper() != algorithm.upper():
-            return None
         unverified = jwt.decode(
             token,
             options={
@@ -261,9 +255,16 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
                 "verify_exp": False,
                 "verify_aud": False,
                 "verify_iss": False,
+                "verify_iat": False,
+                "verify_nbf": False,
             },
         )
+        header_alg = str(header.get("alg", "")).strip().upper()
+        if not header_alg:
+            return None
         issuer = unverified.get("iss")
+        if any(unverified.get(claim) in (None, "") for claim in _REQUIRED_REGISTERED_CLAIMS):
+            return None
         audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
         expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
         decode_kwargs: Dict[str, Any] = {
@@ -271,7 +272,7 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             "audience": audience,
             "issuer": expected_issuer,
             "options": {
-                "require": ["exp", "iss", "aud"],
+                "require": list(_REQUIRED_REGISTERED_CLAIMS),
                 "verify_exp": True,
                 "verify_aud": True,
                 "verify_iss": True,
@@ -290,18 +291,22 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             return None
 
         if expected_issuer == oidc_issuer:
+            if header_alg not in _ALLOWED_EXTERNAL_ALGORITHMS:
+                return None
             verify_key = _resolve_external_key(header, issuer)
             if verify_key is None:
                 return None
             payload = jwt.decode(
                 token,
                 verify_key,
-                algorithms=[header_alg.upper()],
+                algorithms=[header_alg],
                 audience=audience,
                 issuer=expected_issuer,
                 options=decode_kwargs["options"],
             )
         else:
+            if header_alg != algorithm:
+                return None
             verify_keys = keyset["verify"]
             if kid and kid in verify_keys:
                 candidates = [verify_keys[kid]]

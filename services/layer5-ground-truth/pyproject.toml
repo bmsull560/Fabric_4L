@@ -12,6 +12,9 @@ authors = [
     {name = "Value Fabric Team"}
 ]
 
+[project.scripts]
+layer5-freshness-reconciliation = "layer5_ground_truth.jobs.freshness_reconciliation:main"
+
 dependencies = [
     "fastapi>=0.109",
     "uvicorn[standard]>=0.27",

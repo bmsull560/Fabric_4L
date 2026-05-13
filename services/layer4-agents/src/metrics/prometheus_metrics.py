@@ -197,6 +197,13 @@ class PrometheusMetrics:
             registry=self.config.registry,
         )
 
+        self._metrics["privileged_db_session_activations_total"] = Counter(
+            f"{prefix}privileged_db_session_activations_total",
+            "Total privileged cross-tenant database session activations",
+            ["tenant_tier", "mode"],
+            registry=self.config.registry,
+        )
+
         # LLM cost metrics (cross-layer, vf_ prefix)
         # SECURITY: Uses tenant_tier instead of tenant_id to prevent cardinality explosion
         self._metrics["llm_cost_usd_total"] = Counter(
@@ -343,6 +350,15 @@ class PrometheusMetrics:
         if self.config.enabled:
             tenant_tier = _derive_tenant_tier(tenant_id)
             self._metrics["rate_limit_hits_total"].labels(tenant_tier=tenant_tier, scope=scope).inc()
+
+    def increment_privileged_db_session_activation(self, tenant_id: str | None, mode: str) -> None:
+        """Record privileged cross-tenant session activation."""
+        if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["privileged_db_session_activations_total"].labels(
+                tenant_tier=tenant_tier,
+                mode=mode,
+            ).inc()
 
     def record_llm_cost(
         self,

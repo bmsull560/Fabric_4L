@@ -10,6 +10,8 @@ Use this checklist for staging and production release approvals.
 ## Pre-Release Validation
 
 - [ ] Run `make verify` and confirm pass. [VERIFY:DOC-DEPLOY-001]
+- [ ] Run `python scripts/ci/check_compatibility_launch_freeze.py --strict` and confirm PASS.
+- [ ] Confirm every entry in `docs/governance/compatibility-debt-registry.md` includes Platform Architecture review metadata and an explicit post-launch removal ticket.
 - [ ] For agent/skill changes, run `make evals` and confirm pass.
 - [ ] Run smoke tests (`scripts/smoke/production_smoke.py`) against the target environment.
 - [ ] Run `pytest tests/release/test_observability_deployment_readiness.py` and confirm PASS (release gate for Task 46/47 evidence).

@@ -22,6 +22,12 @@ Primary SLO indicators for Layer 6 operations:
 2. **Latency indicator**: p95 from `layer6_request_duration_seconds` stays within route SLO targets.
 3. **Quality indicator**: compare outcomes from `layer6_dataset_comparisons_total` stay within expected failure budget.
 
+## Probe interpretation
+
+- `/health` is a liveness-only signal. It should stay green during transient or sustained downstream dependency loss as long as the API process itself is alive.
+- `/ready` is the routing and alerting signal for Layer 6 dependency health. Alerting should key off sustained `/ready` failures rather than `/health`.
+- When investigating readiness alarms, capture the readiness payload `checks` object before restarting pods so operators can distinguish config, connectivity, and startup-state failures.
+
 ## Troubleshooting
 
 1. Run dashboard drift validation:

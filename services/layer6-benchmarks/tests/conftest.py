@@ -1,13 +1,4 @@
 import os
-import sys
-from pathlib import Path
-
-# Belt-and-braces: ensure repo root is on sys.path so `value_fabric.layer6.*`
-# canonical-shim imports resolve even if pyproject.toml `pythonpath` is bypassed
-# (e.g. ad-hoc invocations outside the configured pytest session).
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
 import pytest
 from unittest.mock import AsyncMock
@@ -16,9 +7,16 @@ _TEST_ENV_DEFAULTS = {
     "ENVIRONMENT": "test",
     "APP_ENV": "test",
     "TESTING": "true",
+    "AUTH_REQUIRED": "true",
+    "PORT": "8006",
+    "API_PORT": "8006",
+    "API_HOST": "0.0.0.0",
+    "LOG_LEVEL": "INFO",
     "NEO4J_URI": "bolt://localhost:7687",
     "NEO4J_USER": "neo4j",
     "NEO4J_PASSWORD": "test_password",
+    "NEO4J_DATABASE": "neo4j",
+    "NEO4J_MAX_POOL_SIZE": "10",
     "ALLOW_INSECURE_DEV_AUTH_BYPASS": "true",
     "DEV_AUTH_BYPASS": "true",
     "ALLOW_DEV_AUTH_BYPASS": "I_UNDERSTAND_RISK",
@@ -29,11 +27,22 @@ _TEST_ENV_DEFAULTS = {
     "API_KEY_HMAC_SECRET": "dummy_api_key_secret_for_tests_must_be_32_chars",
     "SERVICE_AUTH_SECRET": "dummy_service_auth_secret_for_tests_32_chars",
     "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/fabric",
+    "DATABASE_URL_SYNC": "postgresql+psycopg2://postgres:postgres@localhost:5432/fabric",
+    "DB_HOST": "localhost",
+    "DB_PORT": "5432",
+    "DB_NAME": "fabric",
+    "DB_USER": "postgres",
+    "DB_PASSWORD": "postgres_test_password",
+    "LAYER3_API_KEY": "layer3_test_api_key_1234567890",
+    "LAYER5_API_KEY": "layer5_test_api_key_1234567890",
+    "LAYER6_SERVICE_NAME": "layer6-benchmarks",
+    "LAYER6_VERSION": "test",
+    "LAYER6_BUILD_SHA": "test-sha",
 }
 for _key, _value in _TEST_ENV_DEFAULTS.items():
     os.environ.setdefault(_key, _value)
 
-import src.database as database
+import value_fabric.layer6.database as database
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
 @pytest.fixture(autouse=True)
@@ -72,6 +81,6 @@ def mock_neo4j_health(monkeypatch):
     
     monkeypatch.setattr(database, "health_check", mock_health)
     # Also patch the actual neo4j_health_check imported in main
-    import src.api.main as main_module
+    import value_fabric.layer6.api.main as main_module
     monkeypatch.setattr(main_module, "neo4j_health_check", mock_health)
 

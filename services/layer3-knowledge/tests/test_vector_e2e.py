@@ -64,6 +64,7 @@ REQUIRED_VECTOR_INDEXES = {
     "persona_embedding_idx",
     "valuedriver_embedding_idx",
 }
+TEST_TENANT_ID = "12345678-1234-1234-1234-123456789abc"
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -267,7 +268,11 @@ class TestIngestionWithEmbeddings:
         g.add((cap_uri, VF.confidence, Literal(0.95)))
         
         # Load into Neo4j
-        stats = await neo4j_loader.load_rdf_graph(g, source_id="test-source")
+        stats = await neo4j_loader.load_rdf_graph(
+            g,
+            source_id="test-source",
+            tenant_id=TEST_TENANT_ID,
+        )
         
         # Verify entity loaded
         assert stats["entities_loaded"] >= 1, f"Expected at least 1 entity, got {stats['entities_loaded']}"
@@ -333,7 +338,11 @@ class TestHybridSearch:
         g.add((cap2_uri, VF.confidence, Literal(0.85)))
         
         # Load into Neo4j
-        await neo4j_loader.load_rdf_graph(g, source_id="test-source")
+        await neo4j_loader.load_rdf_graph(
+            g,
+            source_id="test-source",
+            tenant_id=TEST_TENANT_ID,
+        )
         
         # Initialize hybrid search
         vector_store = VectorStore(driver=neo4j_driver, settings=settings)
@@ -395,6 +404,7 @@ class TestVectorE2EComplete:
                 vf:confidence "0.92"^^xsd:float .
             ''',
             "source_id": "vector-e2e-test",
+            "tenant_id": TEST_TENANT_ID,
         }
         
         response = await api_client_with_neo4j.post("/v1/ingest", json=test_data)
@@ -532,7 +542,11 @@ class TestSchemaIdempotency:
         g.add((cap_uri, VF.name, Literal("Persistence Check")))
         g.add((cap_uri, VF.description, Literal("Verify data persists")))
         g.add((cap_uri, VF.confidence, Literal(0.9)))
-        await neo4j_loader.load_rdf_graph(g, source_id="idempotent-test")
+        await neo4j_loader.load_rdf_graph(
+            g,
+            source_id="idempotent-test",
+            tenant_id=TEST_TENANT_ID,
+        )
 
         # Re-initialize without dropping
         await schema_initializer.initialize_schema(drop_existing=False)
@@ -636,7 +650,11 @@ class TestVectorCleanup:
         g.add((cap_uri, VF.name, Literal("Cleanup Test Entity")))
         g.add((cap_uri, VF.description, Literal("Entity for cleanup verification")))
         g.add((cap_uri, VF.confidence, Literal(0.9)))
-        await neo4j_loader.load_rdf_graph(g, source_id="cleanup-source")
+        await neo4j_loader.load_rdf_graph(
+            g,
+            source_id="cleanup-source",
+            tenant_id=TEST_TENANT_ID,
+        )
 
         # Verify entity exists
         async with neo4j_driver.session() as session:

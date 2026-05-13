@@ -145,7 +145,7 @@ async def add_competitor(
         pricing_tier=body.pricing_tier,
         target_segments=body.target_segments,
     )
-    result = await svc.add_competitor(competitor)
+    result = await svc.add_competitor(tenant_id, competitor)
     return add_competitorResult.model_validate({"status": "created", **result})
 
 
@@ -164,6 +164,7 @@ async def list_competitors(
     svc = CompetitiveIntelService(driver)
 
     return await svc.list_competitors(
+        tenant_id,
         market_position=market_position,
         skip=skip,
         limit=limit,
@@ -182,7 +183,7 @@ async def get_competitor(
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    result = await svc.get_competitor(competitor_id)
+    result = await svc.get_competitor(tenant_id, competitor_id)
     if not result:
         raise HTTPException(status_code=404, detail="Competitor not found")
     return result
@@ -217,7 +218,7 @@ async def update_competitor(
     if not safe_updates:
         raise HTTPException(status_code=422, detail="No valid fields in update")
 
-    result = await svc.update_competitor(competitor_id, safe_updates)
+    result = await svc.update_competitor(tenant_id, competitor_id, safe_updates)
     if not result:
         raise HTTPException(status_code=404, detail="Competitor not found")
     return update_competitorResult.model_validate({"status": "updated", **result})
@@ -235,7 +236,7 @@ async def delete_competitor(
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    deleted = await svc.delete_competitor(competitor_id)
+    deleted = await svc.delete_competitor(tenant_id, competitor_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Competitor not found")
     return delete_competitorResult.model_validate({"status": "deleted", "competitor_id": competitor_id})
@@ -271,7 +272,7 @@ async def add_battlecard(
         win_themes=body.win_themes,
         trap_questions=body.trap_questions,
     )
-    result = await svc.add_battlecard(competitor_id, bc)
+    result = await svc.add_battlecard(tenant_id, competitor_id, bc)
     return add_battlecardResult.model_validate({"status": "created", **result})
 
 
@@ -288,7 +289,7 @@ async def get_battlecards(
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    return await svc.get_battlecard(competitor_id, product_id)
+    return await svc.get_battlecard(tenant_id, competitor_id, product_id)
 
 
 # Compatibility alias: frontend contract uses singular "battlecard".
@@ -334,7 +335,7 @@ async def record_win_loss(
         reason=body.reason,
         industry=body.industry,
     )
-    result = await svc.record_win_loss(wl)
+    result = await svc.record_win_loss(tenant_id, wl)
     return record_win_lossResult.model_validate({"status": "recorded", **result})
 
 
@@ -349,7 +350,7 @@ async def get_win_loss_summary(
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    return await svc.get_win_loss_summary()
+    return await svc.get_win_loss_summary(tenant_id)
 
 
 # ---------------------------------------------------------------------------
@@ -369,4 +370,4 @@ async def get_competitive_landscape(
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    return await svc.analyze_competitive_landscape(product_id)
+    return await svc.analyze_competitive_landscape(tenant_id, product_id)

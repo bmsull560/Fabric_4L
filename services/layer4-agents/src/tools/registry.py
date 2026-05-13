@@ -16,6 +16,7 @@ from uuid import UUID, uuid4
 from ..observability import Layer4EventContext, Layer4LifecycleLogger
 
 from value_fabric.shared.identity.context import RequestContext, get_request_context
+from value_fabric.shared.identity.policy_registry import authorize_action, get_tool_action
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..models.tool_schemas import ToolCategory, ToolSchema
@@ -518,6 +519,23 @@ class ToolRegistry:
         request_context = get_request_context()
         context_tenant_id = str(request_context.tenant_id) if request_context and request_context.tenant_id else None
         user_id = str(request_context.user_id) if request_context and request_context.user_id else None
+        tool_action = get_tool_action(tool_name)
+
+        if tool_action:
+            try:
+                authorize_action(tool_action, request_context, target_tenant_id=str(tenant_id) if tenant_id else None)
+            except Exception as exc:
+                status_code = getattr(exc, "status_code", 403)
+                detail = getattr(exc, "detail", {"message": str(exc)})
+                code = "AUTHENTICATION_REQUIRED" if status_code == 401 else "INSUFFICIENT_SCOPE"
+                message = detail.get("message", str(detail)) if isinstance(detail, dict) else str(detail)
+                return ToolResult.failure(
+                    code=code,
+                    message=message,
+                    details=detail if isinstance(detail, dict) else {"detail": detail},
+                    recoverable=False,
+                    metadata=_safe_metadata(trace_id=trace_id, tenant_id=str(tenant_id) if tenant_id else None),
+                )
 
         if not tenant_id:
             return ToolResult.failure(

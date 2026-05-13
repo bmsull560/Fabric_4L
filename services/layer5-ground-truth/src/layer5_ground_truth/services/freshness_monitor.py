@@ -1,14 +1,12 @@
 """
 Freshness Monitoring Service for Layer 5 Ground Truth.
 
-Periodically checks for TruthObjects that have exceeded their freshness
-(expires_at < now()) and marks them as stale. Creates audit events for
-each staleness transition.
+Checks for TruthObjects that have exceeded their freshness (expires_at < now())
+and marks them as stale. Creates audit events for each staleness transition.
 
 Can be run:
-1. As a background task (APScheduler)
-2. Manually via API endpoint POST /truths/check-stale
-3. As a standalone script for cron jobs
+1. Manually via API endpoint POST /truths/check-stale
+2. As a dedicated cron/job runner
 """
 
 import logging
@@ -16,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -181,34 +179,51 @@ class FreshnessMonitor:
 
         marked_count = 0
         for truth in expired_truths:
-            if not dry_run:
-                # Mark as stale
-                truth.is_stale = True
-                truth.updated_at = now
+            if dry_run:
+                marked_count += 1
+                continue
 
-                # Create audit event for staleness
-                event = ValidationEvent(
-                    truth_object_id=truth.id,
-                    tenant_id=truth.tenant_id,
-                    from_status=truth.status,
-                    to_status=truth.status,  # Status doesn't change, just marked stale
-                    from_maturity=truth.maturity_level,
-                    to_maturity=truth.maturity_level,
-                    actor="system:freshness_monitor",
-                    actor_type="system",
-                    confidence_at_transition=truth.confidence,
-                    source_count_at_transition=len(truth.sources)
-                    if truth.sources
-                    else 0,
-                    notes=f"Automatically marked stale: expired at {truth.expires_at.isoformat()}",
+            update_result = await db.execute(
+                update(TruthObject)
+                .where(
+                    and_(
+                        TruthObject.id == truth.id,
+                        TruthObject.deleted_at.is_(None),
+                        TruthObject.is_stale.is_(False),
+                    )
                 )
-                db.add(event)
-
-                logger.warning(
-                    "TruthObject %s marked stale (expired %s)",
+                .values(is_stale=True, updated_at=now)
+                .execution_options(synchronize_session=False)
+            )
+            if (update_result.rowcount or 0) == 0:
+                logger.info(
+                    "TruthObject %s stale transition skipped; another worker already updated it",
                     truth.id,
-                    truth.expires_at.isoformat(),
                 )
+                continue
+
+            event = ValidationEvent(
+                truth_object_id=truth.id,
+                tenant_id=truth.tenant_id,
+                from_status=truth.status,
+                to_status=truth.status,  # Status doesn't change, just marked stale
+                from_maturity=truth.maturity_level,
+                to_maturity=truth.maturity_level,
+                actor="system:freshness_monitor",
+                actor_type="system",
+                confidence_at_transition=truth.confidence,
+                source_count_at_transition=len(truth.sources)
+                if truth.sources
+                else 0,
+                notes=f"Automatically marked stale: expired at {truth.expires_at.isoformat()}",
+            )
+            db.add(event)
+
+            logger.warning(
+                "TruthObject %s marked stale (expired %s)",
+                truth.id,
+                truth.expires_at.isoformat(),
+            )
             marked_count += 1
 
         if dry_run:

@@ -51,5 +51,11 @@ jobs:
       - name: Install JavaScript dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Compatibility launch-freeze policy
+        run: python scripts/ci/check_compatibility_launch_freeze.py --strict
+
+      - name: Shim divergence suite
+        run: python -m pytest tests/ci/test_shim_divergence.py
+
       - name: Run make verify
         run: make verify

@@ -47,6 +47,7 @@ class OpenApiExportSpec:
     module_key: str
     main_path: str
     output_filename: str
+    canonical_module: str | None = None
 
     @property
     def src_path(self) -> Path:
@@ -63,7 +64,14 @@ EXPORT_SPECS: tuple[OpenApiExportSpec, ...] = (
     OpenApiExportSpec("Layer 3", "layer3-knowledge", "layer3_knowledge", "api/app_monolith.py", "layer3-knowledge.json"),
     OpenApiExportSpec("Layer 4", "layer4-agents", "layer4_agents", "api/main.py", "layer4-agents.json"),
     OpenApiExportSpec("Layer 5", "layer5-ground-truth", "layer5_ground_truth", "layer5_ground_truth/api/main.py", "layer5-ground-truth.json"),
-    OpenApiExportSpec("Layer 6", "layer6-benchmarks", "layer6_benchmarks", "api/main.py", "layer6-benchmarks.json"),
+    OpenApiExportSpec(
+        "Layer 6",
+        "layer6-benchmarks",
+        "layer6_benchmarks",
+        "api/main.py",
+        "layer6-benchmarks.json",
+        canonical_module="value_fabric.layer6.api.main",
+    ),
 )
 
 STATIC_CONTRACTS: tuple[str, ...] = ("signals.json",)
@@ -85,6 +93,7 @@ EXPORT_ENV: dict[str, str] = {
     "JWT_SECRET": "openapi-export-local-secret-with-32-characters",
     "JWT_SECRET_KEY": "openapi-export-local-secret-with-32-characters",
     "DATABASE_URL": "postgresql://fabric_export:fabric_export_secret@localhost:5432/value_fabric",
+    "DATABASE_URL_SYNC": "postgresql://fabric_export:fabric_export_secret@localhost:5432/value_fabric",
     "CORS_ORIGINS": "http://localhost:5173",
     "S3_ACCESS_KEY": "fabric_export_access_key",
     "S3_SECRET_KEY": "fabric_export_secret_key",
@@ -92,6 +101,10 @@ EXPORT_ENV: dict[str, str] = {
     "MINIO_SECRET_KEY": "fabric_export_secret_key",
     "API_KEY_HMAC_SECRET": "openapi-export-local-secret-with-32-characters",
     "SERVICE_AUTH_SECRET": "openapi-export-local-secret-with-32-characters",
+    "LAYER3_API_KEY": "openapi-export-layer3-key",
+    "LAYER5_API_KEY": "openapi-export-layer5-key",
+    "NEO4J_URI": "neo4j+s://neo4j.example.com:7687",
+    "NEO4J_PASSWORD": "openapi-export-neo4j-password",
     "LAYER1_API_URL": "http://localhost:8001",
     "LAYER2_API_URL": "http://localhost:8002",
     "LAYER3_API_URL": "http://localhost:8003",
@@ -210,7 +223,7 @@ def _atomic_write_json(data: dict[str, Any], output_path: Path) -> None:
 
 
 def _export_service_in_process(spec: OpenApiExportSpec) -> bool:
-    if not spec.module_path.exists():
+    if spec.canonical_module is None and not spec.module_path.exists():
         logger.error("[%s] app module not found at %s", spec.label, spec.module_path)
         return False
 
@@ -221,9 +234,13 @@ def _export_service_in_process(spec: OpenApiExportSpec) -> bool:
         sys.path.insert(0, str(path))
 
     try:
-        _setup_package_hierarchy(spec)
-        logger.info("[%s] Loading module from %s", spec.label, spec.module_path)
-        main_module = _load_main_module(spec)
+        if spec.canonical_module is not None:
+            logger.info("[%s] Loading canonical module %s", spec.label, spec.canonical_module)
+            main_module = importlib.import_module(spec.canonical_module)
+        else:
+            _setup_package_hierarchy(spec)
+            logger.info("[%s] Loading module from %s", spec.label, spec.module_path)
+            main_module = _load_main_module(spec)
 
         app = getattr(main_module, "app", None)
         if app is None:
@@ -258,20 +275,26 @@ def _export_service_subprocess(spec: OpenApiExportSpec) -> bool:
     return result.returncode == 0
 
 
-def _export_all() -> int:
+def _validate_static_contracts(selected_static: tuple[str, ...]) -> dict[str, bool]:
+    results: dict[str, bool] = {}
+    for static_contract in selected_static:
+        static_path = EXPORT_DIR / static_contract
+        if static_path.exists():
+            logger.info("[STATIC] %s retained: no repository FastAPI source configured", static_contract)
+            results[static_contract] = True
+        else:
+            logger.error("[STATIC] %s missing from %s", static_contract, EXPORT_DIR)
+            results[static_contract] = False
+    return results
+
+
+def _export_specs(specs: tuple[OpenApiExportSpec, ...], selected_static: tuple[str, ...]) -> int:
     print("Exporting Value Fabric OpenAPI specifications...")
     print(f"Export directory: {EXPORT_DIR}")
     print()
 
-    results = {spec.output_filename: _export_service_subprocess(spec) for spec in EXPORT_SPECS}
-
-    for static_contract in STATIC_CONTRACTS:
-        static_path = EXPORT_DIR / static_contract
-        if static_path.exists():
-            logger.info("[STATIC] %s retained: no repository FastAPI source configured", static_contract)
-        else:
-            logger.error("[STATIC] %s missing from %s", static_contract, EXPORT_DIR)
-            results[static_contract] = False
+    results = {spec.output_filename: _export_service_subprocess(spec) for spec in specs}
+    results.update(_validate_static_contracts(selected_static))
 
     print()
     success_count = sum(results.values())
@@ -280,14 +303,37 @@ def _export_all() -> int:
     return 0 if success_count == total_count else 1
 
 
+def _export_all() -> int:
+    return _export_specs(EXPORT_SPECS, STATIC_CONTRACTS)
+
+
+def _export_selected(output_filenames: tuple[str, ...]) -> int:
+    selected_specs = tuple(
+        spec for spec in EXPORT_SPECS if spec.output_filename in output_filenames
+    )
+    selected_static = tuple(
+        output for output in output_filenames if output in STATIC_CONTRACTS
+    )
+    return _export_specs(selected_specs, selected_static)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export Value Fabric OpenAPI specifications")
     parser.add_argument("--single", choices=[spec.output_filename for spec in EXPORT_SPECS])
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        choices=[spec.output_filename for spec in EXPORT_SPECS] + list(STATIC_CONTRACTS),
+        help="Export or validate only the selected OpenAPI artifacts.",
+    )
     args = parser.parse_args()
 
     if args.single:
         spec = _spec_by_output(args.single)
         sys.exit(0 if _export_service_in_process(spec) else 1)
+
+    if args.only:
+        sys.exit(_export_selected(tuple(dict.fromkeys(args.only))))
 
     sys.exit(_export_all())
 

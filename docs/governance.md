@@ -4,6 +4,21 @@
 
 Every AI-generated object must be reviewable, traceable, and approvable.
 
+## Engineering Governance Linkage
+
+These documents define the required engineering governance path for platform changes:
+
+- [`docs/contract.md`](contract.md): canonical platform contract and enforcement targets
+- [`../CONTRIBUTING.md`](../CONTRIBUTING.md): contributor onboarding entry point
+- [`governance/launch-drift-prevention-sop.md`](governance/launch-drift-prevention-sop.md):
+  required approvals for contract, tenant-isolation, and compatibility-shim changes
+- [`../.github/pull_request_template.md`](../.github/pull_request_template.md): PR confirmations
+  required before review
+
+Pull requests that touch backend, frontend, or API surfaces are expected to declare contract-shape,
+tenant-isolation, and compatibility-shim impact explicitly and to link any required follow-up docs,
+tests, or deprecation tracking.
+
 ## Review States
 
 - `draft` - Initial generation

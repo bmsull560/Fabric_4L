@@ -4,8 +4,8 @@ from pathlib import Path
 
 
 def _code() -> str:
-    service_root = Path(__file__).resolve().parents[1] / "src"
-    return "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in service_root.rglob("*.py"))
+    canonical_root = Path(__file__).resolve().parents[3] / "value_fabric" / "layer6"
+    return "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in canonical_root.rglob("*.py"))
 
 
 def test_tenant_a_cannot_read_tenant_b_patterns_present():

@@ -12,21 +12,39 @@ def test_mirrored_files_guard_passes() -> None:
     result = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, cwd=root)
     assert result.returncode == 0, result.stdout + result.stderr
 
-def test_layer6_critical_mirror_coverage() -> None:
+def test_layer6_wrapper_drift_guard_passes() -> None:
+    root = Path(__file__).resolve().parents[2]
+    script = root / "scripts" / "ci" / "check_layer6_wrapper_drift.py"
+    result = subprocess.run([sys.executable, str(script)], capture_output=True, text=True, cwd=root)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_layer6_wrapper_manifest_covers_service_tree() -> None:
     root = Path(__file__).resolve().parents[2]
     config = root / "scripts" / "mirrored_files.json"
-    mirrored = json.loads(config.read_text())["mirrored_pairs"]
+    wrapper_entries = json.loads(config.read_text())["wrapper_files"]
 
-    by_pair = {(item["canonical"], item["mirror"]) for item in mirrored}
-
-    required = {
-        ("value_fabric/layer6/api/main.py", "services/layer6-benchmarks/src/api/main.py"),
-        ("value_fabric/layer6/api/routes/benchmarks.py", "services/layer6-benchmarks/src/api/routes/benchmarks.py"),
-        ("value_fabric/layer6/api/routes/system.py", "services/layer6-benchmarks/src/api/routes/system.py"),
-        ("value_fabric/layer6/repositories/benchmark_repository.py", "services/layer6-benchmarks/src/repositories/benchmark_repository.py"),
-        ("value_fabric/layer6/models/benchmark_dataset.py", "services/layer6-benchmarks/src/models/benchmark_dataset.py"),
-        ("value_fabric/layer6/database.py", "services/layer6-benchmarks/src/database.py"),
+    declared_paths = {item["path"] for item in wrapper_entries}
+    service_paths = {
+        path.relative_to(root).as_posix()
+        for path in (root / "services" / "layer6-benchmarks" / "src").rglob("*.py")
     }
 
-    missing = required - by_pair
-    assert not missing, f"Layer 6 critical mirror mappings missing: {sorted(missing)}"
+    assert declared_paths == service_paths, (
+        "Layer 6 wrapper manifest must cover the full service-local wrapper tree.\n"
+        f"Declared only: {sorted(declared_paths - service_paths)}\n"
+        f"Undeclared files: {sorted(service_paths - declared_paths)}"
+    )
+
+
+def test_layer6_wrapper_manifest_targets_canonical_modules() -> None:
+    root = Path(__file__).resolve().parents[2]
+    config = root / "scripts" / "mirrored_files.json"
+    wrapper_entries = json.loads(config.read_text())["wrapper_files"]
+
+    invalid = [
+        item["module"]
+        for item in wrapper_entries
+        if not item["module"].startswith("value_fabric.layer6")
+    ]
+    assert not invalid, f"Layer 6 wrapper manifest contains non-canonical targets: {invalid}"

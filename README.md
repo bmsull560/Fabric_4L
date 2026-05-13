@@ -159,6 +159,12 @@ Domain/runtime packages (exact paths):
 - `value_fabric/layer6/`
 - `value_fabric/shared/`
 
+### Layer 6 contributor rule
+
+Place all Layer 6 runtime implementation changes in `value_fabric/layer6/`.
+
+Treat `services/layer6-benchmarks/src/` as a compatibility wrapper tree only. If you add a new Layer 6 module, add the matching wrapper entry to `scripts/mirrored_files.json` and keep the service file to the generated two-line re-export form.
+
 ## Core concepts
 
 - **Contracts** — All tool schemas and API shapes live in `contracts/`. They are the source of truth.

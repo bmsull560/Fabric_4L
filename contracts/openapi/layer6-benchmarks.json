@@ -9,21 +9,18 @@
     "/health": {
       "get": {
         "tags": [
-          "system"
+          "health"
         ],
         "summary": "Health Check",
         "operationId": "health_check_health_get",
         "responses": {
           "200": {
-            "description": "Service health payload",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
             }
-          },
-          "503": {
-            "description": "Service unavailable"
           }
         }
       }
@@ -34,7 +31,7 @@
           "system"
         ],
         "summary": "Readiness Check",
-        "description": "Standard readiness contract for orchestration and probes.",
+        "description": "Dependency readiness contract for orchestration and probes.",
         "operationId": "readiness_check_ready_get",
         "responses": {
           "200": {

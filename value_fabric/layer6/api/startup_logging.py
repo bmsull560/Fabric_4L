@@ -6,6 +6,8 @@ import logging
 import os
 from typing import Any
 
+from ..settings import get_layer6_settings
+
 LOGGER = logging.getLogger("layer6.startup")
 
 
@@ -26,9 +28,20 @@ def emit_startup_metadata(*, service: str, version: str, build_sha: str, config:
     )
 
 
-def runtime_metadata_from_env() -> dict[str, str]:
+def runtime_metadata_from_env(default_version: str = "dev") -> dict[str, str]:
+    settings = get_layer6_settings()
     return {
-        "service": os.getenv("LAYER6_SERVICE_NAME", "layer6-benchmarks"),
-        "version": os.getenv("LAYER6_VERSION", "dev"),
-        "build_sha": os.getenv("LAYER6_BUILD_SHA", "unknown"),
+        "service": settings.layer6_service_name,
+        "version": (
+            settings.layer6_version
+            or os.getenv("APP_VERSION")
+            or os.getenv("VERSION")
+            or default_version
+        ),
+        "build_sha": (
+            settings.layer6_build_sha
+            or os.getenv("BUILD_SHA")
+            or os.getenv("GIT_SHA")
+            or "unknown"
+        ),
     }

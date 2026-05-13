@@ -1,8 +1,12 @@
-"""Redirect shim: value_fabric.layer1.* -> services/layer1-ingestion/src/*.
+"""Canonical Layer 1 import namespace.
 
-Canonical Layer 1 code lives exclusively in ``services/layer1-ingestion/src/``.
-This shim appends that directory to ``__path__`` so that
-``import value_fabric.layer1.adapters.base`` resolves to the canonical tree.
+Layer 1 callers must import runtime modules through ``value_fabric.layer1.*``.
+During the runtime-path migration, this package still appends the
+service-wrapper tree at ``services/layer1-ingestion/src`` to ``__path__`` so
+canonical imports continue to resolve while modules move under this namespace.
+
+Keep service-local imports compatibility-only. New runtime callers should not
+import directly from ``services/layer1-ingestion/src``.
 """
 
 from __future__ import annotations

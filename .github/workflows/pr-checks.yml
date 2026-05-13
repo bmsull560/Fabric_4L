@@ -183,6 +183,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect changed files
+        if: github.event_name == 'pull_request'
+        id: governance-changed-files
+        uses: tj-actions/changed-files@44f58c6df7a7d39a250c8bca2f8f4a8c07c9a0d6 # v46
+
       - name: Verify required policy and runbook docs exist
         run: |
           set -euo pipefail
@@ -253,6 +258,13 @@ jobs:
 
           print("Phase 3 API evolution gate passed for enhancement PR.")
           PY
+
+      - name: Enforce PR governance impact fields
+        if: github.event_name == 'pull_request'
+        env:
+          CHANGED_FILES: ${{ steps.governance-changed-files.outputs.all_changed_files }}
+        run: |
+          python scripts/ci/check_pr_governance_fields.py
 
 
       - name: Validate docs claim verification map

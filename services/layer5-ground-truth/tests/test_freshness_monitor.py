@@ -4,6 +4,7 @@ Tests for the Freshness Monitoring service.
 
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from layer5_ground_truth.models.truth_object import (
     TruthStatus,
     ValidationEvent,
 )
+from layer5_ground_truth.database import _mark_session_tenant_bypass
 from layer5_ground_truth.services.freshness_monitor import (
     FreshnessMonitor,
     check_freshness,
@@ -30,6 +32,7 @@ def monitor():
 async def clean_truth_objects(db: AsyncSession):
     """Clean up TruthObjects before each test to ensure isolation."""
     from sqlalchemy import text
+    _mark_session_tenant_bypass(db, reason="test_fixture")
     await db.execute(text("DELETE FROM truth_objects"))
     await db.flush()
     yield
@@ -237,6 +240,9 @@ class TestFreshnessMonitor:
         assert first["marked_stale"] == 1
         assert second["marked_stale"] == 0
 
+        await db.refresh(expired_truth)
+        assert expired_truth.is_stale is True
+
         from sqlalchemy import select as sa_select
 
         events_result = await db.execute(
@@ -244,6 +250,42 @@ class TestFreshnessMonitor:
         )
         events = events_result.scalars().all()
         assert len(events) == 1
+
+    async def test_check_and_mark_stale_is_idempotent_in_back_to_back_unit_flow(
+        self,
+        monitor: FreshnessMonitor,
+    ) -> None:
+        """Two immediate passes should emit a stale transition event only once."""
+        truth = TruthObject(
+            claim="Unit idempotency",
+            claim_type=ClaimType.OTHER.value,
+            confidence=0.7,
+            status=TruthStatus.SUPPORTED.value,
+            maturity_level=2,
+            is_stale=False,
+        )
+        truth.id = UUID("12121212-1212-1212-1212-121212121212")
+        truth.tenant_id = UUID("00000000-0000-0000-0000-000000000001")
+        truth.sources = []
+        truth.expires_at = datetime.now(UTC) - timedelta(days=2)
+
+        first_select = Mock()
+        first_select.scalars.return_value.all.return_value = [truth]
+        second_select = Mock()
+        second_select.scalars.return_value.all.return_value = []
+        first_update = Mock(rowcount=1)
+
+        db = Mock(spec=AsyncSession)
+        db.execute = AsyncMock(side_effect=[first_select, first_update, second_select])
+        db.add = Mock()
+
+        first = await monitor.check_and_mark_stale(db)
+        second = await monitor.check_and_mark_stale(db)
+
+        assert first["marked_stale"] == 1
+        assert second["marked_stale"] == 0
+        db.add.assert_called_once()
+
     async def test_list_stale_truths(
         self,
         db: AsyncSession,

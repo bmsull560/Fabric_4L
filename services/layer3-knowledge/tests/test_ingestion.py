@@ -1,9 +1,63 @@
 """Tests for RDF ingestion pipeline."""
 
+from types import SimpleNamespace
+
 import pytest
 from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
-from value_fabric.layer3.ingestion import Neo4jLoader
+from value_fabric.layer3.ingestion import Neo4jLoader, RDFLoadError
+from value_fabric.layer3.ingestion.neo4j_loader import (
+    TenantValidationError,
+    validate_ingestion_tenant_id,
+)
+
+
+TEST_TENANT_ID = "12345678-1234-1234-1234-123456789abc"
+TEST_SETTINGS = SimpleNamespace(
+    neo4j_database="neo4j",
+    use_apoc=False,
+    embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+)
+
+
+class _FakeResult:
+    def __init__(self, loaded: int):
+        self._loaded = loaded
+
+    async def single(self):
+        return {"loaded": self._loaded}
+
+
+class _FakeSession:
+    def __init__(self):
+        self.calls: list[tuple[str, dict]] = []
+
+    async def run(self, query, params):
+        self.calls.append((query, params))
+        if "entities" in params:
+            return _FakeResult(len(params["entities"]))
+        if "relationships" in params:
+            return _FakeResult(len(params["relationships"]))
+        return _FakeResult(0)
+
+
+class _FakeSessionContext:
+    def __init__(self, session: _FakeSession):
+        self._session = session
+
+    async def __aenter__(self):
+        return self._session
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class _FakeDriver:
+    def __init__(self, session: _FakeSession):
+        self._session = session
+
+    def session(self, database=None):
+        return _FakeSessionContext(self._session)
 
 
 @pytest.fixture
@@ -26,7 +80,7 @@ def sample_rdf_graph():
     g.add((uc, VF.description, Literal("Automated AP processing")))
 
     # Add relationship
-    g.add((cap, VF.ENABLES, uc))
+    g.add((cap, VF.enables, uc))
 
     return g
 
@@ -34,7 +88,7 @@ def sample_rdf_graph():
 @pytest.mark.asyncio
 async def test_extract_entities_from_rdf(sample_rdf_graph):
     """Test entity extraction from RDF graph."""
-    loader = Neo4jLoader()
+    loader = Neo4jLoader(settings=TEST_SETTINGS)
 
     entities = loader._extract_entities_from_rdf(sample_rdf_graph)
 
@@ -51,12 +105,12 @@ async def test_extract_entities_from_rdf(sample_rdf_graph):
 @pytest.mark.asyncio
 async def test_extract_relationships_from_rdf(sample_rdf_graph):
     """Test relationship extraction from RDF graph."""
-    loader = Neo4jLoader()
+    loader = Neo4jLoader(settings=TEST_SETTINGS)
 
     relationships = loader._extract_relationships_from_rdf(sample_rdf_graph)
 
     assert len(relationships) == 1
-    assert relationships[0]["predicate"] == "ENABLES"
+    assert relationships[0]["predicate"] == "enables"
     assert "cap-1" in relationships[0]["source_id"]
     assert "uc-1" in relationships[0]["target_id"]
 
@@ -73,7 +127,7 @@ async def test_load_turtle_string():
         vf:confidence "0.9"^^xsd:float .
     '''
 
-    Neo4jLoader()
+    Neo4jLoader(settings=TEST_SETTINGS)
 
     # This would require a real Neo4j instance
     # For unit tests, we just verify parsing works
@@ -84,4 +138,105 @@ async def test_load_turtle_string():
         assert len(g) > 0
     except Exception as e:
         pytest.fail(f"Turtle parsing failed: {e}")
+
+
+def test_validate_ingestion_tenant_id_rejects_missing_or_empty():
+    with pytest.raises(TenantValidationError, match="tenant_id is required"):
+        validate_ingestion_tenant_id(None)
+
+    with pytest.raises(TenantValidationError, match="tenant_id is required"):
+        validate_ingestion_tenant_id("   ")
+
+
+def test_validate_ingestion_tenant_id_rejects_malformed():
+    with pytest.raises(TenantValidationError, match="Invalid tenant_id format"):
+        validate_ingestion_tenant_id("system")
+
+    with pytest.raises(TenantValidationError, match="Invalid tenant_id format"):
+        validate_ingestion_tenant_id("not-a-uuid")
+
+
+@pytest.mark.asyncio
+async def test_load_rdf_graph_rejects_missing_tenant_id(sample_rdf_graph):
+    loader = Neo4jLoader(settings=TEST_SETTINGS)
+
+    with pytest.raises(TenantValidationError, match="tenant_id is required"):
+        await loader.load_rdf_graph(sample_rdf_graph, source_id="source-1", extraction_job_id="job-1")
+
+
+@pytest.mark.asyncio
+async def test_load_turtle_string_rejects_invalid_tenant_id():
+    loader = Neo4jLoader(settings=TEST_SETTINGS)
+    turtle_data = """
+    @prefix vf: <https://valuefabric.io/ontology/> .
+    <https://valuefabric.io/entity/cap-1> a vf:Capability ;
+        vf:name "Test Capability" .
+    """
+
+    with pytest.raises(RDFLoadError, match="Invalid tenant_id format"):
+        await loader.load_turtle_string(
+            turtle_data,
+            source_id="source-1",
+            extraction_job_id="job-1",
+            tenant_id="system",
+        )
+
+
+@pytest.mark.asyncio
+async def test_batch_loaders_reject_missing_tenant_id():
+    loader = Neo4jLoader(settings=TEST_SETTINGS)
+    session = _FakeSession()
+
+    with pytest.raises(TenantValidationError, match="tenant_id is required"):
+        await loader._load_entities_batch(
+            session,
+            "Capability",
+            [{"id": "cap-1", "name": "Capability One"}],
+            "source-1",
+            "job-1",
+            None,
+        )
+
+    with pytest.raises(TenantValidationError, match="tenant_id is required"):
+        await loader._load_relationships_batch(
+            session,
+            {"enables": [{"source_id": "cap-1", "target_id": "uc-1", "predicate": "enables"}]},
+            "source-1",
+            "job-1",
+            None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_load_rdf_graph_persists_valid_tenant_on_entities_and_relationships(sample_rdf_graph):
+    session = _FakeSession()
+    loader = Neo4jLoader(driver=_FakeDriver(session), settings=TEST_SETTINGS)
+
+    stats = await loader.load_rdf_graph(
+        sample_rdf_graph,
+        source_id="source-1",
+        extraction_job_id="job-1",
+        tenant_id=TEST_TENANT_ID,
+    )
+
+    assert stats["entities_loaded"] >= 2
+    assert stats["relationships_loaded"] >= 1
+    assert len(session.calls) >= 3
+
+    entity_calls = [params for _, params in session.calls if "entities" in params]
+    relationship_calls = [params for _, params in session.calls if "relationships" in params]
+
+    assert entity_calls
+    assert relationship_calls
+    assert all(
+        entity["tenant_id"] == TEST_TENANT_ID
+        for call in entity_calls
+        for entity in call["entities"]
+    )
+    assert all(
+        rel["tenant_id"] == TEST_TENANT_ID
+        for call in relationship_calls
+        for rel in call["relationships"]
+    )
+    assert all(call["tenant_id"] == TEST_TENANT_ID for call in relationship_calls)
 

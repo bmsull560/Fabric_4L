@@ -1,4 +1,4 @@
-from src.api.main import app
+from value_fabric.layer6.api.main import app
 
 
 def test_wrapper_main_exposes_fastapi_app() -> None:
@@ -8,4 +8,4 @@ def test_wrapper_main_exposes_fastapi_app() -> None:
 def test_wrapper_routes_registered() -> None:
     paths = {route.path for route in app.routes}
     assert "/health" in paths
-    assert any(path.startswith("/api/v1/benchmarks") for path in paths)
+    assert any(path.startswith("/v1/benchmarks") for path in paths)

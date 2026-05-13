@@ -1657,10 +1657,15 @@ async def get_sync_status(
 @app.delete("/v1/ingest/{source_id}")
 async def delete_source(
     source_id: str,
+    request: Request,
     sync_manager=Depends(get_sync_manager),
 ):
     """Delete all data from a source."""
-    stats = await sync_manager.delete_source(source_id)
+    tenant_id = _require_tenant_id_from_context(
+        request,
+        missing_tenant_detail="tenant_id is required for source deletion",
+    )
+    stats = await sync_manager.delete_source(source_id, tenant_id=tenant_id)
     return DeleteSourceResult.model_validate({
         "status": "deleted",
         "source_id": source_id,
