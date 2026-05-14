@@ -1,4 +1,3 @@
-import { TuskDrift } from "./tuskDriftInit";
 import express from "express";
 import { createServer } from "http";
 import path from "path";
@@ -34,7 +33,6 @@ async function startServer() {
   const port = process.env.PORT || 3000;
 
   server.listen(port, () => {
-    TuskDrift.markAppAsReady();
     console.log(`Server running on http://localhost:${port}/`);
   });
 
