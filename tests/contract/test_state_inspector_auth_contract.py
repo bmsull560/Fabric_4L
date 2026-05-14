@@ -1,13 +1,14 @@
 """Auth dependency contract tests for state inspector routes.
 
-Parses the state_inspector source file using the AST to avoid importing
-Layer 4 modules, which is necessary because:
-1. The ``value_fabric.layer4`` namespace shim directory was removed.
-2. Importing through the canonical ``services/layer4-agents/src/`` path
-triggers relative import errors when loaded outside the package context.
+Uses AST parsing to verify the auth dependency contract without importing
+Layer 4 modules. A full runtime import of ``value_fabric.layer4`` requires
+the complete service dependency stack (redis, sqlalchemy, celery, etc.) which
+is not available in the test environment without all service deps installed.
 
-TODO: Revert to regular imports once the value_fabric namespace package
-is fully replaced by a stable canonical import path.
+The AST approach is intentional and sufficient for this contract: it verifies
+the source-level auth wiring (``Depends(require_authenticated)``) without
+needing a running service. This should be replaced with a runtime import test
+once the full service dep stack is available in CI.
 """
 
 from __future__ import annotations
@@ -16,9 +17,6 @@ import ast
 from pathlib import Path
 
 import pytest
-
-pytestmark = pytest.mark.skip(
-    reason="value_fabric import path broken: package missing or SQLAlchemy duplicate table issue. Pre-existing; tracked in signoff report blocker #1/#9.")
 
 def _get_analyze_errors_ast_node():
     src = (
@@ -32,7 +30,7 @@ def _get_analyze_errors_ast_node():
     )
     tree = ast.parse(src.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef) and node.name == "analyze_errors":
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "analyze_errors":
             return node
     pytest.fail("analyze_errors not found in state_inspector.py")
 
