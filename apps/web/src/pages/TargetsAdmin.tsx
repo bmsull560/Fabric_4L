@@ -39,6 +39,7 @@ import {
   useExecuteTarget, useBatchTargetOperation,
   type TargetSummary, type TargetFilters, type TargetStatus,
 } from '@/hooks/useTargets';
+import { useIngestionJobList } from '@/hooks/useIngestion';
 import { TargetDetailPanel } from './TargetsAdmin.detail';
 import { TargetFormPanel } from './TargetsAdmin.form';
 
@@ -367,7 +368,7 @@ function TargetFilterBar({ filters, onChange, onRefresh, isRefreshing }: FilterB
 
 function ScheduledTab({ onRowClick }: { onRowClick: (t: TargetSummary) => void }) {
   const { data, isLoading } = useTargets({ limit: 50, sortBy: 'updated_at', sortOrder: 'asc' });
-  const scheduled = data?.targets.filter(t => t.status === 'ACTIVE') ?? [];
+  const scheduled = data?.targets.filter(t => t.schedule?.enabled === true) ?? [];
   if (isLoading) return <div className="p-4 space-y-2">{[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>;
   if (scheduled.length === 0) return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -424,23 +425,27 @@ function ComplianceFailuresTab({ onRowClick }: { onRowClick: (t: TargetSummary) 
 // ── Events Tab ────────────────────────────────────────────────────────────────
 
 function EventsTab() {
-  const { data, isLoading } = useTargets({ limit: 50, sortBy: 'updated_at', sortOrder: 'desc' });
+  const { data, isLoading } = useIngestionJobList({ limit: 50, sortBy: 'created_at', sortOrder: 'desc' });
+  const jobs = data?.jobs ?? [];
   if (isLoading) return <div className="p-4 space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>;
+  if (jobs.length === 0) return (
+    <div className="py-12 text-center text-[13px] text-muted-foreground">No recent events.</div>
+  );
   return (
-    <div className="divide-y divide-border">
-      {(data?.targets ?? []).map(t => (
-        <div key={t.id} className="flex items-center gap-3 px-4 py-3 text-[13px]">
+    <div className="divide-y divide-border overflow-auto">
+      {jobs.map(job => (
+        <div key={job.id} className="flex items-center gap-3 px-4 py-3 text-[13px]">
           <Activity size={14} className="text-muted-foreground shrink-0" />
-          <span className="font-medium truncate flex-1">{t.name}</span>
-          <TargetStatusBadge status={t.status} />
+          <span className="font-medium truncate flex-1">{job.domain}</span>
+          <StatusBadge status={job.status} size="sm" />
+          {job.pagesProcessed != null && (
+            <span className="text-muted-foreground text-[12px] hidden sm:block">{job.pagesProcessed} pages</span>
+          )}
           <span className="text-muted-foreground text-[12px] hidden sm:block">
-            {new Date(t.updatedAt).toLocaleString()}
+            {new Date(job.createdAt).toLocaleString()}
           </span>
         </div>
       ))}
-      {data?.targets.length === 0 && (
-        <div className="py-12 text-center text-[13px] text-muted-foreground">No recent events.</div>
-      )}
     </div>
   );
 }

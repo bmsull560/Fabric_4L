@@ -1935,6 +1935,13 @@ export interface components {
             average_execution_time_ms: number;
             /** Tags */
             tags: string[];
+            /** Schedule — null when no schedule is configured */
+            schedule?: {
+                enabled: boolean;
+                cron_expression?: string | null;
+                timezone?: string | null;
+                max_concurrent_jobs?: number | null;
+            } | null;
         };
         /**
          * SourceCategory

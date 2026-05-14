@@ -732,6 +732,7 @@ class ScrapingTargetSummary(BaseModel):
     error_count: int
     average_execution_time_ms: int
     tags: list[str]
+    schedule: dict[str, Any] | None = None
 
 
 class ScrapingTargetDetail(ScrapingTargetSummary):
@@ -1286,6 +1287,7 @@ async def list_targets(
                 error_count=t.error_count,
                 average_execution_time_ms=t.average_execution_time_ms,
                 tags=t.tags or [],
+                schedule=t.schedule,
             )
             for t in targets
         ],
