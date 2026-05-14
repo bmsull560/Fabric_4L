@@ -134,6 +134,19 @@ const SUPPORT_ITEMS: NavItem[] = [
     description: "Prospect setup and onboarding",
   },
   {
+    id: "context-engine",
+    label: "Context Engine",
+    icon: Target,
+    path: "/context/targets",
+    tier: "admin",
+    description: "Manage scraping targets and data sources",
+    children: [
+      { id: "targets", label: "Targets", path: "/context/targets", tier: "admin" },
+      { id: "sources", label: "Sources", path: "/context/sources", tier: "admin" },
+      { id: "ingestion-jobs", label: "Ingestion Jobs", path: "/context/ingestion/jobs", tier: "advanced" },
+    ],
+  },
+  {
     id: "settings",
     label: "Settings (admin only)",
     icon: Settings,
@@ -174,6 +187,7 @@ function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
     "value-case": "Value Case",
     studio: "Value Studio",
     context: "Context Engine",
+    targets: "Targets",
     deliverables: "Deliverables",
     governance: "Governance",
     settings: "Settings",

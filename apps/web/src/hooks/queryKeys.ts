@@ -24,6 +24,7 @@ import type {
 } from "./useGraphQuery";
 import type { AuditLogFilter } from "./useProvenance";
 import type { SourceFilters } from "./useSources";
+import type { TargetFilters } from "./useTargets";
 import type { ProductListFilters } from "./useProducts";
 import type { CaseStudyListFilters } from "./useEvidence";
 import type { CompetitorListFilters } from "./useCompetitiveIntel";
@@ -61,6 +62,17 @@ export const QK = {
       ["ingestion", "list", stableKey(filters)] as const,
     detail: (id: string) => ["ingestion", "detail", id] as const,
     logs: (id: string) => ["ingestion", "logs", id] as const,
+  },
+
+  // Layer 1 — Targets (Scraping Target Configuration)
+  targets: {
+    layerTag: QUERY_LAYER_TAGS.layer1,
+    all: ["targets"] as const,
+    list: (filters: TargetFilters) =>
+      ["targets", "list", stableKey(filters)] as const,
+    detail: (id: string) => ["targets", "detail", id] as const,
+    stats: ["targets", "stats"] as const,
+    jobs: (targetId: string) => ["targets", "jobs", targetId] as const,
   },
 
   // Layer 1 — Sources (Data Source Configuration)

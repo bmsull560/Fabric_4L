@@ -56,6 +56,7 @@ export type RouteState =
   | 'extraction'
   | 'integrations'
   | 'sources'
+  | 'targets'
   // Discover
   | 'opportunities'
   | 'opportunity-scan'
@@ -177,6 +178,7 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
   'extraction': { path: '/context/extraction' },
   'integrations': { path: '/context/integrations' },
   'sources': { path: '/context/sources' },
+  'targets': { path: '/context/targets' },
 
   // Discover
   'opportunities': { path: '/discover/opportunities' },
