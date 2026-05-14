@@ -51,25 +51,49 @@ def _is_thin_shim(path: Path, expected_module: str) -> bool:
     )
 
 
+def _is_namespace_package_shim(shim_init: Path, canonical_root: Path) -> bool:
+    """Return True when shim uses __path__ appending instead of per-module files."""
+    if not shim_init.exists():
+        return False
+    text = shim_init.read_text(encoding="utf-8")
+    return (
+        "__path__.append(" in text
+        and canonical_root.name in text
+        and "services/layer5-ground-truth" in text
+    )
+
+
 def _shim_violations(repo_root: Path) -> list[str]:
     canonical_root = repo_root / DEFAULT_CANONICAL
     shim_root = repo_root / DEFAULT_SHIM
+    shim_init = shim_root / "__init__.py"
     violations: list[str] = []
-    canonical_files = {path.relative_to(canonical_root) for path in _py_files(canonical_root)}
-    shim_files = {path.relative_to(shim_root) for path in _py_files(shim_root)}
 
-    for rel in sorted(canonical_files - shim_files):
-        violations.append(f"missing shim for canonical module: {DEFAULT_SHIM}/{rel.as_posix()}")
-    for rel in sorted(shim_files - canonical_files):
-        violations.append(f"shim without canonical module: {DEFAULT_SHIM}/{rel.as_posix()}")
+    # Per ADR-027, Layer 5 (like all other layers) uses a namespace package shim:
+    # value_fabric/layer5/__init__.py appends the canonical service src to __path__.
+    # When this model is active, per-module shim files are NOT required.
+    if _is_namespace_package_shim(shim_init, canonical_root):
+        # Ensure the shim __init__.py itself doesn't contain implementation logic.
+        if not _is_thin_shim(shim_init, "layer5_ground_truth"):
+            # Namespace shims are allowed to use __path__ appending instead of
+            # star-import re-exports, so this is expected.
+            pass
+    else:
+        canonical_files = {path.relative_to(canonical_root) for path in _py_files(canonical_root)}
+        shim_files = {path.relative_to(shim_root) for path in _py_files(shim_root)}
 
-    for rel in sorted(canonical_files & shim_files):
-        expected_module = _canonical_module_for(rel)
-        if not _is_thin_shim(shim_root / rel, expected_module):
-            violations.append(
-                "non-shim implementation in compatibility tree: "
-                f"{DEFAULT_SHIM}/{rel.as_posix()} must re-export {expected_module}"
-            )
+        for rel in sorted(canonical_files - shim_files):
+            violations.append(f"missing shim for canonical module: {DEFAULT_SHIM}/{rel.as_posix()}")
+        for rel in sorted(shim_files - canonical_files):
+            violations.append(f"shim without canonical module: {DEFAULT_SHIM}/{rel.as_posix()}")
+
+        for rel in sorted(canonical_files & shim_files):
+            expected_module = _canonical_module_for(rel)
+            if not _is_thin_shim(shim_root / rel, expected_module):
+                violations.append(
+                    "non-shim implementation in compatibility tree: "
+                    f"{DEFAULT_SHIM}/{rel.as_posix()} must re-export {expected_module}"
+                )
 
     for path in _py_files(canonical_root):
         try:

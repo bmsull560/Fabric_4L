@@ -8,6 +8,7 @@ import time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+import httpx
 import jwt
 from fastapi import HTTPException, status
 
@@ -175,10 +176,10 @@ def _fetch_jwks_from_url(url: str) -> Optional[Dict[str, Any]]:
     if cached and now < expiry:
         return cached
     try:
-        import urllib.request
-        req = urllib.request.Request(url, headers={"Accept": "application/json"})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            jwks = json.loads(response.read().decode("utf-8"))
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(url, headers={"Accept": "application/json"})
+            response.raise_for_status()
+            jwks = response.json()
             _JWKS_URL_CACHE[url] = jwks
             _JWKS_URL_CACHE_EXPIRY[url] = now + _JWKS_URL_CACHE_TTL_SECONDS
             return jwks
@@ -236,8 +237,6 @@ def _resolve_external_key(header: Dict[str, Any], issuer: str) -> Optional[Any]:
 
 
 def decode_jwt(token: str) -> Optional[TokenClaims]:
-    keyset = _build_keyset()
-    algorithm = keyset["algorithm"]
     tenant_claim = os.getenv("JWT_TENANT_CLAIM", _DEFAULT_TENANT_CLAIM)
     user_claim = os.getenv("JWT_USER_CLAIM", _DEFAULT_USER_CLAIM)
     roles_claim = os.getenv("JWT_ROLES_CLAIM", _DEFAULT_ROLES_CLAIM)
@@ -267,19 +266,6 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             return None
         audience = oidc_audience if oidc_issuer and issuer == oidc_issuer else internal_audience
         expected_issuer = oidc_issuer if oidc_issuer and issuer == oidc_issuer else internal_issuer
-        decode_kwargs: Dict[str, Any] = {
-            "algorithms": [algorithm],
-            "audience": audience,
-            "issuer": expected_issuer,
-            "options": {
-                "require": list(_REQUIRED_REGISTERED_CLAIMS),
-                "verify_exp": True,
-                "verify_aud": True,
-                "verify_iss": True,
-                "verify_iat": True,
-                "verify_nbf": True,
-            },
-        }
 
         if expected_issuer is not None and issuer != expected_issuer:
             logger.debug("Unexpected JWT issuer: %s", issuer)
@@ -290,6 +276,7 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
             logger.debug("JWT kid revoked: %s", kid)
             return None
 
+        payload: Dict[str, Any]
         if expected_issuer == oidc_issuer:
             if header_alg not in _ALLOWED_EXTERNAL_ALGORITHMS:
                 return None
@@ -302,11 +289,33 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
                 algorithms=[header_alg],
                 audience=audience,
                 issuer=expected_issuer,
-                options=decode_kwargs["options"],
+                options={
+                    "require": list(_REQUIRED_REGISTERED_CLAIMS),
+                    "verify_exp": True,
+                    "verify_aud": True,
+                    "verify_iss": True,
+                    "verify_iat": True,
+                    "verify_nbf": True,
+                },
             )
         else:
+            keyset = _build_keyset()
+            algorithm = keyset["algorithm"]
             if header_alg != algorithm:
                 return None
+            decode_kwargs: Dict[str, Any] = {
+                "algorithms": [algorithm],
+                "audience": audience,
+                "issuer": expected_issuer,
+                "options": {
+                    "require": list(_REQUIRED_REGISTERED_CLAIMS),
+                    "verify_exp": True,
+                    "verify_aud": True,
+                    "verify_iss": True,
+                    "verify_iat": True,
+                    "verify_nbf": True,
+                },
+            }
             verify_keys = keyset["verify"]
             if kid and kid in verify_keys:
                 candidates = [verify_keys[kid]]

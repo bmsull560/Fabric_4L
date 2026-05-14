@@ -8,7 +8,7 @@ from typing import Any
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info, generate_latest
 
-from value_fabric.layer6.observability.metrics_contract import metric_spec_map
+from ..observability.metrics_contract import metric_spec_map
 
 try:
     from value_fabric.shared.observability import PathNormalizer

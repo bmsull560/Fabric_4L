@@ -306,9 +306,7 @@ class ROICalculatorWorkflow(BaseWorkflow):
         industry = prospect_data.get("industry", "technology")
         tenant_id = _tenant_id_from_state(state)
 
-        query = get_benchmark_variables_query(industry)
-        if tenant_id:
-            query["parameters"]["tenant_id"] = tenant_id
+        query = get_benchmark_variables_query(industry, tenant_id=tenant_id)
 
         raw = await self.tool_registry.execute("query_graph", query)
 
@@ -365,9 +363,9 @@ class ROICalculatorWorkflow(BaseWorkflow):
         variables = vars_prior.get("variables") or {}
         tenant_id = _tenant_id_from_state(state)
 
-        query = get_value_driver_formulas_query(state.roi_input.value_driver_ids)
-        if tenant_id:
-            query["parameters"]["tenant_id"] = tenant_id
+        query = get_value_driver_formulas_query(
+            state.roi_input.value_driver_ids, tenant_id=tenant_id
+        )
 
         raw = await self.tool_registry.execute("query_graph", query)
 
@@ -381,11 +379,11 @@ class ROICalculatorWorkflow(BaseWorkflow):
         for record in data.get("results", []):
             value_drivers.append(
                 {
-                    "id": record.get("v.id"),
-                    "name": record.get("v.name"),
-                    "category": record.get("v.category"),
-                    "formula": record.get("v.formula"),
-                    "unit": record.get("v.unit", "USD"),
+                    "id": record.get("id"),
+                    "name": record.get("name"),
+                    "category": record.get("category"),
+                    "formula": record.get("formula"),
+                    "unit": record.get("unit", "USD"),
                 }
             )
 
@@ -482,6 +480,9 @@ class ROICalculatorWorkflow(BaseWorkflow):
         if not calc_results:
             return _AggregationResult(error="No calculation results to aggregate").model_dump()
 
+        benchmark_prior = state.output_data.get("fetch_benchmarks", {})
+        benchmarks = benchmark_prior.get("benchmarks") or {}
+
         total_annual_value = sum(r.get("result", 0) for r in calc_results)
 
         vars_prior = state.output_data.get("substitute_vars", {})
@@ -500,9 +501,7 @@ class ROICalculatorWorkflow(BaseWorkflow):
 
         payback_months = None
         if total_annual_value > 0:
-            monthly_value = total_annual_value / 12
-            if monthly_value > 0:
-                payback_months = investment / monthly_value
+            payback_months = investment / (total_annual_value / 12)
 
         npv = -investment
         for year in range(1, NPV_YEARS + 1):
@@ -522,6 +521,8 @@ class ROICalculatorWorkflow(BaseWorkflow):
             "payback_period_months": round(payback_months, 1) if payback_months else None,
             "value_driver_count": len(calc_results),
             "average_confidence": round(avg_confidence, 2),
+            "benchmarks_available": bool(benchmarks),
+            "benchmarks": benchmarks,
         }
 
         return _AggregationResult(

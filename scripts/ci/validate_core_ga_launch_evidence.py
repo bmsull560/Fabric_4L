@@ -103,6 +103,22 @@ NEGATION_HINTS = (
     "remains environment-dependent",
 )
 
+J1_DEEP_EXCEPTION_POLICY_TOKENS = (
+    "## j1 deep secondary-coverage exception process",
+    "j1-golden-path-deep.spec.ts",
+    "pnpm --dir apps/web run test:e2e:golden:j1:deep",
+    "failure summary",
+    "root cause category",
+    "why non-blocking for production readiness",
+    "risk level",
+    "owner",
+    "target remediation date",
+    "link to issue/pr",
+    "evidence j1 backend-integrated canonical p0 still passes",
+    "evidence j11 parallel regression still passes",
+    "code-owner approval acknowledgment",
+)
+
 
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -173,6 +189,17 @@ def main() -> int:
         for token in requirement.required_docs_tokens:
             if token.lower() not in combined_docs.lower():
                 failures.append(f"{requirement.name}: required launch guard text missing: {token!r}")
+
+    register_lower = register.lower()
+    missing_j1_policy = [
+        token for token in J1_DEEP_EXCEPTION_POLICY_TOKENS if token not in register_lower
+    ]
+    if missing_j1_policy:
+        failures.append(
+            "j1_deep_exception_policy: launch-blocker register is missing required "
+            "J1 deep waiver policy tokens: "
+            + ", ".join(missing_j1_policy)
+        )
 
     if not local_artifact_exists(REQUIREMENTS[2]) and "journey-slo-report.json" not in combined_docs:
         failures.append("journey_slo_report: missing SLO file must be named in launch docs")

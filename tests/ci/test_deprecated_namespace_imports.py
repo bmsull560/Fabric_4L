@@ -1,4 +1,6 @@
 import importlib
+import importlib.util
+import sys
 import warnings
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -8,6 +10,7 @@ MODULE_PATH = Path(__file__).resolve().parents[2] / "scripts" / "ci" / "check_de
 SPEC = spec_from_file_location("check_deprecated_namespace_imports", MODULE_PATH)
 check_deprecated_namespace_imports = module_from_spec(SPEC)
 assert SPEC.loader is not None
+sys.modules["check_deprecated_namespace_imports"] = check_deprecated_namespace_imports
 SPEC.loader.exec_module(check_deprecated_namespace_imports)
 
 
@@ -45,15 +48,10 @@ def test_namespace_scanner_allows_baseline_findings(tmp_path) -> None:
     )
 
 
-def test_layer1_shim_emits_deprecation_warning() -> None:
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always", DeprecationWarning)
-        importlib.reload(importlib.import_module("value_fabric.layer1_ingestion"))
-    assert any("deprecated" in str(item.message).lower() for item in caught)
+def test_deleted_namespaces_no_longer_importable() -> None:
+    """Legacy namespace packages were removed; importing them must fail."""
+    import importlib
 
-
-def test_layer3_shim_emits_deprecation_warning() -> None:
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always", DeprecationWarning)
-        importlib.reload(importlib.import_module("value_fabric.layer3_knowledge"))
-    assert any("deprecated" in str(item.message).lower() for item in caught)
+    for dead in ("value_fabric.layer1_ingestion", "value_fabric.layer3_knowledge"):
+        spec = importlib.util.find_spec(dead)
+        assert spec is None, f"Expected {dead} to be unimportable after cleanup"

@@ -24,6 +24,7 @@ authentication where required (some endpoints, e.g. ``/health``, are public).
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import inspect
@@ -530,7 +531,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             token_str = auth_header[7:]
             try:
-                claims = decode_jwt(token_str)
+                claims = await asyncio.to_thread(decode_jwt, token_str)
             except HTTPException:
                 # ExpiredSignatureError → propagate 401 to client
                 raise
@@ -592,7 +593,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         session_token = request.cookies.get(SESSION_COOKIE_NAME)
         if session_token:
             try:
-                claims = decode_jwt(session_token)
+                claims = await asyncio.to_thread(decode_jwt, session_token)
             except HTTPException:
                 raise
             except Exception as exc:

@@ -74,6 +74,43 @@ Until the remaining four journeys have retained JUnit/trace/video/screenshot art
 
 Any accepted P0 or P1 risk must include the approving owner, expiration date, customer impact statement, rollback plan, monitoring plan, and explicit scope reduction if the missing evidence affects a launch-critical capability. P2 items require owner and target date but do not require executive waiver.
 
+## J1 Deep Secondary-Coverage Exception Process
+
+`J1` backend-integrated remains the canonical P0 gate. `J1` deep is secondary coverage and can be treated as non-blocking only through this explicit artifact process plus code-owner approval.
+
+### Required artifact entry (must be present in this register)
+
+Each non-blocking `J1` deep exception entry must include all fields below:
+
+- failing spec name (`j1-golden-path-deep.spec.ts`)
+- exact command (`pnpm --dir apps/web run test:e2e:golden:j1:deep`)
+- failure summary
+- root cause category
+- why non-blocking for production readiness
+- risk level
+- owner
+- target remediation date
+- link to issue/PR
+- evidence J1 backend-integrated canonical P0 still passes
+- evidence J11 parallel regression still passes
+- code-owner approval acknowledgment
+
+### Disallowed non-blocking categories
+
+`J1` deep failures are never non-blocking when related to:
+
+- auth bypass
+- tenant isolation
+- data corruption
+- broken canonical route contracts
+- production-only dependency failure
+- missing backend integration
+- security, privacy, or compliance risk
+
+### PR approval rule
+
+Approval authority is repo maintainers/code owners, but approval is invalid unless the PR explicitly references the updated blocker-register entry.
+
 
 ## Evidence Authority and Reports Policy
 

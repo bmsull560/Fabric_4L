@@ -10,7 +10,6 @@ from urllib.parse import urlencode
 
 import httpx
 import jwt
-from jwt import PyJWKClient
 
 from .permissions import Role
 
@@ -159,29 +158,37 @@ class OIDCClient:
         cache_key = issuer_url.rstrip("/")
         cached = _JWKS_CACHE.get(cache_key)
 
-        if cached and (now - cached["fetched_at"]) < _JWKS_TTL_SECONDS:
-            jwks_data = cached["jwks"]
-        else:
+        async def _fetch() -> Dict[str, Any]:
             metadata = await self.discover(cache_key)
             jwks_uri = self._get_jwks_uri(cache_key, metadata)
             response = await self._http_client.get(jwks_uri)
             response.raise_for_status()
             jwks_data = response.json()
             _JWKS_CACHE[cache_key] = {"jwks": jwks_data, "fetched_at": now}
+            return jwks_data
 
-        # Use PyJWKClient to select the right key
-        PyJWKClient(uri="", cache_keys=False)
-        # PyJWKClient expects a URI it can fetch; we bypass by feeding the keys directly
-        # but the public API is limited. Instead, parse manually.
+        if cached and (now - cached["fetched_at"]) < _JWKS_TTL_SECONDS:
+            jwks_data = cached["jwks"]
+        else:
+            jwks_data = await _fetch()
+
         keys = jwks_data.get("keys", [])
         if not keys:
             raise jwt.InvalidTokenError("No JWKS keys found")
 
-        for key in keys:
-            if kid is None or key.get("kid") == kid:
-                return jwt.api_jwk.PyJWK(key)
+        if kid is not None:
+            for key in keys:
+                if key.get("kid") == kid:
+                    return jwt.api_jwk.PyJWK(key)
+            # Key not in cached JWKS — refresh once before failing
+            jwks_data = await _fetch()
+            keys = jwks_data.get("keys", [])
+            for key in keys:
+                if key.get("kid") == kid:
+                    return jwt.api_jwk.PyJWK(key)
+            raise jwt.InvalidTokenError(f"JWKS key with kid={kid} not found")
 
-        # Fallback: return first key if kid not specified and no match
+        # kid is None: return first usable key
         return jwt.api_jwk.PyJWK(keys[0])
 
     async def verify_id_token(
@@ -189,6 +196,8 @@ class OIDCClient:
         id_token: str,
         issuer_url: str,
         client_id: str,
+        nonce: Optional[str] = None,
+        max_iat_age_seconds: int = 600,
     ) -> dict:
         """Verify an OIDC id_token signature and claims.
 
@@ -196,14 +205,10 @@ class OIDCClient:
         Raises jwt.InvalidTokenError or jwt.ExpiredSignatureError on failure.
         """
         # SECURITY: Two-step OIDC token verification per RFC 7517/7519
-        # Step 1: Unverified decode to extract key ID (kid) for key lookup
+        # Step 1: Extract key ID (kid) from the unverified header for key lookup
         # Step 2: Verified decode with fetched signing key validates signature and claims
-        # nosec B105 - unverified decode is immediately followed by verified decode
-        unverified = jwt.decode(
-            id_token,
-            options={"verify_signature": False, "verify_exp": False},
-        )
-        kid = unverified.get("kid")
+        header = jwt.get_unverified_header(id_token)
+        kid = header.get("kid")
         signing_key = await self.get_signing_key(issuer_url, kid=kid)
 
         # Step 2: Verified decode with proper signature and claim validation
@@ -215,6 +220,18 @@ class OIDCClient:
             audience=client_id,
             options={"verify_exp": True},
         )
+
+        if nonce is not None and payload.get("nonce") != nonce:
+            raise jwt.InvalidTokenError("nonce mismatch")
+
+        iat = payload.get("iat")
+        if iat is not None:
+            import datetime
+            now = datetime.datetime.now(datetime.timezone.utc)
+            iat_dt = datetime.datetime.fromtimestamp(iat, tz=datetime.timezone.utc)
+            if iat_dt < now - datetime.timedelta(seconds=max_iat_age_seconds):
+                raise jwt.InvalidTokenError("iat is too old")
+
         return payload
 
     def build_authorize_url(

@@ -16,6 +16,9 @@ on:
       - 'canonical-paths.yaml'
       - 'scripts/ci/repo_hygiene.py'
       - 'scripts/ci/legacy_path_guard.py'
+      - 'scripts/ci/check_layer1_imports.py'
+      - 'scripts/ci/check_layer56_shims.py'
+      - 'scripts/ci/check_deprecated_namespace_imports.py'
   push:
     branches: [main]
     paths:
@@ -27,6 +30,9 @@ on:
       - 'canonical-paths.yaml'
       - 'scripts/ci/repo_hygiene.py'
       - 'scripts/ci/legacy_path_guard.py'
+      - 'scripts/ci/check_layer1_imports.py'
+      - 'scripts/ci/check_layer56_shims.py'
+      - 'scripts/ci/check_deprecated_namespace_imports.py'
   workflow_dispatch:
 
 concurrency:

@@ -10,20 +10,16 @@ describe("resolveBreadcrumbs", () => {
   });
 
   it("uses progression labels across the full workflow", () => {
-    expect(resolveBreadcrumbs("/intelligence/acct-123/hypotheses").map((c) => c.label)).toEqual([
-      "Intelligence",
+    expect(resolveBreadcrumbs("/hypothesis/acct-123/hypothesis").map((c) => c.label)).toEqual([
+      "Hypothesis",
       "Opportunities / Value Paths",
     ]);
-    expect(resolveBreadcrumbs("/intelligence/acct-123/drivers").map((c) => c.label)).toEqual([
-      "Intelligence",
+    expect(resolveBreadcrumbs("/drivers/acct-123").map((c) => c.label)).toEqual([
+      "Driver Tree",
       "Driver Tree",
     ]);
-    expect(resolveBreadcrumbs("/intelligence/acct-123/evidence").map((c) => c.label)).toEqual([
-      "Intelligence",
-      "Evidence",
-    ]);
-    expect(resolveBreadcrumbs("/intelligence/acct-123/roi").map((c) => c.label)).toEqual([
-      "Intelligence",
+    expect(resolveBreadcrumbs("/calculator/acct-123/roi").map((c) => c.label)).toEqual([
+      "Calculator",
       "Scenarios",
     ]);
     expect(resolveBreadcrumbs("/value-case/acct-123").map((c) => c.label)).toEqual([
@@ -51,15 +47,15 @@ describe("resolveBreadcrumbs", () => {
 
   it("preserves old deep links via breadcrumb aliases", () => {
     expect(resolveBreadcrumbs("/hypothesis/acct-123").map((c) => c.label)).toEqual([
-      "Intelligence",
+      "Hypothesis",
       "Opportunities / Value Paths",
     ]);
     expect(resolveBreadcrumbs("/drivers/acct-123/evidence").map((c) => c.label)).toEqual([
-      "Intelligence",
-      "Evidence",
+      "Driver Tree",
+      "Driver Tab",
     ]);
     expect(resolveBreadcrumbs("/calculator/acct-123").map((c) => c.label)).toEqual([
-      "Intelligence",
+      "Calculator",
       "Scenarios",
     ]);
   });

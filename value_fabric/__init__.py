@@ -32,8 +32,6 @@ __path__ = pkgutil.extend_path(__path__, __name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _append_namespace_root(_REPO_ROOT / "packages" / "shared" / "src" / "value_fabric", prioritize=True)
-_append_namespace_root(_REPO_ROOT / "services" / "layer4-agents" / "src")
-_append_namespace_root(_REPO_ROOT / "services" / "layer3-knowledge" / "src")
-_append_namespace_root(_REPO_ROOT / "services" / "layer2-extraction" / "src")
-_append_namespace_root(_REPO_ROOT / "services" / "layer1-ingestion" / "src")
-_append_namespace_root(_REPO_ROOT / "services" / "layer6-benchmarks" / "src")
+# Per ADR-027, each layer's value_fabric/layerX/__init__.py shim appends its own
+# service source path via __path__.append(). Do not duplicate those registrations
+# here; they create redundant entries and mask shim-health problems.

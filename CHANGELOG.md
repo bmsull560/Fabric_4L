@@ -7,6 +7,17 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased] — ADR-027 Canonical Path Migration
+
+### Changed
+- **ADR-027 Layer 2 migration**: Moved `alignment.py`, `coreference.py`, `validation.py`, and `api/` wrappers from `value_fabric/layer2/` to `services/layer2-extraction/src/layer2_extraction/`. Deleted empty stale directories (`coreference/`, `db/`, `extraction/`). `value_fabric/layer2/` now contains only the path-appender shim `__init__.py`.
+- **ADR-027 Layer 6 migration**: Converted `value_fabric/layer6/` from active implementation namespace to path-appender shim. All implementation files (`api/`, `config.py`, `database.py`, `metrics/`, `models/`, `observability/`, `repositories/`, `settings.py`, `shared_bootstrap.py`) now live exclusively in `services/layer6-benchmarks/src/`.
+- **ADR-027 Layer 1/L3 cleanup** (completed 2026-05-14): Removed legacy namespaces `value_fabric/layer1_ingestion/` and `value_fabric/layer3_knowledge/`. Deleted 20 empty stale subdirectories under `value_fabric/layer3/`.
+
+### CI / Guardrails
+- Extended `scripts/ci/check_layer1_imports.py` to detect stale implementation files in shim-only directories (`value_fabric/layer2/`, `value_fabric/layer6/`).
+- Updated `scripts/ci/check_layer56_shims.py` to verify `value_fabric/layer6/` is shim-only (not service-tree shims).
+
 ## [1.0.0] — 2026-05-12
 
 ### Deployment Target

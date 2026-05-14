@@ -55,6 +55,21 @@ jobs:
             owner: "@value-fabric/backend-leads"
             escalation: "@value-fabric/security-leads"
             command: "python -m pytest -q tests/security/test_correlation_logging_contract.py --maxfail=1 --no-mandatory-dep-check -n 0"
+          - id: adr027-import-hygiene
+            service: shared
+            owner: "@value-fabric/architects"
+            escalation: "@value-fabric/maintainers"
+            command: "python scripts/ci/check_layer1_imports.py --strict"
+          - id: adr027-layer2-imports
+            service: layer2
+            owner: "@value-fabric/architects"
+            escalation: "@value-fabric/maintainers"
+            command: "python scripts/ci/check_layer2_imports.py --strict"
+          - id: adr027-layer6-imports
+            service: layer6
+            owner: "@value-fabric/architects"
+            escalation: "@value-fabric/maintainers"
+            command: "python scripts/ci/check_layer6_imports.py --strict"
 
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332

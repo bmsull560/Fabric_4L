@@ -1,12 +1,14 @@
+"""Tests for canonical OIDCClient.verify_id_token with JWKS validation."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import jwt as pyjwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
-from jose import jwt
 
-from value_fabric.shared.identity.oidc import OIDCClient, OIDCProviderConfig
+from value_fabric.shared.identity.oidc import OIDCClient
 
 
 def _rsa_keypair() -> tuple[rsa.RSAPrivateKey, dict[str, str]]:
@@ -14,10 +16,10 @@ def _rsa_keypair() -> tuple[rsa.RSAPrivateKey, dict[str, str]]:
     public_numbers = private_key.public_key().public_numbers()
 
     def _b64url_uint(value: int) -> str:
-        from jose.utils import base64url_encode
+        import base64
 
         byte_length = (value.bit_length() + 7) // 8
-        return base64url_encode(value.to_bytes(byte_length, "big")).decode("ascii")
+        return base64.urlsafe_b64encode(value.to_bytes(byte_length, "big")).decode("ascii").rstrip("=")
 
     jwk = {
         "kty": "RSA",
@@ -41,112 +43,120 @@ def _build_token(private_key: rsa.RSAPrivateKey, issuer: str, audience: str, **c
         "exp": int((now + timedelta(minutes=5)).timestamp()),
     }
     claims.update(claims_overrides)
-    return jwt.encode(claims, private_key, algorithm="RS256", headers={"kid": "kid-1"})
+    return pyjwt.encode(claims, private_key, algorithm="RS256", headers={"kid": "kid-1"})
 
 
 @pytest.fixture
 async def oidc_client():
-    client = OIDCClient(
-        tenant_id="tenant-a",
-        config=OIDCProviderConfig(
-            issuer="https://issuer.example.com",
-            client_id="client-123",
-            jwks_uri="https://issuer.example.com/keys",
-        ),
-    )
+    client = OIDCClient()
     yield client
-    await client.close()
+    await client._http.aclose()
 
 
 @pytest.mark.asyncio
-async def test_validate_id_token_invalid_signature(oidc_client: OIDCClient):
+async def test_verify_id_token_invalid_signature(oidc_client: OIDCClient):
     priv1, jwk1 = _rsa_keypair()
     priv2, _ = _rsa_keypair()
-    token = _build_token(priv2, oidc_client.config.issuer, oidc_client.config.client_id)
+    token = _build_token(priv2, "https://issuer.example.com", "client-123")
 
-    oidc_client._jwks_cache = {"keys": [jwk1]}
-    oidc_client._jwks_cache_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    # Pre-seed JWKS cache with the first public key
+    from value_fabric.shared.identity.oidc import _JWKS_CACHE
 
-    with pytest.raises(ValueError, match="invalid_id_token"):
-        await oidc_client.validate_id_token(token)
+    _JWKS_CACHE["https://issuer.example.com"] = {"jwks": {"keys": [jwk1]}, "fetched_at": datetime.now(timezone.utc).timestamp()}
+
+    with pytest.raises(pyjwt.InvalidSignatureError):
+        await oidc_client.verify_id_token(token, issuer_url="https://issuer.example.com", client_id="client-123")
+
+    del _JWKS_CACHE["https://issuer.example.com"]
 
 
 @pytest.mark.asyncio
-async def test_validate_id_token_wrong_issuer(oidc_client: OIDCClient):
+async def test_verify_id_token_wrong_issuer(oidc_client: OIDCClient):
     priv, jwk = _rsa_keypair()
-    token = _build_token(priv, "https://other-issuer.example.com", oidc_client.config.client_id)
-    oidc_client._jwks_cache = {"keys": [jwk]}
-    oidc_client._jwks_cache_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    token = _build_token(priv, "https://other-issuer.example.com", "client-123")
 
-    with pytest.raises(ValueError, match="invalid_id_token"):
-        await oidc_client.validate_id_token(token)
+    from value_fabric.shared.identity.oidc import _JWKS_CACHE
+
+    _JWKS_CACHE["https://issuer.example.com"] = {"jwks": {"keys": [jwk]}, "fetched_at": datetime.now(timezone.utc).timestamp()}
+
+    with pytest.raises(pyjwt.InvalidTokenError, match="issuer"):
+        await oidc_client.verify_id_token(token, issuer_url="https://issuer.example.com", client_id="client-123")
+
+    del _JWKS_CACHE["https://issuer.example.com"]
 
 
 @pytest.mark.asyncio
-async def test_validate_id_token_wrong_audience(oidc_client: OIDCClient):
+async def test_verify_id_token_wrong_audience(oidc_client: OIDCClient):
     priv, jwk = _rsa_keypair()
-    token = _build_token(priv, oidc_client.config.issuer, "wrong-client")
-    oidc_client._jwks_cache = {"keys": [jwk]}
-    oidc_client._jwks_cache_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    token = _build_token(priv, "https://issuer.example.com", "wrong-client")
 
-    with pytest.raises(ValueError, match="invalid_id_token"):
-        await oidc_client.validate_id_token(token)
+    from value_fabric.shared.identity.oidc import _JWKS_CACHE
+
+    _JWKS_CACHE["https://issuer.example.com"] = {"jwks": {"keys": [jwk]}, "fetched_at": datetime.now(timezone.utc).timestamp()}
+
+    with pytest.raises(pyjwt.InvalidAudienceError):
+        await oidc_client.verify_id_token(token, issuer_url="https://issuer.example.com", client_id="client-123")
+
+    del _JWKS_CACHE["https://issuer.example.com"]
 
 
 @pytest.mark.asyncio
-async def test_validate_id_token_expired(oidc_client: OIDCClient):
+async def test_verify_id_token_expired(oidc_client: OIDCClient):
     priv, jwk = _rsa_keypair()
     token = _build_token(
         priv,
-        oidc_client.config.issuer,
-        oidc_client.config.client_id,
+        "https://issuer.example.com",
+        "client-123",
         exp=int((datetime.now(timezone.utc) - timedelta(minutes=10)).timestamp()),
     )
-    oidc_client._jwks_cache = {"keys": [jwk]}
-    oidc_client._jwks_cache_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
 
-    with pytest.raises(ValueError, match="expired_token"):
-        await oidc_client.validate_id_token(token)
+    from value_fabric.shared.identity.oidc import _JWKS_CACHE
 
+    _JWKS_CACHE["https://issuer.example.com"] = {"jwks": {"keys": [jwk]}, "fetched_at": datetime.now(timezone.utc).timestamp()}
 
-@pytest.mark.asyncio
-async def test_validate_id_token_malformed(oidc_client: OIDCClient):
-    with pytest.raises(ValueError, match="malformed_token"):
-        await oidc_client.validate_id_token("not-a-jwt")
+    with pytest.raises(pyjwt.ExpiredSignatureError):
+        await oidc_client.verify_id_token(token, issuer_url="https://issuer.example.com", client_id="client-123")
+
+    del _JWKS_CACHE["https://issuer.example.com"]
 
 
 @pytest.mark.asyncio
-async def test_validate_id_token_jwks_refresh_on_rotation(oidc_client: OIDCClient):
-    priv_old, jwk_old = _rsa_keypair()
-    priv_new, jwk_new = _rsa_keypair()
-    jwk_old["kid"] = "kid-old"
-    jwk_new["kid"] = "kid-new"
+async def test_verify_id_token_malformed(oidc_client: OIDCClient):
+    with pytest.raises(pyjwt.PyJWTError):
+        await oidc_client.verify_id_token("not-a-jwt", issuer_url="https://issuer.example.com", client_id="client-123")
 
-    token = jwt.encode(
-        {
-            "sub": "user-123",
-            "iss": oidc_client.config.issuer,
-            "aud": oidc_client.config.client_id,
-            "iat": int((datetime.now(timezone.utc) - timedelta(seconds=5)).timestamp()),
-            "nbf": int((datetime.now(timezone.utc) - timedelta(seconds=5)).timestamp()),
-            "exp": int((datetime.now(timezone.utc) + timedelta(minutes=5)).timestamp()),
-        },
-        priv_new,
-        algorithm="RS256",
-        headers={"kid": "kid-new"},
+
+@pytest.mark.asyncio
+async def test_verify_id_token_nonce_mismatch(oidc_client: OIDCClient):
+    priv, jwk = _rsa_keypair()
+    token = _build_token(priv, "https://issuer.example.com", "client-123", nonce="expected-nonce")
+
+    from value_fabric.shared.identity.oidc import _JWKS_CACHE
+
+    _JWKS_CACHE["https://issuer.example.com"] = {"jwks": {"keys": [jwk]}, "fetched_at": datetime.now(timezone.utc).timestamp()}
+
+    with pytest.raises(pyjwt.InvalidTokenError, match="nonce mismatch"):
+        await oidc_client.verify_id_token(token, issuer_url="https://issuer.example.com", client_id="client-123", nonce="wrong-nonce")
+
+    del _JWKS_CACHE["https://issuer.example.com"]
+
+
+@pytest.mark.asyncio
+async def test_verify_id_token_stale_iat_rejected(oidc_client: OIDCClient):
+    priv, jwk = _rsa_keypair()
+    now = datetime.now(timezone.utc)
+    token = _build_token(
+        priv,
+        "https://issuer.example.com",
+        "client-123",
+        iat=int((now - timedelta(minutes=15)).timestamp()),
     )
 
-    oidc_client._jwks_cache = {"keys": [jwk_old]}
-    oidc_client._jwks_cache_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
+    from value_fabric.shared.identity.oidc import _JWKS_CACHE
 
-    calls = {"count": 0}
+    _JWKS_CACHE["https://issuer.example.com"] = {"jwks": {"keys": [jwk]}, "fetched_at": now.timestamp()}
 
-    async def _fake_fetch(*, force_refresh: bool = False):
-        calls["count"] += 1
-        return {"keys": [jwk_new]} if force_refresh else {"keys": [jwk_old]}
+    with pytest.raises(pyjwt.InvalidTokenError, match="iat is too old"):
+        await oidc_client.verify_id_token(token, issuer_url="https://issuer.example.com", client_id="client-123", max_iat_age_seconds=600)
 
-    oidc_client._fetch_jwks = _fake_fetch  # type: ignore[method-assign]
-
-    claims = await oidc_client.validate_id_token(token)
-    assert claims.sub == "user-123"
-    assert calls["count"] >= 2
+    del _JWKS_CACHE["https://issuer.example.com"]

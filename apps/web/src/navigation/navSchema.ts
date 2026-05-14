@@ -18,16 +18,44 @@ export const NAV_SCHEMA: NavSchemaNode[] = [
     id: "intelligence", label: "Intelligence", path: "/intelligence", tier: "standard", description: "Discover and validate prospect pain signals",
     children: [
       { id: "intel-signals", label: "Signals", path: "/intelligence/:accountId/signals", tier: "standard" },
-      { id: "intel-opportunities", label: "Opportunities / Value Paths", path: "/intelligence/:accountId/hypotheses", tier: "standard" },
-      { id: "intel-drivers", label: "Driver Tree", path: "/intelligence/:accountId/drivers", tier: "standard" },
-      { id: "intel-evidence", label: "Evidence", path: "/intelligence/:accountId/evidence", tier: "standard" },
-      { id: "intel-scenarios", label: "Scenarios", path: "/intelligence/:accountId/roi", tier: "standard" },
-      { id: "intel-business-case", label: "Business Case", path: "/value-case/:accountId", tier: "standard" },
-      { id: "intel-realization", label: "Realization", path: "/realization/:accountId", tier: "standard" },
       { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/:accountId/stakeholders", tier: "standard" },
       { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/:accountId/enrichment", tier: "advanced" },
-      { id: "intel-competitive", label: "Competitive", path: "/intelligence/:accountId/competitive", tier: "advanced" },
-      { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/:accountId/evidence-library", tier: "advanced" },
+      { id: "intel-ontology-match", label: "Value Ontology", path: "/intelligence/:accountId/ontology-match", tier: "advanced" },
+    ],
+  },
+  {
+    id: "hypothesis", label: "Hypothesis", path: "/hypothesis", tier: "standard", description: "AI-generated value hypotheses",
+    children: [
+      { id: "hypo-main", label: "Opportunities / Value Paths", path: "/hypothesis/:accountId/hypothesis", tier: "standard" },
+      { id: "hypo-discovery", label: "Discovery Questions", path: "/hypothesis/:accountId/discovery-questions", tier: "standard" },
+      { id: "hypo-persona", label: "Persona Fit", path: "/hypothesis/:accountId/persona-fit", tier: "standard" },
+      { id: "hypo-assumptions", label: "Assumptions", path: "/hypothesis/:accountId/assumptions", tier: "standard" },
+    ],
+  },
+  {
+    id: "drivers", label: "Driver Tree", path: "/drivers", tier: "standard", description: "Value driver tree and evidence mapping",
+    children: [
+      { id: "driver-tree", label: "Driver Tree", path: "/drivers/:accountId", tier: "standard" },
+      { id: "driver-tab", label: "Driver Tab", path: "/drivers/:accountId/:tab", tier: "standard" },
+    ],
+  },
+  {
+    id: "calculator", label: "Calculator", path: "/calculator", tier: "standard", description: "ROI and value modeling",
+    children: [
+      { id: "calc-roi", label: "Scenarios", path: "/calculator/:accountId/roi", tier: "standard" },
+      { id: "calc-value-model", label: "Value Model", path: "/calculator/:accountId/value-model", tier: "standard" },
+    ],
+  },
+  {
+    id: "value-case", label: "Value Case", path: "/value-case", tier: "standard", description: "Business case generation",
+    children: [
+      { id: "vc-main", label: "Business Case", path: "/value-case/:accountId", tier: "standard" },
+    ],
+  },
+  {
+    id: "realization", label: "Realization", path: "/realization", tier: "standard", description: "Value realization plan",
+    children: [
+      { id: "real-main", label: "Realization", path: "/realization/:accountId", tier: "standard" },
     ],
   },
   {
@@ -45,10 +73,9 @@ export const NAV_SCHEMA: NavSchemaNode[] = [
 ];
 
 const ROUTE_ALIASES: Record<string, string> = {
-  "/hypothesis/:accountId": "/intelligence/:accountId/hypotheses",
-  "/drivers/:accountId": "/intelligence/:accountId/drivers",
-  "/drivers/:accountId/evidence": "/intelligence/:accountId/evidence",
-  "/calculator/:accountId": "/intelligence/:accountId/roi",
+  "/hypothesis/:accountId": "/hypothesis/:accountId/hypothesis",
+  "/drivers/:accountId/evidence": "/drivers/:accountId/evidence",
+  "/calculator/:accountId": "/calculator/:accountId/roi",
 };
 
 export interface BreadcrumbItem { label: string; path?: string }

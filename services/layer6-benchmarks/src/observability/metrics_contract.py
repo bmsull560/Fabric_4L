@@ -22,7 +22,7 @@ class MetricSpec:
     max_cardinality: dict[str, int]
 
 
-CONTRACT_PATH = Path(__file__).resolve().parents[3] / "contracts" / "observability" / "layer6-metrics.json"
+CONTRACT_PATH = Path(__file__).resolve().parents[4] / "contracts" / "observability" / "layer6-metrics.json"
 
 
 @lru_cache(maxsize=1)

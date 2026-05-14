@@ -14,10 +14,6 @@ SCAN_ROOTS = (Path("services"), Path("value_fabric"), Path("tests"), Path("scrip
 DEPRECATED_PREFIXES = ("value_fabric.layer1_ingestion", "value_fabric.layer3_knowledge")
 BASELINE_PATH = Path("docs/reference/deprecated-namespace-import-baseline.json")
 ALLOWLIST = {
-    Path("value_fabric/layer1_ingestion/__init__.py"),
-    Path("value_fabric/layer1_ingestion/src/__init__.py"),
-    Path("value_fabric/layer3_knowledge/__init__.py"),
-    Path("value_fabric/layer3_knowledge/src/__init__.py"),
     Path("tests/ci/test_deprecated_namespace_imports.py"),
 }
 
