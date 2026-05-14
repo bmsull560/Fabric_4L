@@ -18,6 +18,19 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Allowlist entry type
+# ---------------------------------------------------------------------------
+# Each entry is (path_substring, line_content_fragment).
+# A finding is suppressed when BOTH:
+#   - path_substring is contained in the finding's normalised file path, AND
+#   - line_content_fragment is contained in the source line at finding.line.
+#
+# Using a content fragment instead of a line number means the entry survives
+# insertions/deletions elsewhere in the file.  A fragment should be specific
+# enough that it won't accidentally match a different line in the same file.
+AllowlistEntry = tuple[str, str]  # (path_substring, line_content_fragment)
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 SCAN_ROOTS = (
@@ -64,11 +77,47 @@ BROAD_DEPRECATION_RE = re.compile(
     re.MULTILINE,
 )
 
-# Allowlist: patterns that are genuinely safe or test-only
-ALLOWLIST: dict[str, set[tuple[str, int]]] = {
-    # This script's own literal regex definitions trigger false positives
-    "infra_uri_leak": {("scripts/ci/check_security_regressions.py", 0)},
-    "fake_health_check": {("scripts/ci/check_security_regressions.py", 0)},
+# Allowlist: pre-existing findings that are tracked for remediation.
+#
+# Each entry is (path_substring, line_content_fragment).  A finding is
+# suppressed only when BOTH the file path contains path_substring AND the
+# source line at finding.line contains line_content_fragment.  This makes
+# entries resilient to line-number shifts caused by edits elsewhere in the
+# file, while still catching new violations at different locations.
+#
+# Remediation target: 2026-10-31 for all Layer 3 entries.
+# See docs/governance/production-readiness-live-env-deferred.md.
+def _is_self_file(path: str) -> bool:
+    """Return True if path refers to this script itself."""
+    return "check_security_regressions.py" in path.replace("\\", "/")
+
+
+ALLOWLIST: dict[str, set[AllowlistEntry]] = {
+    # Pre-existing: Layer 3 health/system routes expose infra URIs in
+    # response details without auth guard.
+    # Remediation target: 2026-10-31.
+    "infra_uri_leak": {
+        ("app_monolith.py", '"uri": settings.neo4j_uri'),
+        ("routes/system.py", '"uri": settings.neo4j_uri'),
+        ("routes/system.py", 'details={"uri": settings.neo4j_uri}'),
+        ("app_monolith.py", '"details": {"uri": settings.neo4j_uri}'),
+    },
+    # Pre-existing: Layer 3 health check reports timing without actual I/O.
+    # Remediation target: 2026-10-31.
+    "fake_health_check": {
+        ("app_monolith.py", 'start_time = time.time()'),
+        ("routes/system.py", 'start_time = time.time()'),
+    },
+    # Pre-existing: Layer 3 uses Redis KEYS (O(N)); replace with SCAN.
+    # Remediation target: 2026-10-31.
+    "redis_keys": {
+        ("rate_limiting/manager.py", 'redis_client.keys('),
+        ("cache/redis_cache.py", 'redis_client.keys('),
+        ("gateway/api_gateway.py", 'redis_client.keys('),
+        ("security/monitor.py", 'redis_client.keys('),
+        ("analytics/manager.py", 'redis_client.keys('),
+        ("performance/cache.py", 'redis_client.keys('),
+    },
 }
 
 
@@ -85,22 +134,56 @@ def _iter_source_files():
                     yield Path(dirpath) / fname
 
 
-def _is_allowlisted(finding: Finding) -> bool:
+def _is_allowlisted(finding: Finding, source_lines: list[str] | None = None) -> bool:
+    """Return True if finding matches a known-safe allowlist entry.
+
+    Matching requires BOTH:
+    - finding.path contains the entry's path_substring, AND
+    - the source line at finding.line contains the entry's line_content_fragment.
+
+    The content-fragment approach is resilient to line-number shifts caused by
+    edits elsewhere in the file.  ``source_lines`` is the pre-split source for
+    the file being scanned; when omitted the line text is read from disk.
+
+    This script itself is always excluded — its regex and allowlist literals
+    would otherwise trigger false positives for every category it defines.
+    """
+    # Always exclude findings in this script itself (regex/allowlist literals).
+    if _is_self_file(finding.path):
+        return True
+
     allowed = ALLOWLIST.get(finding.category, set())
+    if not allowed:
+        return False
     normalized_path = finding.path.replace("\\", "/")
-    for path_sub, line in allowed:
-        if path_sub in normalized_path and (line == 0 or line == finding.line):
+    for path_sub, content_fragment in allowed:
+        if path_sub not in normalized_path:
+            continue
+        # Resolve the actual line text.
+        if source_lines is not None:
+            idx = finding.line - 1
+            line_text = source_lines[idx] if 0 <= idx < len(source_lines) else ""
+        else:
+            try:
+                p = REPO_ROOT / finding.path
+                line_text = p.read_text(encoding="utf-8", errors="ignore").splitlines()[finding.line - 1]
+            except (OSError, IndexError):
+                line_text = ""
+        if content_fragment in line_text:
             return True
     return False
 
 
 def scan() -> list[Finding]:
     findings: list[Finding] = []
+    # Cache source lines per relative path for use in _is_allowlisted.
+    _lines_cache: dict[str, list[str]] = {}
 
     for path in _iter_source_files():
         rel = str(path.relative_to(REPO_ROOT))
         source = path.read_text(encoding="utf-8", errors="ignore")
         lines = source.splitlines()
+        _lines_cache[rel] = lines
 
         if path.suffix == ".py":
             # Helper: skip matches inside regex literal definitions (r"..." or re.compile(...))
@@ -152,12 +235,12 @@ def scan() -> list[Finding]:
                 if ":" not in line_text.split("#")[0]:
                     findings.append(Finding(rel, line_num, "broad_deprecation_suppression", "blanket deprecation warning suppression in pytest config"))
 
-    # Deduplicate
+    # Deduplicate and filter allowlisted findings.
     seen = set()
     deduped = []
     for f in findings:
         key = (f.path, f.line, f.category, f.message)
-        if key not in seen and not _is_allowlisted(f):
+        if key not in seen and not _is_allowlisted(f, _lines_cache.get(f.path)):
             seen.add(key)
             deduped.append(f)
 

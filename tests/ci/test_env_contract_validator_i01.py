@@ -13,10 +13,12 @@ CONFIG_ENV_DIR = REPO_ROOT / "packages" / "config" / "src" / "env"
 def test_env_contract_validator_targets_active_env_examples_and_fails_closed():
     source = VALIDATOR_PATH.read_text(encoding="utf-8")
 
+    # Backend contract uses root .env.example; frontend uses apps/web/.env.example.
     assert "../../.env.example" in source
     assert "../../apps/web/.env.example" in source
-    assert "../../.env.example" not in source
+    # Legacy frontend/ path must not be referenced (was removed in frontend migration).
     assert "../../frontend/.env.example" not in source
+    # Fail-closed guards must be present.
     assert "existsSync(filePath)" in source
     assert "Contract file does not exist" in source
     assert "Contract file declares no environment variables" in source

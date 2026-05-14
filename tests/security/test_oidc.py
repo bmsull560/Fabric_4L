@@ -7,6 +7,7 @@ Validates:
 - Role mapping from claims
 - ID token verification
 - Error handling
+- Adversarial: state replay, missing tenant_id, cross-tenant context
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import httpx
 import pytest
 
 from value_fabric.shared.audit import AuditAction, AuditOutcome
+from value_fabric.shared.identity.middleware import extract_context_from_jwt
 from value_fabric.shared.identity.oidc import OIDCClient, map_role_from_claims
 from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
 
@@ -440,6 +442,221 @@ class TestRoleMappingEdgeCases:
         mapping = {"Role": "admin"}
         role = map_role_from_claims(claims, claim_mapping=mapping)
         assert role == "admin"
+
+
+class TestExtractContextAdversarial:
+    """Adversarial tests for extract_context_from_jwt tenant isolation invariants."""
+
+    def test_missing_tenant_id_raises(self):
+        """extract_context_from_jwt raises ValueError when tenant_id is absent."""
+        payload = {"sub": "user-1", "roles": ["analyst"]}
+        with pytest.raises(ValueError, match="tenant_id"):
+            extract_context_from_jwt(payload)
+
+    def test_empty_tenant_id_raises(self):
+        """extract_context_from_jwt raises ValueError when tenant_id is empty string."""
+        payload = {"sub": "user-1", "tenant_id": "", "roles": ["analyst"]}
+        with pytest.raises(ValueError, match="tenant_id"):
+            extract_context_from_jwt(payload)
+
+    def test_non_uuid_tenant_id_raises_in_production(self):
+        """Non-UUID tenant_id raises ValueError in non-test environments."""
+        payload = {
+            "sub": "user-1",
+            "tenant_id": "not-a-uuid",
+            "roles": ["analyst"],
+        }
+        with patch.dict("os.environ", {
+            "ALLOW_LEGACY_TEST_TENANT_IDS": "false",
+            "TESTING": "false",
+            "ENVIRONMENT": "production",
+        }):
+            with pytest.raises(ValueError, match="tenant_id"):
+                extract_context_from_jwt(payload)
+
+    def test_tenant_id_from_jwt_is_immutable_in_context(self):
+        """RequestContext.tenant_id matches the JWT claim exactly."""
+        tenant_uuid = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        user_uuid = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+        payload = {
+            "sub": user_uuid,
+            "tenant_id": tenant_uuid,
+            "roles": ["analyst"],
+        }
+        ctx = extract_context_from_jwt(payload)
+        assert str(ctx.tenant_id) == tenant_uuid
+
+    def test_permissions_count_limit_enforced(self):
+        """More than 1024 permissions in JWT claims raises ValueError."""
+        payload = {
+            "sub": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "tenant_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "roles": ["analyst"],
+            "permissions": [f"perm:{i}" for i in range(1025)],
+        }
+        with pytest.raises(ValueError, match="Too many permissions"):
+            extract_context_from_jwt(payload)
+
+
+class TestVerifyIdTokenHardening:
+    """Tests for OIDCClient.verify_id_token security invariants."""
+
+    @pytest.fixture
+    def rsa_keypair(self):
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives import serialization
+        import base64
+
+        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        pem_private = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        pub_numbers = private_key.public_key().public_numbers()
+
+        def _b64url(n: int) -> str:
+            byte_len = (n.bit_length() + 7) // 8
+            return base64.urlsafe_b64encode(n.to_bytes(byte_len, "big")).decode().rstrip("=")
+
+        jwk = {
+            "kty": "RSA", "kid": "test-kid", "use": "sig", "alg": "RS256",
+            "n": _b64url(pub_numbers.n), "e": _b64url(pub_numbers.e),
+        }
+        return pem_private, jwk
+
+    def _make_token(self, private_pem: bytes, issuer: str, audience: str, **overrides) -> str:
+        import jwt as pyjwt
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        claims = {
+            "sub": "user-1", "iss": issuer, "aud": audience,
+            "iat": int((now - timedelta(seconds=5)).timestamp()),
+            "exp": int((now + timedelta(minutes=5)).timestamp()),
+            "nonce": "test-nonce",
+        }
+        claims.update(overrides)
+        return pyjwt.encode(claims, private_pem, algorithm="RS256", headers={"kid": "test-kid"})
+
+    @pytest.mark.asyncio
+    async def test_verify_id_token_rejects_wrong_nonce(self, rsa_keypair):
+        """verify_id_token raises InvalidTokenError when nonce does not match."""
+        import jwt as pyjwt
+        private_pem, jwk = rsa_keypair
+        issuer = "https://idp.example.com"
+        token = self._make_token(private_pem, issuer, "client-id", nonce="correct-nonce")
+
+        client = OIDCClient()
+        jwks_data = {"keys": [jwk]}
+
+        async def _mock_get_signing_key(issuer_url, kid=None):
+            return pyjwt.api_jwk.PyJWK(jwk)
+
+        client.get_signing_key = _mock_get_signing_key
+
+        with pytest.raises(pyjwt.InvalidTokenError, match="nonce"):
+            await client.verify_id_token(
+                id_token=token,
+                issuer_url=issuer,
+                client_id="client-id",
+                nonce="wrong-nonce",
+            )
+
+    @pytest.mark.asyncio
+    async def test_verify_id_token_rejects_stale_iat(self, rsa_keypair):
+        """verify_id_token raises InvalidTokenError when iat is older than max_iat_age_seconds."""
+        import jwt as pyjwt
+        from datetime import datetime, timezone, timedelta
+        private_pem, jwk = rsa_keypair
+        issuer = "https://idp.example.com"
+
+        stale_iat = int((datetime.now(timezone.utc) - timedelta(seconds=700)).timestamp())
+        token = self._make_token(private_pem, issuer, "client-id", iat=stale_iat, nonce=None)
+
+        client = OIDCClient()
+
+        async def _mock_get_signing_key(issuer_url, kid=None):
+            return pyjwt.api_jwk.PyJWK(jwk)
+
+        client.get_signing_key = _mock_get_signing_key
+
+        with pytest.raises(pyjwt.InvalidTokenError, match="iat"):
+            await client.verify_id_token(
+                id_token=token,
+                issuer_url=issuer,
+                client_id="client-id",
+                max_iat_age_seconds=600,
+            )
+
+    @pytest.mark.asyncio
+    async def test_verify_id_token_accepts_valid_token(self, rsa_keypair):
+        """verify_id_token returns claims for a well-formed token."""
+        import jwt as pyjwt
+        private_pem, jwk = rsa_keypair
+        issuer = "https://idp.example.com"
+        token = self._make_token(private_pem, issuer, "client-id", nonce="my-nonce")
+
+        client = OIDCClient()
+
+        async def _mock_get_signing_key(issuer_url, kid=None):
+            return pyjwt.api_jwk.PyJWK(jwk)
+
+        client.get_signing_key = _mock_get_signing_key
+
+        claims = await client.verify_id_token(
+            id_token=token,
+            issuer_url=issuer,
+            client_id="client-id",
+            nonce="my-nonce",
+        )
+        assert claims["sub"] == "user-1"
+
+
+class TestRoleMappingPrivilegeOrdering:
+    """Verify highest-privilege role is selected when multiple mappings match."""
+
+    def test_highest_privilege_wins_when_multiple_match(self):
+        """When analyst and tenant_admin both match, tenant_admin is returned."""
+        claims = {"roles": ["analyst", "tenant_admin"]}
+        mapping = {
+            "roles=analyst": "analyst",
+            "roles=tenant_admin": "tenant_admin",
+        }
+        role = map_role_from_claims(claims, claim_mapping=mapping, default_role="read_only")
+        assert role == "tenant_admin"
+
+    def test_default_role_when_no_mapping_matches(self):
+        """Returns default_role when no claim mapping matches."""
+        claims = {"roles": ["unknown_group"]}
+        mapping = {"roles=admin": "tenant_admin"}
+        role = map_role_from_claims(claims, claim_mapping=mapping, default_role="read_only")
+        assert role == "read_only"
+
+    def test_regex_claim_matching(self):
+        """Regex pattern /^admin.*/ matches 'admin-team' in groups array."""
+        claims = {"groups": ["dev-team", "admin-team"]}
+        mapping = {"groups=/^admin.*/": "tenant_admin"}
+        role = map_role_from_claims(claims, claim_mapping=mapping, default_role="read_only")
+        assert role == "tenant_admin"
+
+    def test_nested_claim_path_dot_notation(self):
+        """Dot-notation resolves nested claim: resource_access.fabric.roles."""
+        claims = {"resource_access": {"fabric": {"roles": ["analyst"]}}}
+        mapping = {"resource_access.fabric.roles=analyst": "analyst"}
+        role = map_role_from_claims(claims, claim_mapping=mapping, default_role="read_only")
+        assert role == "analyst"
+
+    def test_empty_claim_mapping_falls_back_to_role_claim(self):
+        """With no claim_mapping, a valid role in the 'role' claim is returned directly."""
+        claims = {"role": "content_admin"}
+        role = map_role_from_claims(claims, claim_mapping={}, default_role="read_only")
+        assert role == "content_admin"
+
+    def test_empty_claim_mapping_admin_group_detection(self):
+        """With no claim_mapping, 'admin' in groups returns tenant_admin."""
+        claims = {"groups": ["admin"]}
+        role = map_role_from_claims(claims, claim_mapping={}, default_role="read_only")
+        assert role == "tenant_admin"
 
 
 if __name__ == "__main__":

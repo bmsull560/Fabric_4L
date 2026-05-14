@@ -173,7 +173,7 @@ def _load_context_module():
     import importlib.util
     import types
 
-    identity_dir = _PROJECT_ROOT / "value_fabric" / "shared" / "identity"
+    identity_dir = _PROJECT_ROOT / "packages" / "shared" / "src" / "value_fabric" / "shared" / "identity"
 
     # Create a minimal package so relative imports work
     pkg = types.ModuleType("identity")
@@ -323,7 +323,7 @@ class TestGovernanceMiddlewareContextReset:
     def test_dispatch_resets_context_at_start(self):
         """Verify the dispatch method sets context to None before resolution."""
         middleware_file = (
-            _PROJECT_ROOT / "value_fabric" / "shared" / "identity" / "middleware.py"
+            _PROJECT_ROOT / "packages" / "shared" / "src" / "value_fabric" / "shared" / "identity" / "middleware.py"
         )
         source = middleware_file.read_text(encoding="utf-8")
 
@@ -348,13 +348,14 @@ class TestGovernanceMiddlewareContextReset:
         cleaned up to prevent leakage to the next request.
         """
         middleware_file = (
-            _PROJECT_ROOT / "value_fabric" / "shared" / "identity" / "middleware.py"
+            _PROJECT_ROOT / "packages" / "shared" / "src" / "value_fabric" / "shared" / "identity" / "middleware.py"
         )
         source = middleware_file.read_text(encoding="utf-8")
 
-        # Must have a finally block that resets the context
+        # Must have a finally block that resets the context.
+        # Use a generous window (8000 chars) to cover the full dispatch method.
         dispatch_start = source.find("async def dispatch")
-        dispatch_body = source[dispatch_start:dispatch_start + 4000]
+        dispatch_body = source[dispatch_start:dispatch_start + 8000]
 
         assert "finally:" in dispatch_body, (
             "GovernanceMiddleware.dispatch does not have a finally block. "

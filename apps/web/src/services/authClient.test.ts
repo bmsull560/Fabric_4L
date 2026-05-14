@@ -186,14 +186,20 @@ describe('AuthClient', () => {
         value: 'vf_csrf_token=csrf-refresh-token',
         configurable: true,
       });
+      // Seed session metadata so the tenantId guard passes
+      const user = authFixtures.user({ role: 'analyst', tenantSlug: 'acme' });
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
           token_type: 'Bearer',
           expires_in: 3600,
-          user_id: 'user-123',
-          email: 'user@example.com',
-          role: 'analyst',
+          user_id: user.id,
+          email: user.email,
+          role: user.role,
         }),
       });
 
@@ -254,6 +260,49 @@ describe('AuthClient', () => {
       // Network error should not log the user out
       expect(result).toBe(true);
       expect(env.sessionStorage.getItem('vf.auth.session.meta')).not.toBeNull();
+    });
+
+    it('returns false and clears session when existing metadata has no tenantId', async () => {
+      // Simulate corrupted session metadata with missing tenantId
+      const user = authFixtures.user();
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: '' })
+      );
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          user_id: user.id,
+          email: user.email,
+          role: user.role,
+          expires_in: 3600,
+          token_type: 'Bearer',
+        }),
+      });
+
+      const result = await client.refreshToken();
+
+      // Missing tenantId in existing metadata → treat as invalid session
+      expect(result).toBe(false);
+      expect(env.sessionStorage.getItem('vf.auth.session.meta')).toBeNull();
+    });
+
+    it('throws AuthError(MALFORMED_RESPONSE) when 200 response body is not parseable JSON', async () => {
+      const user = authFixtures.user({ role: 'analyst', tenantSlug: 'acme' });
+      env.sessionStorage.setItem(
+        'vf.auth.session.meta',
+        JSON.stringify({ user, tenantId: user.tenantId })
+      );
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.reject(new SyntaxError('Unexpected token')),
+      });
+
+      await expect(client.refreshToken()).rejects.toMatchObject({
+        category: 'MALFORMED_RESPONSE',
+      });
     });
   });
 

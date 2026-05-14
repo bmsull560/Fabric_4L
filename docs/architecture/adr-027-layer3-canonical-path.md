@@ -104,6 +104,54 @@ If a layer migration fails, revert only that layer's `value_fabric/layerX/__init
 | 5 | Compliant | `services/layer5-ground-truth/src/` | Canonical imports enabled 2026-05-13 via pytest.ini pythonpath; shim remains for backward compat |
 | 6 | Compliant | `services/layer6-benchmarks/src/` | Migrated 2026-05-14; `value_fabric/layer6/` converted to path-appender shim; all implementation files removed from `value_fabric/layer6/`; service tree is canonical source of truth |
 
+## Production Readiness Completion (2026-05-14)
+
+The following work was completed as part of the production readiness checklist:
+
+### Namespace Removals (changelog)
+
+| Removed namespace | Date | Reason |
+|---|---|---|
+| `value_fabric/layer1_ingestion/` | 2026-05-14 | Legacy namespace superseded by `services/layer1-ingestion/src/`; zero references confirmed |
+| `value_fabric/layer3_knowledge/` | 2026-05-14 | Legacy namespace superseded by `services/layer3-knowledge/src/`; zero references confirmed |
+| `value_fabric/layer2_extraction/` | 2026-05-14 | Legacy namespace superseded by `services/layer2-extraction/src/`; zero references confirmed |
+| `value_fabric/layer6_benchmarks/` | 2026-05-14 | Legacy namespace superseded by `services/layer6-benchmarks/src/`; zero references confirmed |
+
+### CI Gates Added (2026-05-14)
+
+| Gate ID | Script | Purpose |
+|---|---|---|
+| `adr027-layer3-imports` | `check_layer3_imports.py --strict` | Block new `value_fabric.layer3` imports outside allowlist |
+| `adr027-layer4-imports` | `check_layer4_canonical_imports.py` | Block non-canonical `layer4_agents` imports |
+| `adr027-layer5-shim` | `check_layer5_shim_integrity.py` | Verify Layer 5 shim/canonical alignment |
+| `adr027-deprecated-namespaces` | `check_deprecated_namespace_imports.py --strict` | Block all deleted namespace imports |
+| `adr027-duplicate-source-trees` | `check_duplicate_source_trees.py` | Verify compat trees are shim-only |
+| `alembic-head-consistency` | `_check_alembic_graphs.py` | Enforce single Alembic head per service |
+| `stale-namespace-dirs` | `check_stale_namespace_dirs.py` | Block reintroduction of deleted namespace dirs |
+| `k8s-validation` | `k8s-validation.yml` workflow | Validate K8s manifests on every PR touching `k8s/` |
+
+### Deferred Items
+
+The following items are explicitly deferred with documented owners and target dates:
+
+| Item | Owner | Target | Dependency |
+|---|---|---|---|
+| Layer 4 relative-import restructuring (`src/*` → `src/layer4_agents/*`) | Layer 4 Maintainers | 2026-09-30 | Requires restructuring all relative imports in `services/layer4-agents/src/` |
+| Layer 5 shim removal | Layer 5 Maintainers | 2026-09-30 | Shim removal review scheduled; no consumers of `value_fabric.layer5` found |
+| All shim removal reviews (Layers 1–6) | Layer Maintainers | 2026-09-30 | Per `docs/reference/layer-runtime-path-governance.md` |
+| Layer 3 Redis KEYS → SCAN migration | Layer 3 Maintainers | 2026-10-31 | 14 occurrences in rate_limiting, cache, gateway, security, analytics, performance modules |
+| Layer 3 infra URI exposure in health responses | Layer 3 Maintainers | 2026-10-31 | Health/system routes expose connection URIs; must be auth-gated or redacted in production |
+| Layer 3 fake health check (timing without I/O) | Layer 3 Maintainers | 2026-10-31 | Health check reports timing without actual database I/O verification |
+
+### Rollback Plan
+
+If any layer migration causes a startup failure:
+
+1. Revert only the affected layer's `value_fabric/layerX/__init__.py` to restore `__path__` appending.
+2. Do not roll back other layers or the ADR decision.
+3. File a tracking issue with the specific import error and affected service.
+4. The shim pattern ensures rollback is isolated to a single `__init__.py` file per layer.
+
 ## Incident Root Cause
 
 Commit `d71ca0c1` performed broad file operations (likely `git rm` or similar) that deleted `value_fabric/layer3/` files without corresponding changes to the service wrappers or any migration path. The commit was focused on Layer 2 anti-drift hardening and Makefile changes; Layer 3 deletion was accidental.
