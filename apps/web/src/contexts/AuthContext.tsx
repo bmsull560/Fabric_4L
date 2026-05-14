@@ -110,7 +110,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const tokenResponse = await authClient.exchangeCodeForTokens(code, state);
-      const tenantSlug = oidcFlow.tenantSlug || 'default';
+      // tenantSlug must come from the OIDC flow state persisted before the
+      // redirect. An empty slug here means the flow state was corrupted or
+      // cleared — treat it as an authentication failure rather than silently
+      // falling back to 'default', which would produce a broken tenant context.
+      const tenantSlug = oidcFlow.tenantSlug;
+      if (!tenantSlug) {
+        throw new AuthError(
+          'Tenant context lost during authentication. Please try logging in again.',
+          AuthErrorCategory.AUTHENTICATION
+        );
+      }
 
       const userInfo: UserInfo = {
         id: tokenResponse.user_id,

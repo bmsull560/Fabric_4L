@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -166,22 +167,39 @@ def get_jwks() -> Dict[str, Any]:
 _JWKS_URL_CACHE: Dict[str, Any] = {}
 _JWKS_URL_CACHE_EXPIRY: Dict[str, float] = {}
 _JWKS_URL_CACHE_TTL_SECONDS = 300  # 5 minutes
+_JWKS_URL_CACHE_LOCK = threading.Lock()
 
 
-def _fetch_jwks_from_url(url: str) -> Optional[Dict[str, Any]]:
-    """Fetch JWKS from a URL with simple in-memory caching."""
+def _fetch_jwks_from_url(url: str, *, _hold_lock: bool = False) -> Optional[Dict[str, Any]]:
+    """Fetch JWKS from a URL with thread-safe in-memory caching.
+
+    Args:
+        url: The JWKS endpoint URL.
+        _hold_lock: Internal flag. When True the caller already holds
+            ``_JWKS_URL_CACHE_LOCK``, so this function skips the cache-read
+            check and the cache-write lock acquisition to avoid re-entrancy.
+            Never pass this from outside ``_resolve_external_key``.
+    """
     now = time.time()
-    cached = _JWKS_URL_CACHE.get(url)
-    expiry = _JWKS_URL_CACHE_EXPIRY.get(url, 0)
-    if cached and now < expiry:
-        return cached
+    if not _hold_lock:
+        with _JWKS_URL_CACHE_LOCK:
+            cached = _JWKS_URL_CACHE.get(url)
+            expiry = _JWKS_URL_CACHE_EXPIRY.get(url, 0)
+            if cached and now < expiry:
+                return cached
     try:
         with httpx.Client(timeout=10.0) as client:
             response = client.get(url, headers={"Accept": "application/json"})
             response.raise_for_status()
             jwks = response.json()
-            _JWKS_URL_CACHE[url] = jwks
-            _JWKS_URL_CACHE_EXPIRY[url] = now + _JWKS_URL_CACHE_TTL_SECONDS
+            if _hold_lock:
+                # Caller holds the lock; write directly without re-acquiring.
+                _JWKS_URL_CACHE[url] = jwks
+                _JWKS_URL_CACHE_EXPIRY[url] = now + _JWKS_URL_CACHE_TTL_SECONDS
+            else:
+                with _JWKS_URL_CACHE_LOCK:
+                    _JWKS_URL_CACHE[url] = jwks
+                    _JWKS_URL_CACHE_EXPIRY[url] = now + _JWKS_URL_CACHE_TTL_SECONDS
             return jwks
     except Exception as exc:
         logger.warning("Failed to fetch JWKS from %s: %s", url, exc)
@@ -197,6 +215,14 @@ def _build_keycloak_jwks_url() -> Optional[str]:
     return None
 
 
+def _find_key_in_jwks(jwks: Dict[str, Any], kid: str) -> Optional[Any]:
+    """Return the PyJWT algorithm key object for the given kid, or None."""
+    for key in jwks.get("keys", []):
+        if key.get("kid") == kid:
+            return jwt.algorithms.get_default_algorithms()[key.get("alg", "RS256")].from_jwk(json.dumps(key))
+    return None
+
+
 def _resolve_external_key(header: Dict[str, Any], issuer: str) -> Optional[Any]:
     kid = header.get("kid")
     if not kid:
@@ -206,7 +232,7 @@ def _resolve_external_key(header: Dict[str, Any], issuer: str) -> Optional[Any]:
 
     jwks: Optional[Dict[str, Any]] = None
 
-    # Try static JWKS JSON first
+    # Try static JWKS JSON first (no network, no cache invalidation needed)
     jwks_raw = os.getenv("OIDC_JWKS_JSON", "").strip()
     if jwks_raw:
         try:
@@ -214,25 +240,53 @@ def _resolve_external_key(header: Dict[str, Any], issuer: str) -> Optional[Any]:
         except json.JSONDecodeError:
             logger.warning("OIDC_JWKS_JSON is invalid JSON")
 
-    # Fall back to explicit JWKS URL
-    if jwks is None:
-        jwks_url = os.getenv("OIDC_JWKS_URL", "").strip()
-        if jwks_url:
-            jwks = _fetch_jwks_from_url(jwks_url)
-
-    # Fall back to auto-built Keycloak URL
-    if jwks is None:
-        keycloak_jwks = _build_keycloak_jwks_url()
-        if keycloak_jwks:
-            jwks = _fetch_jwks_from_url(keycloak_jwks)
-
-    if jwks is None:
+    if jwks is not None:
+        result = _find_key_in_jwks(jwks, kid)
+        if result is not None:
+            return result
+        # Static JWKS doesn't contain the kid — cannot refresh, fail closed.
+        logger.debug("No JWKS key found for kid=%s in static OIDC_JWKS_JSON", kid)
         return None
 
-    for key in jwks.get("keys", []):
-        if key.get("kid") == kid:
-            return jwt.algorithms.get_default_algorithms()[key.get("alg", "RS256")].from_jwk(json.dumps(key))
-    logger.debug("No JWKS key found for kid=%s issuer=%s", kid, issuer)
+    # Determine the URL source for dynamic fetching (explicit URL or Keycloak auto-build)
+    jwks_url = os.getenv("OIDC_JWKS_URL", "").strip() or _build_keycloak_jwks_url()
+    if not jwks_url:
+        logger.debug("No JWKS URL configured; cannot resolve kid=%s", kid)
+        return None
+
+    # First attempt: use cached JWKS (lock is acquired inside _fetch_jwks_from_url)
+    jwks = _fetch_jwks_from_url(jwks_url)
+    if jwks is not None:
+        result = _find_key_in_jwks(jwks, kid)
+        if result is not None:
+            return result
+
+    # kid not found in cached JWKS — force a single cache-busting re-fetch.
+    # Hold the lock for the entire evict+re-fetch sequence so that concurrent
+    # requests carrying the same new kid don't all stampede the IdP at once.
+    # The first thread to acquire the lock evicts and re-fetches; subsequent
+    # threads find the fresh entry already in the cache.
+    logger.debug("kid=%s not in cached JWKS; forcing re-fetch from %s", kid, jwks_url)
+    with _JWKS_URL_CACHE_LOCK:
+        # Re-check under the lock: another thread may have already refreshed.
+        cached = _JWKS_URL_CACHE.get(jwks_url)
+        expiry = _JWKS_URL_CACHE_EXPIRY.get(jwks_url, 0)
+        if cached and time.time() < expiry:
+            result = _find_key_in_jwks(cached, kid)
+            if result is not None:
+                return result
+        # Still not present — evict and fetch. Pass _hold_lock=True so the
+        # fetch skips re-acquiring the lock we already hold.
+        _JWKS_URL_CACHE.pop(jwks_url, None)
+        _JWKS_URL_CACHE_EXPIRY.pop(jwks_url, None)
+        jwks = _fetch_jwks_from_url(jwks_url, _hold_lock=True)
+
+    if jwks is not None:
+        result = _find_key_in_jwks(jwks, kid)
+        if result is not None:
+            return result
+
+    logger.debug("No JWKS key found for kid=%s issuer=%s after cache refresh", kid, issuer)
     return None
 
 
