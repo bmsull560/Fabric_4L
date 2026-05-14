@@ -19,7 +19,7 @@ const MINIMUM_SAFE_MERMAID = [11, 15, 0] as const;
 
 function parseSemver(version: string): [number, number, number] {
   const parts = version.split(".").map(Number);
-  if (parts.length < 3 || parts.some(isNaN)) {
+  if (parts.length < 3 || parts.some(Number.isNaN)) {
     throw new Error(`Cannot parse semver: ${version}`);
   }
   return [parts[0], parts[1], parts[2]];
