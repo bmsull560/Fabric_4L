@@ -18,6 +18,44 @@ logger = logging.getLogger(__name__)
 _JWKS_CACHE: Dict[str, Dict[str, Any]] = {}
 _JWKS_TTL_SECONDS = 3600
 
+# ---------------------------------------------------------------------------
+# Discovery exception hierarchy
+# ---------------------------------------------------------------------------
+
+class OIDCDiscoveryError(Exception):
+    """Non-retryable OIDC discovery failure (config error, 4xx, bad response).
+
+    Raised for: HTTP 4xx (except 429), malformed JSON, missing required fields,
+    and any other error that is not explicitly classified as transient.
+    Callers should not retry on this exception.
+    """
+
+
+class TransientOIDCDiscoveryError(OIDCDiscoveryError):
+    """Retryable OIDC discovery failure (5xx, 429, timeout, connection error).
+
+    Raised for: HTTP 5xx, HTTP 429, ``httpx.TimeoutException``,
+    ``httpx.RequestError`` (connection refused, DNS failure).
+    The ``discover()`` method retries once on this exception.
+    """
+
+
+# ---------------------------------------------------------------------------
+# Discovery document validation
+# ---------------------------------------------------------------------------
+
+_REQUIRED_DISCOVERY_FIELDS = ("authorization_endpoint", "token_endpoint", "jwks_uri")
+
+
+def _validate_discovery_document(doc: dict, issuer_url: str) -> None:
+    """Raise OIDCDiscoveryError if required OIDC discovery fields are absent."""
+    missing = [f for f in _REQUIRED_DISCOVERY_FIELDS if not doc.get(f)]
+    if missing:
+        raise OIDCDiscoveryError(
+            f"OIDC discovery document from {issuer_url!r} is missing required "
+            f"fields: {missing}"
+        )
+
 _ROLE_PRIVILEGE: Dict[str, int] = {
     Role.READ_ONLY.value: 1,
     Role.ANALYST.value: 2,
@@ -133,18 +171,72 @@ class OIDCClient:
         self._http_client = self._http
 
     async def discover(self, issuer_url: str) -> dict:
-        """Fetch OpenID Provider metadata from well-known endpoint."""
+        """Fetch OpenID Provider metadata from the well-known endpoint.
+
+        Retries once on transient failures (HTTP 5xx, 429, timeout, connection
+        error). Fails immediately — without a retry — on HTTP 4xx (except 429),
+        malformed JSON, missing required discovery fields, and any other error
+        not explicitly classified as transient.
+
+        Raises:
+            OIDCDiscoveryError: Non-retryable failure (config error, 4xx, bad
+                response). Root cause is always chained via ``__cause__``.
+            TransientOIDCDiscoveryError: Both retry attempts failed with a
+                transient error. Subclass of ``OIDCDiscoveryError``.
+        """
         well_known = issuer_url.rstrip("/") + "/.well-known/openid-configuration"
+
+        async def _attempt() -> dict:
+            try:
+                response = await self._http_client.get(well_known)
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if status == 429 or status >= 500:
+                    raise TransientOIDCDiscoveryError(
+                        f"OIDC discovery returned transient HTTP {status} "
+                        f"from {issuer_url!r}"
+                    ) from exc
+                raise OIDCDiscoveryError(
+                    f"OIDC discovery failed with HTTP {status} from {issuer_url!r}"
+                ) from exc
+            except httpx.TimeoutException as exc:
+                raise TransientOIDCDiscoveryError(
+                    f"OIDC discovery timed out for {issuer_url!r}"
+                ) from exc
+            except httpx.RequestError as exc:
+                # Connection refused, DNS failure, TLS handshake — operationally
+                # transient. Classified deliberately rather than caught as
+                # generic Exception.
+                raise TransientOIDCDiscoveryError(
+                    f"OIDC discovery connection error for {issuer_url!r}: {exc}"
+                ) from exc
+
+            try:
+                doc = response.json()
+            except Exception as exc:
+                raise OIDCDiscoveryError(
+                    f"OIDC discovery document from {issuer_url!r} contains "
+                    f"invalid JSON"
+                ) from exc
+
+            if not isinstance(doc, dict):
+                raise OIDCDiscoveryError(
+                    f"OIDC discovery document from {issuer_url!r} is not a "
+                    f"JSON object (got {type(doc).__name__})"
+                )
+
+            _validate_discovery_document(doc, issuer_url)
+            return doc
+
         try:
-            response = await self._http_client.get(well_known)
-        except httpx.HTTPStatusError as exc:
-            if getattr(exc.response, "status_code", 0) < 500:
-                raise
-            response = await self._http_client.get(well_known)
-        except Exception:
-            response = await self._http_client.get(well_known)
-        response.raise_for_status()
-        return response.json()
+            return await _attempt()
+        except TransientOIDCDiscoveryError:
+            logger.warning(
+                "oidc_discovery_transient_failure issuer=%r; retrying once",
+                issuer_url,
+            )
+            return await _attempt()
 
     def _get_jwks_uri(self, issuer_url: str, metadata: Optional[dict] = None) -> str:
         """Return JWKS URI from cached metadata or discovery."""
