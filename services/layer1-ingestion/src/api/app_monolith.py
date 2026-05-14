@@ -1758,6 +1758,7 @@ async def update_target_status(
         active_jobs = (
             db.query(ScrapingJob)
             .filter(
+                ScrapingJob.tenant_id == org_id,
                 ScrapingJob.target_id == target_id,
                 ScrapingJob.status.in_(
                     [
@@ -1921,6 +1922,7 @@ async def batch_target_operation(
                 active_jobs = (
                     db.query(ScrapingJob)
                     .filter(
+                        ScrapingJob.tenant_id == org_id,
                         ScrapingJob.target_id == target.id,
                         ScrapingJob.status.in_(
                             [
@@ -1967,6 +1969,7 @@ async def batch_target_operation(
                 active_jobs = (
                     db.query(ScrapingJob)
                     .filter(
+                        ScrapingJob.tenant_id == org_id,
                         ScrapingJob.target_id == target.id,
                         ScrapingJob.status.in_(
                             [

@@ -475,17 +475,35 @@ export function useDeleteTarget() {
   });
 }
 
+export interface ExecuteTargetResult {
+  jobId: string;
+  status: string;
+  estimatedStartTime: string | null;
+  queuePosition: number | null;
+}
+
 /** Trigger an immediate crawl job for a target. */
 export function useExecuteTarget() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ jobId: string }, SourceApiError, { id: string; priority?: number }>({
+  return useMutation<ExecuteTargetResult, SourceApiError, { id: string; priority?: number }>({
     mutationFn: async ({ id, priority = 5 }) => {
       const response = await withApiError(
-        apiPost<{ job_id: string }>('l1', `/targets/${id}/execute`, { priority }),
+        apiPost<{
+          job_id: string;
+          status: string;
+          estimated_start_time?: string | null;
+          queue_position?: number | null;
+        }>('l1', `/targets/${id}/execute`, { priority }),
         SourceApiError,
       );
-      return { jobId: response.data.job_id };
+      const d = response.data;
+      return {
+        jobId: d.job_id,
+        status: d.status,
+        estimatedStartTime: d.estimated_start_time ?? null,
+        queuePosition: d.queue_position ?? null,
+      };
     },
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: QK.targets.jobs(id) });
@@ -497,24 +515,52 @@ export function useExecuteTarget() {
   });
 }
 
+export interface ValidateTargetResult {
+  valid: boolean;
+  errors: Array<{ loc: (string | number)[]; msg: string; type: string }>;
+  warnings: Array<{ field: string; message: string; suggestion?: string | null }>;
+  robotsTxtCheck: Record<string, unknown> | null;
+  schemaValidation: Record<string, unknown> | null;
+  browserTest: Record<string, unknown> | null;
+}
+
 /** Validate a target's configuration without executing. */
 export function useValidateTarget() {
   return useMutation<
-    { valid: boolean; message: string; details?: Record<string, unknown>; latencyMs?: number },
+    ValidateTargetResult,
     SourceApiError,
-    { id: string; testUrl?: string }
+    { id: string; testUrl?: string; testBrowserConnection?: boolean }
   >({
-    mutationFn: async ({ id, testUrl }) => {
+    mutationFn: async ({ id, testUrl, testBrowserConnection = false }) => {
       const response = await withApiError(
-        apiPost<{ valid: boolean; message: string; details?: Record<string, unknown>; latency_ms?: number }>(
+        apiPost<{
+          valid: boolean;
+          errors: Array<{ loc: (string | number)[]; msg: string; type: string }>;
+          warnings: Array<{ field: string; message: string; suggestion?: string | null }>;
+          robots_txt_check?: Record<string, unknown> | null;
+          schema_validation?: Record<string, unknown> | null;
+          browser_test?: Record<string, unknown> | null;
+        }>(
           'l1',
           `/targets/${id}/validate`,
-          { test_url: testUrl, validate_robots_txt: true, validate_schema: true },
+          {
+            test_url: testUrl,
+            validate_robots_txt: true,
+            validate_schema: true,
+            test_browser_connection: testBrowserConnection,
+          },
         ),
         SourceApiError,
       );
       const d = response.data;
-      return { valid: d.valid, message: d.message, details: d.details, latencyMs: d.latency_ms };
+      return {
+        valid: d.valid,
+        errors: d.errors ?? [],
+        warnings: d.warnings ?? [],
+        robotsTxtCheck: d.robots_txt_check ?? null,
+        schemaValidation: d.schema_validation ?? null,
+        browserTest: d.browser_test ?? null,
+      };
     },
     onError: (error) => {
       log.error('Failed to validate target', { error: error instanceof Error ? error.message : String(error) });
