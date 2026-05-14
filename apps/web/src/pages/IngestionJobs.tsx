@@ -12,8 +12,18 @@
  */
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, Plus, Play, Pause, AlertCircle, Info } from 'lucide-react';
+import { RefreshCw, Plus, Play, Pause, AlertCircle, Info, List, Sparkles } from 'lucide-react';
 import { PageHeader, Btn } from '@/components/WfPrimitives';
+import { TopTabNav } from '@/components/blocks/TopTabNav';
+import {
+  SourceCorpusCard,
+  AccountIntelligencePacketCard,
+  SkillOutputPanel,
+} from '@/components/skill-outputs';
+import {
+  useSourceCorpora,
+  useAccountIntelligencePackets,
+} from '@/hooks/useSkillJobs';
 import { toast } from 'sonner';
 import { PaginationBar } from '@/components/ui/fabric/PaginationBar';
 import { useNavigation, usePaginatedList } from '@/hooks';
@@ -194,6 +204,15 @@ export default function IngestionJobs() {
     }
   }, [batchOperation, jobs]);
 
+  // Workspace tab state
+  const [activeTab, setActiveTab] = useState<'jobs' | 'skill-outputs'>('jobs');
+  const [selectedSkillJobId, setSelectedSkillJobId] = useState<string | null>(null);
+
+  const INGESTION_TABS = [
+    { id: 'jobs', label: 'Job Queue', icon: List },
+    { id: 'skill-outputs', label: 'Skill Outputs', icon: Sparkles },
+  ] as const;
+
   // Table columns definition using fabric DataTable format
   const columns: DataTableColumn<IngestionJob>[] = [
     { key: 'id', header: 'Job ID', render: (job) => (
@@ -250,7 +269,24 @@ export default function IngestionJobs() {
         }
       />
 
-      {/* Main Content Grid */}
+      {/* Horizontal tab navigation */}
+      <TopTabNav
+        tabs={INGESTION_TABS as unknown as import('@/components/blocks/TopTabNav').TopTabItem[]}
+        activeTab={activeTab}
+        onChange={(id) => setActiveTab(id as 'jobs' | 'skill-outputs')}
+        className="mb-4"
+      />
+
+      {/* Skill Outputs tab */}
+      {activeTab === 'skill-outputs' && (
+        <SkillOutputsWorkspace
+          selectedJobId={selectedSkillJobId}
+          onSelectJob={setSelectedSkillJobId}
+        />
+      )}
+
+      {/* Main Content Grid — Job Queue tab */}
+      {activeTab === 'jobs' && (
       <div className="flex-1 grid grid-cols-[1fr_320px] gap-4 min-h-0">
         {/* Left Column: Filters + Job Queue */}
         <div className="flex flex-col gap-4 min-h-0">
@@ -602,7 +638,102 @@ export default function IngestionJobs() {
           </div>
         </div>
       </div>
+      )}
     </div>
     </TooltipProvider>
+  );
+}
+
+// =============================================================================
+// Skill Outputs workspace — shown when "Skill Outputs" tab is active
+// =============================================================================
+
+interface SkillOutputsWorkspaceProps {
+  selectedJobId: string | null;
+  onSelectJob: (jobId: string | null) => void;
+}
+
+function SkillOutputsWorkspace({ selectedJobId, onSelectJob }: SkillOutputsWorkspaceProps) {
+  const [activeSubTab, setActiveSubTab] = useState<'corpora' | 'packets'>('corpora');
+  const [selectedCorpusJobId, setSelectedCorpusJobId] = useState<string | null>(null);
+  const [selectedPacketJobId, setSelectedPacketJobId] = useState<string | null>(null);
+
+  const { data: corporaData, isLoading: corporaLoading } = useSourceCorpora();
+  const { data: packetsData, isLoading: packetsLoading } = useAccountIntelligencePackets();
+
+  const SKILL_SUBTABS = [
+    { id: 'corpora', label: 'Source Corpora' },
+    { id: 'packets', label: 'Account Intelligence' },
+  ] as const;
+
+  const activeJobId = activeSubTab === 'corpora' ? selectedCorpusJobId : selectedPacketJobId;
+
+  return (
+    <div className="flex-1 flex gap-4 min-h-0">
+      {/* Left: list */}
+      <div className="flex-1 flex flex-col min-h-0 bg-card border border-border rounded-xl overflow-hidden">
+        <TopTabNav
+          tabs={SKILL_SUBTABS as unknown as import('@/components/blocks/TopTabNav').TopTabItem[]}
+          activeTab={activeSubTab}
+          onChange={(id) => setActiveSubTab(id as 'corpora' | 'packets')}
+        />
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {activeSubTab === 'corpora' && (
+            <>
+              {corporaLoading && (
+                <p className="text-xs text-muted-foreground text-center py-8">Loading corpora…</p>
+              )}
+              {!corporaLoading && !corporaData?.items.length && (
+                <p className="text-xs text-muted-foreground text-center py-8">
+                  No source corpora yet. Launch a licensing company intake job to create one.
+                </p>
+              )}
+              {corporaData?.items.map((corpus) => (
+                <SourceCorpusCard
+                  key={corpus.id}
+                  corpus={corpus}
+                  selected={selectedCorpusJobId === corpus.id}
+                  onSelect={(id) => setSelectedCorpusJobId(id === selectedCorpusJobId ? null : id)}
+                />
+              ))}
+            </>
+          )}
+
+          {activeSubTab === 'packets' && (
+            <>
+              {packetsLoading && (
+                <p className="text-xs text-muted-foreground text-center py-8">Loading packets…</p>
+              )}
+              {!packetsLoading && !packetsData?.items.length && (
+                <p className="text-xs text-muted-foreground text-center py-8">
+                  No account intelligence packets yet. Launch a prospect research job to create one.
+                </p>
+              )}
+              {packetsData?.items.map((packet) => (
+                <AccountIntelligencePacketCard
+                  key={packet.id}
+                  packet={packet}
+                  selected={selectedPacketJobId === packet.id}
+                  onSelect={(id) => setSelectedPacketJobId(id === selectedPacketJobId ? null : id)}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Right rail: skill output detail panel */}
+      {activeJobId && (
+        <SkillOutputPanel
+          jobId={activeJobId}
+          onClose={() => {
+            if (activeSubTab === 'corpora') setSelectedCorpusJobId(null);
+            else setSelectedPacketJobId(null);
+          }}
+          className="rounded-xl border border-border"
+        />
+      )}
+    </div>
   );
 }

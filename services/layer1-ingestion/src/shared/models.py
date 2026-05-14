@@ -1131,3 +1131,63 @@ class AccountIntelligencePacket(Base):
         ),
         Index("idx_account_intel_packets_account", "tenant_id", "account_id"),
     )
+
+
+# =============================================================================
+# EVENT OUTBOX
+# =============================================================================
+
+
+class OutboxStatus(str, PyEnum):
+    """Lifecycle states for an EventOutbox record."""
+
+    PENDING = "pending"
+    DISPATCHED = "dispatched"
+    FAILED = "failed"
+    DEAD_LETTER = "dead_letter"
+
+
+class EventOutbox(Base):
+    """Durable transactional outbox for Layer 1 downstream event emission.
+
+    Records are inserted in the same transaction as the skill output storage.
+    A Celery dispatcher task delivers each event to configured sinks and
+    marks it dispatched. Failed deliveries are retried with backoff up to
+    MAX_DISPATCH_ATTEMPTS, then moved to dead_letter.
+    """
+
+    __tablename__ = "event_outbox"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False)
+
+    # Event identity
+    event_type = Column(String(100), nullable=False)
+    aggregate_type = Column(String(100), nullable=False)
+    aggregate_id = Column(String(255), nullable=False)
+
+    # Full event payload (tenant_id, job_id, output_id, output_contract, emitted_at, ...)
+    payload = Column(JSONB, nullable=False)
+
+    # Delivery state
+    status = Column(
+        String(50),
+        nullable=False,
+        default=OutboxStatus.PENDING.value,
+        server_default="pending",
+    )
+    attempts = Column(Integer, nullable=False, default=0, server_default="0")
+    last_error = Column(Text, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    dispatched_at = Column(DateTime(timezone=True), nullable=True)
+    dead_lettered_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("idx_event_outbox_status_created", "status", "created_at"),
+        Index("idx_event_outbox_tenant_id", "tenant_id"),
+        Index("idx_event_outbox_event_type", "event_type"),
+        Index("idx_event_outbox_aggregate", "aggregate_type", "aggregate_id"),
+    )

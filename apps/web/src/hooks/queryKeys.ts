@@ -63,6 +63,19 @@ export const QK = {
     logs: (id: string) => ["ingestion", "logs", id] as const,
   },
 
+  // Layer 1 — Skill outputs (SourceCorpus, AccountIntelligencePacket)
+  skillOutputs: {
+    layerTag: QUERY_LAYER_TAGS.layer1,
+    all: ["skill-outputs"] as const,
+    corpora: (filters?: unknown) =>
+      ["skill-outputs", "corpora", stableKey(filters)] as const,
+    corpus: (id: string) => ["skill-outputs", "corpus", id] as const,
+    packets: (filters?: unknown) =>
+      ["skill-outputs", "packets", stableKey(filters)] as const,
+    packet: (id: string) => ["skill-outputs", "packet", id] as const,
+    jobOutput: (jobId: string) => ["skill-outputs", "job", jobId] as const,
+  },
+
   // Layer 1 — Sources (Data Source Configuration)
   sources: {
     layerTag: QUERY_LAYER_TAGS.layer1,
