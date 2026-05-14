@@ -46,7 +46,29 @@ ENTITY_LIST_SORT_CLAUSES = {
 }
 
 def entity_list_sort_clause(sort_by: str, sort_order: str) -> str:
+    """Resolve sort clause from a closed allowlist.
+
+    Cypher does not support parameterised identifiers or direction, so this
+    is the only string-substitution point remaining in the query pipeline.
+    It is sourced exclusively from ENTITY_LIST_SORT_CLAUSES; any unknown
+    combination safely falls back to the default.
+    """
     return ENTITY_LIST_SORT_CLAUSES.get((sort_by, sort_order.lower()), "e.confidence_score DESC")
+
+
+def _map_results_to_summaries(results: list[dict[str, Any]]) -> list[EntitySummary]:
+    """Map raw Cypher result rows to canonical EntitySummary objects."""
+    return [
+        EntitySummary(
+            id=row["id"],
+            name=row["name"] or "Unnamed Entity",
+            description=row["description"],
+            entity_type=row["entity_type"],
+            confidence=row["confidence_score"] or 0.0,
+            updated_at=row["created_at"],
+        )
+        for row in results
+    ]
 
 
 @router.get("/entities", response_model=EntityListResponse)
@@ -79,8 +101,6 @@ async def list_entities(
             "offset": offset,
             "limit": limit,
         }
-        params["offset"] = offset
-        params["limit"] = limit
         builder = TenantScopedCypher(neo4j.tenant_id or "")
         scoped_query = builder.custom_tenant_query(
             """
@@ -117,25 +137,13 @@ async def list_entities(
         results = await neo4j.execute_query(scoped_query, params)
         total = results[0]["total"] if results else 0
 
-        entities = [
-            EntitySummary(
-                id=row["id"],
-                name=row["name"] or "Unnamed Entity",
-                description=row["description"],
-                entity_type=row["entity_type"],
-                confidence=row["confidence_score"] or 0.0,
-                updated_at=row["created_at"],
-            )
-            for row in results
-        ]
-
         return EntityListResponse(
-            results=entities,
+            results=_map_results_to_summaries(results),
             total_count=total,
             filtered_count=total,
             limit=limit,
             offset=offset,
-            has_more=(offset + len(entities)) < total,
+            has_more=(offset + len(results)) < total,
             available_domains=[],
             available_sources=[],
         )
@@ -307,32 +315,25 @@ async def query_entities(
 
         results = await neo4j.execute_query(scoped_list, scoped_list.params)
 
-        entities = [
-            EntitySummary(
-                id=row["id"],
-                name=row["name"] or "Unnamed Entity",
-                description=row["description"],
-                entity_type=row["entity_type"],
-                confidence=row["confidence_score"] or 0.0,
-                updated_at=row["created_at"],
-            )
-            for row in results
-        ]
-
         return EntityListResponse(
-            results=entities,
+            results=_map_results_to_summaries(results),
             total_count=total_count,
             filtered_count=total_count,
             limit=request.limit or 20,
             offset=request.offset or 0,
-            has_more=(request.offset or 0) + len(entities) < total_count,
+            has_more=(request.offset or 0) + len(results) < total_count,
             available_domains=[],
             available_sources=[],
         )
 
-    except Exception as e:
-        logger.error("Entity query failed: %s", e)
-        raise HTTPException(status_code=500, detail="Entity query failed. Please try again later.")
+    except (ValidationError, DatabaseError) as exc:
+        context = {"tenant": getattr(neo4j, "tenant_id", "unknown"), "endpoint": "/v1/entities/query", "operation": "query_entities"}
+        logger.warning("Entity query mapped exception", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
+    except Exception as exc:
+        context = {"tenant": getattr(neo4j, "tenant_id", "unknown"), "endpoint": "/v1/entities/query", "operation": "query_entities"}
+        logger.error("Entity query failed", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
 
 
 @router.post("/entity/traverse", response_model=ValueTreeResponse)
@@ -360,6 +361,11 @@ async def traverse_value_tree(
             total_value=result.get("total_value"),
         )
 
-    except Exception as e:
-        logger.error("Value tree traversal failed for %s: %s", request.root_entity_id, e)
-        raise HTTPException(status_code=500, detail="Value tree traversal failed. Please try again later.")
+    except (ValidationError, DatabaseError) as exc:
+        context = {"tenant": getattr(graph_rag, "tenant_id", "unknown"), "endpoint": "/v1/entity/traverse", "operation": "traverse_value_tree"}
+        logger.warning("Value tree traversal mapped exception", extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
+    except Exception as exc:
+        context = {"tenant": getattr(graph_rag, "tenant_id", "unknown"), "endpoint": "/v1/entity/traverse", "operation": "traverse_value_tree"}
+        logger.error("Value tree traversal failed for %s", request.root_entity_id, extra={"context": context}, exc_info=True)
+        raise map_exception_to_http_error(exc, context=context)
