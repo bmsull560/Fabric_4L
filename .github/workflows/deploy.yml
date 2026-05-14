@@ -166,12 +166,20 @@ jobs:
       - name: Resolve kustomize overlay
         id: overlay
         run: |
+          # Map environment → overlay path and read the namespace the overlay
+          # actually sets, so every subsequent step uses the same value.
           case "${{ env.ENVIRONMENT }}" in
             production) OVERLAY="k8s/overlays/production" ;;
             staging)    OVERLAY="k8s/overlays/staging"    ;;
             dev)        OVERLAY="k8s/envs/dev"            ;;
             *) echo "Unknown environment: ${{ env.ENVIRONMENT }}"; exit 1 ;;
           esac
+          # Read namespace from the overlay itself — single source of truth.
+          NS=$(grep '^namespace:' "${OVERLAY}/kustomization.yaml" | awk '{print $2}')
+          if [[ -z "$NS" ]]; then
+            echo "Could not read namespace from ${OVERLAY}/kustomization.yaml"
+            exit 1
+          fi
           echo "overlay=$OVERLAY" >> "$GITHUB_OUTPUT"
 
       - name: Create namespace
@@ -218,7 +226,7 @@ jobs:
           cat > deployment-record.json << EOF
           {
             "environment": "${{ env.ENVIRONMENT }}",
-            "namespace": "fabric-4l-${{ env.ENVIRONMENT }}",
+            "namespace": "${{ steps.overlay.outputs.namespace }}",
             "image_ref": "${{ env.IMAGE_REF }}",
             "commit_sha": "${{ github.sha }}",
             "deployed_by": "${{ github.actor }}",
@@ -297,16 +305,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.31.2'
+
+      - name: Configure kubeconfig
+        run: |
+          echo "Kubeconfig configuration placeholder"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+
       - name: Alert on failure
         run: |
           echo "Deployment failed - initiating rollback procedures"
           echo "Environment: ${{ env.ENVIRONMENT }}"
           echo "Failed tag: ${{ env.IMAGE_REF }}"
-          
-          # Send alert to PagerDuty/Slack
-          # curl -X POST ${{ secrets.PAGERDUTY_INTEGRATION_URL }} \
-          #   -H "Content-Type: application/json" \
-          #   -d '{"event_type":"trigger","description":"Deployment failed"}'
 
       - name: Rollback deployments
         run: |
@@ -381,9 +394,15 @@ jobs:
         id: evidence
         run: |
           TAG="${{ env.IMAGE_REF }}"
+          # Sanitize tag for use in filename: replace ':' and '/' with '-'
+          # (digest refs like sha256:<hash> contain ':' which breaks paths)
+          TAG_SAFE="${TAG//:/-}"
+          TAG_SAFE="${TAG_SAFE//\//-}"
           DATE=$(date -u +%Y-%m-%d)
           TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          FILE=".deployments/${DATE}-${TAG}.md"
+          FILE=".deployments/${DATE}-${TAG_SAFE}.md"
+          # Read actual namespace from the production overlay
+          NAMESPACE=$(grep '^namespace:' k8s/overlays/production/kustomization.yaml | awk '{print $2}')
           mkdir -p .deployments
 
           cat > "$FILE" << EOF
@@ -392,7 +411,7 @@ jobs:
           Date: ${TIME}
           Tag: ${TAG}
           Commit: ${{ github.sha }}
-          Namespace: fabric-4l-production
+          Namespace: ${NAMESPACE}
           Deployer: ${{ github.actor }}
           Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
@@ -420,6 +439,7 @@ jobs:
           EOF
 
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "tag_safe=$TAG_SAFE" >> "$GITHUB_OUTPUT"
           echo "Evidence file: $FILE"
 
       - name: Commit evidence file
@@ -435,7 +455,7 @@ jobs:
       - name: Upload evidence artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-evidence-${{ env.IMAGE_REF }}
+          name: deployment-evidence-${{ steps.evidence.outputs.tag_safe }}
           path: ${{ steps.evidence.outputs.file }}
           retention-days: 90
 

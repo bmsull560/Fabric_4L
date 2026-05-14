@@ -218,9 +218,12 @@ bash scripts/deploy-production.sh --tag v1.1.0
 # Pre-flight only — no cluster changes (Phases 0–5)
 bash scripts/deploy-production.sh --tag v1.1.0 --dry-run
 
-# Custom namespace
-bash scripts/deploy-production.sh --tag v1.1.0 --namespace fabric-4l-prod
+# Skip docker pull checks (useful in CI where images are pre-pulled)
+bash scripts/deploy-production.sh --tag v1.1.0 --skip-image-pull
 ```
+
+The namespace is always read from `k8s/overlays/production/kustomization.yaml`
+and cannot be overridden — the overlay is the single source of truth.
 
 The script stops on the first failing gate and prints the gate name. It writes
 a deployment evidence file to `.deployments/` on successful completion.

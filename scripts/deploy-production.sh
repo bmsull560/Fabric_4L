@@ -4,12 +4,15 @@
 # Executes the release runbook phases in order, stopping on the first failing
 # gate. Writes a deployment evidence file to .deployments/ on success.
 #
+# The Kubernetes namespace is always read from the kustomize overlay itself
+# (k8s/overlays/production/kustomization.yaml). There is no --namespace flag
+# because the overlay is the single source of truth for namespace.
+#
 # Usage:
 #   bash scripts/deploy-production.sh [OPTIONS]
 #
 # Options:
 #   --tag <tag>           Release tag to deploy (default: latest annotated tag)
-#   --namespace <ns>      Kubernetes namespace (default: fabric-4l-prod)
 #   --dry-run             Run Phases 0–5 only (no cluster changes)
 #   --skip-image-pull     Skip docker pull checks (useful in CI with pre-pulled images)
 #   --help                Show this message
@@ -46,7 +49,6 @@ gate_fail() {
 # Defaults
 # ---------------------------------------------------------------------------
 RELEASE_TAG=""
-NAMESPACE="fabric-4l-prod"
 DRY_RUN=false
 SKIP_IMAGE_PULL=false
 REGISTRY="ghcr.io/bmsull560/fabric_4l"
@@ -73,9 +75,8 @@ LAYER_PORTS=(
 # ---------------------------------------------------------------------------
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag)           RELEASE_TAG="$2"; shift 2 ;;
-    --namespace)     NAMESPACE="$2";   shift 2 ;;
-    --dry-run)       DRY_RUN=true;     shift   ;;
+    --tag)             RELEASE_TAG="$2"; shift 2 ;;
+    --dry-run)         DRY_RUN=true;     shift   ;;
     --skip-image-pull) SKIP_IMAGE_PULL=true; shift ;;
     --help)
       sed -n '/^# Usage:/,/^[^#]/p' "$0" | grep '^#' | sed 's/^# \?//'
@@ -90,7 +91,12 @@ done
 # ---------------------------------------------------------------------------
 phase "Phase 0 — Tooling preflight"
 
-REQUIRED_TOOLS=(git docker kubectl pnpm python3)
+# docker is only required when image pulls are not skipped
+if [[ "$SKIP_IMAGE_PULL" == "true" ]]; then
+  REQUIRED_TOOLS=(git kubectl pnpm python3)
+else
+  REQUIRED_TOOLS=(git docker kubectl pnpm python3)
+fi
 MISSING=()
 
 for tool in "${REQUIRED_TOOLS[@]}"; do
@@ -101,6 +107,10 @@ for tool in "${REQUIRED_TOOLS[@]}"; do
     MISSING+=("$tool")
   fi
 done
+
+if [[ "$SKIP_IMAGE_PULL" == "true" ]]; then
+  skip "docker: not checked (--skip-image-pull set)"
+fi
 
 # Optional tools
 for tool in cosign trivy gh; do
@@ -126,9 +136,16 @@ if [[ -z "$RELEASE_TAG" ]]; then
   info "Using latest annotated tag: $RELEASE_TAG"
 fi
 
+# Namespace is always read from the production overlay — single source of truth.
+OVERLAY="k8s/overlays/production"
+NAMESPACE=$(grep '^namespace:' "${OVERLAY}/kustomization.yaml" 2>/dev/null | awk '{print $2}')
+if [[ -z "$NAMESPACE" ]]; then
+  gate_fail "Could not read namespace from ${OVERLAY}/kustomization.yaml"
+fi
+
 echo ""
 echo -e "${BOLD}Release tag:  $RELEASE_TAG${RESET}"
-echo -e "${BOLD}Namespace:    $NAMESPACE${RESET}"
+echo -e "${BOLD}Namespace:    $NAMESPACE (from ${OVERLAY}/kustomization.yaml)${RESET}"
 echo -e "${BOLD}Dry-run:      $DRY_RUN${RESET}"
 echo -e "${BOLD}Registry:     $REGISTRY${RESET}"
 
@@ -198,12 +215,26 @@ else
   skip "node not available — skipping package.json version checks"
 fi
 
-K8S_TAG=$(grep 'newTag' k8s/overlays/production/kustomization.yaml 2>/dev/null | head -1 | awk '{print $2}' || echo "MISSING")
-if [[ "$K8S_TAG" == "$RELEASE_TAG" ]]; then
-  pass "k8s/overlays/production/kustomization.yaml: $K8S_TAG"
-else
-  fail "k8s/overlays/production/kustomization.yaml: $K8S_TAG (expected $RELEASE_TAG)"
+# Validate ALL newTag entries in the overlay — a single mismatched service
+# would produce a mixed-version release.
+K8S_OVERLAY="k8s/overlays/production/kustomization.yaml"
+mapfile -t K8S_TAGS < <(grep 'newTag' "$K8S_OVERLAY" 2>/dev/null | awk '{print $2}')
+if [[ ${#K8S_TAGS[@]} -eq 0 ]]; then
+  fail "$K8S_OVERLAY: no newTag entries found"
   ERRORS+=("k8s overlay newTag")
+else
+  K8S_MISMATCH=()
+  for tag in "${K8S_TAGS[@]}"; do
+    if [[ "$tag" != "$RELEASE_TAG" ]]; then
+      K8S_MISMATCH+=("$tag")
+    fi
+  done
+  if [[ ${#K8S_MISMATCH[@]} -gt 0 ]]; then
+    fail "$K8S_OVERLAY: ${#K8S_MISMATCH[@]} of ${#K8S_TAGS[@]} newTag entries do not match $RELEASE_TAG: ${K8S_MISMATCH[*]}"
+    ERRORS+=("k8s overlay newTag")
+  else
+    pass "$K8S_OVERLAY: all ${#K8S_TAGS[@]} newTag entries = $RELEASE_TAG"
+  fi
 fi
 
 if [[ ${#ERRORS[@]} -gt 0 ]]; then
@@ -222,34 +253,34 @@ REQUIRED_WORKFLOWS=(
   "contract-compliance.yml"
 )
 
-if command -v gh &>/dev/null; then
-  info "Checking workflow runs via gh CLI..."
-  ALL_PASSED=true
-  for wf in "${REQUIRED_WORKFLOWS[@]}"; do
-    # Get the most recent run on the tag commit
-    STATUS=$(gh run list \
-      --workflow="$wf" \
-      --commit="$HEAD_SHA" \
-      --limit=1 \
-      --json conclusion \
-      --jq '.[0].conclusion' 2>/dev/null || echo "unknown")
-    if [[ "$STATUS" == "success" ]]; then
-      pass "$wf: success"
-    elif [[ "$STATUS" == "null" || "$STATUS" == "unknown" || -z "$STATUS" ]]; then
-      skip "$wf: no run found for commit $HEAD_SHA — verify manually"
-    else
-      fail "$wf: $STATUS"
-      ALL_PASSED=false
-    fi
-  done
-  if [[ "$ALL_PASSED" == "false" ]]; then
-    gate_fail "One or more required CI workflows did not pass on commit $HEAD_SHA"
+if ! command -v gh &>/dev/null; then
+  gate_fail "gh CLI is required for CI gate verification but is not installed.
+  Install it from https://cli.github.com/ and authenticate with: gh auth login
+  Required workflows that must pass on commit $(git rev-parse --short HEAD):
+    ${REQUIRED_WORKFLOWS[*]}"
+fi
+
+info "Checking workflow runs via gh CLI (commit: $(git rev-parse --short HEAD)) ..."
+ALL_PASSED=true
+for wf in "${REQUIRED_WORKFLOWS[@]}"; do
+  STATUS=$(gh run list \
+    --workflow="$wf" \
+    --commit="$HEAD_SHA" \
+    --limit=1 \
+    --json conclusion \
+    --jq '.[0].conclusion' 2>/dev/null || echo "unknown")
+  if [[ "$STATUS" == "success" ]]; then
+    pass "$wf: success"
+  elif [[ "$STATUS" == "null" || "$STATUS" == "unknown" || -z "$STATUS" ]]; then
+    fail "$wf: no completed run found for commit $HEAD_SHA"
+    ALL_PASSED=false
+  else
+    fail "$wf: $STATUS"
+    ALL_PASSED=false
   fi
-else
-  skip "gh CLI not available — verify CI manually at:"
-  info "https://github.com/bmsull560/Fabric_4L/actions"
-  info "Required workflows: ${REQUIRED_WORKFLOWS[*]}"
-  info "All must show green on commit $(git rev-parse --short HEAD)"
+done
+if [[ "$ALL_PASSED" == "false" ]]; then
+  gate_fail "One or more required CI workflows did not pass on commit $HEAD_SHA"
 fi
 
 # ---------------------------------------------------------------------------
@@ -395,8 +426,8 @@ fi
 info "Creating namespace $NAMESPACE if it does not exist ..."
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-info "Applying k8s/overlays/production ..."
-kubectl apply -k k8s/overlays/production
+info "Applying $OVERLAY ..."
+kubectl apply -k "$OVERLAY"
 
 info "Waiting for rollouts (10m timeout each) ..."
 ROLLOUT_ERRORS=()
@@ -472,7 +503,11 @@ phase "Phase 8 — Deployment evidence"
 
 mkdir -p .deployments
 
-EVIDENCE_FILE=".deployments/$(date -u +%Y-%m-%d)-${RELEASE_TAG}.md"
+# Sanitize tag for filename — digest refs (sha256:<hash>) contain ':' which
+# is invalid in filenames on some systems and awkward in tooling.
+RELEASE_TAG_SAFE="${RELEASE_TAG//:/-}"
+RELEASE_TAG_SAFE="${RELEASE_TAG_SAFE//\//-}"
+EVIDENCE_FILE=".deployments/$(date -u +%Y-%m-%d)-${RELEASE_TAG_SAFE}.md"
 DEPLOY_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 COMMIT_SHA=$(git rev-parse HEAD)
 DEPLOYER="${USER:-unknown}"
