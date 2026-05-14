@@ -313,10 +313,12 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
   journeyTest('GP-DEEP-017: hypothesis is approved before value driver tree is built', async ({ authedPage }) => {
     await authedPage.goto(`/hypothesis/${DEEP_ACCOUNT_ID}/hypothesis`, { waitUntil: 'domcontentloaded' });
 
+    // Lazy-loaded chunk + React hydration may take longer than the default 3s timeout.
     await expectAnyVisible(
       authedPage,
       [/hypothesis|value hypothesis|approved|approve/i],
       'hypothesis approval surface',
+      8000,
     );
 
     const approveBtn = authedPage.getByRole('button', { name: /approve|accept|confirm/i }).first();
@@ -345,12 +347,12 @@ journeyTest.describe('Golden Path Deep: Account to Approved Business Case', () =
   journeyTest('GP-DEEP-019: re-running calculation from the same inputs yields identical output', async ({ authedPage }) => {
     await authedPage.goto(`/calculator/${DEEP_ACCOUNT_ID}/roi`, { waitUntil: 'domcontentloaded' });
 
-    // Capture key text before reload
-    const bodyTextBefore = await authedPage.textContent('body') ?? '';
+    // Capture key text before reload — use innerText to exclude <script> source
+    const bodyTextBefore = await authedPage.evaluate(() => document.body.innerText);
 
     // Reload the page to simulate a re-run from server-stored state
     await authedPage.reload({ waitUntil: 'domcontentloaded' });
-    const bodyTextAfter = await authedPage.textContent('body') ?? '';
+    const bodyTextAfter = await authedPage.evaluate(() => document.body.innerText);
 
     // Key values must be the same — identify at least one persistent numeric output
     const extractedNumbers = (text: string) =>

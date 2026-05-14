@@ -65,7 +65,7 @@ export default function WorkspacePagePattern({
         </div>
       )}
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-[400px]">
         <div className="flex-1 min-w-0 overflow-y-auto">
           <PageShell fullWidth className="py-6">{children}</PageShell>
         </div>

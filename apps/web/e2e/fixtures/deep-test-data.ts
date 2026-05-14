@@ -25,6 +25,9 @@ export function createFullAccountPayload(overrides?: Record<string, unknown>) {
     domain: 'meridian.example',
     website: 'https://meridian.example',
     industry: 'Healthcare',
+    company_size: 'enterprise',
+    annual_revenue: 85000000,
+    employee_count: 1200,
     tier: 'enterprise',
     stage: 'prospect',
     owner: 'Avery Stone',
@@ -45,6 +48,7 @@ export function createFullAccountPayload(overrides?: Record<string, unknown>) {
 
 export function createApprovedBusinessCase(overrides?: Record<string, unknown>) {
   return {
+    case_id: DEEP_CASE_APPROVED_ID,
     id: DEEP_CASE_APPROVED_ID,
     title: 'Meridian Automation Business Case',
     status: 'approved',
@@ -52,26 +56,40 @@ export function createApprovedBusinessCase(overrides?: Record<string, unknown>) 
     roi_ratio: 2.87,
     payback_months: 9,
     total_value: 2100000,
+    summary: 'Approved case with verified evidence lineage and three-scenario ROI.',
     executive_summary: 'Approved case with verified evidence lineage and three-scenario ROI.',
+    confidence_score: 0.91,
+    implementation_cost: 180000,
+    page_count: 12,
+    file_size_bytes: 245760,
     recommendations: [
       'Proceed with Phase 1 automation rollout.',
       'Assign metric owners for realization tracking.',
     ],
-    claims: [
-      { id: 'claim-001', text: 'Manual reconciliation costs $420K annually', evidence_id: 'ev-001', type: 'evidence' },
-      { id: 'claim-002', text: 'Automation reduces cycle time by 18-27%', benchmark_id: 'bench-001', type: 'benchmark' },
-      { id: 'claim-003', text: 'Finance team validates baseline hours', type: 'assumption', approved: true },
+    truth_references: [
+      { id: 'ref-001', claim: 'Manual reconciliation costs $420K annually', source: 'Discovery call transcript', evidence_id: 'ev-001', type: 'evidence' },
+      { id: 'ref-002', claim: 'Automation reduces cycle time by 18-27%', source: 'Industry Benchmark DB', benchmark_id: 'bench-001', type: 'benchmark' },
+      { id: 'ref-003', claim: 'Finance team validates baseline hours', source: 'Internal assumption', type: 'assumption', approved: true },
     ],
+    case_metadata: {
+      account_id: DEEP_ACCOUNT_ID,
+      account_route_id: DEEP_ACCOUNT_ID,
+      external_account_id: DEEP_ACCOUNT_ID,
+      crm_ready: true,
+      realization_ready: true,
+    },
     approval_history: [
       { action: 'submitted', actor: 'Avery Stone', timestamp: '2026-04-28T10:00:00Z' },
       { action: 'approved', actor: 'Value Engineering Lead', timestamp: '2026-04-29T15:30:00Z' },
     ],
+    created_at: '2026-04-28T10:00:00Z',
     ...overrides,
   };
 }
 
 export function createDraftBusinessCase(overrides?: Record<string, unknown>) {
   return {
+    case_id: DEEP_CASE_DRAFT_ID,
     id: DEEP_CASE_DRAFT_ID,
     title: 'Draft Meridian Business Case',
     status: 'draft',
@@ -79,12 +97,20 @@ export function createDraftBusinessCase(overrides?: Record<string, unknown>) {
     roi_ratio: 1.1,
     payback_months: 18,
     total_value: 450000,
+    summary: 'Draft case pending evidence approval and reviewer sign-off.',
     executive_summary: 'Draft case pending evidence approval and reviewer sign-off.',
+    confidence_score: 0.45,
+    implementation_cost: 180000,
+    page_count: 0,
+    file_size_bytes: 0,
     recommendations: ['Resolve missing evidence before export.'],
-    claims: [
-      { id: 'claim-010', text: 'Estimated savings of $200K', type: 'assumption', approved: false },
-    ],
+    truth_references: [],
+    case_metadata: {
+      account_id: DEEP_ACCOUNT_ID,
+      account_route_id: DEEP_ACCOUNT_ID,
+    },
     approval_history: [],
+    created_at: '2026-05-01T10:00:00Z',
     ...overrides,
   };
 }
@@ -202,9 +228,33 @@ export function createApprovalWorkflow(state: 'pending_review' | 'changes_reques
 
 export function createIngestionJobs() {
   return [
-    { id: 'job-complete-001', domain: 'meridian.example', status: 'completed', progress: 100, documents_found: 42, documents_processed: 42, createdAt: '2026-05-01T10:00:00Z', updatedAt: '2026-05-01T10:05:00Z' },
-    { id: 'job-failed-001', domain: 'duplicate.example', status: 'failed', progress: 33, error: 'Duplicate source detected', documents_found: 8, documents_processed: 3, createdAt: '2026-05-01T09:00:00Z', updatedAt: '2026-05-01T09:02:00Z' },
-    { id: 'job-running-001', domain: 'newclient.example', status: 'processing', progress: 67, documents_found: 20, documents_processed: 13, createdAt: '2026-05-01T08:00:00Z', updatedAt: '2026-05-01T08:30:00Z' },
+    {
+      id: 'job-complete-001',
+      status: 'completed',
+      progress_percent_complete: 100,
+      progress_processed_pages: 42,
+      created_at: '2026-05-01T10:00:00Z',
+      updated_at: '2026-05-01T10:05:00Z',
+      configuration: { url: 'https://meridian.example' },
+    },
+    {
+      id: 'job-failed-001',
+      status: 'failed',
+      progress_percent_complete: 33,
+      progress_processed_pages: 3,
+      created_at: '2026-05-01T09:00:00Z',
+      updated_at: '2026-05-01T09:02:00Z',
+      configuration: { url: 'https://duplicate.example' },
+    },
+    {
+      id: 'job-running-001',
+      status: 'processing',
+      progress_percent_complete: 67,
+      progress_processed_pages: 13,
+      created_at: '2026-05-01T08:00:00Z',
+      updated_at: '2026-05-01T08:30:00Z',
+      configuration: { url: 'https://newclient.example' },
+    },
   ];
 }
 
@@ -558,36 +608,298 @@ export function createAdversarialAgentRefusal() {
 
 // ── Mock Endpoint Builders ───────────────────────────────────────────────────
 
+// ── Value Hypotheses ─────────────────────────────────────────────────────────
+
+export function createHypothesisSet() {
+  return [
+    {
+      id: 'hyp-001',
+      account_id: DEEP_ACCOUNT_ID,
+      product_id: 'prod-001',
+      signal_id: 'sig-001',
+      signal_name: 'Manual reconciliation burden',
+      capability_id: 'cap-001',
+      capability_name: 'Workflow Automation',
+      hypothesis_text: 'Meridian Health Group can reduce manual reconciliation time by 65% using our workflow automation platform, saving approximately $273K annually.',
+      value_path_category: 'cost_savings',
+      confidence: 0.92,
+      confidence_score: 0.92,
+      estimated_impact_usd: 273000,
+      status: 'draft',
+      evidence_ids: ['ev-001', 'ev-002'],
+      created_at: '2026-05-01T10:00:00Z',
+      updated_at: '2026-05-01T12:00:00Z',
+    },
+    {
+      id: 'hyp-002',
+      account_id: DEEP_ACCOUNT_ID,
+      product_id: 'prod-001',
+      signal_id: 'sig-002',
+      signal_name: 'Supply chain visibility gaps',
+      capability_id: 'cap-002',
+      capability_name: 'Analytics Dashboard',
+      hypothesis_text: 'Improving supply chain visibility can reduce cycle time by 30%, generating $180K in annual value.',
+      value_path_category: 'cost_savings',
+      confidence: 0.87,
+      confidence_score: 0.87,
+      estimated_impact_usd: 180000,
+      status: 'validated',
+      evidence_ids: ['ev-002'],
+      created_at: '2026-05-01T10:00:00Z',
+      updated_at: '2026-05-01T12:00:00Z',
+    },
+    {
+      id: 'hyp-003',
+      account_id: DEEP_ACCOUNT_ID,
+      product_id: 'prod-002',
+      signal_id: 'sig-003',
+      signal_name: 'Regulatory compliance overhead',
+      capability_id: 'cap-003',
+      capability_name: 'Compliance Module',
+      hypothesis_text: 'Automating compliance reporting reduces audit overhead by 40%, saving $95K annually.',
+      value_path_category: 'risk_reduction',
+      confidence: 0.65,
+      confidence_score: 0.65,
+      estimated_impact_usd: 95000,
+      status: 'draft',
+      evidence_ids: ['ev-003'],
+      created_at: '2026-05-01T10:00:00Z',
+      updated_at: '2026-05-01T12:00:00Z',
+    },
+  ];
+}
+
+// ── ROI Calculation Result ────────────────────────────────────────────────────
+
+export function createROICalculationResult() {
+  return {
+    id: 'calc-deep-001',
+    npv: 1420000,
+    irr: 0.42,
+    payback_months: 9,
+    total_roi_pct: 2.87,
+    annual_projections: [
+      { year: 1, cost: 180000, benefit: 700000, cumulative_net: 520000, discounted_benefit: 636363 },
+      { year: 2, cost: 60000, benefit: 700000, cumulative_net: 1160000, discounted_benefit: 578512 },
+      { year: 3, cost: 60000, benefit: 700000, cumulative_net: 1800000, discounted_benefit: 525920 },
+    ],
+    scenarios: {
+      conservative: { npv: 820000, irr: 0.22, payback_months: 14, total_roi_pct: 1.8, multiplier: 0.63 },
+      expected: { npv: 1420000, irr: 0.42, payback_months: 9, total_roi_pct: 2.87, multiplier: 1.0 },
+      optimistic: { npv: 2340000, irr: 0.68, payback_months: 6, total_roi_pct: 4.2, multiplier: 1.46 },
+    },
+    created_at: '2026-05-01T12:00:00Z',
+  };
+}
+
+// ── Industry Benchmarks ───────────────────────────────────────────────────────
+
+export function createIndustryBenchmarks() {
+  return {
+    industry: 'Healthcare',
+    has_benchmarks: true,
+    message: 'Benchmarks available for Healthcare industry',
+    defaults: {
+      productivity_gain_pct: 0.18,
+      error_reduction_pct: 0.25,
+      time_savings_hours_per_week: 8,
+      affected_employees_pct: 0.3,
+    },
+    avg_deal_size: 250000,
+    avg_time_to_value_days: 90,
+    avg_roi_pct: 287,
+    avg_payback_months: 11,
+    avg_npv: 1200000,
+    case_count: 47,
+    company_sizes: ['mid-market', 'enterprise'],
+  };
+}
+
+// ── Value Case (Calculator) ───────────────────────────────────────────────────
+
+export function createValueCaseMock() {
+  const breakdown = [
+    { area: 'Reconciliation Automation', value: 273000, percentage: 39 },
+    { area: 'Cycle Time Reduction', value: 180000, percentage: 26 },
+    { area: 'Compliance Reporting', value: 95000, percentage: 14 },
+    { area: 'Other Efficiency Gains', value: 152000, percentage: 21 },
+  ];
+  return {
+    case_id: 'vc-deep-001',
+    account_id: DEEP_ACCOUNT_ID,
+    name: 'Meridian Health Group Value Case',
+    status: 'active',
+    scenarios: [
+      { name: 'Conservative', total_value: 1200000, roi_ratio: 1.8, payback_months: 14, annual_savings: 340000, currency: 'USD', breakdown: breakdown.map(b => ({ ...b, value: Math.round(b.value * 0.63) })) },
+      { name: 'Expected', total_value: 2100000, roi_ratio: 2.87, payback_months: 9, annual_savings: 700000, currency: 'USD', breakdown },
+      { name: 'Optimistic', total_value: 3400000, roi_ratio: 4.2, payback_months: 6, annual_savings: 1100000, currency: 'USD', breakdown: breakdown.map(b => ({ ...b, value: Math.round(b.value * 1.46) })) },
+    ],
+    levers: [
+      { id: 'lever-001', name: 'Reconciliation Automation', base_value: 273000, min_value: 180000, max_value: 420000 },
+      { id: 'lever-002', name: 'Cycle Time Reduction', base_value: 180000, min_value: 120000, max_value: 280000 },
+    ],
+    created_at: '2026-05-01T10:00:00Z',
+    updated_at: '2026-05-01T12:00:00Z',
+  };
+}
+
+// ── Value Case Artifact ───────────────────────────────────────────────────────
+
+export function createValueCaseArtifact() {
+  return {
+    id: 'artifact-deep-001',
+    account_id: DEEP_ACCOUNT_ID,
+    version: 1,
+    status: 'ready',
+    title: 'Meridian Health Group — Value Case',
+    executive_summary: 'Meridian Health Group can achieve $2.1M in total value over 3 years by automating manual reconciliation workflows, improving supply chain visibility, and streamlining compliance reporting.',
+    lineage: {
+      signal_ids: ['sig-001', 'sig-002', 'sig-003'],
+      hypothesis_ids: ['hyp-001', 'hyp-002', 'hyp-003'],
+      evidence_ids: ['ev-001', 'ev-002', 'ev-003'],
+      calculation_id: 'calc-deep-001',
+    },
+    created_at: '2026-05-01T12:00:00Z',
+    updated_at: '2026-05-01T12:00:00Z',
+  };
+}
+
+// Canonical workspace case ID used by all workspace tab mocks
+export const DEEP_WORKSPACE_CASE_ID = 'case-deep-workspace-001';
+
 export function buildGoldenPathMocks(): MockEndpoint[] {
   const jobs = createIngestionJobs();
+  const actionPlanContent = { recommendations: [
+    { id: 'rec-001', title: 'Automate reconciliation workflow', priority: 'high', projectedValue: '$273K annually', confidence: 'high', horizon: 'Q2 2026', prospectPain: 'Manual reconciliation takes 120 hours/week', rootDriver: 'Operational Efficiency', ourCapability: 'Workflow automation platform', grounding_type: 'evidence_backed' },
+    { id: 'rec-002', title: 'Deploy cycle time analytics', priority: 'medium', projectedValue: '$180K annually', confidence: 'medium', horizon: 'Q3 2026', prospectPain: 'Visibility into cycle times', rootDriver: 'Process Optimization', ourCapability: 'Analytics dashboard', grounding_type: 'assumption' },
+    { id: 'rec-003', title: 'Integrate compliance reporting', priority: 'critical', projectedValue: '$95K annually', confidence: 'high', horizon: 'Q2 2026', prospectPain: 'Regulatory audit overhead', rootDriver: 'Risk Reduction', ourCapability: 'Compliance module', grounding_type: 'fact' },
+  ] };
+
   return [
-    { pattern: '**/api/v1/agents/accounts', body: [createFullAccountPayload()] },
+    // ── Accounts ──────────────────────────────────────────────────────────
+    { pattern: /.*\/api\/v1\/agents\/accounts\?.*/, body: { items: [createFullAccountPayload()], total: 1, page: 1, page_size: 100, has_more: false } },
     { pattern: `**/api/v1/agents/accounts/${DEEP_ACCOUNT_ID}`, body: createFullAccountPayload() },
-    { pattern: '**/api/v1/agents/accounts', method: 'POST', status: 201, body: { account: createFullAccountPayload() } },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/signals`, body: createSignalSet() },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/drivers`, body: createValueDriverTree() },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/evidence`, body: createEvidenceSet() },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/stakeholders`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: { stakeholders: [{ id: 'sh-001', name: 'CFO', influence: 'high' }] } } },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/value-model`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: createROICalculatorMock() } },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/narrative`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: { narrative: 'Generated executive narrative for Meridian Health Group.' } } },
-    { pattern: `**/api/v1/agents/workspace/${DEEP_ACCOUNT_ID}/action-plan`, body: { status: 'ready', generated_at: '2026-05-01T12:00:00Z', content: { recommendations: [
-      { id: 'rec-001', title: 'Automate reconciliation workflow', priority: 'high', projectedValue: '$273K annually', confidence: 'high', horizon: 'Q2 2026', prospectPain: 'Manual reconciliation takes 120 hours/week', rootDriver: 'Operational Efficiency', ourCapability: 'Workflow automation platform', grounding_type: 'evidence_backed' },
-      { id: 'rec-002', title: 'Deploy cycle time analytics', priority: 'medium', projectedValue: '$180K annually', confidence: 'medium', horizon: 'Q3 2026', prospectPain: 'Visibility into cycle times', rootDriver: 'Process Optimization', ourCapability: 'Analytics dashboard', grounding_type: 'assumption' },
-      { id: 'rec-003', title: 'Integrate compliance reporting', priority: 'critical', projectedValue: '$95K annually', confidence: 'high', horizon: 'Q2 2026', prospectPain: 'Regulatory audit overhead', rootDriver: 'Risk Reduction', ourCapability: 'Compliance module', grounding_type: 'fact' },
-    ] } } },
-    // Ingestion jobs — support both old and L1 patterns
-    { pattern: '**/api/v1/ingest/jobs', body: jobs },
-    { pattern: '**/l1/jobs**', body: { data: jobs, pagination: { page: 1, limit: 15, total: jobs.length, totalPages: 1 } } },
-    { pattern: '**/l1/jobs/*/retry', method: 'POST', status: 200, body: { status: 'retrying', job_id: 'job-failed-001' } },
-    { pattern: '**/l1/jobs/*', body: { ...jobs[0], stages: [{ stage: 'Extract', status: 'COMPLETED' }, { stage: 'Transform', status: 'COMPLETED' }, { stage: 'Load', status: 'COMPLETED' }], progress: { percentComplete: 100, processedPages: 42, totalPages: 42 } } },
-    { pattern: '**/agent-stream/chat', method: 'POST', body: createGroundedAgentResponse() },
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/accounts$/, status: 201, body: { account: createFullAccountPayload() } },
+
+    // ── Case ID resolution — GET /cases?account_id=... ────────────────────
+    // Must be registered before the generic /cases mock so it takes priority.
+    {
+      pattern: new RegExp(`.*\\/api\\/v1\\/agents\\/cases\\?account_id=${encodeURIComponent(DEEP_ACCOUNT_ID)}.*`),
+      body: { items: [{ case_id: DEEP_WORKSPACE_CASE_ID, account_id: DEEP_ACCOUNT_ID, title: 'Meridian workspace', status: 'active' }], total: 1 },
+    },
+    // Fallback case lookup for any account
+    { pattern: /.*\/api\/v1\/agents\/cases\?account_id=.*/, body: { items: [{ case_id: DEEP_WORKSPACE_CASE_ID, account_id: DEEP_ACCOUNT_ID, title: 'Meridian workspace', status: 'active' }], total: 1 } },
+    // Case create
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/cases$/, status: 201, body: { case_id: DEEP_WORKSPACE_CASE_ID, account_id: DEEP_ACCOUNT_ID, title: 'Meridian workspace', status: 'active' } },
+
+    // ── Workspace tabs — wildcard caseId (survives localStorage caching) ──
+    // The hook returns response.data directly, so body IS the TData the page reads.
+    // More-specific patterns first so they win over the DEFAULT_MOCKS fallbacks.
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/signals$/, body: createSignalSet().content },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/drivers$/, body: createValueDriverTree().content },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/evidence$/, body: createEvidenceSet().content },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/stakeholders$/, body: { stakeholders: [{ id: 'sh-001', name: 'CFO', influence: 'high' }] } },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/value-model$/, body: { ...createROICalculatorMock(), latest_value_case_id: 'vc-deep-001', value_case: createValueCaseMock() } },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/narrative$/, body: { narrative: 'Generated executive narrative for Meridian Health Group.' } },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/action-plan$/, body: actionPlanContent },
+    { pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/evidence-links$/, body: { evidence_links: [] } },
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/generate$/, body: { status: 'generating' } },
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/cases\/[^/]+\/workspace\/signals\/[^/]+\/review$/, body: { status: 'ok' } },
+
+    // ── Value Hypotheses (L4) — /api/v1/agents/hypotheses/... ────────────
+    {
+      pattern: /.*\/api\/v1\/agents\/hypotheses\/account\/.*/,
+      body: { hypotheses: createHypothesisSet(), total: 3 },
+    },
+    { pattern: '**/api/v1/agents/hypotheses/summary/stats', body: { total: 3, by_status: { draft: 2, validated: 1 }, avg_confidence: 0.81, avg_estimated_impact: 182666, total_estimated_impact: 548000, unique_accounts: 1, unique_products: 2 } },
+    { method: 'POST', pattern: '**/api/v1/agents/hypotheses/generate', body: { hypotheses: createHypothesisSet(), signals_analyzed: 4, products_matched: 2 } },
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/hypotheses\/.*\/validate/, body: { hypothesis: { ...createHypothesisSet()[0], status: 'validated' }, promoted_artifacts: { drivers: [], levers: [], created: true }, status: 'ok' } },
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/hypotheses\/.*\/convert/, body: { hypothesis_id: 'hyp-001', account_id: DEEP_ACCOUNT_ID, tenant_id: DEEP_TENANT_ID, evidence_ids: ['ev-001'], status: 'ok' } },
+    { method: 'POST', pattern: '**/api/v1/agents/hypotheses/rank', body: createHypothesisSet() },
+    { method: 'POST', pattern: '**/api/v1/agents/hypotheses/from-signal', body: { hypothesis: createHypothesisSet()[0] } },
+
+    // ── ROI Calculator (L3) — /api/v1/graph/v1/roi/... ───────────────────
+    // L3 layer prefix is /graph, so full path is /api/v1/graph/v1/roi/...
+    { method: 'POST', pattern: /.*\/v1\/roi\/calculate/, body: createROICalculationResult() },
+    { pattern: /.*\/v1\/roi\/benchmarks.*/, body: createIndustryBenchmarks() },
+    { pattern: /.*\/v1\/roi\/templates.*/, body: { templates: [], total: 0, skip: 0, limit: 20 } },
+    { pattern: /.*\/v1\/roi\/calculations.*/, body: { calculations: [createROICalculationResult()], total: 1, skip: 0, limit: 20 } },
+
+    // ── Ingestion jobs — /api/v1/ingest/jobs ─────────────────────────────
+    {
+      pattern: /.*\/api\/v1\/ingest\/jobs(\?.*)?$/,
+      body: { data: jobs, pagination: { page: 1, limit: 20, total: jobs.length, totalPages: 1 }, aggregation: { by_status: { completed: 1, failed: 1, running: 1 } } },
+    },
+    {
+      pattern: /.*\/api\/v1\/ingest\/jobs\/[^/]+\/retry/,
+      method: 'POST',
+      status: 200,
+      body: { status: 'retrying', job_id: 'job-failed-001' },
+    },
+    {
+      pattern: /.*\/api\/v1\/ingest\/jobs\/[^/]+$/,
+      body: { ...jobs[0], stages: [{ stage: 'Extract', status: 'COMPLETED' }, { stage: 'Transform', status: 'COMPLETED' }, { stage: 'Load', status: 'COMPLETED' }], progress: { percentComplete: 100, processedPages: 42, totalPages: 42 } },
+    },
+
+    // ── Agent stream ──────────────────────────────────────────────────────
+    { method: 'POST', pattern: '**/agent-stream/chat', body: createGroundedAgentResponse() },
+
+    // ── Account gates / reviews ───────────────────────────────────────────
+    {
+      pattern: /.*\/api\/v1\/agents\/accounts\/[^/]+\/gates$/,
+      body: {
+        all_passed: true,
+        gates: [
+          { type: 'evidence', status: 'closed', label: 'Evidence Gate' },
+          { type: 'approval', status: 'closed', label: 'Approval Gate' },
+          { type: 'export', status: 'closed', label: 'Export Gate' },
+        ],
+      },
+    },
+    { pattern: /.*\/api\/v1\/agents\/accounts\/[^/]+\/reviews$/, body: [] },
+
+    // ── Business cases ────────────────────────────────────────────────────
     { pattern: `**/api/v1/agents/cases/${DEEP_CASE_APPROVED_ID}`, body: createApprovedBusinessCase() },
     { pattern: `**/api/v1/agents/cases/${DEEP_CASE_DRAFT_ID}`, body: createDraftBusinessCase() },
-    { pattern: '**/api/v1/agents/cases', body: [createApprovedBusinessCase(), createDraftBusinessCase()] },
+    { pattern: '**/api/v1/agents/cases', body: { items: [createApprovedBusinessCase(), createDraftBusinessCase()], total: 2 } },
+
+    // ── Governance / approvals ────────────────────────────────────────────
     { pattern: '**/api/v1/governance/approvals**', body: [createApprovalWorkflow('approved')] },
+
+    // ── Value cases (L3 /graph/v1/calculators/value-cases) ───────────────
+    { pattern: /.*\/v1\/calculators\/value-cases\/vc-deep-001.*/, body: createValueCaseMock() },
+    { pattern: /.*\/v1\/calculators\/value-cases.*/, body: { items: [createValueCaseMock()], total: 1 } },
+    { method: 'POST', pattern: /.*\/v1\/calculators\/value-cases.*/, body: createValueCaseMock() },
+
+    // ── Value levers (L3 /graph/v1/calculators/levers) ───────────────────
+    {
+      pattern: /.*\/v1\/calculators\/levers.*/,
+      body: {
+        levers: [
+          { id: 'lever-001', name: 'Reconciliation Automation', category: 'cost_savings', base_value: 273000, min_value: 180000, max_value: 420000, annual_impact: 273000, confidence: 0.92, unit: 'USD' },
+          { id: 'lever-002', name: 'Cycle Time Reduction', category: 'cost_savings', base_value: 180000, min_value: 120000, max_value: 280000, annual_impact: 180000, confidence: 0.87, unit: 'USD' },
+        ],
+        total: 2,
+      },
+    },
+
+    // ── ROI scenario versions ─────────────────────────────────────────────
+    { pattern: /.*\/api\/v1\/agents\/analysis\/cases\/[^/]+\/workspace\/value-model\/scenarios.*/, body: { items: [], total: 0 } },
+    { method: 'POST', pattern: /.*\/api\/v1\/agents\/analysis\/cases\/[^/]+\/workspace\/value-model\/scenarios.*/, body: { versionId: 'ver-001', assumptions: {}, created_at: '2026-05-01T12:00:00Z' } },
+    { method: 'PATCH', pattern: /.*\/api\/v1\/agents\/analysis\/cases\/[^/]+\/workspace\/value-model\/scenarios.*/, body: { versionId: 'ver-001', assumptions: {}, created_at: '2026-05-01T12:00:00Z' } },
+
+    // ── Value trees (L3 /graph/value-trees) ──────────────────────────────
+    { pattern: /.*\/value-trees\/.*\/paths.*/, body: { paths: [] } },
+    { pattern: /.*\/value-trees\/.*/, body: { id: 'vt-001', entity_id: DEEP_ACCOUNT_ID, nodes: [], edges: [] } },
+
+    // ── Integrations / benchmarks / ground truth ──────────────────────────
     { pattern: '**/api/v1/agents/integrations**', body: createCRMIntegration('idle') },
     { pattern: '**/api/v1/benchmarks/datasets**', body: createBenchmarkDatasets() },
     { pattern: '**/api/v1/agents/ground-truth/truths**', body: createGroundTruthSet() },
     { pattern: '**/api/v1/agents/recommendations**', body: [{ id: 'rec-001', status: 'pending_review', evidence_id: 'ev-001', text: 'Automate reconciliation workflow' }] },
+
+    // ── Value case artifacts — /api/v1/agents/v1/value-case/artifacts ────
+    { pattern: /.*\/v1\/value-case\/artifacts.*/, body: { versions: [createValueCaseArtifact()] } },
+    { method: 'POST', pattern: /.*\/v1\/value-case\/artifacts.*/, body: createValueCaseArtifact() },
   ];
 }

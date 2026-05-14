@@ -319,6 +319,30 @@ export default function BusinessCase() {
           </div>
         </div>
       </SectionCard>
+      {/* Claim Traceability — evidence, benchmarks, assumptions */}
+      {businessCase.truth_references && businessCase.truth_references.length > 0 && (
+        <SectionCard title="Claim Traceability" className="mt-5">
+          <p className="text-[11px] text-muted-foreground mb-3">
+            Every claim in this business case is traceable to a source: evidence, benchmark, or assumption.
+          </p>
+          <ul className="space-y-2">
+            {businessCase.truth_references.map((ref, idx) => {
+              const r = ref as Record<string, unknown>;
+              const refType = String(r.type ?? 'reference');
+              const typeLabel = refType === 'evidence' ? 'Evidence' : refType === 'benchmark' ? 'Benchmark' : 'Assumption';
+              return (
+                <li key={idx} className="flex items-start gap-2 text-[12px] border-l-2 border-primary/30 pl-3">
+                  <span className="font-semibold text-primary shrink-0">{typeLabel}:</span>
+                  <span className="text-foreground">{String(r.claim ?? r.text ?? '')}</span>
+                  {r.source != null && (
+                    <span className="text-muted-foreground ml-auto shrink-0">— {String(r.source)}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </SectionCard>
+      )}
       {businessCase.diff_summary && (
         <SectionCard title="Regeneration Diff Summary" className="mt-5">
           <pre className="text-[12px] whitespace-pre-wrap">{JSON.stringify(businessCase.diff_summary, null, 2)}</pre>
