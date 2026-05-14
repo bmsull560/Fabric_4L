@@ -8,8 +8,11 @@
  * contains `"mermaid": ">=11.15.0"` and re-running pnpm install.
  */
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const MINIMUM_SAFE_MERMAID = [11, 15, 0] as const;
 
