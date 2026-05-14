@@ -5,7 +5,8 @@ from typing import Any
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import ExpiredSignatureError, JWTError, jwt
+import jwt as pyjwt
+from jwt import DecodeError, ExpiredSignatureError, InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
@@ -77,18 +78,19 @@ def create_access_token(
         expire = issued_at + expires_delta
     else:
         expire = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
+    iat_ts = int(issued_at.timestamp())
     payload = {
         "sub": subject,
         "tenant_id": tenant_id,
-        "iat": issued_at,
-        "nbf": issued_at,
-        "exp": expire,
+        "iat": iat_ts,
+        "nbf": iat_ts,
+        "exp": int(expire.timestamp()),
         "iss": settings.jwt_issuer or _DEFAULT_JWT_ISSUER,
         "aud": settings.jwt_audience or _DEFAULT_JWT_AUDIENCE,
     }
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    return pyjwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
 class TokenExpiredError(ValueError):
@@ -132,27 +134,28 @@ def decode_token(token: str) -> TokenPayload | None:
     if not _has_canonical_compact_jws_encoding(token):
         return None
     try:
-        header = jwt.get_unverified_header(token)
+        header = pyjwt.get_unverified_header(token)
         header_alg = header.get("alg")
         if not isinstance(header_alg, str) or not header_alg.strip():
             return None
         if header_alg.upper() != settings.algorithm.upper():
             return None
-        data = jwt.decode(
+        # PyJWT option keys differ from python-jose:
+        #   require=[...] replaces require_sub/require_exp/etc.
+        #   verify_* options are set via options dict
+        data = pyjwt.decode(
             token,
             settings.secret_key,
             algorithms=[settings.algorithm],
             audience=settings.jwt_audience,
             issuer=settings.jwt_issuer,
             options={
-                "require_sub": True,
-                "require_exp": True,
-                "require_iat": True,
-                "require_nbf": True,
+                "require": ["sub", "exp", "iat", "nbf"],
                 "verify_aud": True,
                 "verify_iss": True,
                 "verify_iat": True,
                 "verify_nbf": True,
+                "verify_exp": True,
             },
         )
         if not isinstance(data.get("sub"), str) or not data["sub"].strip():
@@ -175,7 +178,7 @@ def decode_token(token: str) -> TokenPayload | None:
         )
     except ExpiredSignatureError:
         raise TokenExpiredError("Token has expired")
-    except JWTError:
+    except InvalidTokenError:
         return None
 
 
