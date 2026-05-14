@@ -259,10 +259,44 @@ export async function expectAnyVisible(
 
     try {
       await expect(locator).toBeVisible({ timeout });
-      return;
-    } catch (error) {
-      failures.push(`${candidate}: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`);
+      // Verify the matched element has a non-zero bounding box. Zero-BB elements
+      // (e.g. hidden nav icon labels) can satisfy toBeVisible() in some Playwright
+      // versions while not being meaningfully rendered on screen.
+      const bb = await locator.boundingBox().catch(() => null);
+      if (bb && bb.width > 0 && bb.height > 0) return;
+    } catch {
+      // toBeVisible() failed — fall through to DOM scan below.
     }
+
+    // Fallback: scan the DOM for any element whose rendered text matches the
+    // candidate AND has a non-zero bounding box. This handles cases where
+    // .first() resolved to a hidden element but the content IS on screen.
+    const patSource = typeof candidate === 'string' ? candidate : candidate.source;
+    const patFlags = typeof candidate === 'string' ? 'i' : candidate.flags;
+    const deadline = Date.now() + timeout;
+    let domFound = false;
+    while (Date.now() < deadline) {
+      domFound = await page.evaluate(
+        ([src, flags]) => {
+          const re = new RegExp(src, flags);
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+          let node: Element | null;
+          while ((node = walker.nextNode() as Element | null)) {
+            const text = ('innerText' in node ? (node as HTMLElement).innerText : null) ?? node.textContent ?? '';
+            if (!re.test(text)) continue;
+            const bb = node.getBoundingClientRect();
+            if (bb.width > 0 && bb.height > 0) return true;
+          }
+          return false;
+        },
+        [patSource, patFlags] as [string, string],
+      );
+      if (domFound) break;
+      await page.waitForTimeout(150);
+    }
+    if (domFound) return;
+
+    failures.push(`${candidate}: no visible element with non-zero bounding box found within ${timeout}ms`);
   }
 
   throw new Error(`Expected visible UI evidence for ${description} at ${page.url()}. Tried: ${failures.join(' | ')}`);

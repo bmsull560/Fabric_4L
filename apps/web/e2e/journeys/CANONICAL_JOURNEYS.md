@@ -84,7 +84,7 @@ This journey validates that the platform correctly enforces RBAC and tier-based 
 | `j3-value-studio-deliverable.spec.ts` | Value studio deliverables | happy path | mocked | model edit impacts narrative/export affordances | **Canonical J3 primary** |
 | `j4-governance-trust.spec.ts` | Governance evidence/audit | happy path | mocked | provenance/trace + audit-log visibility | **Canonical J4 primary** |
 | `j5-tier-gated-security.spec.ts` | Tier/RBAC gating | happy path + adversarial | mocked | restricted-route redirects, tier-specific nav exposure | **Canonical J5 primary** |
-| `j1-golden-path-deep.spec.ts` | J1 deep reliability checks | deep | mocked | defensive checks for NaN/undefined regressions, richer ingestion-state assertions | J1 deep variant |
+| `j1-golden-path-deep.spec.ts` | J1 deep reliability checks (GP-DEEP-001–019) | deep | mocked | full prospect-to-business-case lifecycle: account setup → ingestion → signals → hypotheses → ROI → approval; NaN/undefined regression guards; claim traceability | J1 deep variant — all 19 tests pass in mocked mode |
 | `j1-golden-path-backend-integrated.spec.ts` | J1 backend realism | deep | integrated | fail-closed backend contract expectations for J1 chain | J1 integrated variant |
 | `j7-calculation-evidence-deep.spec.ts` + `j7-value-realization-and-calculation.spec.ts` | Value realization/calculation | happy path + deep | mocked | unit normalization (weekly/monthly/annual), currency consistency | Consolidated under J3-adjacent value-model coverage |
 | `j8-approval-review-deep.spec.ts` + `j8-approval-review-gates.spec.ts` | Approval/review gates | happy path + deep | mocked | approval gate enforcement across integrations/hand-offs | Consolidated governance extension of J4 |

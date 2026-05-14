@@ -74,7 +74,7 @@ export default function ProspectSetup(props: ProspectPromptBuilderProps) {
         onNavigateToWorkspace={handleNavigateToWorkspace}
         onBeforeSubmit={handleBeforeSubmit}
         onFallbackNavigation={handleFallbackNavigation}
-        getWorkspacePath={(accountId) => `/intelligence/${accountId}/signals`}
+        getWorkspacePath={(accountId) => `/accounts/${accountId}/intelligence/signals`}
       />
     </WorkflowLayout>
   )
