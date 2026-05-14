@@ -258,6 +258,68 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.e2e.yml down -v
 
+  oidc-integration:
+    name: OIDC Live Integration (Keycloak)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Run on push to main/develop and on PRs from the same repo.
+    # Skipped on forks — no secrets available.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    services:
+      keycloak:
+        image: quay.io/keycloak/keycloak:24.0
+        env:
+          KEYCLOAK_ADMIN: admin
+          KEYCLOAK_ADMIN_PASSWORD: admin
+          KC_HTTP_ENABLED: "true"
+          KC_HOSTNAME_STRICT: "false"
+          KC_HOSTNAME_STRICT_HTTPS: "false"
+        ports:
+          - 8080:8080
+        options: >-
+          --health-cmd "curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 18
+          --health-start-period 30s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-asyncio httpx cryptography pyjwt
+          # Install shared identity package so OIDCClient is importable
+          pip install -e packages/shared/
+
+      - name: Wait for Keycloak
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:8080/realms/master/.well-known/openid-configuration > /dev/null; then
+              echo "Keycloak ready after $i attempts"
+              exit 0
+            fi
+            echo "Attempt $i/36 — sleeping 5s"
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time"
+          exit 1
+
+      - name: Run live OIDC integration tests
+        run: pytest -m oidc_live tests/integration/test_oidc_live.py -v --timeout=60
+        env:
+          PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
+          KEYCLOAK_URL: http://localhost:8080
+          KEYCLOAK_ADMIN: admin
+          KEYCLOAK_ADMIN_PASSWORD: admin
+
   performance-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30

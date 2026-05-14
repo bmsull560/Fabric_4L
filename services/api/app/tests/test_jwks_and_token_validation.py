@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-from jose import jwt as jose_jwt
+import jwt as jose_jwt  # alias preserved so test bodies need no further changes
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
