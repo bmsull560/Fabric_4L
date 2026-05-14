@@ -1,0 +1,18 @@
+service:
+  name: value-fabric-wireframes
+  language: nodejs
+  framework: express
+  port: 3000
+  health_endpoint: /
+
+commands:
+  start: pnpm run dev:live
+
+recording:
+  sampling:
+    mode: adaptive
+    base_rate: 0.1
+    min_rate: 0.01
+    log_transitions: true
+  export_spans: true
+  enable_env_var_recording: true

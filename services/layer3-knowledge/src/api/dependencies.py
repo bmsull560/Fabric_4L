@@ -32,7 +32,7 @@ def _extract_tenant_id(request: Request | None) -> str | None:
         return None
     if hasattr(request.state, "tenant_id") and request.state.tenant_id:
         return str(request.state.tenant_id)
-    return request.headers.get("x-tenant-id")
+    return None
 
 
 class AppState:
