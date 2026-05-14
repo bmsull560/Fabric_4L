@@ -21,23 +21,35 @@ git log --oneline $(git describe --tags --abbrev=0)..HEAD
 ```
 
 **If HEAD is ahead of the last tag** (the normal case after active development),
-you must cut a new tag before deploying. Do not deploy HEAD as if it were the
-last tag — the images built by CI are tagged from the commit SHA, not from a
-stale tag.
+you must cut a new tag and publish a GitHub Release before deploying. Do not
+deploy HEAD as if it were the last tag — the images built by CI are tagged from
+the commit SHA, not from a stale tag.
 
 ```bash
-# Cut a new release tag (adjust version per semver policy in docs/VERSIONING.md)
+# 1. Cut a new annotated tag (adjust version per semver policy in docs/VERSIONING.md)
 git tag -a v1.1.0 -m "release(1.1.0): <one-line summary>"
 git push origin v1.1.0
 ```
 
-Wait for the `build-deploy.yml` workflow to complete and publish
-`ghcr.io/bmsull560/fabric_4l/<service>:v1.1.0` for all 7 services before
-proceeding to Phase 3.
+> ⚠️ **A bare tag push does not trigger `build-deploy.yml`.** The workflow only
+> fires on `push` to branches and on `release: published` events. Pushing a tag
+> alone starts no CI run and produces no release-tagged image.
+
+```
+# 2. Publish a GitHub Release from the tag — this is what triggers the build:
+#    https://github.com/bmsull560/Fabric_4L/releases/new
+#    → Tag: v1.1.0 (select the tag you just pushed)
+#    → Publish release
+```
+
+Only after the release is published will `build-deploy.yml` run and push
+`ghcr.io/bmsull560/fabric_4l/<service>:v1.1.0` for all 7 services. Wait for
+that run to complete (green) before proceeding to Phase 3.
 
 **If HEAD matches the tag exactly** (`git describe --tags --exact-match` returns
-the tag with no suffix), images for that tag must already exist in GHCR before
-proceeding.
+the tag with no suffix), a GitHub Release for that tag must already be published
+and the corresponding `build-deploy.yml` run must have completed successfully
+before proceeding.
 
 ---
 
