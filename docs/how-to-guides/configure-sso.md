@@ -231,16 +231,20 @@ Keycloak is included in `docker-compose.dev.yml`:
 docker compose -f docker-compose.dev.yml up keycloak
 ```
 
-Admin console: http://localhost:8080/admin (admin / admin)
+Admin console: http://localhost:8080/admin
+
+Credentials are set via `KC_BOOTSTRAP_ADMIN_USERNAME` and
+`KC_BOOTSTRAP_ADMIN_PASSWORD` in `docker-compose.dev.yml`. Do not commit
+real passwords — use `.env` overrides for local development.
 
 The `fabric` realm is auto-imported from `infra/keycloak/fabric-realm.json`.
 
-Pre-configured test users:
+Pre-configured test users (passwords set via Keycloak admin or realm import):
 
-| Username | Password | Role | tenant_id attribute |
-|---|---|---|---|
-| `admin` | `admin` | `tenant_admin` | `demo-tenant` |
-| `analyst` | `analyst` | `analyst` | `demo-tenant` |
+| Username | Role | tenant_id attribute |
+|---|---|---|
+| `admin` | `tenant_admin` | `demo-tenant` |
+| `analyst` | `analyst` | `demo-tenant` |
 
 Layer 4 is pre-wired in `docker-compose.dev.yml`:
 

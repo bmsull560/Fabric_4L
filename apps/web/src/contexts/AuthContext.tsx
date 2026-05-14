@@ -191,10 +191,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Refresh: calls the backend to rotate the session cookie.
-   * On 401 the session is cleared and the user is considered logged out.
+   * On 401, malformed response, or any unexpected error the session is cleared
+   * and the user is considered logged out. Never throws — always returns boolean.
    */
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    const valid = await authClient.refreshToken();
+    let valid: boolean;
+    try {
+      valid = await authClient.refreshToken();
+    } catch (error) {
+      // authClient.refreshToken() throws AuthError(MALFORMED_RESPONSE) when the
+      // backend returns a 200 with an unparseable body. Treat any throw as a
+      // failed refresh so callers always receive a boolean, never a rejection.
+      log.error('Token refresh failed unexpectedly', {
+        authPhase: 'refresh',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      sessionService.clearSession();
+      setAuthState({ state: 'idle', user: null, error: null });
+      return false;
+    }
 
     if (valid) {
       const meta = sessionService.getSessionMeta();
