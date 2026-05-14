@@ -61,6 +61,13 @@ ls fabric_audit/
 cat fabric_audit/i04_mandatory_security_regression_gate_evidence.md
 ```
 
+## Release Runbook
+
+For the production release procedure (tag verification, image validation,
+kustomize render, deploy, rollback):
+
+- [Production Release Runbook](docs/operations/RELEASE_RUNBOOK.md)
+
 ## Detailed Runbooks
 
 For full details, see:
