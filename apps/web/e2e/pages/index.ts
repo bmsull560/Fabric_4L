@@ -20,3 +20,4 @@ export { ValueTreeExplorerPage } from './ValueTreeExplorerPage';
 export { DecisionTracePage } from './DecisionTracePage';
 export { AdminPage } from './AdminPage';
 export { AgentStreamPage } from './AgentStreamPage';
+export { TargetsAdminPage } from './TargetsAdminPage';

@@ -732,6 +732,7 @@ class ScrapingTargetSummary(BaseModel):
     error_count: int
     average_execution_time_ms: int
     tags: list[str]
+    schedule: dict[str, Any] | None = None
 
 
 class ScrapingTargetDetail(ScrapingTargetSummary):
@@ -1286,6 +1287,7 @@ async def list_targets(
                 error_count=t.error_count,
                 average_execution_time_ms=t.average_execution_time_ms,
                 tags=t.tags or [],
+                schedule=t.schedule,
             )
             for t in targets
         ],
@@ -1691,6 +1693,335 @@ async def delete_target(
         logger.info("Archived scraping target", target_id=str(target_id))
 
     return None
+
+
+# ── Target Status Transition ──────────────────────────────────────────────────
+
+# Valid status transitions: ARCHIVED is terminal.
+_ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    TargetStatus.ACTIVE.value: {TargetStatus.PAUSED.value, TargetStatus.ARCHIVED.value},
+    TargetStatus.PAUSED.value: {TargetStatus.ACTIVE.value, TargetStatus.ARCHIVED.value},
+    TargetStatus.ERROR.value: {TargetStatus.ACTIVE.value, TargetStatus.PAUSED.value, TargetStatus.ARCHIVED.value},
+    TargetStatus.ARCHIVED.value: set(),  # terminal
+}
+
+
+class UpdateTargetStatusRequest(BaseModel):
+    """Request to update a scraping target's lifecycle status."""
+
+    status: TargetStatus = Field(..., description="New status for the target")
+
+
+@router.patch("/targets/{target_id}/status", response_model=ScrapingTargetDetail)
+async def update_target_status(
+    target_id: UUID,
+    request: UpdateTargetStatusRequest,
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Transition a scraping target's lifecycle status.
+
+    Allowed transitions:
+    - ACTIVE → PAUSED, ARCHIVED
+    - PAUSED → ACTIVE, ARCHIVED
+    - ERROR  → ACTIVE, PAUSED, ARCHIVED
+    - ARCHIVED → (none — terminal state)
+    """
+    target = (
+        db.query(ScrapingTarget)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
+        .first()
+    )
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    current_status = target.status
+    new_status = request.status.value
+
+    allowed = _ALLOWED_STATUS_TRANSITIONS.get(current_status, set())
+    if new_status not in allowed:
+        if current_status == TargetStatus.ARCHIVED.value:
+            raise HTTPException(
+                status_code=422,
+                detail="Archived targets cannot be transitioned to another status",
+            )
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid status transition from {current_status} to {new_status}",
+        )
+
+    # Block pause/archive while jobs are actively running to avoid orphaned jobs.
+    # Resuming to ACTIVE is always safe regardless of job state.
+    _BLOCKING_STATUSES = {TargetStatus.PAUSED.value, TargetStatus.ARCHIVED.value}
+    if new_status in _BLOCKING_STATUSES:
+        active_jobs = (
+            db.query(ScrapingJob)
+            .filter(
+                ScrapingJob.tenant_id == org_id,
+                ScrapingJob.target_id == target_id,
+                ScrapingJob.status.in_(
+                    [
+                        JobStatus.PENDING.value,
+                        JobStatus.QUEUED.value,
+                        JobStatus.VALIDATING.value,
+                        JobStatus.BROWSER_ACQUIRING.value,
+                        JobStatus.NAVIGATING.value,
+                        JobStatus.EXTRACTING.value,
+                        JobStatus.TRANSFORMING.value,
+                        JobStatus.STORING.value,
+                    ]
+                ),
+            )
+            .count()
+        )
+        if active_jobs > 0:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot transition target to {new_status} with {active_jobs} active job(s) in progress",
+            )
+
+    target.status = new_status
+    db.flush()
+    db.refresh(target)
+
+    logger.info(
+        "target_status_updated",
+        target_id=str(target_id),
+        from_status=current_status,
+        to_status=new_status,
+        tenant_id=str(org_id),
+    )
+
+    return _target_to_detail(target)
+
+
+# ── Target Batch Operations ───────────────────────────────────────────────────
+
+
+class TargetBatchOperationType(str, PyEnum):
+    """Batch operations supported on targets."""
+
+    EXECUTE = "execute"
+    PAUSE = "pause"
+    ARCHIVE = "archive"
+
+
+class TargetBatchRequest(BaseModel):
+    """Request for bulk operations on scraping targets."""
+
+    operation: TargetBatchOperationType = Field(..., description="Operation to perform")
+    target_ids: list[UUID] = Field(..., min_length=1, max_length=100, description="Target IDs to operate on")
+
+
+class TargetBatchItemResult(BaseModel):
+    """Result for a single target in a batch operation."""
+
+    id: UUID
+    status: str  # "succeeded" | "failed" | "skipped"
+    job_id: UUID | None = None
+    error: str | None = None
+
+
+class TargetBatchResponse(BaseModel):
+    """Response for a target batch operation."""
+
+    operation: TargetBatchOperationType
+    requested: int
+    succeeded: int
+    failed: int
+    results: list[TargetBatchItemResult]
+
+
+@router.post("/targets/batch", response_model=TargetBatchResponse, status_code=202)
+async def batch_target_operation(
+    request: TargetBatchRequest,
+    org_id: UUID = Depends(get_tenant_id),
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Execute a bulk operation across multiple scraping targets.
+
+    - execute: Trigger crawl jobs for each active target
+    - pause:   Transition ACTIVE targets to PAUSED
+    - archive: Transition ACTIVE/PAUSED targets to ARCHIVED
+
+    Target IDs that do not belong to the authenticated tenant are silently
+    skipped (not treated as errors) to avoid leaking existence information.
+    Duplicate IDs are deduplicated before processing to prevent double-execution.
+    """
+    results: list[TargetBatchItemResult] = []
+    succeeded = 0
+    failed = 0
+
+    # Deduplicate while preserving order so the response order is predictable.
+    seen: set[UUID] = set()
+    unique_target_ids: list[UUID] = []
+    for _tid in request.target_ids:
+        if _tid not in seen:
+            seen.add(_tid)
+            unique_target_ids.append(_tid)
+
+    for target_id in unique_target_ids:
+        try:
+            target = (
+                db.query(ScrapingTarget)
+                .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
+                .first()
+            )
+            if not target:
+                # Silently skip — do not reveal whether the target exists
+                results.append(TargetBatchItemResult(id=target_id, status="skipped", error=None))
+                continue
+
+            if request.operation == TargetBatchOperationType.EXECUTE:
+                if target.status != TargetStatus.ACTIVE.value:
+                    results.append(
+                        TargetBatchItemResult(
+                            id=target_id,
+                            status="skipped",
+                            error=f"Target is not active (status: {target.status})",
+                        )
+                    )
+                    continue
+
+                job = create_scraping_job(
+                    tenant_id=org_id,
+                    target_id=target.id,
+                    created_by=user_id,
+                    configuration=target.extraction_config or {},
+                    priority=5,
+                    triggered_by=TriggeredBy.MANUAL,
+                    correlation_id=f"batch-target:{target_id}:{uuid4()}",
+                )
+                db.add(job)
+                db.flush()
+                db.refresh(job)
+
+                for stage in PipelineStage:
+                    db.add(JobStageDetail(job_id=job.id, tenant_id=org_id, stage=stage.value, status="PENDING"))
+
+                job.status = JobStatus.QUEUED.value
+                process_scraping_job.delay(str(job.id))
+
+                results.append(TargetBatchItemResult(id=target_id, status="succeeded", job_id=job.id))
+                succeeded += 1
+
+            elif request.operation == TargetBatchOperationType.PAUSE:
+                allowed = _ALLOWED_STATUS_TRANSITIONS.get(target.status, set())
+                if TargetStatus.PAUSED.value not in allowed:
+                    results.append(
+                        TargetBatchItemResult(
+                            id=target_id,
+                            status="skipped",
+                            error=f"Cannot pause target with status {target.status}",
+                        )
+                    )
+                    continue
+
+                active_jobs = (
+                    db.query(ScrapingJob)
+                    .filter(
+                        ScrapingJob.tenant_id == org_id,
+                        ScrapingJob.target_id == target.id,
+                        ScrapingJob.status.in_(
+                            [
+                                JobStatus.PENDING.value,
+                                JobStatus.QUEUED.value,
+                                JobStatus.VALIDATING.value,
+                                JobStatus.BROWSER_ACQUIRING.value,
+                                JobStatus.NAVIGATING.value,
+                                JobStatus.EXTRACTING.value,
+                                JobStatus.TRANSFORMING.value,
+                                JobStatus.STORING.value,
+                            ]
+                        ),
+                    )
+                    .count()
+                )
+                if active_jobs > 0:
+                    results.append(
+                        TargetBatchItemResult(
+                            id=target_id,
+                            status="skipped",
+                            error=f"Cannot pause target with {active_jobs} active job(s) in progress",
+                        )
+                    )
+                    continue
+
+                target.status = TargetStatus.PAUSED.value
+                db.flush()
+                results.append(TargetBatchItemResult(id=target_id, status="succeeded"))
+                succeeded += 1
+
+            elif request.operation == TargetBatchOperationType.ARCHIVE:
+                allowed = _ALLOWED_STATUS_TRANSITIONS.get(target.status, set())
+                if TargetStatus.ARCHIVED.value not in allowed:
+                    results.append(
+                        TargetBatchItemResult(
+                            id=target_id,
+                            status="skipped",
+                            error=f"Cannot archive target with status {target.status}",
+                        )
+                    )
+                    continue
+
+                active_jobs = (
+                    db.query(ScrapingJob)
+                    .filter(
+                        ScrapingJob.tenant_id == org_id,
+                        ScrapingJob.target_id == target.id,
+                        ScrapingJob.status.in_(
+                            [
+                                JobStatus.PENDING.value,
+                                JobStatus.QUEUED.value,
+                                JobStatus.VALIDATING.value,
+                                JobStatus.BROWSER_ACQUIRING.value,
+                                JobStatus.NAVIGATING.value,
+                                JobStatus.EXTRACTING.value,
+                                JobStatus.TRANSFORMING.value,
+                                JobStatus.STORING.value,
+                            ]
+                        ),
+                    )
+                    .count()
+                )
+                if active_jobs > 0:
+                    results.append(
+                        TargetBatchItemResult(
+                            id=target_id,
+                            status="skipped",
+                            error=f"Cannot archive target with {active_jobs} active job(s) in progress",
+                        )
+                    )
+                    continue
+
+                target.status = TargetStatus.ARCHIVED.value
+                db.flush()
+                results.append(TargetBatchItemResult(id=target_id, status="succeeded"))
+                succeeded += 1
+
+        except Exception as exc:
+            logger.error("batch_target_operation_failed", target_id=str(target_id), error=str(exc))
+            results.append(TargetBatchItemResult(id=target_id, status="failed", error=str(exc)))
+            failed += 1
+
+    logger.info(
+        "batch_target_operation_complete",
+        operation=request.operation.value,
+        requested=len(request.target_ids),
+        succeeded=succeeded,
+        failed=failed,
+        tenant_id=str(org_id),
+    )
+
+    return TargetBatchResponse(
+        operation=request.operation,
+        requested=len(request.target_ids),
+        succeeded=succeeded,
+        failed=failed,
+        results=results,
+    )
 
 
 @router.post("/targets/{target_id}/validate", response_model=ValidateTargetResponse)
