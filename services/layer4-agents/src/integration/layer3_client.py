@@ -451,6 +451,63 @@ class Layer3Client:
             payload["decision_note"] = decision_note
         return await self._make_request("PATCH", url, effective_tenant, json=payload) or {}
 
+    async def get_benchmark_variables(
+        self,
+        industry: str,
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Fetch benchmark variables and defaults for an industry vertical.
+
+        Replaces the Cypher-in-L4 pattern from ``workflows/queries.py``.
+        Returns a dict with keys ``industry``, ``variables``, ``defaults``,
+        and optionally ``benchmark_id``.
+
+        Args:
+            industry: Industry vertical to look up.
+            tenant_id: Tenant ID for RLS (uses default if None).
+
+        Returns:
+            BenchmarkVariablesResponse payload as a dict.
+
+        Raises:
+            Layer3ClientError: If the Layer 3 request fails.
+        """
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/knowledge/benchmarks/variables"
+        return await self._make_request(
+            "GET", url, effective_tenant, params={"industry": industry}
+        )
+
+    async def get_value_driver_formulas(
+        self,
+        driver_ids: list[str],
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Fetch value driver formulas by ID list.
+
+        Replaces the Cypher-in-L4 pattern from ``workflows/queries.py``.
+        Returns a dict with keys ``drivers`` (list of formula dicts) and
+        ``missing_ids`` (IDs not found in the graph).
+
+        Args:
+            driver_ids: Value driver IDs to look up. Must be non-empty.
+            tenant_id: Tenant ID for RLS (uses default if None).
+
+        Returns:
+            ValueDriverFormulasResponse payload as a dict.
+
+        Raises:
+            ValueError: If driver_ids is empty.
+            Layer3ClientError: If the Layer 3 request fails.
+        """
+        if not driver_ids:
+            raise ValueError("driver_ids must be a non-empty list")
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/knowledge/value-drivers/formulas"
+        # FastAPI accepts repeated query params for list fields
+        params = [("driver_ids", d) for d in driver_ids]
+        return await self._make_request("GET", url, effective_tenant, params=params)
+
     async def close(self) -> None:
         """Close HTTP client and release resources."""
         if self._client:

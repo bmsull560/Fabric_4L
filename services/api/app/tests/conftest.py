@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from jose import jwt
+import jwt
 
 # Use the same default secret the app uses in test/dev environments
 TEST_SECRET = "fabric-4l-dev-secret-key-change-in-production"
