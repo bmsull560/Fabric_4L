@@ -411,6 +411,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/targets/{target_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Target Status
+         * @description Transition a scraping target's lifecycle status.
+         * Allowed: ACTIVE→PAUSED/ARCHIVED, PAUSED→ACTIVE/ARCHIVED, ERROR→ACTIVE/PAUSED/ARCHIVED.
+         * ARCHIVED is terminal.
+         */
+        patch: operations["update_target_status_api_v1_ingestion_targets__target_id__status_patch"];
+        trace?: never;
+    };
+    "/api/v1/ingestion/targets/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch Target Operation
+         * @description Execute a bulk operation (execute/pause/archive) across multiple scraping targets.
+         */
+        post: operations["batch_target_operation_api_v1_ingestion_targets_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/jobs/{job_id}/router-report": {
         parameters: {
             query?: never;
@@ -1891,6 +1935,13 @@ export interface components {
             average_execution_time_ms: number;
             /** Tags */
             tags: string[];
+            /** Schedule — null when no schedule is configured */
+            schedule?: {
+                enabled: boolean;
+                cron_expression?: string | null;
+                timezone?: string | null;
+                max_concurrent_jobs?: number | null;
+            } | null;
         };
         /**
          * SourceCategory
@@ -1932,6 +1983,56 @@ export interface components {
          * @enum {string}
          */
         TargetStatus: "ACTIVE" | "PAUSED" | "ARCHIVED" | "ERROR";
+        /**
+         * UpdateTargetStatusRequest
+         * @description Request to update a scraping target's lifecycle status.
+         */
+        UpdateTargetStatusRequest: {
+            /** @description New status for the target */
+            status: components["schemas"]["TargetStatus"];
+        };
+        /**
+         * TargetBatchOperationType
+         * @enum {string}
+         */
+        TargetBatchOperationType: "execute" | "pause" | "archive";
+        /**
+         * TargetBatchRequest
+         * @description Request for bulk operations on scraping targets.
+         */
+        TargetBatchRequest: {
+            /** @description Operation to perform */
+            operation: components["schemas"]["TargetBatchOperationType"];
+            /**
+             * Target Ids
+             * @description Target IDs to operate on (1–100)
+             */
+            target_ids: string[];
+        };
+        /**
+         * TargetBatchItemResult
+         * @description Result for a single target in a batch operation.
+         */
+        TargetBatchItemResult: {
+            /** Format: uuid */
+            id: string;
+            /** @description succeeded | failed | skipped */
+            status: string;
+            /** Format: uuid */
+            job_id?: string | null;
+            error?: string | null;
+        };
+        /**
+         * TargetBatchResponse
+         * @description Response for a target batch operation.
+         */
+        TargetBatchResponse: {
+            operation: components["schemas"]["TargetBatchOperationType"];
+            requested: number;
+            succeeded: number;
+            failed: number;
+            results: components["schemas"]["TargetBatchItemResult"][];
+        };
         /**
          * TargetType
          * @enum {string}
@@ -2692,6 +2793,91 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_target_status_api_v1_ingestion_targets__target_id__status_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
+                "X-Organization-ID"?: string | null;
+            };
+            path: {
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTargetStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScrapingTargetDetail"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Invalid Transition */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    batch_target_operation_api_v1_ingestion_targets_batch_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Tenant-ID"?: string | null;
+                "X-Service-Auth"?: string | null;
+                "X-Organization-ID"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TargetBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TargetBatchResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -193,9 +193,10 @@ const ROUTE_TIER_MAP: Record<string, UserTier> = {
   '/context/ontology/entities': 'advanced',
   '/context/ontology/graph': 'advanced',
 
-  // Integrations & Sources
+  // Integrations, Sources & Targets
   '/context/integrations': 'admin',
   '/context/sources': 'admin',
+  '/context/targets': 'admin',
   '/context/ingestion/jobs': 'advanced',
   '/context/extraction': 'advanced',
 

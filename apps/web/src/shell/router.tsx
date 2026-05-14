@@ -95,6 +95,7 @@ const IngestionJobs = lazy(() => import("@/pages/IngestionJobs"));
 const ExtractionEngine = lazy(() => import("@/pages/ExtractionEngine"));
 const Integrations = lazy(() => import("@/pages/Integrations"));
 const SourceConfiguration = lazy(() => import("@/pages/SourceConfiguration"));
+const TargetsAdmin = lazy(() => import("@/pages/TargetsAdmin"));
 
 // ── Deliverables ──
 const BusinessCaseList = lazy(() => import("@/pages/BusinessCaseList"));
@@ -527,6 +528,7 @@ export const router = createBrowserRouter([
       { path: "/context/extraction", element: <ProtectedRoute requiredTier="advanced"><ExtractionEngine /></ProtectedRoute> },
       { path: "/context/integrations", element: <ProtectedRoute requiredTier="admin"><Integrations /></ProtectedRoute> },
       { path: "/context/sources", element: <ProtectedRoute requiredTier="admin"><SourceConfiguration /></ProtectedRoute> },
+      { path: "/context/targets", element: <ProtectedRoute requiredTier="admin"><TargetsAdmin /></ProtectedRoute> },
       { path: "/graph-explorer", element: <ProtectedRoute requiredTier="advanced"><GraphExplorer /></ProtectedRoute> },
       { path: "/formula-builder", element: <ProtectedRoute requiredTier="advanced"><FormulaBuilder /></ProtectedRoute> },
 
