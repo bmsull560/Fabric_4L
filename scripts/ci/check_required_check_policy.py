@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import sys
 
 import yaml
@@ -9,6 +10,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 METADATA_PATH = REPO_ROOT / "docs" / "governance" / "branch-protection-required-checks.yml"
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "branch-protection-validation.yml"
+WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 
 
 def _load_yaml(path: Path) -> dict:
@@ -16,6 +18,18 @@ def _load_yaml(path: Path) -> dict:
     if not isinstance(data, dict):
         raise ValueError(f"{path} must parse to a mapping")
     return data
+
+
+def _load_pr_job_names() -> set[str]:
+    names: set[str] = set()
+    workflow_paths = sorted(WORKFLOWS_DIR.glob("*.yml")) + sorted(WORKFLOWS_DIR.glob("*.yaml"))
+    for path in workflow_paths:
+        text = path.read_text(encoding="utf-8")
+        if not re.search(r"(?m)^\s*pull_request\s*:", text):
+            continue
+        names.update(re.findall(r"(?m)^  [A-Za-z0-9_-]+:\s*$\n(?:    .*\n)*?    name:\s*[\"']?([^\"'\n]+)[\"']?\s*$", text))
+        names.update(re.findall(r"(?m)^  ([A-Za-z0-9_-]+):\s*$", text))
+    return names
 
 
 def main() -> int:
@@ -31,6 +45,11 @@ def main() -> int:
     for check in checks:
         if f'"{check}"' not in workflow_text:
             errors.append(f"missing required check in workflow validation list: {check}")
+
+    emitted_pr_job_names = _load_pr_job_names()
+    for check in checks:
+        if check not in emitted_pr_job_names:
+            errors.append(f"required check is not emitted by a pull_request workflow job: {check}")
 
     for pattern in metadata.get("protected_branch_patterns", []):
         if pattern == "release/*" and "release/" not in workflow_text:

@@ -780,6 +780,54 @@ class AccountIntelligencePacketResponse(BaseModel):
     updated_at: datetime
 
 
+class SourceCorpusSummary(BaseModel):
+    """Summary view of a SourceCorpus for list responses.
+
+    Omits raw provenance arrays to keep list payloads compact.
+    """
+
+    id: UUID
+    company_name: str
+    company_id: str | None
+    corpus_type: str
+    source_count: int
+    extraction_status: str
+    created_at: datetime
+
+
+class SourceCorpusListResponse(BaseModel):
+    """Paginated list of SourceCorpus summaries."""
+
+    items: list[SourceCorpusSummary]
+    total: int
+    limit: int
+    next_cursor: str | None
+
+
+class AccountIntelligencePacketSummary(BaseModel):
+    """Summary view of an AccountIntelligencePacket for list responses.
+
+    Omits raw source_references to keep list payloads compact.
+    """
+
+    id: UUID
+    account_name: str
+    account_id: str | None
+    packet_type: str
+    observed_signal_count: int
+    high_confidence_signal_count: int
+    created_at: datetime
+
+
+class AccountIntelligencePacketListResponse(BaseModel):
+    """Paginated list of AccountIntelligencePacket summaries."""
+
+    items: list[AccountIntelligencePacketSummary]
+    total: int
+    limit: int
+    next_cursor: str | None
+
+
 class JobProgressResponse(BaseModel):
     """Real-time job progress."""
 
@@ -2295,6 +2343,191 @@ async def get_job_skill_output(
         }
 
     raise HTTPException(status_code=400, detail=f"Unknown output_contract: {job.output_contract}")
+
+
+# =============================================================================
+# API ENDPOINTS - Source Corpora (internal, tenant-scoped)
+# =============================================================================
+
+_MAX_LIST_LIMIT = 100
+_DEFAULT_LIST_LIMIT = 20
+
+
+def _corpus_to_summary(corpus: SourceCorpus) -> SourceCorpusSummary:
+    source_count = sum(
+        g.get("count", 0) for g in (corpus.source_groups or [])
+    )
+    return SourceCorpusSummary(
+        id=corpus.id,
+        company_name=corpus.company_name,
+        company_id=corpus.company_id,
+        corpus_type=corpus.corpus_type,
+        source_count=source_count,
+        extraction_status=corpus.extraction_status,
+        created_at=corpus.created_at,
+    )
+
+
+def _packet_to_summary(packet: AccountIntelligencePacket) -> AccountIntelligencePacketSummary:
+    signals = packet.observed_signals or []
+    high_conf = sum(1 for s in signals if s.get("confidence") == "high")
+    return AccountIntelligencePacketSummary(
+        id=packet.id,
+        account_name=packet.account_name,
+        account_id=packet.account_id,
+        packet_type=packet.packet_type,
+        observed_signal_count=len(signals),
+        high_confidence_signal_count=high_conf,
+        created_at=packet.created_at,
+    )
+
+
+@router.get("/source-corpora", response_model=SourceCorpusListResponse)
+async def list_source_corpora(
+    company_id: str | None = Query(default=None),
+    job_id: UUID | None = Query(default=None),
+    extraction_status: str | None = Query(default=None),
+    created_after: datetime | None = Query(default=None),
+    created_before: datetime | None = Query(default=None),
+    limit: int = Query(default=_DEFAULT_LIST_LIMIT, ge=1, le=_MAX_LIST_LIMIT),
+    cursor: str | None = Query(default=None, description="ISO-8601 created_at of last seen item for cursor pagination"),
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """List SourceCorpus records for the authenticated tenant.
+
+    Returns summary objects only — provenance arrays are excluded.
+    Tenant isolation is enforced from auth context; no cross-tenant query params accepted.
+    """
+    from sqlalchemy import and_
+
+    q = db.query(SourceCorpus).filter(SourceCorpus.tenant_id == org_id)
+
+    if company_id:
+        q = q.filter(SourceCorpus.company_id == company_id)
+    if job_id:
+        q = q.filter(SourceCorpus.job_id == job_id)
+    if extraction_status:
+        q = q.filter(SourceCorpus.extraction_status == extraction_status)
+    if created_after:
+        q = q.filter(SourceCorpus.created_at >= created_after)
+    if created_before:
+        q = q.filter(SourceCorpus.created_at <= created_before)
+    if cursor:
+        try:
+            from datetime import datetime as _dt
+            cursor_dt = _dt.fromisoformat(cursor)
+            q = q.filter(SourceCorpus.created_at < cursor_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid cursor format; expected ISO-8601 datetime")
+
+    total = q.count()
+    items = q.order_by(SourceCorpus.created_at.desc()).limit(limit).all()
+
+    next_cursor = None
+    if len(items) == limit and items:
+        next_cursor = items[-1].created_at.isoformat()
+
+    return SourceCorpusListResponse(
+        items=[_corpus_to_summary(c) for c in items],
+        total=total,
+        limit=limit,
+        next_cursor=next_cursor,
+    )
+
+
+@router.get("/source-corpora/{corpus_id}", response_model=SourceCorpusResponse)
+async def get_source_corpus_detail(
+    corpus_id: UUID,
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Retrieve a SourceCorpus by ID including full provenance.
+
+    Returns 404 for cross-tenant access.
+    """
+    corpus = (
+        db.query(SourceCorpus)
+        .filter(SourceCorpus.id == corpus_id, SourceCorpus.tenant_id == org_id)
+        .first()
+    )
+    if not corpus:
+        raise HTTPException(status_code=404, detail="SourceCorpus not found")
+    return _source_corpus_to_response(corpus)
+
+
+@router.get("/account-intelligence-packets", response_model=AccountIntelligencePacketListResponse)
+async def list_account_intelligence_packets(
+    account_id: str | None = Query(default=None),
+    job_id: UUID | None = Query(default=None),
+    created_after: datetime | None = Query(default=None),
+    created_before: datetime | None = Query(default=None),
+    limit: int = Query(default=_DEFAULT_LIST_LIMIT, ge=1, le=_MAX_LIST_LIMIT),
+    cursor: str | None = Query(default=None, description="ISO-8601 created_at of last seen item for cursor pagination"),
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """List AccountIntelligencePacket records for the authenticated tenant.
+
+    Returns summary objects only — source_references arrays are excluded.
+    Tenant isolation is enforced from auth context; no cross-tenant query params accepted.
+    """
+    q = db.query(AccountIntelligencePacket).filter(
+        AccountIntelligencePacket.tenant_id == org_id
+    )
+
+    if account_id:
+        q = q.filter(AccountIntelligencePacket.account_id == account_id)
+    if job_id:
+        q = q.filter(AccountIntelligencePacket.job_id == job_id)
+    if created_after:
+        q = q.filter(AccountIntelligencePacket.created_at >= created_after)
+    if created_before:
+        q = q.filter(AccountIntelligencePacket.created_at <= created_before)
+    if cursor:
+        try:
+            from datetime import datetime as _dt
+            cursor_dt = _dt.fromisoformat(cursor)
+            q = q.filter(AccountIntelligencePacket.created_at < cursor_dt)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid cursor format; expected ISO-8601 datetime")
+
+    total = q.count()
+    items = q.order_by(AccountIntelligencePacket.created_at.desc()).limit(limit).all()
+
+    next_cursor = None
+    if len(items) == limit and items:
+        next_cursor = items[-1].created_at.isoformat()
+
+    return AccountIntelligencePacketListResponse(
+        items=[_packet_to_summary(p) for p in items],
+        total=total,
+        limit=limit,
+        next_cursor=next_cursor,
+    )
+
+
+@router.get("/account-intelligence-packets/{packet_id}", response_model=AccountIntelligencePacketResponse)
+async def get_account_intelligence_packet_detail(
+    packet_id: UUID,
+    org_id: UUID = Depends(get_tenant_id),
+    db: Session = Depends(get_db_from_context_sync),
+):
+    """Retrieve an AccountIntelligencePacket by ID including full source references.
+
+    Returns 404 for cross-tenant access.
+    """
+    packet = (
+        db.query(AccountIntelligencePacket)
+        .filter(
+            AccountIntelligencePacket.id == packet_id,
+            AccountIntelligencePacket.tenant_id == org_id,
+        )
+        .first()
+    )
+    if not packet:
+        raise HTTPException(status_code=404, detail="AccountIntelligencePacket not found")
+    return _account_packet_to_response(packet)
 
 
 # =============================================================================

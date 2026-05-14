@@ -1,4 +1,4 @@
-import { lazy, type ComponentProps } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 import { createBrowserRouter, Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
@@ -11,6 +11,7 @@ import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useProspectSetupAccountCreate } from "@/hooks/useProspectSetupAccount";
 import { SettingsLayout } from "@/app/settings/SettingsLayout";
 import CommandCenter from "@/pages/CommandCenter";
+import { IntelligenceWorkspace } from "@/features/intelligence-workspace";
 
 // Settings pages — Personal
 const PersonalProfile = lazy(() => import("@/app/settings/pages/PersonalProfile").then(m => ({ default: m.PersonalProfile })));
@@ -146,7 +147,7 @@ function ProspectSetupWithNav() {
     <ProspectSetup
       onNavigateToWorkspace={(path, accountId) => {
         setSelectedAccountId(accountId);
-        navigateTo(`/intelligence/${accountId}/signals`);
+        navigateTo(`/accounts/${accountId}/intelligence/signals`);
       }}
       onCreateSetup={handleCreateSetup}
       isSubmitting={prospectSetup.isSubmitting}
@@ -218,6 +219,11 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      // Compatibility alias — tests and legacy links use /context/command-center
+      {
+        path: "/context/command-center",
+        element: <Navigate to="/command-center" replace />,
+      },
       {
         path: "/accounts",
         element: (
@@ -264,7 +270,33 @@ export const router = createBrowserRouter([
       // Calculator, Value Case, Value Realization
       // ═══════════════════════════════════════════════════════════════
 
-      // ── Intelligence (4 tabs) ──
+      // ── Intelligence — canonical workspace shell ──
+      // Route: /accounts/:accountId/intelligence/:tabId
+      // IntelligenceWorkspace is the canonical shell; all tabs are resolved
+      // through workspaceTabRegistry. Flat /intelligence/:accountId/* routes
+      // below are kept as compatibility aliases that redirect here.
+      {
+        path: "/accounts/:accountId/intelligence",
+        element: (
+          <ProtectedRoute>
+            <AccountContextSync />
+            <Navigate to="signals" replace />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "/accounts/:accountId/intelligence/:tabId",
+        element: (
+          <ProtectedRoute>
+            <AccountContextSync />
+            <Suspense fallback={<div className="flex h-full items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-primary" /></div>}>
+              <IntelligenceWorkspace />
+            </Suspense>
+          </ProtectedRoute>
+        ),
+      },
+
+      // ── Intelligence — legacy flat routes (compatibility redirects) ──
       {
         path: "/intelligence",
         element: (

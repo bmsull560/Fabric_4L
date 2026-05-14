@@ -22,6 +22,7 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
   // Hooks must be called unconditionally on every render — do not use ||
   // short-circuiting because it changes the hook count between renders.
   const matchIntelligence = useMatch("/intelligence/*");
+  const matchAccounts = useMatch("/accounts/*");
   const matchHypothesis = useMatch("/hypothesis/*");
   const matchDrivers = useMatch("/drivers/*");
   const matchCalculator = useMatch("/calculator/*");
@@ -32,6 +33,7 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
 
   const isWorkspace = Boolean(
     matchIntelligence
+      || matchAccounts
       || matchHypothesis
       || matchDrivers
       || matchCalculator
@@ -44,7 +46,7 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
   const noPadding = isWorkspace || isSettings;
 
   return (
-    <main className="min-h-0 flex-1 overflow-auto">
+    <>
       {noPadding ? (
         <div className="h-full">
           <Suspense
@@ -70,7 +72,7 @@ export function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode
           </Suspense>
         </div>
       )}
-    </main>
+    </>
   );
 }
 
@@ -108,7 +110,7 @@ export function GlobalLayout() {
   return (
     <div
       className={[
-        "grid h-screen overflow-hidden bg-background text-foreground",
+        "grid h-screen grid-rows-[1fr] overflow-hidden bg-background text-foreground",
         agentPanelOpen
           ? "grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)_minmax(360px,420px)]"
           : "grid-cols-[auto_minmax(0,1fr)]",

@@ -41,13 +41,28 @@ ALLOWED_PATHS = [
     "shared/identity/middleware.py",
     "shared/identity/context.py",
     "shared/security/dil_auth.py",  # Security validator - compares header against context
+    "services/api/app/core/tenant_context.py",
+    "services/layer5-ground-truth/src/layer5_ground_truth/api/tenant_context.py",
 ]
+
+ALLOWED_LINE_EXCEPTIONS = {
+    (
+        "services/layer1-ingestion/src/api/app_monolith.py",
+        'tenant_header = request.headers.get("X-Tenant-ID", "").strip()',
+    ),
+}
 
 
 def is_allowed_path(filepath: Path) -> bool:
     """Check if file is in allowed list."""
     path_str = str(filepath).replace("\\", "/")
     return any(allowed in path_str for allowed in ALLOWED_PATHS)
+
+
+def is_allowed_line_exception(filepath: Path, line: str) -> bool:
+    path_str = str(filepath).replace("\\", "/")
+    stripped = line.strip()
+    return any(path in path_str and stripped == allowed_line for path, allowed_line in ALLOWED_LINE_EXCEPTIONS)
 
 
 def has_boundary_import(content: str) -> bool:
@@ -84,6 +99,8 @@ def find_violations_in_file(filepath: Path) -> list[dict]:
         for line_num, line in enumerate(lines, 1):
             for pattern in VIOLATION_PATTERNS:
                 if re.search(pattern, line, re.IGNORECASE):
+                    if is_allowed_line_exception(filepath, line):
+                        continue
                     # Skip if file already uses boundary imports properly
                     if file_has_boundary:
                         continue

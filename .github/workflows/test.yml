@@ -170,6 +170,7 @@ jobs:
         run: pnpm tsc --noEmit
 
   e2e-tests:
+    name: p0-e2e-gate
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [backend-tests, frontend-tests]

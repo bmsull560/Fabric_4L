@@ -155,22 +155,37 @@ export class AuthClient {
       return !!sessionService.getSessionMeta();
     }
 
+    // A 200 with an unparseable or missing body is treated as malformed — we
+    // cannot safely update session metadata without a valid token response, and
+    // silently returning true would leave the user with stale role/email data.
     const data = await response.json().catch(() => null);
-    if (data) {
-      const result = validateTokenResponse(data);
-      // Tenant is stable across refreshes — read from existing metadata rather
-      // than deriving it from the response (which carries no tenant field).
-      const existingMeta = sessionService.getSessionMeta();
-      const tenantId = existingMeta?.tenantId ?? 'default';
-      const user: UserInfo = {
-        id: result.user_id,
-        email: result.email,
-        role: result.role,
-        tenantId,
-        tenantSlug: tenantId,
-      };
-      sessionService.persistSessionMeta(user, tenantId);
+    if (!data) {
+      throw new AuthError(
+        'Invalid response from authentication service',
+        AuthErrorCategory.MALFORMED_RESPONSE
+      );
     }
+
+    const result = validateTokenResponse(data);
+    // Tenant is stable across refreshes — read from existing metadata rather
+    // than deriving it from the response (which carries no tenant field).
+    // If existing metadata is absent the session is already invalid; the
+    // backend will return 401 on the next API call, so we return false here
+    // rather than persisting a broken tenant context.
+    const existingMeta = sessionService.getSessionMeta();
+    if (!existingMeta?.tenantId) {
+      sessionService.clearSession();
+      return false;
+    }
+    const tenantId = existingMeta.tenantId;
+    const user: UserInfo = {
+      id: result.user_id,
+      email: result.email,
+      role: result.role,
+      tenantId,
+      tenantSlug: tenantId,
+    };
+    sessionService.persistSessionMeta(user, tenantId);
 
     return true;
   }

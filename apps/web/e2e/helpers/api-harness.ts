@@ -80,9 +80,9 @@ const EMPTY_WORKSPACE_TAB = {
 };
 
 const DEFAULT_MOCKS: MockEndpoint[] = [
-  // Account endpoints (regex to reliably match query parameters)
+  // Account list — GET /api/v1/agents/accounts?...
   {
-    pattern: /.*\/api\/v1\/agents\/accounts.*/,
+    pattern: /.*\/api\/v1\/agents\/accounts\?.*/,
     body: {
       items: [EMPTY_ACCOUNT],
       total: 1,
@@ -91,36 +91,57 @@ const DEFAULT_MOCKS: MockEndpoint[] = [
       has_more: false,
     },
   },
-  // Workspace tab data (signals, drivers, etc.)
+  // Account single fetch — GET /api/v1/agents/accounts/:id (no query string)
   {
-    pattern: '**/api/v1/agents/workspace/*/signals',
+    pattern: /.*\/api\/v1\/agents\/accounts\/[^/?]+$/,
+    body: EMPTY_ACCOUNT,
+  },
+  // Workspace tab data — canonical path: /api/v1/agents/cases/:caseId/workspace/:tab
+  {
+    pattern: '**/api/v1/agents/cases/*/workspace/signals',
     body: EMPTY_WORKSPACE_TAB,
   },
   {
-    pattern: '**/api/v1/agents/workspace/*/drivers',
+    pattern: '**/api/v1/agents/cases/*/workspace/drivers',
     body: EMPTY_WORKSPACE_TAB,
   },
   {
-    pattern: '**/api/v1/agents/workspace/*/evidence',
+    pattern: '**/api/v1/agents/cases/*/workspace/evidence',
     body: EMPTY_WORKSPACE_TAB,
   },
   {
-    pattern: '**/api/v1/agents/workspace/*/stakeholders',
+    pattern: '**/api/v1/agents/cases/*/workspace/stakeholders',
     body: EMPTY_WORKSPACE_TAB,
   },
   {
-    pattern: '**/api/v1/agents/workspace/*/action-plan',
+    pattern: '**/api/v1/agents/cases/*/workspace/action-plan',
     body: EMPTY_WORKSPACE_TAB,
   },
   {
-    pattern: '**/api/v1/agents/workspace/*/value-model',
+    pattern: '**/api/v1/agents/cases/*/workspace/value-model',
     body: EMPTY_WORKSPACE_TAB,
   },
   {
-    pattern: '**/api/v1/agents/workspace/*/narrative',
+    pattern: '**/api/v1/agents/cases/*/workspace/narrative',
     body: EMPTY_WORKSPACE_TAB,
   },
-  // Case ID resolution
+  {
+    pattern: '**/api/v1/agents/cases/*/workspace/evidence-links',
+    body: EMPTY_WORKSPACE_TAB,
+  },
+  // Case ID resolution — GET /api/v1/agents/cases?account_id=... returns items list
+  {
+    pattern: /.*\/api\/v1\/agents\/cases\?account_id=.*/,
+    body: { items: [{ case_id: 'case-test-001', account_id: 'acct-test-001', title: 'Test workspace', status: 'active' }], total: 1 },
+  },
+  // Case create — POST /api/v1/agents/cases
+  {
+    method: 'POST',
+    pattern: /.*\/api\/v1\/agents\/cases$/,
+    body: { case_id: 'case-test-001', account_id: 'acct-test-001', title: 'Test workspace', status: 'active' },
+    status: 201,
+  },
+  // Legacy canonical path (kept for backward compat)
   {
     pattern: '**/api/v1/agents/cases/canonical/*',
     body: { case_id: 'case-test-001' },
@@ -165,11 +186,6 @@ const DEFAULT_MOCKS: MockEndpoint[] = [
   },
   {
     pattern: '**/api/v1/agents/workflows/types',
-    body: [],
-  },
-  // Cases
-  {
-    pattern: '**/api/v1/agents/cases',
     body: [],
   },
   // Graph / Knowledge
@@ -218,7 +234,8 @@ export async function installApiHarness(
     return async () => {};
   }
 
-  const allMocks = [...DEFAULT_MOCKS, ...(options.mocks || [])];
+  // Journey-specific mocks take priority over defaults (more specific first).
+  const allMocks = [...(options.mocks || []), ...DEFAULT_MOCKS];
 
   /**
    * Playwright's route matching order is NOT guaranteed when multiple

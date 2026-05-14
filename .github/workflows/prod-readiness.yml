@@ -232,6 +232,7 @@ jobs:
             artifacts/readiness/
 
   prod-readiness-summary:
+    name: prod-readiness
     runs-on: ubuntu-latest
     if: always()
     needs: [release-policy]
