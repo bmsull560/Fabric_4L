@@ -207,6 +207,26 @@ ANTHROPIC_API_KEY
 
 ---
 
+## Autonomous deploy script
+
+All phases below can be executed automatically via:
+
+```bash
+# Full deploy (Phases 0–8)
+bash scripts/deploy-production.sh --tag v1.1.0
+
+# Pre-flight only — no cluster changes (Phases 0–5)
+bash scripts/deploy-production.sh --tag v1.1.0 --dry-run
+
+# Custom namespace
+bash scripts/deploy-production.sh --tag v1.1.0 --namespace fabric-4l-prod
+```
+
+The script stops on the first failing gate and prints the gate name. It writes
+a deployment evidence file to `.deployments/` on successful completion.
+
+---
+
 ## Phase 6 — Deploy
 
 ### Option A — GitHub Actions (recommended)
@@ -278,6 +298,14 @@ done
 ---
 
 ## Phase 8 — Deployment evidence
+
+When deploying via GitHub Actions (`deploy.yml`), the evidence file is
+generated and committed to `main` automatically after a successful production
+deploy. No manual action is required for Option A deploys.
+
+For manual deploys (Option B) or script-based deploys, the evidence file is
+written by `scripts/deploy-production.sh` at the end of Phase 8. To create it
+manually:
 
 ```bash
 RELEASE_TAG="v1.1.0"

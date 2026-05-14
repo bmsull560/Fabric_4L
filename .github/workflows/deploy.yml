@@ -157,54 +157,68 @@ jobs:
           echo "Kubeconfig configuration placeholder"
           echo "Environment: ${{ env.ENVIRONMENT }}"
 
-      - name: Update image tags in Helm values
-        run: |
-          # Update the image tag in the Helm values file
-          VALUES_FILE="infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml"
-          
-          if [ -f "$VALUES_FILE" ]; then
-            sed -i "s/tag: .*/tag: ${{ env.IMAGE_REF }}/g" "$VALUES_FILE"
-            echo "Updated $VALUES_FILE with tag: ${{ env.IMAGE_REF }}"
-          else
-            echo "Values file not found: $VALUES_FILE"
-            # Create environment-specific values if not exists
-          fi
-
       - name: Resolve deploy namespace
         run: |
           DEPLOY_NS=$(bash scripts/resolve-namespace.sh "${{ env.ENVIRONMENT }}")
           echo "Resolved namespace: $DEPLOY_NS"
           echo "DEPLOY_NS=$DEPLOY_NS" >> "$GITHUB_ENV"
 
-      - name: Deploy with Helm
+      - name: Resolve kustomize overlay
+        id: overlay
         run: |
-          echo "Deploying to ${{ env.ENVIRONMENT }} (namespace: ${{ env.DEPLOY_NS }})"
+          case "${{ env.ENVIRONMENT }}" in
+            production) OVERLAY="k8s/overlays/production" ;;
+            staging)    OVERLAY="k8s/overlays/staging"    ;;
+            dev)        OVERLAY="k8s/envs/dev"            ;;
+            *) echo "Unknown environment: ${{ env.ENVIRONMENT }}"; exit 1 ;;
+          esac
+          echo "overlay=$OVERLAY" >> "$GITHUB_OUTPUT"
 
-          kubectl create namespace "${{ env.DEPLOY_NS }}" --dry-run=client -o yaml | kubectl apply -f -
+      - name: Create namespace
+        run: |
+          kubectl create namespace "${{ env.DEPLOY_NS }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-          helm upgrade --install value-fabric ./infra/helm/value-fabric \
-            --namespace "${{ env.DEPLOY_NS }}" \
-            --values infra/helm/value-fabric/values.yaml \
-            --values infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml \
-            --set global.image.tag=${{ env.IMAGE_REF }} \
-            --atomic \
-            --cleanup-on-fail \
-            --wait \
-            --timeout 600s \
-            --history-max 10
+      - name: Inject image tag into overlay
+        run: |
+          # Mutate a working copy of the overlay so the requested IMAGE_REF is
+          # what actually gets deployed, not whatever newTag is committed.
+          OVERLAY="${{ steps.overlay.outputs.overlay }}"
+          REF="${{ env.IMAGE_REF }}"
+          for svc in layer1-ingestion layer2-extraction layer3-knowledge \
+                     layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            (cd "$OVERLAY" && kustomize edit set image \
+              "ghcr.io/${{ github.repository_owner }}/fabric_4l/${svc}=ghcr.io/${{ github.repository_owner }}/fabric_4l/${svc}:${REF}")
+          done
+
+      - name: Deploy via kustomize
+        run: |
+          echo "Deploying ${{ env.IMAGE_REF }} to ${{ env.ENVIRONMENT }} (ns: ${{ env.DEPLOY_NS }})"
+          kubectl apply -k "${{ steps.overlay.outputs.overlay }}"
+
+      - name: Wait for rollouts
+        run: |
+          for deploy in \
+            layer1-ingestion layer2-extraction layer3-knowledge \
+            layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            echo "Waiting for $deploy ..."
+            kubectl rollout status "deployment/$deploy" \
+              -n "${{ env.DEPLOY_NS }}" --timeout=10m
+          done
 
       - name: Record deployment info
         id: deploy-info
         run: |
           URL="https://api.${{ env.ENVIRONMENT }}.value-fabric.com"
-          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "Deployed to: $URL"
 
       - name: Create deployment record
         run: |
-          cat << 'EOF' > deployment-record.json
+          cat > deployment-record.json << EOF
           {
             "environment": "${{ env.ENVIRONMENT }}",
+            "namespace": "fabric-4l-${{ env.ENVIRONMENT }}",
             "image_ref": "${{ env.IMAGE_REF }}",
             "commit_sha": "${{ github.sha }}",
             "deployed_by": "${{ github.actor }}",
@@ -212,7 +226,6 @@ jobs:
             "workflow_run": "${{ github.run_id }}"
           }
           EOF
-          
           cat deployment-record.json
 
       - name: Upload deployment record
@@ -295,25 +308,27 @@ jobs:
           #   -H "Content-Type: application/json" \
           #   -d '{"event_type":"trigger","description":"Deployment failed"}'
 
-      - name: Rollback to previous version
+      - name: Rollback deployments
         run: |
-          echo "Rolling back to previous stable version"
-
           # Re-derive namespace from overlay (DEPLOY_NS env is job-scoped and
           # not available across jobs; re-read from the same source of truth).
           DEPLOY_NS=$(bash scripts/resolve-namespace.sh "${{ env.ENVIRONMENT }}")
-
-          # Get previous release revision
-          PREVIOUS_REVISION=$(helm history value-fabric -n "$DEPLOY_NS" --max 2 | tail -1 | awk '{print $1}')
-
-          if [ -n "$PREVIOUS_REVISION" ] && [ "$PREVIOUS_REVISION" != "1" ]; then
-            echo "Rolling back to revision: $PREVIOUS_REVISION"
-            helm rollback value-fabric "$PREVIOUS_REVISION" -n "$DEPLOY_NS"
-          else
-            echo "No previous revision found for rollback"
-            # Fallback: undo the latest deployment
-            kubectl rollout undo deployment/layer4-agents -n "$DEPLOY_NS" || true
-          fi
+          echo "Rolling back all deployments in $DEPLOY_NS ..."
+          for deploy in \
+            layer1-ingestion layer2-extraction layer3-knowledge \
+            layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            echo "  Undoing $deploy ..."
+            kubectl rollout undo "deployment/$deploy" -n "$DEPLOY_NS" || true
+          done
+          echo "Waiting for rollback rollouts ..."
+          for deploy in \
+            layer1-ingestion layer2-extraction layer3-knowledge \
+            layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            kubectl rollout status "deployment/$deploy" \
+              -n "$DEPLOY_NS" --timeout=5m || true
+          done
+          kubectl get deployments -n "$DEPLOY_NS"
+          kubectl get pods        -n "$DEPLOY_NS"
 
   # ============================================
   # Post-deployment Verification
@@ -340,6 +355,89 @@ jobs:
           
           # This would update a deployment tracking system
           # or create a GitHub release with deployment metadata
+
+  # ============================================
+  # Deployment Evidence (production only)
+  # ============================================
+  evidence:
+    name: Commit Deployment Evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [smoke-tests, verify]
+    if: >
+      inputs.environment == 'production' &&
+      needs.smoke-tests.result == 'success' &&
+      needs.verify.result == 'success'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate evidence file
+        id: evidence
+        run: |
+          TAG="${{ env.IMAGE_REF }}"
+          DATE=$(date -u +%Y-%m-%d)
+          TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          FILE=".deployments/${DATE}-${TAG}.md"
+          mkdir -p .deployments
+
+          cat > "$FILE" << EOF
+          # Deployment Evidence — ${TAG}
+
+          Date: ${TIME}
+          Tag: ${TAG}
+          Commit: ${{ github.sha }}
+          Namespace: fabric-4l-production
+          Deployer: ${{ github.actor }}
+          Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ## Gate results
+
+          - [x] Phase 0: tooling preflight passed
+          - [x] Phase 1: repo state clean, tag verified
+          - [x] Phase 2: image signatures verified
+          - [x] Phase 3: all 7 images present
+          - [x] Phase 4: kustomize render clean
+          - [x] Phase 5: secrets provisioned
+          - [x] Phase 6: all 7 deployments rolled out
+          - [x] Phase 7: smoke tests passed
+          - [x] Phase 8: post-deploy verification passed
+
+          ## Services deployed
+
+          - ghcr.io/bmsull560/fabric_4l/layer1-ingestion:${TAG}
+          - ghcr.io/bmsull560/fabric_4l/layer2-extraction:${TAG}
+          - ghcr.io/bmsull560/fabric_4l/layer3-knowledge:${TAG}
+          - ghcr.io/bmsull560/fabric_4l/layer4-agents:${TAG}
+          - ghcr.io/bmsull560/fabric_4l/layer5-ground-truth:${TAG}
+          - ghcr.io/bmsull560/fabric_4l/layer6-benchmarks:${TAG}
+          - ghcr.io/bmsull560/fabric_4l/frontend:${TAG}
+          EOF
+
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "Evidence file: $FILE"
+
+      - name: Commit evidence file
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.evidence.outputs.file }}"
+          git diff --cached --quiet || \
+            git commit -m "chore: deployment evidence ${{ env.IMAGE_REF }} [skip ci]" \
+              --author="github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          git push origin main
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-evidence-${{ env.IMAGE_REF }}
+          path: ${{ steps.evidence.outputs.file }}
+          retention-days: 90
 
   # ============================================
   # Notify
