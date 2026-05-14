@@ -494,7 +494,29 @@ class IntelligenceOrchestrator:
     async def _get_account_signals(
         self, account_id: str
     ) -> list[dict[str, Any]]:
-        """Fetch signals associated with an account."""
+        """Fetch ValueSignals for an account from the L2.5 Signal Refinery.
+
+        Prefers the canonical L2.5 API over the legacy Neo4j Signal query.
+        Falls back to the legacy graph query if the L2.5 service is unavailable.
+        """
+        try:
+            from ..tools.signal_tools import get_account_signals as _get_signals
+            signals = await _get_signals(
+                account_id,
+                lifecycle_states=["validated", "promoted", "extracted"],
+                min_confidence=0.3,
+                limit=MAX_SIGNALS_QUERY_LIMIT,
+            )
+            if signals:
+                return signals
+        except Exception:
+            logger.warning(
+                "L2.5 signal retrieval failed for account=%s — falling back to graph query",
+                account_id,
+                exc_info=True,
+            )
+
+        # Legacy fallback: query :Signal nodes from Neo4j
         tenant_id = _get_tenant_id()
         query = """
         MATCH (s:Signal {tenant_id: $tenant_id})

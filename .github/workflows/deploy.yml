@@ -284,6 +284,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.31.2'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.16.2'
+
+      - name: Configure kubeconfig
+        run: |
+          # Mirror the same kubeconfig setup as the deploy job.
+          # Replace this placeholder with the cloud-provider-specific action
+          # (e.g. aws eks update-kubeconfig, gcloud container clusters get-credentials).
+          echo "Kubeconfig configuration placeholder"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+
       - name: Alert on failure
         run: |
           echo "Deployment failed - initiating rollback procedures"
@@ -298,17 +316,27 @@ jobs:
       - name: Rollback to previous version
         run: |
           echo "Rolling back to previous stable version"
-          
-          # Get previous release revision
-          PREVIOUS_REVISION=$(helm history value-fabric -n value-fabric-${{ env.ENVIRONMENT }} --max 2 | tail -1 | awk '{print $1}')
-          
+
+          # Derive the Helm release namespace using the same mapping as the deploy job.
+          # This ensures rollback targets the same namespace as the original apply.
+          case "${{ env.ENVIRONMENT }}" in
+            production) HELM_NS="value-fabric-prod"    ;;
+            staging)    HELM_NS="value-fabric-staging" ;;
+            dev)        HELM_NS="value-fabric-dev"     ;;
+            *)          HELM_NS="value-fabric-${{ env.ENVIRONMENT }}" ;;
+          esac
+
+          PREVIOUS_REVISION=$(helm history value-fabric -n "$HELM_NS" --max 2 | tail -1 | awk '{print $1}')
+
           if [ -n "$PREVIOUS_REVISION" ] && [ "$PREVIOUS_REVISION" != "1" ]; then
             echo "Rolling back to revision: $PREVIOUS_REVISION"
-            helm rollback value-fabric $PREVIOUS_REVISION -n value-fabric-${{ env.ENVIRONMENT }}
+            helm rollback value-fabric "$PREVIOUS_REVISION" -n "$HELM_NS"
           else
             echo "No previous revision found for rollback"
-            # Fallback: undo the latest deployment
-            kubectl rollout undo deployment/layer4-agents -n value-fabric-${{ env.ENVIRONMENT }} || true
+            for deploy in layer1-ingestion layer2-extraction layer3-knowledge \
+                          layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+              kubectl rollout undo "deployment/$deploy" -n "$HELM_NS" || true
+            done
           fi
 
   # ============================================

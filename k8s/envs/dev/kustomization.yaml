@@ -10,3 +10,28 @@ resources:
 labels:
   - pairs:
       environment: dev
+
+# Dev images use mutable tags (updated by CI via: kustomize edit set image name:tag).
+# Staging/prod use SHA digests instead.
+images:
+  - name: services/layer1-ingestion
+    newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
+    newTag: latest
+  - name: services/layer2-extraction
+    newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
+    newTag: latest
+  - name: services/layer3-knowledge
+    newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
+    newTag: latest
+  - name: services/layer4-agents
+    newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
+    newTag: latest
+  - name: services/layer5-ground-truth
+    newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
+    newTag: latest
+  - name: services/layer6-benchmarks
+    newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+    newTag: latest
+  - name: apps/web
+    newName: ghcr.io/bmsull560/fabric_4l/frontend
+    newTag: latest

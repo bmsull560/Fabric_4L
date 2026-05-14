@@ -1,6 +1,6 @@
 """Tools package for Layer 4 Agentic Workflow Engine.
 
-This package contains 25+ tools organized into 7 categories:
+This package contains 25+ tools organized into 8 categories:
 - Knowledge (6): Graph query and semantic search tools
 - Calculation (4): Formula evaluation and ROI calculation
 - CRM (4): Salesforce/HubSpot integration
@@ -8,6 +8,7 @@ This package contains 25+ tools organized into 7 categories:
 - Integration (4): Notifications and task management
 - Utility (2): Validation and formatting
 - Competitive (1): Competitive intelligence and alternative analysis
+- Signals (5): Value Signal Layer (L2.5) retrieval and creation
 """
 
 from __future__ import annotations
@@ -58,6 +59,13 @@ from .registry import (
     tool,
 )
 from .utility_tools import FormatCurrencyTool, ValidateInputTool
+from .signal_tools import (
+    create_signal,
+    get_account_signals,
+    get_expansion_signals,
+    get_renewal_risk_signals,
+    get_signals_for_business_case,
+)
 
 
 def create_default_registry(config: dict | None = None) -> ToolRegistry:
@@ -112,6 +120,9 @@ def create_default_registry(config: dict | None = None) -> ToolRegistry:
     # Competitive Intelligence Tools (1)
     registry.register(AnalyzeCompetitionTool(cfg))
 
+    # Signal tools are async functions, not BaseTool subclasses —
+    # they are called directly by workflow nodes, not via the registry.
+
     return registry
 
 
@@ -161,4 +172,10 @@ __all__ = [
     "FormatCurrencyTool",
     # Competitive Intelligence
     "AnalyzeCompetitionTool",
+    # Value Signal Layer (L2.5)
+    "get_account_signals",
+    "create_signal",
+    "get_signals_for_business_case",
+    "get_renewal_risk_signals",
+    "get_expansion_signals",
 ]

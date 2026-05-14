@@ -674,6 +674,7 @@ from api.routes import (
     provenance_audit,
     query_search,
     roi_calculator,
+    signals,
     system,
     value_packs,
     value_trees,
@@ -703,6 +704,8 @@ include_router_mounts(
         RouterMount(system.router, prefix="/api/v1/system"),
         RouterMount(entities.router, prefix="/api"),
         RouterMount(compat_aliases.router, prefix="/api"),
+        # L2.5 Signal Refinery — ValueSignal graph persistence
+        RouterMount(signals.router),
     ],
 )
 

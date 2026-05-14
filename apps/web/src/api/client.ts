@@ -11,7 +11,7 @@ const log = createFeatureLogger('api-client');
 // ============================================================================
 
 /** Valid layer keys - single source of truth */
-const VALID_LAYER_KEYS = ['l1', 'l2', 'l3', 'l4', 'l5', 'l6'] as const;
+const VALID_LAYER_KEYS = ['l1', 'l2', 'l2_5', 'l3', 'l4', 'l5', 'l6'] as const;
 
 /** Zod schema for layer key validation */
 const LayerKeySchema = z.enum(VALID_LAYER_KEYS);
@@ -84,6 +84,7 @@ const API_VERSION_PREFIX = getEnvVar('VITE_API_VERSION_PREFIX', getEnvVar('VITE_
 const LAYER_PREFIXES = {
   l1: getEnvVar('VITE_LAYER1_ROUTE_PREFIX', getEnvVar('VITE_L1_PREFIX', '/ingest')),
   l2: getEnvVar('VITE_LAYER2_ROUTE_PREFIX', getEnvVar('VITE_L2_PREFIX', '/extract')),
+  l2_5: getEnvVar('VITE_LAYER2_5_ROUTE_PREFIX', getEnvVar('VITE_L2_5_PREFIX', '/signals')),
   l3: getEnvVar('VITE_LAYER3_ROUTE_PREFIX', getEnvVar('VITE_L3_PREFIX', '/graph')),
   l4: getEnvVar('VITE_LAYER4_ROUTE_PREFIX', getEnvVar('VITE_L4_PREFIX', '/agents')),
   l5: getEnvVar('VITE_LAYER5_ROUTE_PREFIX', getEnvVar('VITE_L5_PREFIX', '/truths')),
