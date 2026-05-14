@@ -593,7 +593,7 @@ jobs:
         run: python scripts/ci/check_route_auth_dependencies.py
 
   mandatory-security-regression:
-    name: Mandatory Security Regression Gate
+    name: mandatory-security-regression
     runs-on: ubuntu-latest
     timeout-minutes: 45
     if: github.event_name == 'pull_request' || github.event_name == 'push'

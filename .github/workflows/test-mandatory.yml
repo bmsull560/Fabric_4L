@@ -152,7 +152,7 @@ jobs:
 
       - name: Run mandatory security regression gate
         env:
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
           bash scripts/ci/mandatory_security_regression_gate.sh
 

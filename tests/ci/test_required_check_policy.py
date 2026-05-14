@@ -13,6 +13,7 @@ def test_required_check_policy_metadata_in_sync() -> None:
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
+        encoding="utf-8",
         text=True,
     )
     assert result.returncode == 0, result.stderr or result.stdout
