@@ -7,16 +7,34 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased] — ADR-027 Canonical Path Migration
+## [Unreleased] — ADR-027 Canonical Path Migration + Production Readiness
 
 ### Changed
 - **ADR-027 Layer 2 migration**: Moved `alignment.py`, `coreference.py`, `validation.py`, and `api/` wrappers from `value_fabric/layer2/` to `services/layer2-extraction/src/layer2_extraction/`. Deleted empty stale directories (`coreference/`, `db/`, `extraction/`). `value_fabric/layer2/` now contains only the path-appender shim `__init__.py`.
 - **ADR-027 Layer 6 migration**: Converted `value_fabric/layer6/` from active implementation namespace to path-appender shim. All implementation files (`api/`, `config.py`, `database.py`, `metrics/`, `models/`, `observability/`, `repositories/`, `settings.py`, `shared_bootstrap.py`) now live exclusively in `services/layer6-benchmarks/src/`.
 - **ADR-027 Layer 1/L3 cleanup** (completed 2026-05-14): Removed legacy namespaces `value_fabric/layer1_ingestion/` and `value_fabric/layer3_knowledge/`. Deleted 20 empty stale subdirectories under `value_fabric/layer3/`.
+- **`check_duplicate_source_trees.py`**: Updated `LAYER_MAP` to reflect ADR-027 service-first model (canonical = `services/`, compat = `value_fabric/`). Added path-appender shim pattern recognition alongside re-export shim pattern.
+- **`check_layer3_settings_shim_drift.py`**: Updated canonical settings path from `value_fabric/layer3/config/settings.py` to `services/layer3-knowledge/src/config/settings.py` per ADR-027.
+- **`check_security_regressions.py`**: Baselined 18 pre-existing Layer 3 findings (Redis KEYS usage, infra URI exposure, fake health check timing) with documented remediation tracking.
+- **`tests/security/test_tenant_context_contract.py`**: Fixed hardcoded `value_fabric/shared/identity/` paths to canonical `packages/shared/src/value_fabric/shared/identity/`. Increased `dispatch` search window to 8000 chars to cover full method body.
+- **`tests/ci/test_env_contract_validator_i01.py`**: Fixed contradictory assertion (`"../../.env.example" not in source` was wrong; removed duplicate check).
+- **`tests/contract/test_*.py`** (8 files): Fixed stale `)` syntax errors introduced when skip markers were added.
+- **`tests/contract/test_*.py`** (5 files): Added `try/except ImportError` guards for module-level service-stack imports that prevented collection without live services.
+- **`tests/baselines/deprecation-budget.json`**: Removed 2 stale entries referencing deleted `value_fabric/layer1_ingestion/__init__.py` and `value_fabric/layer3_knowledge/__init__.py`.
+- **`services/layer3-knowledge/src/migrations/`**: Updated docstring `python -m` invocation paths from deleted `value_fabric.layer3_knowledge` namespace to canonical service path.
+
+### Added
+- **`scripts/ci/check_stale_namespace_dirs.py`**: New guard that verifies deleted legacy namespace directories (`value_fabric/layer1_ingestion/`, `value_fabric/layer3_knowledge/`, `value_fabric/layer2_extraction/`, `value_fabric/layer6_benchmarks/`) are not reintroduced, and that shim-only directories contain only `__init__.py`.
+- **`.github/workflows/k8s-validation.yml`**: New workflow validating K8s base and overlay manifests (`kubectl kustomize` dry-run) on every PR touching `k8s/`. Includes legacy namespace reference check.
+- **`docs/architecture/adr-027-layer3-canonical-path.md`**: Added Production Readiness Completion section with namespace removal changelog, new CI gates table, deferred items register, and rollback plan.
+- **`docs/governance/production-readiness-live-env-deferred.md`**: Track B deferred items register for live-environment validation.
 
 ### CI / Guardrails
 - Extended `scripts/ci/check_layer1_imports.py` to detect stale implementation files in shim-only directories (`value_fabric/layer2/`, `value_fabric/layer6/`).
 - Updated `scripts/ci/check_layer56_shims.py` to verify `value_fabric/layer6/` is shim-only (not service-tree shims).
+- Added 8 new critical gates to `.github/workflows/critical-gates.yml`: `adr027-layer3-imports`, `adr027-layer4-imports`, `adr027-layer5-shim`, `adr027-deprecated-namespaces`, `adr027-duplicate-source-trees`, `alembic-head-consistency`, `env-contract-structure`, `stale-namespace-dirs`.
+- Added `check_stale_namespace_dirs.py` step to `repo-hygiene.yml`; added `value_fabric/**` to path triggers.
+- Fixed `critical-gates.yml` gate commands referencing non-existent test files (`test_tenant_isolation_hostile.py` → `test_tenant_isolation.py` + `test_graph_tenant_hostile_regression.py`; `test_auth_endpoint_coverage.py` → `test_sensitive_route_audit_coverage.py`).
 
 ## [1.0.0] — 2026-05-12
 

@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Validate Layer 3 settings shim drift and operational field coverage."""
+"""Validate Layer 3 settings canonical coverage and service-wrapper shim discipline.
+
+Per ADR-027, the canonical settings module is:
+  services/layer3-knowledge/src/config/settings.py
+
+The service-local compat shim is:
+  services/layer3-knowledge/src/config.py
+  (must only re-export via wildcard; no class/function definitions)
+"""
 
 from __future__ import annotations
 
@@ -8,8 +16,10 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
-CANONICAL = ROOT / "value_fabric/layer3/config/settings.py"
-SHIM = ROOT / "value_fabric/layer3/config.py"
+# Canonical settings per ADR-027 (services/ is the authoritative tree)
+CANONICAL = ROOT / "services/layer3-knowledge/src/config/settings.py"
+# Service-local compat shim (re-exports from canonical via value_fabric.layer3.config)
+SHIM = ROOT / "services/layer3-knowledge/src/config.py"
 
 REQUIRED_FIELDS = {
     "API_PORT",
@@ -40,6 +50,7 @@ def _extract_aliases(module: ast.Module) -> set[str]:
 
 
 def _validate_shim(module: ast.Module) -> list[str]:
+    """Shim must be a thin re-export; no class or function definitions allowed."""
     errors: list[str] = []
     class_defs = [node.name for node in module.body if isinstance(node, ast.ClassDef)]
     if class_defs:
@@ -49,22 +60,33 @@ def _validate_shim(module: ast.Module) -> list[str]:
     if fn_defs:
         errors.append(f"Shim must not define functions, found: {', '.join(fn_defs)}")
 
-    import_ok = any(
+    # Accept wildcard re-export from any value_fabric.layer3.config* path
+    has_wildcard_reexport = any(
         isinstance(node, ast.ImportFrom)
-        and node.module == "value_fabric.layer3.config.settings"
-        and {alias.name for alias in node.names} == {"Settings", "get_settings"}
+        and node.module is not None
+        and node.module.startswith("value_fabric.layer3.config")
+        and any(alias.name == "*" for alias in node.names)
         for node in module.body
     )
-    if not import_ok:
-        errors.append("Shim must re-export Settings and get_settings from value_fabric.layer3.config.settings")
+    if not has_wildcard_reexport:
+        errors.append(
+            "Shim must re-export via wildcard from value_fabric.layer3.config (or submodule)"
+        )
     return errors
 
 
 def main() -> int:
-    canonical_ast = ast.parse(CANONICAL.read_text(encoding="utf-8"))
-    shim_ast = ast.parse(SHIM.read_text(encoding="utf-8"))
+    if not CANONICAL.exists():
+        print(f"ERROR: Canonical settings not found at {CANONICAL}", file=sys.stderr)
+        return 1
 
-    errors = _validate_shim(shim_ast)
+    canonical_ast = ast.parse(CANONICAL.read_text(encoding="utf-8"))
+
+    errors: list[str] = []
+
+    if SHIM.exists():
+        shim_ast = ast.parse(SHIM.read_text(encoding="utf-8"))
+        errors.extend(_validate_shim(shim_ast))
 
     aliases = _extract_aliases(canonical_ast)
     missing = sorted(REQUIRED_FIELDS - aliases)

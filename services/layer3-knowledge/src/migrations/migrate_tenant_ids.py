@@ -12,7 +12,7 @@ Usage:
     export DEFAULT_TENANT_ID="system"
     
     # Run migration
-    python -m value_fabric.layer3_knowledge.src.migrations.migrate_tenant_ids
+    python -m services.layer3-knowledge.src.migrations.migrate_tenant_ids
 
 Or programmatically:
     from migrate_tenant_ids import TenantIdMigration
