@@ -166,16 +166,6 @@
       "id": "services/layer4-agents/src/api/routes/frontend_compat.py:187:py_route_deprecated",
       "rationale": "Approved temporary deprecation compatibility surface; tracked for staged removal.",
       "target_removal_date": "2026-07-01"
-    },
-    {
-      "id": "value_fabric/layer1_ingestion/__init__.py:17:py_deprecated_message",
-      "rationale": "Approved temporary deprecation compatibility surface; tracked for staged removal.",
-      "target_removal_date": "2026-10-01"
-    },
-    {
-      "id": "value_fabric/layer3_knowledge/__init__.py:16:py_deprecated_message",
-      "rationale": "Approved temporary deprecation compatibility surface; tracked for staged removal.",
-      "target_removal_date": "2026-10-01"
     }
   ]
 }

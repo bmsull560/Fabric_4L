@@ -7,8 +7,6 @@ import pytest
 
 pytestmark = pytest.mark.skip(
     reason="value_fabric import path broken: package missing or SQLAlchemy duplicate table issue. Pre-existing; tracked in signoff report blocker #1/#9.")
-)
-
 
 def test_compat_metrics_are_segmented_by_tenant_and_app_client() -> None:
     record_deprecated_route_hit("/v1/query", tenant_id="tenant-a", app_client="web")
