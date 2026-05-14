@@ -170,22 +170,20 @@ jobs:
             # Create environment-specific values if not exists
           fi
 
-      - name: Validate namespace
+      - name: Resolve deploy namespace
         run: |
-          # Prevent accidental deployment to wrong namespace
-          ALLOWED_NAMESPACES="dev staging production"
-          if [[ ! " $ALLOWED_NAMESPACES " =~ " ${{ env.ENVIRONMENT }} " ]]; then
-            echo "Error: Invalid environment '${{ env.ENVIRONMENT }}'. Allowed: $ALLOWED_NAMESPACES"
-            exit 1
-          fi
-          echo "Namespace validation passed for: ${{ env.ENVIRONMENT }}"
+          DEPLOY_NS=$(bash scripts/resolve-namespace.sh "${{ env.ENVIRONMENT }}")
+          echo "Resolved namespace: $DEPLOY_NS"
+          echo "DEPLOY_NS=$DEPLOY_NS" >> "$GITHUB_ENV"
 
       - name: Deploy with Helm
         run: |
-          echo "Deploying to ${{ env.ENVIRONMENT }}"
-          
+          echo "Deploying to ${{ env.ENVIRONMENT }} (namespace: ${{ env.DEPLOY_NS }})"
+
+          kubectl create namespace "${{ env.DEPLOY_NS }}" --dry-run=client -o yaml | kubectl apply -f -
+
           helm upgrade --install value-fabric ./infra/helm/value-fabric \
-            --namespace value-fabric-${{ env.ENVIRONMENT }} \
+            --namespace "${{ env.DEPLOY_NS }}" \
             --values infra/helm/value-fabric/values.yaml \
             --values infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml \
             --set global.image.tag=${{ env.IMAGE_REF }} \
@@ -241,7 +239,9 @@ jobs:
         run: |
           echo "Waiting for deployment to stabilize..."
           sleep 30
-          # kubectl rollout status deployment -n value-fabric --timeout=300s
+          # Uncomment when kubeconfig is wired:
+          # NS=$(bash scripts/resolve-namespace.sh "${{ env.ENVIRONMENT }}")
+          # kubectl rollout status deployment -n "$NS" --timeout=300s
 
       - name: Health check endpoints
         run: |
@@ -298,17 +298,21 @@ jobs:
       - name: Rollback to previous version
         run: |
           echo "Rolling back to previous stable version"
-          
+
+          # Re-derive namespace from overlay (DEPLOY_NS env is job-scoped and
+          # not available across jobs; re-read from the same source of truth).
+          DEPLOY_NS=$(bash scripts/resolve-namespace.sh "${{ env.ENVIRONMENT }}")
+
           # Get previous release revision
-          PREVIOUS_REVISION=$(helm history value-fabric -n value-fabric-${{ env.ENVIRONMENT }} --max 2 | tail -1 | awk '{print $1}')
-          
+          PREVIOUS_REVISION=$(helm history value-fabric -n "$DEPLOY_NS" --max 2 | tail -1 | awk '{print $1}')
+
           if [ -n "$PREVIOUS_REVISION" ] && [ "$PREVIOUS_REVISION" != "1" ]; then
             echo "Rolling back to revision: $PREVIOUS_REVISION"
-            helm rollback value-fabric $PREVIOUS_REVISION -n value-fabric-${{ env.ENVIRONMENT }}
+            helm rollback value-fabric "$PREVIOUS_REVISION" -n "$DEPLOY_NS"
           else
             echo "No previous revision found for rollback"
             # Fallback: undo the latest deployment
-            kubectl rollout undo deployment/layer4-agents -n value-fabric-${{ env.ENVIRONMENT }} || true
+            kubectl rollout undo deployment/layer4-agents -n "$DEPLOY_NS" || true
           fi
 
   # ============================================
