@@ -160,6 +160,17 @@ tmp_gen_migration_baseline.py
 /nul
 /NUL
 
+# Windows path artifacts (CUsers* filenames from shell redirection on Windows)
+CUsers*
+
+# Temporary diff/patch files in repo root
+/tmp_pr*.txt
+/tmp_pr*.*'
+/tmp_models_content.txt
+
+# Generated ZIP archives (Kimi, export artifacts, etc.)
+/*.zip
+
 # Local test output artifacts
 /test_results_*.txt
 /collect_output.txt
