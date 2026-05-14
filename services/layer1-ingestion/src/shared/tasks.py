@@ -34,6 +34,8 @@ from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import (
     AccountIntelligencePacket,
+    EventOutbox,
+    OutboxStatus,
     ScrapingJobType,
     SourceCorpus,
     ComplianceEventType,
@@ -48,6 +50,9 @@ from ..shared.models import (
     ScrapingJob,
     ScrapingTarget,
 )
+
+# Maximum delivery attempts before an outbox event is dead-lettered.
+MAX_DISPATCH_ATTEMPTS = 5
 
 
 class _execute_browser_pathResult(TypedDictModel):
@@ -1063,26 +1068,190 @@ def notification_stage(prev_result: dict):
                     target.average_execution_time_ms = int(total_duration / target.success_count)
                 session.commit()
 
-            # Skill-aware event emission: notify downstream layers
+            # Skill-aware event emission via durable transactional outbox.
+            # Events are persisted in the same session as job completion so
+            # they are only emitted after durable storage succeeds.
             if job.downstream_events and job.skill_name:
-                for event in job.downstream_events:
-                    logger.info(
-                        "Emitting downstream event",
-                        job_id=str(job_id),
-                        event=event,
-                        tenant_id=str(job.tenant_id),
-                        skill_name=job.skill_name,
+                # Resolve the output record ID for the event payload.
+                output_id: str | None = None
+                if job.output_contract == "SourceCorpus":
+                    corpus = (
+                        session.query(SourceCorpus)
+                        .filter(
+                            SourceCorpus.job_id == job_id,
+                            SourceCorpus.tenant_id == job.tenant_id,
+                        )
+                        .first()
                     )
-                    # TODO: wire to actual event bus (Redis pub/sub, webhook, or message queue)
-                    # For now, log the event for observability and testing
+                    output_id = str(corpus.id) if corpus else None
+                elif job.output_contract == "AccountIntelligencePacket":
+                    packet = (
+                        session.query(AccountIntelligencePacket)
+                        .filter(
+                            AccountIntelligencePacket.job_id == job_id,
+                            AccountIntelligencePacket.tenant_id == job.tenant_id,
+                        )
+                        .first()
+                    )
+                    output_id = str(packet.id) if packet else None
+
+                emitted_at = datetime.now(UTC).isoformat()
+                outbox_ids: list[UUID] = []
+
+                for event_type in job.downstream_events:
+                    outbox_row = EventOutbox(
+                        tenant_id=job.tenant_id,
+                        event_type=event_type,
+                        aggregate_type=job.output_contract or "unknown",
+                        aggregate_id=output_id or str(job_id),
+                        payload={
+                            "event_type": event_type,
+                            "tenant_id": str(job.tenant_id),
+                            "job_id": str(job_id),
+                            "output_contract": job.output_contract,
+                            "output_id": output_id,
+                            "skill_name": job.skill_name,
+                            "aggregate_type": job.output_contract or "unknown",
+                            "aggregate_id": output_id or str(job_id),
+                            "emitted_at": emitted_at,
+                        },
+                        status=OutboxStatus.PENDING.value,
+                    )
+                    session.add(outbox_row)
+                    session.flush()
+                    outbox_ids.append(outbox_row.id)
+                    logger.info(
+                        "EventOutbox row created",
+                        event_id=str(outbox_row.id),
+                        event_type=event_type,
+                        job_id=str(job_id),
+                        tenant_id=str(job.tenant_id),
+                    )
+
+                # Commit outbox rows together with job completion.
+                session.commit()
+
+                # Enqueue async dispatch for each outbox row.
+                for event_id in outbox_ids:
+                    dispatch_outbox_event.apply_async(
+                        args=[str(event_id)],
+                        countdown=1,
+                    )
 
             logger.info("Job completed successfully", job_id=str(job_id))
-            return notification_stageResult.model_validate({"success": True, "job_id": str(job_id)})
+            return notification_stageResult.model_validate({"success": True, "job_id": str(job_id), "error": None})
 
     except Exception as exc:
         logger.error("Notification stage failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.NOTIFICATION, "FAILED", str(exc))
         return notification_stageResult.model_validate({"success": False, "job_id": str(job_id), "error": str(exc)})
+
+
+# =============================================================================
+# EVENT OUTBOX DISPATCHER
+# =============================================================================
+
+
+@celery_app.task(bind=True, max_retries=MAX_DISPATCH_ATTEMPTS, default_retry_delay=30)
+def dispatch_outbox_event(self, event_id: str):
+    """Deliver a single EventOutbox record to configured sinks.
+
+    On success: marks the row as dispatched.
+    On failure: increments attempts, records last_error, retries with backoff.
+    After MAX_DISPATCH_ATTEMPTS: moves to dead_letter.
+
+    The initial sink is a structured log. The architecture supports adding
+    HTTP adapter or other delivery mechanisms without changing this task.
+    """
+    event_uuid = UUID(event_id)
+
+    try:
+        with get_db_session() as session:
+            event = (
+                session.query(EventOutbox)
+                .filter(EventOutbox.id == event_uuid)
+                .first()
+            )
+            if not event:
+                logger.warning("EventOutbox row not found", event_id=event_id)
+                return
+
+            # Idempotency: skip if already dispatched or dead-lettered.
+            if event.status in (OutboxStatus.DISPATCHED.value, OutboxStatus.DEAD_LETTER.value):
+                logger.info(
+                    "EventOutbox already settled, skipping",
+                    event_id=event_id,
+                    status=event.status,
+                )
+                return
+
+            # Deliver to configured sink.
+            # Initial implementation: structured log (no-op delivery).
+            # Future: HTTP adapter, internal service call, etc.
+            logger.info(
+                "Dispatching outbox event",
+                event_id=event_id,
+                event_type=event.event_type,
+                aggregate_type=event.aggregate_type,
+                aggregate_id=event.aggregate_id,
+                tenant_id=str(event.tenant_id),
+                payload=event.payload,
+            )
+
+            # Mark dispatched.
+            event.status = OutboxStatus.DISPATCHED.value
+            event.dispatched_at = datetime.now(UTC)
+            session.commit()
+
+            logger.info(
+                "EventOutbox dispatched",
+                event_id=event_id,
+                event_type=event.event_type,
+            )
+
+    except Exception as exc:
+        logger.error(
+            "EventOutbox dispatch failed",
+            event_id=event_id,
+            error=str(exc),
+            attempt=self.request.retries + 1,
+        )
+
+        # Record the failure on the outbox row.
+        try:
+            with get_db_session() as session:
+                event = (
+                    session.query(EventOutbox)
+                    .filter(EventOutbox.id == event_uuid)
+                    .first()
+                )
+                if event:
+                    event.attempts = (event.attempts or 0) + 1
+                    event.last_error = str(exc)
+
+                    if event.attempts >= MAX_DISPATCH_ATTEMPTS:
+                        event.status = OutboxStatus.DEAD_LETTER.value
+                        event.dead_lettered_at = datetime.now(UTC)
+                        logger.error(
+                            "EventOutbox dead-lettered after max attempts",
+                            event_id=event_id,
+                            event_type=event.event_type,
+                            attempts=event.attempts,
+                        )
+                        session.commit()
+                        return  # Do not retry dead-lettered events.
+                    else:
+                        event.status = OutboxStatus.FAILED.value
+                        session.commit()
+        except Exception as inner_exc:
+            logger.error(
+                "Failed to record outbox dispatch error",
+                event_id=event_id,
+                error=str(inner_exc),
+            )
+
+        # Retry with exponential backoff.
+        raise self.retry(exc=exc, countdown=30 * (2 ** self.request.retries))
 
 
 # =============================================================================
