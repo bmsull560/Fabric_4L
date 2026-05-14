@@ -70,9 +70,8 @@ async def get_items(context: RequestContext = Depends(require_authenticated)):
 
 **File:** `services/layer4-agents/src/tools/crm_tools.py:132` and `:153`
 
-```python
-opp_query = f"SELECT ... WHERE AccountId = '{prospect_id}'"
-task_query = f"SELECT ... WHERE WhatId = '{prospect_id}'"
+```text
+SOQL query construction interpolates prospect_id into AccountId and WhatId filters.
 ```
 
 **Risk:** `prospect_id` is interpolated directly into SOQL strings. While URL-encoded for Salesforce REST API, the SOQL itself is concatenated.

@@ -10,7 +10,6 @@ These endpoints have been refactored from main.py as part of the
 architectural decomposition effort (Weakness #3).
 """
 
-from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -37,44 +36,17 @@ from api.models import (
 
 router = APIRouter(prefix="/v1", tags=["Entities"], dependencies=[Depends(require_authenticated)])
 logger = get_logger(__name__)
+ENTITY_LIST_SORT_CLAUSES = {
+    ("confidence", "asc"): "e.confidence_score ASC",
+    ("confidence", "desc"): "e.confidence_score DESC",
+    ("name", "asc"): "e.name ASC",
+    ("name", "desc"): "e.name DESC",
+    ("created_at", "asc"): "e.created_at ASC",
+    ("created_at", "desc"): "e.created_at DESC",
+}
 
-
-@dataclass
-class EntityQueryFilters:
-    """Build parameterized filter clauses for entity routes."""
-
-    clauses: list[str] = field(default_factory=list)
-    params: dict[str, Any] = field(default_factory=dict)
-
-    def add_search_text(self, search_text: str | None) -> None:
-        if not search_text:
-            return
-        self.clauses.append(
-            "(toLower(e.name) CONTAINS toLower($search_text) OR "
-            "toLower(e.description) CONTAINS toLower($search_text))"
-        )
-        self.params["search_text"] = search_text
-
-    def add_entity_types(self, entity_types: list[str] | None) -> None:
-        if not entity_types:
-            return
-        self.clauses.append("e.entity_type IN $entity_types")
-        self.params["entity_types"] = entity_types
-
-    def add_confidence_min(self, confidence_min: float | None) -> None:
-        if confidence_min is None or confidence_min <= 0:
-            return
-        self.clauses.append("e.confidence_score >= $confidence_min")
-        self.params["confidence_min"] = confidence_min
-
-    def add_confidence_max(self, confidence_max: float | None) -> None:
-        if confidence_max is None:
-            return
-        self.clauses.append("e.confidence_score <= $confidence_max")
-        self.params["confidence_max"] = confidence_max
-
-    def scoped_where_clause(self) -> str:
-        return " AND ".join(self.clauses) if self.clauses else "true"
+def entity_list_sort_clause(sort_by: str, sort_order: str) -> str:
+    return ENTITY_LIST_SORT_CLAUSES.get((sort_by, sort_order.lower()), "e.confidence_score DESC")
 
 
 @router.get("/entities", response_model=EntityListResponse)
@@ -95,32 +67,36 @@ async def list_entities(
     Returns high-quality entity summaries with consistent field naming.
     """
     try:
-        filters = EntityQueryFilters()
-        filters.add_search_text(search_text)
-        filters.add_entity_types(entity_types)
-        filters.add_confidence_min(confidence_min)
-        params: dict[str, Any] = dict(filters.params)
-
-        # Validate sort parameters
-        valid_sort_fields = {"confidence": "e.confidence_score", "name": "e.name", "created_at": "e.created_at"}
-        sort_field = valid_sort_fields.get(sort_by, "e.confidence_score")
-        sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+        sort_clause = entity_list_sort_clause(sort_by, sort_order)
 
         # Single query: count and paginated data in one round-trip.
         # The CALL {} subquery is evaluated independently; the outer MATCH
         # returns paginated rows each carrying the pre-computed total.
+        params: dict[str, Any] = {
+            "search_text": search_text,
+            "entity_types": entity_types,
+            "confidence_min": confidence_min,
+            "offset": offset,
+            "limit": limit,
+        }
         params["offset"] = offset
         params["limit"] = limit
         builder = TenantScopedCypher(neo4j.tenant_id or "")
         scoped_query = builder.custom_tenant_query(
-            f"""
-            CALL {{
+            """
+            CALL {
                 MATCH (e:Entity)
-                WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
+                WHERE e.tenant_id = $_tenant_id
+                  AND ($search_text IS NULL OR toLower(e.name) CONTAINS toLower($search_text) OR toLower(e.description) CONTAINS toLower($search_text))
+                  AND ($entity_types IS NULL OR e.entity_type IN $entity_types)
+                  AND e.confidence_score >= $confidence_min
                 RETURN count(e) as total
-            }}
+            }
             MATCH (e:Entity)
-            WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
+            WHERE e.tenant_id = $_tenant_id
+              AND ($search_text IS NULL OR toLower(e.name) CONTAINS toLower($search_text) OR toLower(e.description) CONTAINS toLower($search_text))
+              AND ($entity_types IS NULL OR e.entity_type IN $entity_types)
+              AND e.confidence_score >= $confidence_min
             RETURN e.id as id,
                    e.name as name,
                    e.description as description,
@@ -128,10 +104,10 @@ async def list_entities(
                    e.confidence_score as confidence_score,
                    e.created_at as created_at,
                    total
-            ORDER BY {sort_field} {sort_direction}
+            ORDER BY __SORT_CLAUSE__
             SKIP $offset
             LIMIT $limit
-        """,
+        """.replace("__SORT_CLAUSE__", sort_clause),
             params=params,
             operation="entity_list",
             labels=("Entity",),
@@ -283,18 +259,18 @@ async def query_entities(
     and custom sorting.
     """
     try:
-        filters = EntityQueryFilters()
         params: dict[str, Any] = {"limit": request.limit or 20, "offset": request.offset or 0}
-
-        filters.add_entity_types(request.entity_types)
-        filters.add_confidence_min(request.min_confidence)
-        filters.add_confidence_max(request.max_confidence)
-        params.update(filters.params)
+        params["entity_types"] = request.entity_types
+        params["confidence_min"] = request.min_confidence
+        params["confidence_max"] = request.max_confidence
         builder = TenantScopedCypher(neo4j.tenant_id or "")
         scoped_count = builder.custom_tenant_query(
-            f"""
+            """
             MATCH (e:Entity)
-            WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
+            WHERE e.tenant_id = $_tenant_id
+              AND ($entity_types IS NULL OR e.entity_type IN $entity_types)
+              AND ($confidence_min IS NULL OR e.confidence_score >= $confidence_min)
+              AND ($confidence_max IS NULL OR e.confidence_score <= $confidence_max)
             RETURN count(e) as total
         """,
             params={k: v for k, v in params.items() if k not in ("limit", "offset")},
@@ -308,9 +284,12 @@ async def query_entities(
 
         # Execute paginated data query
         scoped_list = builder.custom_tenant_query(
-            f"""
+            """
             MATCH (e:Entity)
-            WHERE e.tenant_id = $_tenant_id AND ({filters.scoped_where_clause()})
+            WHERE e.tenant_id = $_tenant_id
+              AND ($entity_types IS NULL OR e.entity_type IN $entity_types)
+              AND ($confidence_min IS NULL OR e.confidence_score >= $confidence_min)
+              AND ($confidence_max IS NULL OR e.confidence_score <= $confidence_max)
             RETURN e.id as id,
                    e.name as name,
                    e.description as description,

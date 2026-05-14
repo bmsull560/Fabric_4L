@@ -89,15 +89,20 @@ jobs:
           sudo apt update && sudo apt install -y vault
 
       - name: Configure Vault token
+        env:
+          VAULT_AUTH_TOKEN: ${{ needs.vault-auth.outputs.vault_token }}
         run: |
-          echo "::add-mask::${{ needs.vault-auth.outputs.vault_token }}"
-          echo "VAULT_TOKEN=${{ needs.vault-auth.outputs.vault_token }}" >> $GITHUB_ENV
+          echo "::add-mask::$VAULT_AUTH_TOKEN"
+          echo "VAULT_TOKEN=$VAULT_AUTH_TOKEN" >> $GITHUB_ENV
 
       - name: Fetch secrets from Vault
         id: fetch
+        env:
+          INPUT_SECRETS_PATH: ${{ inputs.secrets_path }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          SECRETS_PATH="${{ inputs.secrets_path }}"
-          ENVIRONMENT="${{ inputs.environment }}"
+          SECRETS_PATH="$INPUT_SECRETS_PATH"
+          ENVIRONMENT="$TARGET_ENVIRONMENT"
           
           echo "🔐 Fetching secrets for $ENVIRONMENT from $SECRETS_PATH"
           
@@ -194,14 +199,16 @@ jobs:
           sudo apt update && sudo apt install -y vault
 
       - name: Rotate database credentials
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           echo "🔄 Rotating dynamic database credentials..."
           
           # Rotate PostgreSQL credentials
-          vault write -f database/rotate-role/${{ inputs.environment }}-postgres
+          vault write -f "database/rotate-role/$TARGET_ENVIRONMENT-postgres"
           
           # Rotate Redis credentials  
-          vault write -f database/rotate-role/${{ inputs.environment }}-redis
+          vault write -f "database/rotate-role/$TARGET_ENVIRONMENT-redis"
           
           echo "✅ Credentials rotated successfully"
           echo "⚠️ Services must be restarted to pick up new credentials"
@@ -216,10 +223,22 @@ jobs:
     if: always()
     steps:
       - name: Log secret access
+        env:
+          GITHUB_ACTOR_NAME: ${{ github.actor }}
+          GITHUB_WORKFLOW_NAME: ${{ github.workflow }}
+          GITHUB_RUN_IDENTIFIER: ${{ github.run_id }}
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          SECRETS_HASH: ${{ needs.fetch-secrets.outputs.secrets_hash }}
         run: |
           # Log access for compliance auditing
-          echo "{\"timestamp\": \"$(date -Iseconds)\", \"actor\": \"${{ github.actor }}\", \"workflow\": \"${{ github.workflow }}\", \"run_id\": ${{ github.run_id }}, \"environment\": \"${{ inputs.environment }}\", \"secrets_hash\": \"${{ needs.fetch-secrets.outputs.secrets_hash }}\"}" | \
-          jq '.' > /tmp/audit-log.json
+          jq -n \
+            --arg timestamp "$(date -Iseconds)" \
+            --arg actor "$GITHUB_ACTOR_NAME" \
+            --arg workflow "$GITHUB_WORKFLOW_NAME" \
+            --argjson run_id "$GITHUB_RUN_IDENTIFIER" \
+            --arg environment "$TARGET_ENVIRONMENT" \
+            --arg secrets_hash "$SECRETS_HASH" \
+            '{timestamp: $timestamp, actor: $actor, workflow: $workflow, run_id: $run_id, environment: $environment, secrets_hash: $secrets_hash}' > /tmp/audit-log.json
           
           # In production, send to audit log system
           # curl -X POST https://audit.fabric.internal/logs -d @/tmp/audit-log.json
@@ -235,12 +254,14 @@ jobs:
     needs: fetch-secrets
     steps:
       - name: Write secrets to GITHUB_ENV
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
         run: |
           # Make secrets available to downstream jobs via job outputs
           # Only export non-sensitive metadata
           
           echo "secrets_available=true" >> $GITHUB_OUTPUT
-          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "environment=$TARGET_ENVIRONMENT" >> $GITHUB_OUTPUT
 
   # ============================================================================
   # Reusable Workflow Outputs (defined in workflow_call at top of file)
