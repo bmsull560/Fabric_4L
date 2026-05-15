@@ -56,7 +56,8 @@ export function useNavigation() {
       const contextQuery = serializeWorkflowContextToQuery(workflowContext);
       const mergedQuery = { ...contextQuery, ...(opts?.query ?? {}) };
       path += buildQueryString(mergedQuery);
-      navigate(path, opts);
+      const { query: _query, ...navigateOpts } = opts ?? {};
+      navigate(path, navigateOpts);
     }
   };
 
@@ -64,12 +65,7 @@ export function useNavigation() {
   const goForward = () => navigate(1);
 
   const navigateToLogin = (redirect?: string) => {
-    if (redirect) {
-      const params = new URLSearchParams({ redirect });
-      navigate(`/login?${params.toString()}`);
-    } else {
-      navigateTo('login');
-    }
+    navigateTo('login', undefined, redirect ? { query: { redirect } } : undefined);
   };
 
   const navigateToHome = () => navigateTo('home');

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from pydantic import ConfigDict, create_model
+
 from .llm_adapter_interfaces import (
     AdapterError,
     CompletionRequest,
@@ -144,10 +146,36 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
         except Exception as exc:  # pragma: no cover - defensive normalization
             return self._normalize_error(exc)
 
+    def _resolve_schema_type(self, prop: dict[str, Any]) -> type:
+        """Map a JSON schema property to a Python type."""
+        ptype = prop.get("type", "any")
+        if ptype == "string":
+            enum = prop.get("enum")
+            if enum:
+                from typing import Literal
+                return Literal[tuple(enum)]
+            return str
+        elif ptype == "integer":
+            return int
+        elif ptype == "number":
+            return float
+        elif ptype == "boolean":
+            return bool
+        elif ptype == "array":
+            items = prop.get("items")
+            if isinstance(items, dict):
+                item_type = self._resolve_schema_type(items)
+                return list[item_type]
+            return list
+        elif ptype == "object":
+            nested = prop.get("properties")
+            if isinstance(nested, dict):
+                return self._build_model_from_schema(prop)
+            return dict
+        return Any
+
     def _build_model_from_schema(self, schema: dict[str, Any]) -> type:
         """Build a minimal Pydantic model from a JSON schema dict for validation."""
-        from pydantic import BaseModel, ConfigDict, create_model
-
         schema_def = schema.get("schema", schema)
         properties = schema_def.get("properties", {})
         required = set(schema_def.get("required", []))
@@ -155,21 +183,7 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
         annotations: dict[str, Any] = {}
         defaults: dict[str, Any] = {}
         for name, prop in properties.items():
-            ptype = prop.get("type", "any")
-            if ptype == "string":
-                pytype = str
-            elif ptype == "integer":
-                pytype = int
-            elif ptype == "number":
-                pytype = float
-            elif ptype == "boolean":
-                pytype = bool
-            elif ptype == "array":
-                pytype = list
-            elif ptype == "object":
-                pytype = dict
-            else:
-                pytype = Any
+            pytype = self._resolve_schema_type(prop)
             annotations[name] = pytype
             if name not in required:
                 annotations[name] = pytype | None

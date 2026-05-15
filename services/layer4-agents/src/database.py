@@ -543,59 +543,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
-async def get_db_with_tenant(
-    x_tenant_id: str = Header(..., alias="X-Tenant-ID", description="Tenant UUID for RLS isolation")
-) -> AsyncGenerator[AsyncSession, None]:
-    """
-    FastAPI dependency that yields an async database session with RLS tenant context.
-
-    DEPRECATED: Use get_db_from_context() which extracts tenant from RequestContext
-    set by GovernanceMiddleware. This direct header parsing is error-prone.
-
-    SECURITY: Mandatory tenant context - X-Tenant-ID header is required.
-    Fail-safe: Rejects requests without explicit tenant identification.
-
-    Automatically extracts X-Tenant-ID header and sets PostgreSQL app.tenant_id
-    for Row-Level Security policies.
-
-    Usage::
-
-        @router.get("/accounts/{id}")
-        async def get_account(id: UUID, db: AsyncSession = Depends(get_db_with_tenant)):
-            ...
-
-    Raises:
-        HTTPException: 400 if X-Tenant-ID header is missing or invalid
-    """
-    _allow_compat_only_db_dependency("get_db_with_tenant")
-    warnings.warn(
-        "get_db_with_tenant() is deprecated. Use get_db_from_context() for proper tenant context propagation.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
-    try:
-        # SECURITY: Fail-safe validation via validate_tenant_id
-        # This checks for empty values and validates UUID format
-        validate_tenant_id(x_tenant_id)
-    except TenantContextError as e:
-        # Convert TenantContextError to HTTP 400 for FastAPI
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        ) from e
-    
-    factory = get_session_factory()
-    async with factory() as session:
-        # P0-08: Set tenant context for RLS (already validated above)
-        await _set_local_tenant_context(session, x_tenant_id)
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-
-
 async def get_db_from_context(
     context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> AsyncGenerator[AsyncSession, None]:

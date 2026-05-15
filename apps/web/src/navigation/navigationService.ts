@@ -33,6 +33,7 @@ export type RouteState =
   | 'account-intelligence'
   | 'hypothesis'
   | 'drivers'
+  | 'drivers-evidence'
   | 'calculator'
   | 'value-case'
   | 'realization'
@@ -153,6 +154,7 @@ const ROUTE_MAP: Record<RouteState, RouteConfig> = {
   'account-intelligence': { path: '/accounts/:accountId/intelligence', params: ['accountId'] },
   'hypothesis': { path: '/hypothesis/:accountId', params: ['accountId'] },
   'drivers': { path: '/drivers/:accountId', params: ['accountId'] },
+  'drivers-evidence': { path: '/drivers/:accountId/evidence', params: ['accountId'] },
   'calculator': { path: '/calculator/:accountId', params: ['accountId'] },
   'value-case': { path: '/value-case/:accountId', params: ['accountId'] },
   'realization': { path: '/realization/:accountId', params: ['accountId'] },

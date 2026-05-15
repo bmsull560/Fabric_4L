@@ -19,11 +19,21 @@ from value_fabric.shared.identity.context import RequestContext, get_request_con
 from value_fabric.shared.identity.policy_registry import authorize_action, get_tool_action
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+# CONTRACT §2.4: Canonical ToolResult from shared package (migration in progress)
+from value_fabric.shared.identity.tool_contract import (
+    ToolResult as CanonicalToolResult,
+    ToolError as CanonicalToolError,
+    ToolMetadata as CanonicalToolMetadata,
+)
+
 from ..models.tool_schemas import ToolCategory, ToolSchema
 
 
 class ToolResult(TypedDictModel):
     """Structured result for tool execution with contract-compliant error handling.
+
+    DEPRECATED: Migrate to CanonicalToolResult from tool_contract.py for cross-layer
+    consistency. This local class is kept for backward compatibility during transition.
 
     Replaces exception-based error handling with structured error results
     per Contract §2.4. All tools should return or wrap results in this format.
@@ -89,6 +99,34 @@ class ToolResult(TypedDictModel):
     def is_error(self) -> bool:
         """Check if result is an error."""
         return self.status == "error"
+
+    def to_canonical(self) -> CanonicalToolResult[Any]:
+        """Convert local ToolResult to canonical shared ToolResult (CONTRACT §2.4).
+
+        Use this when crossing layer boundaries or serializing to the agent registry.
+        """
+        error = None
+        if self.error:
+            error = CanonicalToolError(
+                code=str(self.error.get("code", "UNKNOWN")),
+                message=str(self.error.get("message", "Unknown error")),
+                recoverable=bool(self.error.get("recoverable", False)),
+                details=self.error.get("details") or {},
+            )
+        metadata = None
+        if self.metadata:
+            metadata = CanonicalToolMetadata(
+                execution_time_ms=float(self.metadata.get("execution_time_ms", 0.0)),
+                tenant_id=self.metadata.get("tenant_id"),
+                tool_version=str(self.metadata.get("tool_version", "1.0.0")),
+                trace_id=str(self.metadata.get("trace_id", "")),
+            )
+        return CanonicalToolResult(
+            status=self.status,
+            data=self.data,
+            error=error,
+            metadata=metadata,
+        )
 
 
 class ToolRegistry_get_all_schemasResult(TypedDictModel):

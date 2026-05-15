@@ -9,7 +9,8 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useNavigation } from "@/hooks/useNavigation";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 import {
   Lightbulb,
@@ -163,7 +164,7 @@ function HypothesisCard({
 
 export default function HypothesesTab() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const { navigate, navigateTo } = useNavigation();
   const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
@@ -476,15 +477,14 @@ export default function HypothesesTab() {
                           return;
                         }
                         if (status === "validated" && result.hypothesis?.account_id && promotedDriver?.id) {
-                          const query = new URLSearchParams();
-                          query.set("driver_id", String(promotedDriver.id));
-                          if (promotedLinkage?.linkage_id) query.set("linkage_id", promotedLinkage.linkage_id);
-                          navigate(
+                          navigateTo(
+                            'drivers-evidence',
+                            { accountId: result.hypothesis.account_id },
                             {
-                              pathname: `/drivers/${result.hypothesis.account_id}/evidence`,
-                              search: `?${query.toString()}`,
-                            },
-                            {
+                              query: {
+                                driver_id: String(promotedDriver.id),
+                                ...(promotedLinkage?.linkage_id ? { linkage_id: promotedLinkage.linkage_id } : {}),
+                              },
                               state: {
                                 hypothesisId: h.id,
                                 driverId: String(promotedDriver.id),
@@ -524,24 +524,26 @@ export default function HypothesesTab() {
                             }),
                           ]);
                         }
-                        const query = new URLSearchParams();
-                        if (result.tree_id) query.set("tree_id", result.tree_id);
-                        if (result.value_model_id) query.set("value_model_id", result.value_model_id);
-                        navigate({
-                          pathname: `/drivers/${result.account_id}/evidence`,
-                          search: query.toString() ? `?${query.toString()}` : "",
-                        }, {
-                          state: {
-                            hypothesisId: result.hypothesis_id,
-                            accountId: result.account_id,
-                            tenantId: result.tenant_id,
-                            evidenceIds: result.evidence_ids,
-                            valueModelId: result.value_model_id ?? null,
-                            treeId: result.tree_id ?? null,
-                            createdId: createdId ?? null,
-                            conversionStatus: result.status,
+                        navigateTo(
+                          'drivers-evidence',
+                          { accountId: result.account_id },
+                          {
+                            query: {
+                              ...(result.tree_id ? { tree_id: result.tree_id } : {}),
+                              ...(result.value_model_id ? { value_model_id: result.value_model_id } : {}),
+                            },
+                            state: {
+                              hypothesisId: result.hypothesis_id,
+                              accountId: result.account_id,
+                              tenantId: result.tenant_id,
+                              evidenceIds: result.evidence_ids,
+                              valueModelId: result.value_model_id ?? null,
+                              treeId: result.tree_id ?? null,
+                              createdId: createdId ?? null,
+                              conversionStatus: result.status,
+                            },
                           },
-                        });
+                        );
                       },
                     }
                   );

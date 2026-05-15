@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+﻿sssssssssssssssssssssssssssssssssssssssssssssss#!/usr/bin/env python3
 """Python enforcement script for Fabric 4L platform contract.
 
 Scans services/ and packages/shared/src/value_fabric/shared/ for non-canonical patterns.
@@ -25,7 +25,7 @@ ERROR_PATTERNS = [
     ("manual_db_commit", r"await\s*db\s*\.\s*commit\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
     ("manual_db_rollback", r"await\s*db\s*\.\s*rollback\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
     ("json_parse_llm_output", r"json\.loads\s*\([^)]*(?:response\.choices|message\.content|completion|llm_output)", "CONTRACT §2.5: Use Pydantic model_validate_json for LLM structured output"),
-    ("direct_use_navigate", r"import\s+\{[^}]*useNavigate[^}]*\}\s+from\s+['\"]react-router-dom['\"]", "CONTRACT §2.6: Use useNavigation() wrapper instead of direct useNavigate"),
+    ("direct_use_navigate", r"import\s*\{[\s\S]*?useNavigate[\s\S]*?\}\s*from\s*['\"]react-router-dom['\"]", "CONTRACT §2.6: Use useNavigation() wrapper instead of direct useNavigate"),
 ]
 COMPILED_ERROR_PATTERNS = [
     (pattern_name, re.compile(regex), description)
