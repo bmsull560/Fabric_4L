@@ -310,8 +310,16 @@ jobs:
         with:
           version: 'v1.31.2'
 
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.16.2'
+
       - name: Configure kubeconfig
         run: |
+          # Mirror the same kubeconfig setup as the deploy job.
+          # Replace this placeholder with the cloud-provider-specific action
+          # (e.g. aws eks update-kubeconfig, gcloud container clusters get-credentials).
           echo "Kubeconfig configuration placeholder"
           echo "Environment: ${{ env.ENVIRONMENT }}"
 

@@ -38,6 +38,7 @@ _TENANT_OWNED_LABELS = {
     "Product",
     "UseCase",
     "ValueDriver",
+    "ValueSignal",
 }
 
 

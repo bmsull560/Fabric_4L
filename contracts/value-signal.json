@@ -1,0 +1,251 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://valuefabric.io/contracts/value-signal.json",
+  "title": "ValueSignal",
+  "description": "Canonical Value Signal object produced by the L2.5 Signal Refinery. Represents a trusted, evidence-backed commercial intelligence signal.",
+  "type": "object",
+  "required": [
+    "id",
+    "tenant_id",
+    "account_id",
+    "type",
+    "content",
+    "confidence",
+    "trust_score",
+    "lifecycle_state",
+    "evidence",
+    "provenance",
+    "source_refs",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique signal identifier (UUID v4)"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Owning tenant — set from authenticated context, never from request body"
+    },
+    "account_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Account this signal is scoped to"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "pain",
+        "opportunity",
+        "risk",
+        "expansion",
+        "renewal",
+        "cost_saving",
+        "revenue_uplift",
+        "efficiency",
+        "compliance",
+        "strategic_priority"
+      ],
+      "description": "Signal classification type"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "Human-readable signal content"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Extraction confidence score (0–1)"
+    },
+    "trust_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Composite trust score combining evidence quality, provenance, and validation state"
+    },
+    "lifecycle_state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "extracted",
+        "validated",
+        "rejected",
+        "promoted",
+        "expired",
+        "superseded"
+      ],
+      "description": "Current lifecycle state of the signal"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ValueSignalEvidence"
+      },
+      "description": "Evidence items supporting this signal"
+    },
+    "provenance": {
+      "$ref": "#/definitions/ValueSignalProvenance"
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "References to source documents or ingestion records"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "opportunity_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "value_driver_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "stakeholder_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "persona": {
+      "type": ["string", "null"]
+    },
+    "industry": {
+      "type": ["string", "null"]
+    },
+    "impact_area": {
+      "type": ["string", "null"],
+      "enum": ["revenue", "cost", "risk", "strategic", null]
+    },
+    "estimated_value": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "currency": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{3}$"
+    },
+    "time_horizon": {
+      "type": ["string", "null"]
+    },
+    "validation_notes": {
+      "type": ["string", "null"]
+    },
+    "reviewer_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "expires_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "supersedes_signal_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "related_signal_ids": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ValueSignalEvidence": {
+      "type": "object",
+      "required": ["id", "source_ref", "confidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "source_ref": {
+          "type": "string",
+          "description": "Reference to the source document or ingestion record"
+        },
+        "excerpt": {
+          "type": ["string", "null"],
+          "maxLength": 2000
+        },
+        "url": {
+          "type": ["string", "null"],
+          "format": "uri"
+        },
+        "document_id": {
+          "type": ["string", "null"]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "relevance_score": {
+          "type": ["number", "null"],
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RawSignalInput": {
+      "description": "A single raw signal payload from L2 extraction, passed to the /refine endpoint.",
+      "type": "object",
+      "required": ["account_id", "content", "confidence"],
+      "properties": {
+        "account_id": { "type": "string", "format": "uuid" },
+        "type": { "type": "string", "description": "Raw signal type from L2 (mapped to ValueSignalType by refinery)" },
+        "content": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "evidence": { "type": "array", "items": { "$ref": "#/definitions/ValueSignalEvidence" } },
+        "provenance": { "type": "object" },
+        "source_refs": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "ValueSignalProvenance": {
+      "type": "object",
+      "required": ["extractor", "method", "extracted_at"],
+      "properties": {
+        "extractor": {
+          "type": "string",
+          "enum": ["human", "ai", "system"]
+        },
+        "method": {
+          "type": "string",
+          "description": "Extraction method (e.g. llm_extraction, rule_based, manual)"
+        },
+        "model": {
+          "type": ["string", "null"],
+          "description": "LLM model identifier if AI-extracted"
+        },
+        "run_id": {
+          "type": ["string", "null"],
+          "description": "Extraction run or workflow ID for traceability"
+        },
+        "source_system": {
+          "type": ["string", "null"],
+          "description": "Originating system (e.g. layer1_ingestion, crm_sync)"
+        },
+        "extracted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

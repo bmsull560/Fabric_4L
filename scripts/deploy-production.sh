@@ -424,7 +424,11 @@ if ! kubectl cluster-info &>/dev/null 2>&1; then
 fi
 
 info "Creating namespace $NAMESPACE if it does not exist ..."
-kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo -e "${YELLOW}[DRY-RUN]${RESET} kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -"
+else
+  kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+fi
 
 info "Applying $OVERLAY ..."
 kubectl apply -k "$OVERLAY"

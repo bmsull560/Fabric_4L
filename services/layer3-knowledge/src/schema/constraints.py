@@ -221,6 +221,8 @@ VECTOR_INDEX_ENTITY_TYPES = [
 # within a tenant. Composite unique constraints work on Neo4j Community Edition.
 CONSTRAINTS: list[Constraint] = [
     # Composite unique constraints on (id, tenant_id) for tenant isolation
+    # L2.5 Signal Refinery — ValueSignal node
+    Constraint("valuesignal_id_tenant", "ValueSignal", ["id", "tenant_id"], "unique"),
     Constraint("capability_id_tenant", "Capability", ["id", "tenant_id"], "unique"),
     Constraint("usecase_id_tenant", "UseCase", ["id", "tenant_id"], "unique"),
     Constraint("persona_id_tenant", "Persona", ["id", "tenant_id"], "unique"),
@@ -346,6 +348,7 @@ TENANT_CONSTRAINTS: list[Constraint] = [
     # Phase 3: Signal extraction tenant constraints (Enterprise only)
     Constraint("painsignal_tenant_id", "PainSignal", "tenant_id", "exists"),
     Constraint("evidence_tenant_id", "Evidence", "tenant_id", "exists"),
+    Constraint("valuesignal_tenant_id", "ValueSignal", "tenant_id", "exists"),
 ]
 
 # Indexes for query performance

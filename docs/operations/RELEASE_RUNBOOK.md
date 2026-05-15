@@ -242,7 +242,21 @@ The `deploy.yml` workflow triggers on release publish. To deploy:
    workflow dispatch).
 4. Monitor: https://github.com/bmsull560/Fabric_4L/actions/workflows/deploy.yml
 
-### Option B — kubectl kustomize (manual fallback)
+### Option B — deploy-production.sh (manual fallback)
+
+Use the deploy script for a guided, gated manual deploy. It runs all preflight
+checks, CI gate verification, image pull, version alignment, and rollout waits
+in sequence. The namespace is always read from `k8s/overlays/production/kustomization.yaml`
+and cannot be overridden — this ensures apply and rollout checks always target
+the same namespace.
+
+```bash
+bash scripts/deploy-production.sh --tag v1.2.3
+# Add --dry-run to preview without applying
+# Add --skip-image-pull to skip docker pull verification
+```
+
+### Option C — kubectl kustomize (bare manual fallback)
 
 ```bash
 NAMESPACE="fabric-4l-prod"
