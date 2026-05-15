@@ -27,29 +27,29 @@ def test_sqlite_database_round_trips_records_and_enforces_tenant_scope(monkeypat
     durable = database.create_database()
     account = Account(
         id="acc-alpha",
-        tenant_id="tenant-alpha",
+        tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         name="Alpha Manufacturing",
         industry="manufacturing",
     )
 
     durable.accounts.insert(account.id, account)
 
-    assert durable.accounts.get("acc-alpha", tenant_id="tenant-alpha") == account
-    assert durable.accounts.get("acc-alpha", tenant_id="tenant-beta") is None
-    assert durable.accounts.list(tenant_id="tenant-alpha") == [account]
-    assert durable.accounts.list(tenant_id="tenant-beta") == []
-    assert durable.accounts.update("acc-alpha", tenant_id="tenant-beta", summary="leak") is None
+    assert durable.accounts.get("acc-alpha", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") == account
+    assert durable.accounts.get("acc-alpha", tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") is None
+    assert durable.accounts.list(tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") == [account]
+    assert durable.accounts.list(tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") == []
+    assert durable.accounts.update("acc-alpha", tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", summary="leak") is None
 
-    updated = durable.accounts.update("acc-alpha", tenant_id="tenant-alpha", summary="safe update")
+    updated = durable.accounts.update("acc-alpha", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", summary="safe update")
     assert updated is not None
     assert updated.summary == "safe update"
     durable.close()
 
     reopened = database.SQLiteDatabase(_sqlite_url(db_file))
-    persisted = reopened.accounts.get("acc-alpha", tenant_id="tenant-alpha")
+    persisted = reopened.accounts.get("acc-alpha", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
     assert persisted is not None
     assert persisted.summary == "safe update"
-    assert reopened.accounts.get("acc-alpha", tenant_id="tenant-beta") is None
+    assert reopened.accounts.get("acc-alpha", tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") is None
     reopened.close()
 
 
@@ -71,13 +71,13 @@ def test_sqlite_database_allows_same_id_per_tenant_and_deletes_only_request_tena
     durable = database.create_database()
     alpha = Account(
         id="shared-account-id",
-        tenant_id="tenant-alpha",
+        tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         name="Alpha Manufacturing",
         industry="manufacturing",
     )
     beta = Account(
         id="shared-account-id",
-        tenant_id="tenant-beta",
+        tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         name="Beta Healthcare",
         industry="healthcare",
     )
@@ -85,11 +85,11 @@ def test_sqlite_database_allows_same_id_per_tenant_and_deletes_only_request_tena
     durable.accounts.insert(alpha.id, alpha)
     durable.accounts.insert(beta.id, beta)
 
-    assert durable.accounts.get("shared-account-id", tenant_id="tenant-alpha") == alpha
-    assert durable.accounts.get("shared-account-id", tenant_id="tenant-beta") == beta
-    assert durable.accounts.delete("shared-account-id", tenant_id="tenant-alpha") is True
-    assert durable.accounts.get("shared-account-id", tenant_id="tenant-alpha") is None
-    assert durable.accounts.get("shared-account-id", tenant_id="tenant-beta") == beta
+    assert durable.accounts.get("shared-account-id", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") == alpha
+    assert durable.accounts.get("shared-account-id", tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") == beta
+    assert durable.accounts.delete("shared-account-id", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") is True
+    assert durable.accounts.get("shared-account-id", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") is None
+    assert durable.accounts.get("shared-account-id", tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") == beta
     durable.close()
 
 

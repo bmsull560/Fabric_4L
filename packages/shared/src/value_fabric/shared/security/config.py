@@ -759,9 +759,40 @@ def validate_database_superuser() -> None:
             logger.warning(msg)
 
 
+def validate_rls_prerequisites() -> None:
+    """Validate that the database supports Row-Level Security.
+
+    Raises:
+        ValueError: If the database is not PostgreSQL (RLS is PostgreSQL-only)
+            or if the connection uses a superuser role.
+    """
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        return
+
+    if not database_url.startswith("postgresql"):
+        raise ValueError(
+            "RLS prerequisites require PostgreSQL. "
+            "must use PostgreSQL with Row-Level Security for tenant isolation."
+        )
+
+    try:
+        parsed = urlparse(database_url)
+        username = parsed.username or ""
+    except Exception:
+        username = ""
+
+    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
+    if username.lower() in superuser_names:
+        raise ValueError(
+            f"DATABASE_URL connects as '{username}', which is a PostgreSQL superuser. "
+            "Superusers bypass ALL Row-Level Security policies."
+        )
+
+
 def validate_environment_config() -> None:
     """Validate environment configuration for conflicts.
-    
+
     Raises:
         ValueError: If environment variables conflict
     """
@@ -805,13 +836,33 @@ def get_startup_summary() -> dict[str, Any]:
     cors_origins = os.getenv("CORS_ORIGINS", "*")
     database_url = os.getenv("DATABASE_URL", "")
     
+    rls_status = _get_rls_status(database_url)
+    rls_enforced = rls_status == "active"
+    degraded = []
+    if not redis_url:
+        degraded.append("redis")
+    if not audit_sink:
+        degraded.append("audit")
+    if rls_status != "active":
+        degraded.append("rls")
+
     summary = {
         "environment": environment,
         "redis_enabled": bool(redis_url),
         "audit_enabled": bool(audit_sink),
         "cors_mode": "restricted" if cors_origins != "*" else "permissive",
         "jwt_validation": "strict" if is_production() else "relaxed",
-        "rls_status": _get_rls_status(database_url),
+        "rls_status": rls_status,
+        "rls_enforcement": {
+            "supported_backend": bool(database_url) and not database_url.startswith("sqlite"),
+            "superuser_connection": rls_status == "superuser_bypass",
+            "enforced": rls_enforced,
+            "status": "enforced" if rls_enforced else "degraded",
+        },
+        "degraded_control_status": {
+            "is_degraded": bool(degraded),
+            "controls": degraded,
+        },
         "warnings": [],
         "degraded_controls": [],
     }

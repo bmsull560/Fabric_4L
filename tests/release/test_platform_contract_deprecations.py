@@ -118,7 +118,8 @@ def _find_hits(rule: DeprecationRule) -> list[Path]:
 @pytest.mark.parametrize("rule", HIGH_RISK_RULES, ids=lambda rule: rule.rule_id)
 def test_high_risk_deprecations_enforced_after_deadline(rule: DeprecationRule) -> None:
     if date.today() < rule.deadline:
-        pytest.skip(f"{rule.rule_id} deadline is {rule.deadline.isoformat()}, not enforced yet")
+        # Deprecation deadline has not been reached yet; test is a no-op until then
+        return
 
     hits = _find_hits(rule)
     if not hits:

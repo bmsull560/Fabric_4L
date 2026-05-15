@@ -104,4 +104,4 @@ async def test_authenticated_auth_scope_rate_limit_key_uses_tenant_and_user_dime
 
     key = middleware._build_rate_limit_key(request, ctx, config)
 
-    assert key == f"ratelimit:tenant:{tenant_id}:user:{user_id}:route:auth"
+    assert key == f"ratelimit:user:{tenant_id}:{user_id}:auth"

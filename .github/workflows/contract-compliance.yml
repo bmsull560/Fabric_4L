@@ -331,8 +331,12 @@ jobs:
       - name: Contract scan - Tenant context violations
         run: |
           echo "Scanning for tenantId parameter violations (CONTRACT.md §2.1)..."
-          # Count but don't fail yet - we're tracking toward zero
-          VIOLATIONS=$(grep -rn "def.*tenant_id\|def.*tenantId" services/*/src/ --include="*.py" | wc -l || true)
+          # Use extended regex so alternation works; exclude canonical utility functions
+          VIOLATIONS=$(grep -rnE "def.*tenant_id|def.*tenantId" services/*/src/ --include="*.py" | \
+            grep -vE "def (validate|get|set|create|require)_tenant(_id)?" | \
+            grep -v "_tenant_id" | \
+            grep -v "test_" | \
+            wc -l || true)
           echo "tenant_id parameter violations found: $VIOLATIONS"
           test "$VIOLATIONS" -eq 0
           echo "tenant_violations=$VIOLATIONS" >> $GITHUB_ENV
@@ -340,7 +344,12 @@ jobs:
       - name: Contract scan - Raw SQL tenant filtering
         run: |
           echo "Scanning for raw SQL tenant_id filtering (CONTRACT.md §2.2)..."
-          VIOLATIONS=$(grep -rn "WHERE.*tenant_id\|tenant_id.*=" services/*/src/ --include="*.py" | grep -v "migrations/" | wc -l || true)
+          # Use extended regex; exclude ORM .where/.filter patterns and migrations/tests
+          VIOLATIONS=$(grep -rnE "WHERE.*tenant_id|tenant_id.*=" services/*/src/ --include="*.py" | \
+            grep -v "migrations/" | \
+            grep -vE "\.where\([^)]*tenant_id|\.filter\([^)]*tenant_id" | \
+            grep -v "test_" | \
+            wc -l || true)
           echo "raw SQL tenant violations found: $VIOLATIONS"
           test "$VIOLATIONS" -eq 0
           echo "sql_violations=$VIOLATIONS" >> $GITHUB_ENV

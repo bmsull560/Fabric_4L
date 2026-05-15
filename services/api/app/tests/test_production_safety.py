@@ -65,14 +65,14 @@ def test_database_factory_uses_durable_persistence_when_mock_persistence_is_disa
     durable = database.create_database()
     account = Account(
         id="acc-durable",
-        tenant_id="tenant-alpha",
+        tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         name="Durable Account",
         industry="technology",
     )
     durable.accounts.insert(account.id, account)
 
-    assert durable.accounts.get("acc-durable", tenant_id="tenant-alpha") == account
-    assert durable.accounts.get("acc-durable", tenant_id="tenant-beta") is None
+    assert durable.accounts.get("acc-durable", tenant_id="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") == account
+    assert durable.accounts.get("acc-durable", tenant_id="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") is None
     durable.close()
 
 

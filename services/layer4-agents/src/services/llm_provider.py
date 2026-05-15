@@ -144,6 +144,44 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
         except Exception as exc:  # pragma: no cover - defensive normalization
             return self._normalize_error(exc)
 
+    def _build_model_from_schema(self, schema: dict[str, Any]) -> type:
+        """Build a minimal Pydantic model from a JSON schema dict for validation."""
+        from pydantic import BaseModel, ConfigDict, create_model
+
+        schema_def = schema.get("schema", schema)
+        properties = schema_def.get("properties", {})
+        required = set(schema_def.get("required", []))
+
+        annotations: dict[str, Any] = {}
+        defaults: dict[str, Any] = {}
+        for name, prop in properties.items():
+            ptype = prop.get("type", "any")
+            if ptype == "string":
+                pytype = str
+            elif ptype == "integer":
+                pytype = int
+            elif ptype == "number":
+                pytype = float
+            elif ptype == "boolean":
+                pytype = bool
+            elif ptype == "array":
+                pytype = list
+            elif ptype == "object":
+                pytype = dict
+            else:
+                pytype = Any
+            annotations[name] = pytype
+            if name not in required:
+                annotations[name] = pytype | None
+                defaults[name] = None
+
+        return create_model(
+            schema_def.get("title", "StructuredOutput"),
+            __annotations__=annotations,
+            __config__=ConfigDict(extra="allow"),
+            **defaults,
+        )
+
     async def extract_structured(
         self,
         request: CompletionRequest,
@@ -157,9 +195,10 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
                 temperature=request.temperature,
                 response_format={"type": "json_schema", "json_schema": schema},
             )
-            import json
-
-            return json.loads(response.choices[0].message.content or "{}")
+            # CONTRACT §2.5: Validate structured LLM output with Pydantic, not raw JSON.parse
+            content = response.choices[0].message.content or "{}"
+            Model = self._build_model_from_schema(schema)
+            return Model.model_validate_json(content).model_dump()
         except Exception as exc:  # pragma: no cover - defensive normalization
             return self._normalize_error(exc)
 

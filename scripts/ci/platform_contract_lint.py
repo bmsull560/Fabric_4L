@@ -24,6 +24,8 @@ ERROR_PATTERNS = [
     ("old_request_state", r"request\.state\.context\b", "Use request.state.governance_context instead of request.state.context"),
     ("manual_db_commit", r"await\s*db\s*\.\s*commit\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
     ("manual_db_rollback", r"await\s*db\s*\.\s*rollback\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
+    ("json_parse_llm_output", r"json\.loads\s*\([^)]*(?:response\.choices|message\.content|completion|llm_output)", "CONTRACT §2.5: Use Pydantic model_validate_json for LLM structured output"),
+    ("direct_use_navigate", r"import\s+\{[^}]*useNavigate[^}]*\}\s+from\s+['\"]react-router-dom['\"]", "CONTRACT §2.6: Use useNavigation() wrapper instead of direct useNavigate"),
 ]
 COMPILED_ERROR_PATTERNS = [
     (pattern_name, re.compile(regex), description)
@@ -119,7 +121,7 @@ def main():
             # Modify dirs in-place to skip unwanted directories
             dirs[:] = [d for d in dirs if not should_skip_dir(d)]
             for file in files:
-                if file.endswith(".py"):
+                if file.endswith(".py") or file.endswith(".ts") or file.endswith(".tsx"):
                     path = os.path.join(root, file)
                     all_violations.extend(scan_file(path))
 

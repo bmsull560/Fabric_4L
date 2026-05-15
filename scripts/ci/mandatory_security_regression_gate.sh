@@ -14,6 +14,7 @@ cd "${ROOT_DIR}"
 export TESTING="${TESTING:-true}"
 export ENVIRONMENT="${ENVIRONMENT:-testing}"
 export DEBUG="false"
+export LAYER4_LAYER5_API_URL="${LAYER4_LAYER5_API_URL:-http://localhost:8005}"
 export PYTHONPATH="${ROOT_DIR}/packages/shared/src:${ROOT_DIR}:${PYTHONPATH:-}"
 
 # Repo-relative audit/evidence directory for cross-platform support. Override via

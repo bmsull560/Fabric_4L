@@ -24,7 +24,7 @@ ARTIFACT_DIR := artifacts/release
 
 PYTHON ?= python3
 PIP    := pip install -e
-PYTEST := pytest -v --tb=short
+PYTEST := python -m pytest -v --tb=short
 
 # Ensure mypy is available before running typecheck targets
 MYPY_VERSION_CHECK := $(shell mypy --version 2>/dev/null || echo "mypy_not_found")

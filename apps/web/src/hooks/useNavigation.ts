@@ -65,7 +65,8 @@ export function useNavigation() {
 
   const navigateToLogin = (redirect?: string) => {
     if (redirect) {
-      navigate(`/login?redirect=${encodeURIComponent(redirect)}`);
+      const params = new URLSearchParams({ redirect });
+      navigate(`/login?${params.toString()}`);
     } else {
       navigateTo('login');
     }

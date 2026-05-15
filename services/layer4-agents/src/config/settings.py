@@ -161,7 +161,7 @@ class Settings(BaseSettings):
     )
     layer5_api_url: str = Field(
         default="",
-        validation_alias=AliasChoices("LAYER4_LAYER5_API_URL", "LAYER5_GROUND_TRUTH_URL"),
+        validation_alias=AliasChoices("LAYER4_LAYER5_API_URL", "LAYER5_API_URL", "LAYER5_GROUND_TRUTH_URL"),
         description="Layer 5 Ground Truth API URL"
     )
     neo4j_uri: str = Field(

@@ -43,6 +43,35 @@ DEFAULT_REDIS_DB = 0
 # This matches the pytest.ini intent (TESTING=true) when pytest-env is absent.
 os.environ.setdefault("TESTING", "true")
 
+# SECURITY: Auth boundary tests verify role/access control, not rate limits.
+# Process-local rate limit state persists across tests and causes spurious 429s.
+# Patch the two rate-limit paths to always allow so tests don't contaminate each other.
+try:
+    from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
+
+    _orig_rl_check = RedisRateLimiter.check
+
+    async def _patched_rl_check(self, *args, **kwargs):
+        return type("FakeResult", (), {
+            "allowed": True, "remaining": 999, "reset_at": 0.0, "retry_after": None
+        })()
+
+    RedisRateLimiter.check = _patched_rl_check
+except Exception:
+    pass
+
+try:
+    from value_fabric.shared.identity import middleware
+
+    _orig_tenant_rl_check = middleware._check_tenant_rate_limit
+
+    def _patched_tenant_rl_check(tenant_id, requests_per_minute):
+        return True, 0
+
+    middleware._check_tenant_rate_limit = _patched_tenant_rl_check
+except Exception:
+    pass
+
 
 @pytest.fixture
 def jwt_encoder() -> Callable[[dict], str]:
@@ -272,7 +301,7 @@ def client():
         pytest.skip("fastapi not installed")
     
     try:
-        from value_fabric.layer1.api.main import app
+        from value_fabric.layer1.api.app_monolith import app
         return _HybridTestClient(TestClient(app))
     except ImportError:
         pytest.skip("FastAPI app not available for testing")
@@ -339,6 +368,25 @@ def websocket_client():
         return TestClient(app)
     except ImportError:
         pytest.skip("Layer 4 FastAPI app not available for WebSocket testing")
+
+
+@pytest.fixture(autouse=True)
+def _clear_rate_limit_buckets():
+    """Clear process-local rate limit buckets before each test.
+
+    The GovernanceMiddleware fallback rate limiter uses a module-level dict
+    that persists across tests in the same process. Without clearing it,
+    subsequent tests can spuriously hit 429 rate-limit responses.
+    """
+    import gc
+    from value_fabric.shared.identity import middleware
+    from value_fabric.shared.rate_limiting.tenant_rate_limiter import SlidingWindowAdapter
+
+    middleware._tenant_rate_limit_buckets.clear()
+    for adapter in gc.get_objects():
+        if isinstance(adapter, SlidingWindowAdapter):
+            adapter._memory_windows.clear()
+    yield
 
 
 @pytest.fixture

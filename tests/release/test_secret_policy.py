@@ -35,15 +35,15 @@ class TestSecretPolicy:
 
         # Find .env files that are not examples/templates
         forbidden_patterns = [".env", ".env.local", ".env.prod", ".env.staging"]
-        allowed_patterns = [".env.example", ".env.template", ".env.sample", ".env.dev.example"]
+        allowed_suffixes = [".example", ".template", ".sample"]
 
         violations = []
         for file in tracked_files:
             file_lower = file.lower()
             # Check if it's an env file
             if any(file_lower.endswith(pat) or f"{pat}." in file_lower for pat in forbidden_patterns):
-                # Check if it's explicitly allowed
-                if not any(allow in file_lower for allow in allowed_patterns):
+                # Check if it's explicitly allowed (ends with known safe suffix)
+                if not any(file_lower.endswith(suffix) for suffix in allowed_suffixes):
                     violations.append(file)
 
         if violations:

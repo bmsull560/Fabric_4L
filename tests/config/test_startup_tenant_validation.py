@@ -34,7 +34,7 @@ def _load_security_config():
     """Load the security.config module directly to avoid sys.path issues
     when using patch.dict(clear=True)."""
     import importlib.util
-    config_path = _PROJECT_ROOT / "value_fabric" / "shared" / "security" / "config.py"
+    config_path = _PROJECT_ROOT / "packages" / "shared" / "src" / "value_fabric" / "shared" / "security" / "config.py"
     spec = importlib.util.spec_from_file_location("security_config", config_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
