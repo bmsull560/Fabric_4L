@@ -10,7 +10,8 @@
 	gate-mandatory-security-regression gate-security gate-state gate-arch gate-config gate-all \
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
 	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
-	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints check-migration-heads
+	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints check-migration-heads \
+	harness-task harness-guard harness-check
 
 
 # Strict shell settings for production safety
@@ -599,3 +600,18 @@ clean: ## Remove build artifacts and caches
 platform-contract-lint:
 	@echo Running platform contract lint...
 	@python scripts/ci/platform_contract_lint.py
+
+# ─── Value Fabric Harness ────────────────────────────────────────────────────
+
+HARNESS_DIR := .windsurf/harness
+
+harness-task: ## Assemble VF harness context for a task (TASK=... FILES=...)
+	@echo "→ Assembling Value Fabric harness context..."
+	@cd $(HARNESS_DIR) && python vf_context.py
+
+harness-guard: ## Run pre-edit boundary and contract checks (TASK=... FILES=...)
+	@echo "→ Running harness pre-edit guard..."
+	@cd $(HARNESS_DIR) && python vf_contract_guard.py
+
+harness-check: harness-guard harness-task ## Full harness preflight (guard + context)
+	@echo "✅  Harness preflight complete"

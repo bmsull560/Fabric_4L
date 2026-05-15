@@ -1,4 +1,4 @@
-﻿sssssssssssssssssssssssssssssssssssssssssssssss#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Python enforcement script for Fabric 4L platform contract.
 
 Scans services/ and packages/shared/src/value_fabric/shared/ for non-canonical patterns.

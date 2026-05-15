@@ -6,6 +6,15 @@ For workflow authoring specifications, see [WORKFLOW.md](./WORKFLOW.md).
 
 ---
 
+## Agent Infrastructure & Meta Workflows
+
+### value-fabric-harness
+**Description:** Layer-scoped context assembly and pre-edit boundary guards for safe, contract-aligned development
+**When to Use:** At the start of every coding task in the Fabric_4L monorepo to inject governance context and catch drift before editing
+**Related Skill:** `skills/jr-plan/SKILL.md` (plan decomposition)
+
+---
+
 ## Quality Debt & Code Hygiene
 
 ### contract-enforcement-auditor
@@ -201,11 +210,11 @@ For workflow authoring specifications, see [WORKFLOW.md](./WORKFLOW.md).
 
 ## Workflow Maintenance
 
-**Last Updated:** 2026-05-04
+**Last Updated:** 2026-05-15
 
-**Total Workflows:** 27 (24 main workflows + 3 templates)
+**Total Workflows:** 28 (25 main workflows + 3 templates)
 
-**Workflows with Frontmatter:** 27/27 (100%)
+**Workflows with Frontmatter:** 28/28 (100%)
 
 **Workflows with Cross-References:** 3 (contract-enforcement-auditor, dead-code-sweeper, deprecation-migrator)
 
