@@ -42,6 +42,7 @@ import type { LeverConfigRequest } from "./useCalculators";
 export const QUERY_LAYER_TAGS = {
   layer1: "layer:1-ingestion",
   layer2: "layer:2-extraction",
+  layer2_5: "layer:2.5-signal-refinery",
   layer3: "layer:3-knowledge",
   layer4: "layer:4-agents",
   layer5: "layer:5-ground-truth",
@@ -471,6 +472,16 @@ export const QK = {
     all: ["reviews"] as const,
     list: (accountId: string) => ["reviews", "list", accountId] as const,
     detail: (reviewId: string) => ["reviews", "detail", reviewId] as const,
+  },
+
+  // Layer 2.5 — Value Signal Layer
+  valueSignals: {
+    layerTag: QUERY_LAYER_TAGS.layer2_5,
+    all: ["valueSignals"] as const,
+    list: (accountId: string, filters?: unknown) =>
+      ["valueSignals", "list", accountId, stableKey(filters)] as const,
+    detail: (signalId: string) => ["valueSignals", "detail", signalId] as const,
+    account: (accountId: string) => ["valueSignals", "account", accountId] as const,
   },
 } as const;
 

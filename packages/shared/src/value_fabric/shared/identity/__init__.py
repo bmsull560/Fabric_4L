@@ -23,7 +23,7 @@ from .isolation import (
     tenant_cache_key,
 )
 from .jwt import TokenClaims, decode_jwt, encode_jwt, get_jwks
-from .oidc import OIDCClient, map_role_from_claims
+from .oidc import OIDCClient, OIDCDiscoveryError, TransientOIDCDiscoveryError, map_role_from_claims
 from .oidc_config import OIDCProviderConfig
 from .rate_limiter import RedisRateLimiter, RateLimitResult
 from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LIMITS
@@ -109,6 +109,8 @@ __all__ = [
     "get_jwks",
     # OIDC
     "OIDCClient",
+    "OIDCDiscoveryError",
+    "TransientOIDCDiscoveryError",
     "map_role_from_claims",
     "OIDCProviderConfig",
     # Rate limiting

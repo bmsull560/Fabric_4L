@@ -207,6 +207,29 @@ ANTHROPIC_API_KEY
 
 ---
 
+## Autonomous deploy script
+
+All phases below can be executed automatically via:
+
+```bash
+# Full deploy (Phases 0–8)
+bash scripts/deploy-production.sh --tag v1.1.0
+
+# Pre-flight only — no cluster changes (Phases 0–5)
+bash scripts/deploy-production.sh --tag v1.1.0 --dry-run
+
+# Skip docker pull checks (useful in CI where images are pre-pulled)
+bash scripts/deploy-production.sh --tag v1.1.0 --skip-image-pull
+```
+
+The namespace is always read from `k8s/overlays/production/kustomization.yaml`
+and cannot be overridden — the overlay is the single source of truth.
+
+The script stops on the first failing gate and prints the gate name. It writes
+a deployment evidence file to `.deployments/` on successful completion.
+
+---
+
 ## Phase 6 — Deploy
 
 ### Option A — GitHub Actions (recommended)
@@ -219,7 +242,21 @@ The `deploy.yml` workflow triggers on release publish. To deploy:
    workflow dispatch).
 4. Monitor: https://github.com/bmsull560/Fabric_4L/actions/workflows/deploy.yml
 
-### Option B — kubectl kustomize (manual fallback)
+### Option B — deploy-production.sh (manual fallback)
+
+Use the deploy script for a guided, gated manual deploy. It runs all preflight
+checks, CI gate verification, image pull, version alignment, and rollout waits
+in sequence. The namespace is always read from `k8s/overlays/production/kustomization.yaml`
+and cannot be overridden — this ensures apply and rollout checks always target
+the same namespace.
+
+```bash
+bash scripts/deploy-production.sh --tag v1.2.3
+# Add --dry-run to preview without applying
+# Add --skip-image-pull to skip docker pull verification
+```
+
+### Option C — kubectl kustomize (bare manual fallback)
 
 ```bash
 NAMESPACE="fabric-4l-prod"
@@ -278,6 +315,14 @@ done
 ---
 
 ## Phase 8 — Deployment evidence
+
+When deploying via GitHub Actions (`deploy.yml`), the evidence file is
+generated and committed to `main` automatically after a successful production
+deploy. No manual action is required for Option A deploys.
+
+For manual deploys (Option B) or script-based deploys, the evidence file is
+written by `scripts/deploy-production.sh` at the end of Phase 8. To create it
+manually:
 
 ```bash
 RELEASE_TAG="v1.1.0"

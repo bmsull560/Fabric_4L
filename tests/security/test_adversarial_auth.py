@@ -4,15 +4,128 @@ Adversarial Authentication Tests - Negative Test Suite
 Validates that authentication boundary blocks various attack vectors.
 These tests prove that invalid/malformed auth is rejected, complementing
 the positive tests that prove valid auth works.
+
+Fixture wiring
+--------------
+The ``client`` and ``standard_user_token`` fixtures defined in this module
+override the security conftest equivalents. They are wired to a minimal
+FastAPI app backed by the real ``GovernanceMiddleware`` (no dev bypass, no
+mocked validation), so every assertion exercises the actual production
+resolution and consistency logic.
+
+The pattern mirrors ``tests/security/test_cross_tenant_jwt.py``.
 """
+
+from __future__ import annotations
+
+import os
+import time
 
 import pytest
 
 # Lazy import for optional dependency
 try:
+    from fastapi import FastAPI, HTTPException, Request
     from fastapi.testclient import TestClient
+    _FASTAPI_AVAILABLE = True
 except ImportError:
-    TestClient = None
+    _FASTAPI_AVAILABLE = False
+    TestClient = None  # type: ignore[assignment,misc]
+
+# ---------------------------------------------------------------------------
+# Module-level JWT configuration
+# ---------------------------------------------------------------------------
+# Must match the secret used by the conftest jwt_encoder fixture so that
+# tokens produced by jwt_encoder are accepted by GovernanceMiddleware.
+
+_TEST_JWT_SECRET = os.getenv(
+    "JWT_SECRET",
+    os.getenv("TEST_JWT_SECRET", "test-secret-key-must-be-at-least-32-bytes!!"),
+)
+_TEST_ISSUER = "value-fabric-internal"
+_TEST_AUDIENCE = "value-fabric-services"
+
+# Patch env before any fixture or test body runs so GovernanceMiddleware
+# picks up the correct secret when it calls _get_jwt_secret().
+os.environ.setdefault("JWT_SECRET", _TEST_JWT_SECRET)
+os.environ.setdefault("JWT_ALGORITHM", "HS256")
+os.environ.setdefault("JWT_ISSUER", _TEST_ISSUER)
+os.environ.setdefault("JWT_AUDIENCE", _TEST_AUDIENCE)
+# Disable OIDC path — tests use internal HS256 tokens only.
+os.environ.setdefault("OIDC_ISSUER", "")
+os.environ.setdefault("OIDC_AUDIENCE", "")
+# Allow legacy slug-style tenant IDs used by the existing test payloads.
+os.environ.setdefault("TESTING", "true")
+os.environ.setdefault("ALLOW_LEGACY_TEST_TENANT_IDS", "true")
+
+
+# ---------------------------------------------------------------------------
+# Module-level fixtures — override the security conftest equivalents
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def _adversarial_app():
+    """Minimal FastAPI app with real GovernanceMiddleware for adversarial tests."""
+    if not _FASTAPI_AVAILABLE:
+        pytest.skip("fastapi not installed")
+
+    from value_fabric.shared.identity.middleware import GovernanceMiddleware
+
+    app = FastAPI()
+    app.add_middleware(GovernanceMiddleware, rate_limiter=None)
+
+    @app.get("/api/v1/entities")
+    def entities(request: Request):
+        ctx = getattr(request.state, "governance_context", None)
+        if ctx is None:
+            raise HTTPException(status_code=401, detail="Unauthenticated")
+        return {"items": []}
+
+    @app.get("/api/v1/admin/config")
+    def admin_config(request: Request):
+        ctx = getattr(request.state, "governance_context", None)
+        if ctx is None:
+            raise HTTPException(status_code=401, detail="Unauthenticated")
+        # Only system/super_admin roles can access admin config
+        if not any(r in (ctx.roles or []) for r in ("super_admin", "system")):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return {"config": {}}
+
+    return app
+
+
+@pytest.fixture(scope="module")
+def client(_adversarial_app):
+    """TestClient wired to the real GovernanceMiddleware app.
+
+    Overrides the security conftest ``client`` fixture which points at the
+    Layer 1 ingestion app and does not expose /api/v1/entities.
+    """
+    if not _FASTAPI_AVAILABLE:
+        pytest.skip("fastapi not installed")
+    return TestClient(_adversarial_app)
+
+
+@pytest.fixture(scope="module")
+def standard_user_token():
+    """Valid HS256 token for a standard user in tenant-a.
+
+    Overrides the security conftest fixture to use the same secret and
+    claim shape expected by GovernanceMiddleware.
+    """
+    import jwt as pyjwt
+
+    now = int(time.time())
+    payload = {
+        "sub": "user-123",
+        "tenant_id": "tenant-a",
+        "roles": ["analyst"],
+        "iss": _TEST_ISSUER,
+        "aud": _TEST_AUDIENCE,
+        "iat": now,
+        "exp": now + 3600,
+    }
+    return pyjwt.encode(payload, _TEST_JWT_SECRET, algorithm="HS256")
 
 
 class TestMalformedAuthorizationHeader:
@@ -109,14 +222,12 @@ class TestMalformedAuthorizationHeader:
 
     def test_expired_token_format_variants(self, client: TestClient):
         """Various expired/invalid token formats are rejected."""
-        import time
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         # Token with expired timestamp
         expired_token = jwt.encode(
             {"sub": "test", "exp": int(time.time()) - 3600},
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
         response = client.get(
@@ -129,9 +240,7 @@ class TestMalformedAuthorizationHeader:
 
     def test_future_issued_token_returns_401(self, client: TestClient):
         """Token with future 'iat' claim is rejected (clock skew attack)."""
-        import time
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         future_token = jwt.encode(
             {
@@ -140,7 +249,7 @@ class TestMalformedAuthorizationHeader:
                 "iat": int(time.time()) + 3600,  # Issued in the future
                 "exp": int(time.time()) + 7200,
             },
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
         response = client.get(
@@ -159,11 +268,10 @@ class TestTenantContextAttacks:
     def test_missing_tenant_id_claim_returns_401_or_400(self, client: TestClient):
         """JWT without tenant_id claim is rejected."""
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         token_no_tenant = jwt.encode(
             {"sub": "user-123", "role": "standard"},  # No tenant_id
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
         response = client.get(
@@ -178,11 +286,10 @@ class TestTenantContextAttacks:
     def test_invalid_tenant_id_format_returns_401(self, client: TestClient):
         """Non-UUID tenant_id claim is rejected."""
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         token_bad_tenant = jwt.encode(
             {"sub": "user-123", "tenant_id": "not-a-valid-uuid", "role": "standard"},
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
         response = client.get(
@@ -196,11 +303,10 @@ class TestTenantContextAttacks:
     def test_null_tenant_id_returns_401(self, client: TestClient):
         """Null tenant_id claim is rejected."""
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         token_null_tenant = jwt.encode(
             {"sub": "user-123", "tenant_id": None, "role": "standard"},
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
         response = client.get(
@@ -214,11 +320,10 @@ class TestTenantContextAttacks:
     def test_empty_tenant_id_returns_401(self, client: TestClient):
         """Empty string tenant_id claim is rejected."""
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         token_empty_tenant = jwt.encode(
             {"sub": "user-123", "tenant_id": "", "role": "standard"},
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
         response = client.get(
@@ -256,9 +361,12 @@ class TestTokenManipulation:
         """Token with signature from weak secret is rejected."""
         import jwt
 
-        # Decode valid token, re-sign with weak secret
-        from tests.security.conftest import TEST_JWT_SECRET
-        decoded = jwt.decode(standard_user_token, TEST_JWT_SECRET, algorithms=["HS256"])
+        # Decode valid token (skip verification — we only need the payload to re-sign)
+        decoded = jwt.decode(
+            standard_user_token,
+            options={"verify_signature": False, "verify_exp": False,
+                     "verify_aud": False, "verify_iss": False},
+        )
         weak_token = jwt.encode(decoded, "weak", algorithm="HS256")
 
         response = client.get(
@@ -331,17 +439,21 @@ class TestRBACNegative:
     def test_permission_enumeration_blocked(self, client: TestClient):
         """Cannot enumerate permissions through error messages."""
         import jwt
-        from tests.security.conftest import TEST_JWT_SECRET
 
         # Token with invalid permission
+        now = int(time.time())
         token = jwt.encode(
             {
                 "sub": "user-123",
                 "tenant_id": "tenant-a",
-                "role": "standard",
-                "permissions": ["invalid:permission", "admin:superuser"]  # Bogus permissions
+                "roles": ["analyst"],
+                "permissions": ["invalid:permission", "admin:superuser"],
+                "iss": _TEST_ISSUER,
+                "aud": _TEST_AUDIENCE,
+                "iat": now,
+                "exp": now + 3600,
             },
-            TEST_JWT_SECRET,
+            _TEST_JWT_SECRET,
             algorithm="HS256"
         )
 
@@ -378,6 +490,214 @@ class TestRBACNegative:
         # Should either succeed with minimal permissions or fail safely
         assert response.status_code in [200, 401, 403], (
             f"Unknown role should be handled safely, got {response.status_code}"
+        )
+
+
+class TestOIDCAdversarialPaths:
+    """Adversarial tests for OIDC-specific attack vectors.
+
+    All tests use the real GovernanceMiddleware via the module-level ``client``
+    fixture. Tokens are crafted to exercise specific rejection paths in
+    ``decode_jwt`` and ``GovernanceMiddleware``.
+    """
+
+    def _make_token(self, overrides: dict) -> str:
+        """Build a signed HS256 token with the given claim overrides."""
+        import jwt as pyjwt
+
+        now = int(time.time())
+        base = {
+            "sub": "user-adversarial",
+            "tenant_id": "tenant-a",
+            "roles": ["analyst"],
+            "iss": _TEST_ISSUER,
+            "aud": _TEST_AUDIENCE,
+            "iat": now,
+            "exp": now + 3600,
+        }
+        base.update(overrides)
+        return pyjwt.encode(base, _TEST_JWT_SECRET, algorithm="HS256")
+
+    def test_invalid_issuer_rejected(self, client: TestClient):
+        """Token with wrong iss claim is rejected with 401."""
+        token = self._make_token({"iss": "https://evil-idp.example.com"})
+        response = client.get(
+            "/api/v1/entities",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 401, (
+            f"Token with invalid issuer should return 401, got {response.status_code}"
+        )
+
+    def test_invalid_audience_rejected(self, client: TestClient):
+        """Token with wrong aud claim is rejected with 401."""
+        token = self._make_token({"aud": "wrong-audience"})
+        response = client.get(
+            "/api/v1/entities",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 401, (
+            f"Token with invalid audience should return 401, got {response.status_code}"
+        )
+
+    def test_expired_token_rejected(self, client: TestClient):
+        """Expired token (exp in the past) is rejected with 401."""
+        import jwt as pyjwt
+
+        now = int(time.time())
+        token = pyjwt.encode(
+            {
+                "sub": "user-adversarial",
+                "tenant_id": "tenant-a",
+                "roles": ["analyst"],
+                "iss": _TEST_ISSUER,
+                "aud": _TEST_AUDIENCE,
+                "iat": now - 7200,
+                "exp": now - 3600,  # expired 1 hour ago
+            },
+            _TEST_JWT_SECRET,
+            algorithm="HS256",
+        )
+        response = client.get(
+            "/api/v1/entities",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 401, (
+            f"Expired token should return 401, got {response.status_code}"
+        )
+
+    def test_malformed_token_rejected(self, client: TestClient):
+        """Garbage strings, truncated JWTs, and alg:none tokens are all rejected."""
+        import base64
+        import json
+
+        # alg:none attack
+        header = base64.urlsafe_b64encode(
+            json.dumps({"alg": "none", "typ": "JWT"}).encode()
+        ).rstrip(b"=").decode()
+        payload = base64.urlsafe_b64encode(
+            json.dumps({"sub": "user", "tenant_id": "tenant-a"}).encode()
+        ).rstrip(b"=").decode()
+        alg_none_token = f"{header}.{payload}."
+
+        malformed_cases = [
+            "not-a-jwt",
+            "header.payload",          # missing signature segment
+            "a.b.c.d",                 # too many segments
+            "...",                     # empty segments
+            alg_none_token,            # alg:none attack
+        ]
+        for token in malformed_cases:
+            response = client.get(
+                "/api/v1/entities",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 401, (
+                f"Malformed token {token!r} should return 401, got {response.status_code}"
+            )
+
+    def test_missing_tenant_id_rejected(self, client: TestClient):
+        """Token with no tenant_id claim is rejected (fail closed)."""
+        import jwt as pyjwt
+
+        now = int(time.time())
+        token = pyjwt.encode(
+            {
+                "sub": "user-adversarial",
+                # tenant_id intentionally absent
+                "roles": ["analyst"],
+                "iss": _TEST_ISSUER,
+                "aud": _TEST_AUDIENCE,
+                "iat": now,
+                "exp": now + 3600,
+            },
+            _TEST_JWT_SECRET,
+            algorithm="HS256",
+        )
+        response = client.get(
+            "/api/v1/entities",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code in (401, 403), (
+            f"Token without tenant_id should return 401/403, got {response.status_code}"
+        )
+
+    def test_cross_tenant_header_conflict_rejected(self, client: TestClient):
+        """JWT for tenant-a + X-Tenant-ID header for tenant-b → 403."""
+        import jwt as pyjwt
+        from uuid import UUID
+
+        # Use UUID tenant IDs to satisfy GovernanceMiddleware's UUID validation
+        tenant_a = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        tenant_b = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
+        now = int(time.time())
+        token = pyjwt.encode(
+            {
+                "sub": "user-adversarial",
+                "tenant_id": tenant_a,
+                "roles": ["analyst"],
+                "iss": _TEST_ISSUER,
+                "aud": _TEST_AUDIENCE,
+                "iat": now,
+                "exp": now + 3600,
+            },
+            _TEST_JWT_SECRET,
+            algorithm="HS256",
+        )
+        response = client.get(
+            "/api/v1/entities",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-Tenant-ID": tenant_b,  # conflict: header claims different tenant
+            },
+        )
+        assert response.status_code == 403, (
+            f"JWT tenant-a + X-Tenant-ID tenant-b should return 403, "
+            f"got {response.status_code}"
+        )
+
+    def test_service_auth_bypass_without_secret_rejected(self, client: TestClient, monkeypatch):
+        """X-Tenant-ID alone without SERVICE_AUTH_SECRET configured → 401."""
+        monkeypatch.delenv("SERVICE_AUTH_SECRET", raising=False)
+        response = client.get(
+            "/api/v1/entities",
+            headers={"X-Tenant-ID": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"},
+        )
+        assert response.status_code == 401, (
+            f"X-Tenant-ID without service auth secret should return 401, "
+            f"got {response.status_code}"
+        )
+
+    def test_hs256_rejected_for_oidc_issuer(self, client: TestClient, monkeypatch):
+        """HS256 token is rejected when OIDC_ISSUER is configured (must use RS256/ES256)."""
+        oidc_issuer = "https://idp.example.com/realms/fabric"
+        monkeypatch.setenv("OIDC_ISSUER", oidc_issuer)
+        monkeypatch.setenv("OIDC_AUDIENCE", "fabric-api")
+
+        import jwt as pyjwt
+
+        now = int(time.time())
+        token = pyjwt.encode(
+            {
+                "sub": "user-adversarial",
+                "tenant_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "roles": ["analyst"],
+                "iss": oidc_issuer,   # claims to be from the OIDC issuer
+                "aud": "fabric-api",
+                "iat": now,
+                "exp": now + 3600,
+            },
+            _TEST_JWT_SECRET,
+            algorithm="HS256",  # but signed with HS256 — must be rejected
+        )
+        response = client.get(
+            "/api/v1/entities",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 401, (
+            f"HS256 token claiming OIDC issuer should return 401, "
+            f"got {response.status_code}"
         )
 
 

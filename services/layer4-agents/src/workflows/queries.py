@@ -1,16 +1,16 @@
 """Cypher query templates used by Layer 4 workflows.
 
-.. note::
-    These queries cross the Layer 3 boundary by embedding graph schema
-    knowledge directly in Layer 4. They are extracted here to keep
-    workflow logic clean, but the long-term fix is to migrate them to
-    dedicated Layer 3 tools (e.g., ``fetch_benchmark_variables``,
-    ``fetch_value_drivers``) so Layer 4 only passes parameters, not
-    Cypher strings.
+.. deprecated::
+    These query builders are superseded by the Layer 3 subgraph API:
 
-    TODO(arch-debt): Migrate to Layer 3 subgraph API once
-    ``/v1/knowledge/benchmarks/variables`` and
-    ``/v1/knowledge/value-drivers/formulas`` endpoints are available.
+    - ``Layer3Client.get_benchmark_variables(industry)``
+      → ``GET /v1/knowledge/benchmarks/variables``
+    - ``Layer3Client.get_value_driver_formulas(driver_ids)``
+      → ``GET /v1/knowledge/value-drivers/formulas``
+
+    New workflows should call the Layer 3 client methods directly.
+    Existing callers of these helpers should be migrated; this module
+    will be removed once all callers are updated.
 """
 
 from __future__ import annotations
