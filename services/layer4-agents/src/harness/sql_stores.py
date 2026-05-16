@@ -740,10 +740,23 @@ class SqlHarnessRegistry:
         self,
         tenant_id: str | None = None,
         status: HarnessRunStatus | None = None,
-    ) -> list[HarnessRun]:
+        workflow_type: HarnessWorkflowType | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[HarnessRun], int]:
+        """Return (items, total_count) for the given filters.
+
+        Returns an empty result rather than raising when tenant_id is None.
+        """
         if tenant_id is None:
-            return []
-        return await self._run_repo.list(tenant_id=tenant_id, status=status)
+            return [], 0
+        return await self._run_repo.list(
+            tenant_id=tenant_id,
+            status=status,
+            workflow_type=workflow_type,
+            limit=limit,
+            offset=offset,
+        )
 
     @property
     def telemetry(self) -> SqlTelemetryEmitter:

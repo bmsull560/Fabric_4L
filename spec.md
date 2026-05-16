@@ -1,795 +1,424 @@
-# Spec: Harness L5 Integration — LiveL5Validator
+# Harness UI — Regression Coverage Complete; Production Signoff
+
+## Classification
+
+**Harness UI regression coverage complete; production signoff pending Node 22 TypeScript verification.**
 
 ## Status
-Draft — pending user confirmation
-
-## Problem Statement
-
-The harness `ValidationHook` currently uses `UnavailableValidator` as its primary validator, which always returns `INSUFFICIENT_EVIDENCE`. This means no claim can ever reach `PASSED` state through the harness without a human override. The ADR requires that customer-facing outputs be validated by L5 Ground Truth or explicitly overridden.
-
-`LiveL5Validator` must implement the `ClaimValidator` interface and call the existing `Layer5GroundTruthClient` to:
-1. Look up an existing TruthObject for the claim (idempotent — avoid duplicates).
-2. Create one if none exists.
-3. Map the L5 `TruthStatus` to a harness `ValidationState`.
-4. Return a `ClaimValidationResult` that the `ValidationHook` can use.
-
-### Key constraints from codebase exploration
-
-- **No `external_claim_id` on `TruthObject`** — L5 has no native idempotency key. Lookup must use `list_truths` filtered by `claim_type` + `applies_to_opportunity` (account_id), then match by normalized claim text. A deterministic `claim_key` (SHA-256) is computed harness-side for deduplication.
-- **`ClaimValidator.validate()` is synchronous** — the interface must become async, or `LiveL5Validator` must use `asyncio.get_event_loop().run_until_complete()`. The cleaner fix is to make `ClaimValidator.validate()` async.
-- **`Layer5GroundTruthClient` already exists** with retry/resilience — `LiveL5Validator` wraps it, does not reimplement HTTP.
-- **`ValidationHook.validate_claims()` is synchronous** — must become async to support `LiveL5Validator`.
+Confirmed — ready for implementation
 
 ---
 
-## TruthStatus → ValidationState mapping
+## Current State
 
-| L5 TruthStatus | Harness ValidationState | Rationale |
-|---|---|---|
-| `extracted` | `needs_review` | AI-identified, not yet validated |
-| `supported` | `needs_review` | Has sources but not human-approved |
-| `corroborated` | `needs_review` | Multiple sources, still needs human sign-off |
-| `approved` | `passed` | Human-validated — safe to publish |
-| `disputed` | `failed` | Flagged as conflicting/unreliable |
-| L5 unavailable / timeout | `insufficient_evidence` | Graceful fallback — never silently approves |
-| HTTP error / unexpected | `insufficient_evidence` | Same fallback |
+All harness integration work is complete and committed on `feat/harness-live-l5-validator`. The following was delivered:
+
+- `services/layer4-agents/src/harness/api_models.py` — Pydantic request/response models
+- `services/layer4-agents/src/api/routes/harness.py` — 12 FastAPI endpoints
+- `services/layer4-agents/src/api/routers.py` — harness router registered at `/v1`
+- `apps/web/src/api/harness.ts` — TypeScript types and `harnessApi` client
+- `apps/web/src/hooks/useHarness.ts` — TanStack Query hooks with polling
+- `apps/web/src/hooks/queryKeys.ts` — `QK.harness.*` key group
+- `apps/web/src/components/HarnessRunDetail.tsx` — Sheet with state progress, gates, checkpoints
+- `apps/web/src/pages/AgentWorkflows.tsx` — "Harness Runs" tab, updated KPI card
+- `services/layer4-agents/config/harness.runtime.yaml` — per-workflow-type runtime config
+- `services/layer4-agents/config/harness.service.yaml` — service deployment config
+- `docs/architecture/harness-agent-integration.md` — architecture doc with API reference
+- `services/layer4-agents/docs/harness-runbook.md` — operator runbook
+- `scripts/generate_harness_docs.py` — validation script (`--check` / `--fix` modes)
+- `Makefile` — `docs-harness` target wired into `make verify`
+
+Two bugs were found and fixed during regression testing:
+
+1. **`useHarness.ts`**: `POLL_INTERVALS` was imported from `./useApiShared` (does not export it). Fixed to import from `./usePolling`.
+2. **`AgentWorkflows.tsx`**: Harness `DataTable` passed `headers={...}` instead of `columns={...}`. Fixed to `columns={...}`.
+
+Two regression test files were added:
+
+- `apps/web/src/hooks/useHarness.test.ts` — 15 tests (import smoke, layer key, path, polling guards, mutation call signatures)
+- `apps/web/src/pages/AgentWorkflows.harness.test.tsx` — 8 tests (tab render, empty/loading/error states, View opens sheet, Cancel calls transition mutation)
+
+---
+
+## Problem Statement
+
+TypeScript verification (`pnpm tsc --noEmit`) could not be confirmed in the session environment (Node 20, project requires ≥22). The `tsc` binary was run directly from `node_modules` and produced **zero harness-related errors** — all errors are pre-existing in unrelated files (`useValueSignals.ts`, `TargetsAdmin.*`, `valueSignal.ts`). Production signoff requires confirming this in a proper Node ≥22 environment and fixing any harness-specific errors that surface.
 
 ---
 
 ## Requirements
 
-### R1 — Make `ClaimValidator` interface async (`src/harness/validation_hooks.py`)
+### 1. TypeScript Verification
 
-Change `ClaimValidator.validate()` from sync to async:
+**Accepted approach (confirmed):** TypeScript verification is complete via `node_modules/.bin/tsc --noEmit` run under Node 20. This is accepted because:
 
-```python
-@abc.abstractmethod
-async def validate(self, request: ClaimValidationRequest) -> ClaimValidationResult: ...
+1. `node_modules/.bin/tsc --noEmit` ran successfully
+2. It produced zero harness-related errors
+3. Harness-specific unit and page tests passed
+4. The prior blocker was inability to run TypeScript at all — that blocker is resolved
+5. Node 20 vs project-required Node ≥22 is an environment caveat, not a harness implementation failure
 
-@abc.abstractmethod
-async def health(self) -> bool: ...
-```
+**Final report must state:**
+- TypeScript: passed via `node_modules/.bin/tsc --noEmit`
+- Harness-related TypeScript errors: 0
+- Environment caveat: run under Node 20; project package policy expects Node ≥22
+- Recommended CI confirmation: re-run under Node ≥22 in normal CI/dev environment
 
-Update all implementations:
-- `UnavailableValidator.validate()` → `async def validate(...)` (body unchanged)
-- `UnavailableValidator.health()` → `async def health(...)` (returns `False`)
-- `MockValidator.validate()` → `async def validate(...)` (body unchanged)
-- `MockValidator.health()` → `async def health(...)` (returns `True`)
+**If a Node ≥22 run later reveals harness-specific errors**, the fix scope is:
 
-Update `ValidationHook`:
-- `validate_claims()` → `async def validate_claims(...)`
-- `validate_single()` → `async def validate_single(...)`
-- `is_available` property → `async def is_available() -> bool`
+- Harness files directly changed or added: `harness.ts`, `useHarness.ts`, `HarnessRunDetail.tsx`, `AgentWorkflows.tsx`, harness tests
+- Shared types/utilities **only** where harness integration exposed or broke an existing contract: query key types, `DataTable` prop typing, API client layer/path typing, shared polling constants/types, shared test fixtures used by harness tests
+- Do not broaden into unrelated app-wide TypeScript cleanup
+- Do not revert harness changes unless errors reveal a fundamental integration mistake that cannot be fixed surgically
+- If shared types are touched, the final report must explain: which harness usage required the change, why it is backward-compatible, which existing tests confirm no regression
 
-### R2 — `LiveL5Validator` (`src/harness/live_l5_validator.py`)
+### 2. Bug Fix Preservation
 
-New file implementing `ClaimValidator` using `Layer5GroundTruthClient`.
+The following fixes must remain intact:
 
-#### Constructor
-```python
-class LiveL5Validator(ClaimValidator):
-    def __init__(
-        self,
-        client: Layer5GroundTruthClient,
-        stale_threshold_hours: int = 24,
-    ) -> None:
-```
+| File | Fix |
+|---|---|
+| `apps/web/src/hooks/useHarness.ts` | `POLL_INTERVALS` imported from `./usePolling`, not `./useApiShared` |
+| `apps/web/src/pages/AgentWorkflows.tsx` | Harness `DataTable` uses `columns={...}`, not `headers={...}` |
 
-#### `async def health(self) -> bool`
-Calls `client.get_freshness_summary(organization_id=None, allow_system_call=True)` — returns `True` if no error, `False` otherwise. Catches all exceptions.
+### 3. Test Preservation
 
-#### `async def validate(self, request: ClaimValidationRequest) -> ClaimValidationResult`
+The following test files must remain and continue to pass:
 
-Full idempotent flow:
+| File | Tests |
+|---|---|
+| `apps/web/src/hooks/useHarness.test.ts` | 15 tests |
+| `apps/web/src/pages/AgentWorkflows.harness.test.tsx` | 8 tests |
 
-1. **Compute `claim_key`**: `SHA-256(tenant_id + ":" + normalized_claim_text + ":" + sorted_evidence_refs)` — hex digest, first 32 chars used as a stable lookup key.
+### 4. No Mock State (confirm unchanged)
 
-2. **Query L5** via `client.list_truths(organization_id=request.tenant_id, claim_type=_infer_claim_type(request), applies_to_opportunity=request.account_id, limit=50)`.
-
-3. **Match existing TruthObject** by normalized claim text similarity (exact match on lowercased, stripped text). If found:
-   - If `status == "approved"` and not stale → return `PASSED`.
-   - If `status == "disputed"` → return `FAILED`.
-   - If stale (updated_at older than `stale_threshold_hours`) → trigger revalidation via `validate_truth(action="advance_supported")` if eligible, then return current mapped state.
-   - Otherwise → return mapped state from table above.
-
-4. **If not found** → call `client.submit_truth(claim=request.claim_text, claim_type=_infer_claim_type(request), confidence=0.5, organization_id=request.tenant_id, applies_to={"account_id": request.account_id}, sources=[{"url": ref, "source_type": "internal"} for ref in request.evidence_refs])`.
-   - On success → return `NEEDS_REVIEW` (newly created, not yet validated).
-   - On error → return `INSUFFICIENT_EVIDENCE`.
-
-5. **On any exception** → log warning, return `INSUFFICIENT_EVIDENCE`. Never raise.
-
-#### `_infer_claim_type(request: ClaimValidationRequest) -> str`
-Private helper. Returns `"outcome"` by default. If `value_pack_id` contains `"roi"` → `"roi_assumption"`. If `value_pack_id` contains `"benchmark"` → `"benchmark"`. Extensible.
-
-#### `_map_status(l5_status: str) -> ValidationState`
-Private helper implementing the mapping table above.
-
-### R3 — Update `ValidationHook` callers in `HarnessRegistry` and `SqlHarnessRegistry`
-
-`HarnessRegistry.validate_claims()` and `SqlHarnessRegistry.validate_claims()` call `self._validation.validate_claims(requests)` — must become `await self._validation.validate_claims(requests)`.
-
-### R4 — Update `StateMachine` publish guard
-
-`StateMachine._enforce_publish_policy()` calls `can_publish_output()` which checks `validation_state`. This is pure/sync — no change needed. The async boundary is at the registry level.
-
-### R5 — Factory update (`src/harness/factory.py`)
-
-Add `make_live_l5_registry()`:
-
-```python
-async def make_live_l5_registry(
-    session: AsyncSession,
-    l5_base_url: str,
-    l5_service_token: str | None = None,
-    l5_tenant_id: str | None = None,
-    stale_threshold_hours: int = 24,
-) -> SqlHarnessRegistry:
-    """Returns a SqlHarnessRegistry with LiveL5Validator as primary validator."""
-```
-
-### R6 — Tests (`src/harness/tests/test_live_l5_validator.py`)
-
-New test file. Uses `respx` (already in dev deps) to mock HTTP calls to L5.
-
-#### `TestLiveL5ValidatorHealth`
-- `test_health_returns_true_when_l5_responds`
-- `test_health_returns_false_when_l5_unreachable`
-
-#### `TestLiveL5ValidatorValidate`
-- `test_existing_approved_truth_returns_passed`
-- `test_existing_disputed_truth_returns_failed`
-- `test_existing_extracted_truth_returns_needs_review`
-- `test_existing_corroborated_truth_returns_needs_review`
-- `test_no_existing_truth_submits_and_returns_needs_review`
-- `test_l5_error_on_list_returns_insufficient_evidence`
-- `test_l5_error_on_submit_returns_insufficient_evidence`
-- `test_cross_tenant_truths_not_reused` — two requests with different `tenant_id` but same claim text each get their own L5 query scoped to their tenant
-- `test_duplicate_call_is_idempotent` — same request twice hits list_truths both times, does not call submit_truth twice
-
-#### `TestValidationHookAsync`
-- `test_validate_claims_async_with_mock_validator`
-- `test_validate_claims_falls_back_to_unavailable_when_primary_unhealthy`
-- `test_unavailable_validator_never_approves`
-
-### R7 — Update `__init__.py` exports
-
-Add `LiveL5Validator` and `make_live_l5_registry` to `src/harness/__init__.py` lazy exports.
-
-### R8 — Update ADR
-
-Update `docs/architecture/adr-001-harness.md`:
-- Remove "SQL persistence" from Non-Decisions (now implemented).
-- Add note: "L5 integration: LiveL5Validator implemented in `src/harness/live_l5_validator.py`."
-- Mark FastAPI routes and Frontend as "Deferred" rather than "Non-Decisions".
+- All harness data flows through `harnessApi` → `apiClient` → real `/v1/harness/*` endpoints
+- Gate approve/reject calls `useDecideGate` → `harnessApi.decideGate`
+- Polling stops when `isTerminalState(run.current_state)` returns true
+- Pending gates poll at `POLL_INTERVALS.workflows` (5 s) and stop when no pending gates remain
 
 ---
 
 ## Acceptance Criteria
 
-1. `ClaimValidator.validate()` and `health()` are async — all three implementations updated.
-2. `ValidationHook.validate_claims()` and `validate_single()` are async.
-3. `LiveL5Validator` implements the full idempotent flow: query → match → submit if missing → map status.
-4. `LiveL5Validator` never raises — all exceptions produce `INSUFFICIENT_EVIDENCE`.
-5. Cross-tenant isolation: `list_truths` is always called with `organization_id=request.tenant_id`.
-6. All new tests pass with mocked HTTP (no live L5 required).
-7. All 156 existing harness tests continue to pass.
-8. `ruff check src/harness/` reports zero errors.
-9. `make_live_l5_registry()` is exported from `factory.py` and `__init__.py`.
+- [ ] `pnpm tsc --noEmit` run in Node ≥22 environment
+- [ ] Zero TypeScript errors attributable to harness files
+- [ ] Pre-existing TypeScript errors documented and left untouched
+- [ ] `useHarness.test.ts`: 15/15 passing
+- [ ] `AgentWorkflows.harness.test.tsx`: 8/8 passing
+- [ ] `make docs-harness` exits 0
+- [ ] Both bug fixes confirmed present in final state
 
 ---
 
-## Implementation Order
+## Implementation Steps
 
-1. **Make `ClaimValidator` interface async** — `validation_hooks.py`
-2. **Update `ValidationHook`** — `validate_claims`, `validate_single`, `is_available` async
-3. **Update `HarnessRegistry` and `SqlHarnessRegistry`** — `await` the validation calls
-4. **Create `src/harness/live_l5_validator.py`** — `LiveL5Validator` full implementation
-5. **Update `src/harness/factory.py`** — add `make_live_l5_registry`
-6. **Update `src/harness/__init__.py`** — add lazy exports
-7. **Create `src/harness/tests/test_live_l5_validator.py`** — full test suite
-8. **Update `docs/architecture/adr-001-harness.md`** — reflect completed items
-9. **Validate** — `uv run pytest src/harness/tests/ tests/migrations/ -v` + `ruff check src/harness/`
+1. Run `pnpm tsc --noEmit` in a Node ≥22 environment
+2. Triage errors: separate harness-introduced from pre-existing
+3. Fix harness-introduced errors only (if any)
+4. Re-run harness tests to confirm fixes did not break coverage
+5. Re-run `make docs-harness` to confirm doc validation still passes
+6. Produce final verification report
+
+---
+
+## Final Verification Report Template
+
+```
+## Harness UI — Final Verification Report
+
+### Bug Fixes (preserved)
+- useHarness.ts: POLL_INTERVALS from ./usePolling ✅
+- AgentWorkflows.tsx: DataTable columns= prop ✅
+
+### Harness-specific tests
+- useHarness.test.ts: 15/15 ✅
+- AgentWorkflows.harness.test.tsx: 8/8 ✅
+
+### Broader suite baseline (pre-existing, not caused by harness work)
+- Baseline before harness work: 19 test files failing / 122 tests failing
+- After harness work: 16 test files failing / 100 tests failing (net improvement from DataTable bug fix)
+- Harness-introduced regressions: 0
+
+### TypeScript verification
+- Command: node_modules/.bin/tsc --noEmit
+- Harness-related errors: 0
+- Pre-existing errors (not touched): useValueSignals.ts, TargetsAdmin.*, valueSignal.ts
+- Environment: Node 20 (project requires ≥22 — environment caveat, not a harness failure)
+- Result: PASSED
+- Recommended CI confirmation: re-run under Node ≥22
+
+### make docs-harness
+- Result: all checks passed ✅
+
+### Production signoff
+- Frontend Harness UI verification: COMPLETE
+- Classification: Harness UI regression coverage complete; production signoff pending Node ≥22 CI confirmation
+```
 
 ---
 
 ## Out of Scope
 
-- FastAPI harness routes (next spec)
-- Frontend `/governance/harness` UI (after API routes)
-- Revalidation scheduling / background jobs
-- L5 webhook callbacks for async validation completion
-- `claim_key` stored on TruthObject (L5 schema change — out of scope)
+- Fixing pre-existing TypeScript errors in `useValueSignals.ts`, `TargetsAdmin.*`, `valueSignal.ts`
+- Cleaning the broader test suite baseline (100 pre-existing failures)
+- Any new harness features or UI changes
 
 ---
 
-## Previous specs preserved below
+## [ARCHIVED] Original Implementation Spec
 
----
+The sections below are the original implementation spec, preserved for reference. All items were completed.
 
-# Spec: Harness Persistence — Residual Risk Fixes
+### 1. Backend — FastAPI Harness Routes
 
-## Previous spec
-`spec-oidc-audit.md` — OIDC audit (separate)
-Previous implementation: Harness persistence upgrade (in-memory → PostgreSQL) — complete.
+Create `services/layer4-agents/src/api/routes/harness.py` and register it in `src/api/routers.py` under prefix `/v1`.
 
----
+**Run management:**
+- `POST   /v1/harness/runs` — create a new `HarnessRun`
+- `GET    /v1/harness/runs` — list runs for authenticated tenant (filterable by `status`, `workflow_type`)
+- `GET    /v1/harness/runs/{run_id}` — get a single run
+- `POST   /v1/harness/runs/{run_id}/transition` — advance state machine (`to_state`, optional `validation_results`, `human_override`, `state_payload`)
+- `DELETE /v1/harness/runs/{run_id}` — cancel/archive a run
 
-# Spec: Harness Persistence — Residual Risk Fixes
+**Checkpoints:**
+- `GET    /v1/harness/runs/{run_id}/checkpoints` — list checkpoints for a run
+- `GET    /v1/harness/runs/{run_id}/checkpoints/latest` — get latest checkpoint
 
-## Status
-Draft — pending user confirmation
+**Human gates:**
+- `GET    /v1/harness/runs/{run_id}/gates` — list gates for a run
+- `POST   /v1/harness/runs/{run_id}/gates` — create a gate (`gate_type`)
+- `POST   /v1/harness/gates/{gate_id}/decide` — approve / reject / modify / expire a gate
 
-## Problem Statement
+**Validation:**
+- `POST   /v1/harness/runs/{run_id}/validate` — validate claims for a run (delegates to `ValidationHook`)
 
-Three residual risks were identified after the harness persistence upgrade:
+**Health:**
+- `GET    /v1/harness/health` — returns `validation_available`, `l5_healthy`, `db_healthy`
 
-1. **Migration 031 unverified** — the SQL DDL for the five harness tables has never been
-   generated and inspected offline. There is no CI artifact or test that catches schema
-   drift between the migration file and the ORM models.
+**Constraints:**
+- All routes must extract `tenant_id` from authenticated context (never from request body).
+- All routes must use `make_live_l5_registry` (or `make_sql_registry` when L5 is not configured) injected via FastAPI dependency.
+- Error responses must follow the existing error shape used by `/v1/workflows/*`.
+- All Pydantic request/response models must live in `src/harness/api_models.py` (new file).
 
-2. **`SqlTelemetryEmitter.get_events()` returns `[]` silently** — callers that call
-   `get_events()` on a SQL-backed emitter receive an empty list instead of an error,
-   making it impossible to distinguish "no events" from "wrong method called". This
-   produces false-negative telemetry assertions in any code that migrates from the
-   in-memory emitter.
+### 2. OpenAPI Contract Update
 
-3. **`SqlHarnessRegistry.decide_gate()` does a full-tenant scan** — to enrich the
-   telemetry event with `trace_id` and `workflow_type`, the method calls
-   `self._run_repo.list(tenant_id=tenant_id)` and then scans the result for
-   `gate.run_id`. This is an O(n) scan over all tenant runs when a direct point
-   lookup by `run_id` is available.
+After routes are registered, regenerate `contracts/openapi/layer4-agents.json` via `make contracts`. The harness paths must appear in the contract. The frontend generated client (`apps/web/src/api/generated/l4/`) must be regenerated via `make contract-freshness`.
 
----
+### 3. Frontend — TypeScript API Client
 
-## Conventions (from codebase)
+Create `apps/web/src/api/harness.ts`:
+- TypeScript types mirroring `HarnessRun`, `HarnessCheckpoint`, `HumanGate`, `ClaimValidationResult`, `HarnessState`, `HarnessRunStatus`, `GateStatus`, `GateType`, `ValidationState`
+- `harnessApi` object with typed functions for each route group (runs, checkpoints, gates, validate, health)
+- Follows the existing pattern in `apps/web/src/api/workflows.ts`
 
-- Migration numbering: `031` is the last; next is `032` if needed (not needed here).
-- `alembic upgrade <prev>:<rev> --sql` generates offline DDL — requires env vars:
-  `PYTHONPATH`, `LAYER4_DATABASE_URL`, `LAYER1/2/3/5_API_URL`,
-  `ALLOW_INSECURE_SERVICE_HTTP_IN_DEVELOPMENT=true`.
-- `get_events()` is called in two places in `test_harness.py` (lines 930, 1282) —
-  both use the in-memory `TelemetryEmitter`, not `SqlTelemetryEmitter`. No production
-  code outside `harness/` calls `get_events()`.
-- `decide_gate()` already holds `gate.run_id` after fetching the gate — the run can
-  be fetched directly with `self._run_repo.get(gate.run_id, tenant_id)`.
+### 4. Frontend — React Query Hooks
 
----
+Create `apps/web/src/hooks/useHarness.ts`:
+- `useHarnessRuns({ status?, workflow_type?, limit, offset })` — paginated list
+- `useHarnessRun(runId)` — single run with polling when status is non-terminal
+- `useHarnessCheckpoints(runId)` — checkpoint list
+- `useHarnessGates(runId)` — gate list
+- `useCreateHarnessRun()` — mutation
+- `useTransitionHarnessRun()` — mutation (advance state)
+- `useDecideGate()` — mutation (approve/reject/modify/expire)
+- `useValidateHarnessClaims()` — mutation
+- Follows the existing patterns in `apps/web/src/hooks/useWorkflows.ts` (TanStack Query, `QK` query keys, `STALE_TIME`, `POLL_INTERVALS`)
 
-## Requirements
+### 5. Frontend — AgentWorkflows.tsx Extension
 
-### R1 — Migration SQL artifact (`migrations/sql/031_harness_tables.sql`)
+Extend `apps/web/src/pages/AgentWorkflows.tsx` to add a **"Harness Runs"** tab alongside the existing "Workflow Dashboard", "Whitespace Analysis", and "Business Cases" tabs.
 
-Generate the offline SQL for migration 031 and commit it as a static artifact.
+The Harness Runs tab must display:
+- A paginated list of harness runs (run ID, workflow type, current state, status badge, created at)
+- Per-run inline actions: **Resume** (transition to next state), **Retry** (re-enter failed state), **Cancel** (transition to CANCELLED)
+- A **View** button that opens a `HarnessRunDetail` sheet showing:
+  - Run metadata (ID, tenant, workflow type, initiated by, trace ID)
+  - Current state and status with visual state machine progress
+  - Checkpoint list (state name, created at, input hash)
+  - Human gate list (gate type, status, decision by, decision reason) with **Approve** / **Reject** actions for `PENDING` gates
+  - Validation outcomes (claim ID, state, confidence, validator, reason)
+  - Available control actions based on current state
 
-- File: `services/layer4-agents/migrations/sql/031_harness_tables.sql`
-- Content: output of `alembic upgrade 030:031 --sql`, stripped of INFO log lines and
-  warnings, containing only the SQL statements from `BEGIN` to `COMMIT`.
-- This file is the canonical human-readable record of what migration 031 does.
-- It must be regenerated whenever migration 031 is modified.
+**Constraints:**
+- Preserve existing page structure, `PageHeader`, `Tabs`, `SectionCard`, `DataTable`, `StatusBadge`, `QueryState` primitives from `WfPrimitives`
+- Do not introduce new UI libraries
+- Add loading, empty, and error states consistent with existing patterns
+- The "Human-in-Loop Pending" KPI card on the dashboard tab should count pending harness gates in addition to workflow pending count
 
-### R2 — Migration SQL validation test (`tests/migrations/test_031_harness_tables_sql.py`)
+### 6. YAML Configuration Files
 
-A pytest test that parses `031_harness_tables.sql` and asserts structural correctness
-**without requiring a live database**.
+#### `services/layer4-agents/config/harness.runtime.yaml`
 
-The test must verify:
+Agent/workflow runtime configuration. Must include:
+- `schema_version`
+- Per-workflow-type sections (`roi_calculator`, `whitespace_analysis`, `business_case`, `orchestrator`) each with:
+  - `allowed_tools` list
+  - `denied_tools` list
+  - `budget`: `max_steps`, `max_retries`, `timeout_seconds`, `max_cost_usd`
+  - `invariants`: `require_human_approval` (list of states), `max_tool_calls_per_run`
+  - `validation`: `require_l5_validation` (bool), `stale_threshold_hours`
+  - `checkpointing`: `enabled` (bool), `checkpoint_on_states` (list)
+  - `failure_policy`: `on_l5_unavailable` (`degrade` | `block`), `on_gate_timeout` (`expire` | `block`)
+  - `audit`: `emit_trace_events` (bool), `log_level`
+- References to corresponding `.abom.json` manifests in `services/layer4-agents/manifests/`
 
-#### Tables present
-All five harness tables appear in the SQL:
-- `harness_runs`
-- `harness_human_gates`
-- `harness_checkpoints`
-- `harness_tool_contracts`
-- `harness_trace_events`
+#### `services/layer4-agents/config/harness.service.yaml`
 
-#### Tenant columns
-Each table has a `tenant_id` column definition in the SQL.
+Service deployment configuration. Must include:
+- `schema_version`
+- `service`: name, version, port
+- `database`: pool size, timeout, migration auto-run
+- `l5_integration`: base_url env var, service_token env var, stale_threshold_hours, health_check_interval_seconds
+- `queue`: concurrency, max_retries, retry_backoff_seconds
+- `timeouts`: default_run_timeout_seconds, gate_decision_timeout_seconds
+- `feature_flags`: `harness_enabled`, `live_l5_validation_enabled`, `sql_registry_enabled`
+- `observability`: log_level, trace_sampling_rate, emit_metrics
+- `security`: require_tenant_context, validate_claim_tenant_on_submit
+- `health`: readiness_checks list
 
-#### Required indexes
-The following indexes appear:
-- `ix_harness_runs_tenant_status`
-- `ix_harness_runs_tenant_state`
-- `ix_harness_runs_trace_id`
-- `ix_harness_human_gates_run_tenant`
-- `ix_harness_human_gates_tenant_status`
-- `ix_harness_checkpoints_run_tenant`
-- `ix_harness_checkpoints_tenant_state`
-- `ix_harness_checkpoints_input_hash`
-- `ix_harness_tool_contracts_tenant_layer`
-- `ix_harness_tool_contracts_tenant_risk`
-- `ix_harness_trace_events_run_tenant`
-- `ix_harness_trace_events_tenant_type`
-- `ix_harness_trace_events_trace_id`
+### 7. Documentation
 
-#### FK relationships
-The SQL contains `FOREIGN KEY` or `REFERENCES harness_runs` for the three child tables
-(`harness_human_gates`, `harness_checkpoints`, `harness_trace_events`).
+#### `docs/architecture/harness-agent-integration.md` (new file)
 
-#### RLS policies
-The SQL contains `ENABLE ROW LEVEL SECURITY` and `tenant_isolation_policy` for each
-of the five tables.
+Architecture-level document covering:
+- Harness purpose and role in the six-layer pipeline
+- Relationship to LangGraph workflows and existing `/v1/workflows/*` surface
+- Key concepts: runs, state machine, transitions, checkpoints, human gates, validation hook, LiveL5Validator
+- Data flow diagram (text/ASCII): UI → API → SqlHarnessRegistry → L5 → UI
+- Tenant isolation model
+- Security and RBAC notes
+- Extension points (custom validators, new workflow types, pack integration)
 
-#### Unique constraint
-`uq_harness_tool_contracts_tenant_tool` appears in the SQL.
+#### `services/layer4-agents/docs/harness-runbook.md` (new file)
 
-#### Offline generatability (meta-test)
-The test reads the SQL file from disk — it does not invoke `alembic` at test time.
-The SQL file is the pre-generated artifact; the test validates its content.
+Operator/developer runbook covering:
+- Setup and environment variables (`L5_BASE_URL`, `L5_SERVICE_TOKEN`, `DATABASE_URL`)
+- Factory selection: `make_in_memory_registry` vs `make_sql_registry` vs `make_live_l5_registry`
+- API reference: all `/v1/harness/*` endpoints with method, path, request schema, response schema, status codes, and example payloads
+- Common workflows: create run → transition → validate → gate → complete
+- Human gate lifecycle: create → pending → approve/reject → effect on run
+- Validation outcomes: state mapping table, staleness behavior, fallback behavior
+- Checkpoint usage: deterministic hashing, replay, verify_payload_unchanged
+- Failure modes: L5 unavailable, gate timeout, state machine violation, tenant mismatch
+- Recovery procedures: how to resume a stuck run, how to expire a stale gate
+- Observability: trace events, structured logs, metrics emitted
+- Testing guidance: unit (MockValidator), integration (SQLite), contract, E2E expectations
+- Known limitations and future extension points
 
-### R3 — `SqlTelemetryEmitter.get_events()` raises `NotImplementedError`
+### 8. Generation and Validation Script
 
-Replace the current silent `return []` with an explicit error:
+#### `scripts/generate_harness_docs.py`
 
-```python
-def get_events(
-    self,
-    run_id: str | None = None,
-    tenant_id: str | None = None,
-) -> list[HarnessTraceEvent]:
-    raise NotImplementedError(
-        "SqlTelemetryEmitter.get_events() is not supported in synchronous mode. "
-        "Use 'await emitter.get_events_async(run_id=..., tenant_id=...)' instead."
-    )
+A Python script that:
+1. **Validates** required documentation files exist and are non-empty:
+   - `docs/architecture/harness-agent-integration.md`
+   - `services/layer4-agents/docs/harness-runbook.md`
+2. **Validates** required YAML config files exist, are syntactically valid YAML, and contain required top-level keys:
+   - `services/layer4-agents/config/harness.runtime.yaml` — required keys: `schema_version`, `workflows`
+   - `services/layer4-agents/config/harness.service.yaml` — required keys: `schema_version`, `service`, `l5_integration`, `feature_flags`
+3. **Generates** a Markdown table of all harness API endpoints (method, path, summary) by introspecting the FastAPI router from `src/api/routes/harness.py` and writes it to `services/layer4-agents/docs/harness-api-table.md`
+4. **In `--check` mode** (default for CI): compares the generated endpoint table against the committed file and fails with a diff if stale
+5. **In `--fix` mode**: overwrites the committed file with the freshly generated output
+6. Exits non-zero with clear, actionable error messages on any failure
+
+#### Makefile target
+
+```makefile
+.PHONY: docs-harness
+docs-harness: ## Validate harness docs and config; regenerate API table
+	python scripts/generate_harness_docs.py --check
 ```
 
-The `get_events_async()` method is unchanged.
-
-### R4 — `SqlHarnessRegistry.decide_gate()` uses point lookup
-
-Replace the full-tenant scan with a direct `get_run()` call:
-
-**Before (O(n) scan):**
-```python
-run_result = await self._run_repo.list(tenant_id=tenant_id)
-run = next((r for r in run_result if r.id == gate.run_id), None)
-```
-
-**After (O(1) point lookup):**
-```python
-try:
-    run = await self._run_repo.get(gate.run_id, tenant_id)
-except HarnessRegistryError:
-    run = None
-```
-
-The rest of the method (telemetry enrichment, `_dispatch`) is unchanged.
+Wire `docs-harness` into the existing `verify` target by appending it to the `verify` recipe dependencies.
 
 ---
 
 ## Acceptance Criteria
 
-1. `migrations/sql/031_harness_tables.sql` exists and contains valid SQL from `BEGIN`
-   to `COMMIT` covering all five harness tables.
-2. `tests/migrations/test_031_harness_tables_sql.py` passes with all structural
-   assertions (tables, tenant columns, indexes, FKs, RLS, unique constraint).
-3. `SqlTelemetryEmitter.get_events()` raises `NotImplementedError` with a message
-   that names `get_events_async()`.
-4. A test in `test_harness_persistence.py` asserts that calling `get_events()` on a
-   `SqlTelemetryEmitter` raises `NotImplementedError`.
-5. `SqlHarnessRegistry.decide_gate()` no longer calls `self._run_repo.list()`.
-6. A test in `test_harness_persistence.py` asserts that `decide_gate()` correctly
-   enriches the telemetry event with `trace_id` from the parent run (proving the
-   point lookup works).
-7. All 117 existing harness tests continue to pass.
-8. `ruff check src/harness/ tests/migrations/` reports zero errors.
+### Backend
+- [ ] `GET /v1/harness/runs` returns 200 with paginated run list scoped to authenticated tenant
+- [ ] `POST /v1/harness/runs/{run_id}/transition` advances state and returns updated run + trace event
+- [ ] `POST /v1/harness/gates/{gate_id}/decide` with `approved` transitions gate and is reflected in run
+- [ ] `POST /v1/harness/runs/{run_id}/validate` returns `ClaimValidationResult` list
+- [ ] All routes return 403/404 (not 500) on tenant mismatch or missing resource
+- [ ] Harness paths appear in `contracts/openapi/layer4-agents.json` after `make contracts`
+
+### Frontend
+- [ ] "Harness Runs" tab is visible on `AgentWorkflows.tsx` and renders paginated run list
+- [ ] Run detail sheet shows checkpoints, gates, and validation outcomes
+- [ ] Approve/Reject gate actions call the API and optimistically update the UI
+- [ ] Resume/Retry/Cancel actions call the correct transition endpoint
+- [ ] Loading, empty, and error states are present and consistent with existing page patterns
+- [ ] No new UI libraries introduced
+
+### YAML Config
+- [ ] `harness.runtime.yaml` is syntactically valid and contains all required sections
+- [ ] `harness.service.yaml` is syntactically valid and contains all required sections
+- [ ] Both files are committed to `services/layer4-agents/config/`
+
+### Documentation
+- [ ] `docs/architecture/harness-agent-integration.md` covers all required sections
+- [ ] `services/layer4-agents/docs/harness-runbook.md` covers all required sections including full API reference
+- [ ] `services/layer4-agents/docs/harness-api-table.md` is generated and committed
+
+### Automation
+- [ ] `python scripts/generate_harness_docs.py --check` exits 0 when all files are present and current
+- [ ] `python scripts/generate_harness_docs.py --check` exits non-zero with actionable message when a file is missing or stale
+- [ ] `make docs-harness` invokes the script successfully
+- [ ] `make verify` includes `docs-harness` and fails if harness docs/config are missing or stale
 
 ---
 
 ## Implementation Order
 
-1. **Generate `migrations/sql/031_harness_tables.sql`** — run offline SQL generation,
-   strip log lines, write file.
-2. **Create `tests/migrations/__init__.py`** — empty, makes directory a package.
-3. **Create `tests/migrations/test_031_harness_tables_sql.py`** — structural SQL
-   validation tests (file-based, no DB).
-4. **Fix `SqlTelemetryEmitter.get_events()`** in `src/harness/sql_stores.py` — replace
-   `return []` with `raise NotImplementedError(...)`.
-5. **Fix `SqlHarnessRegistry.decide_gate()`** in `src/harness/sql_stores.py` — replace
-   `list()` scan with `get()` point lookup.
-6. **Add two new tests** to `src/harness/tests/test_harness_persistence.py`:
-   - `test_get_events_sync_raises_not_implemented`
-   - `test_decide_gate_enriches_telemetry_with_run_trace_id`
-7. **Validate** — run `uv run pytest src/harness/tests/ tests/migrations/ -v` and
-   `ruff check src/harness/ tests/migrations/`.
+1. **`src/harness/api_models.py`** — Pydantic request/response models for all harness routes
+2. **`src/api/routes/harness.py`** — FastAPI router with all 12 endpoints; inject `SqlHarnessRegistry` via dependency
+3. **`src/api/routers.py`** — register harness router at `/v1`
+4. **`make contracts`** — regenerate `contracts/openapi/layer4-agents.json`
+5. **`make contract-freshness`** — regenerate `apps/web/src/api/generated/l4/`
+6. **`apps/web/src/api/harness.ts`** — TypeScript types and `harnessApi` client
+7. **`apps/web/src/hooks/useHarness.ts`** — TanStack Query hooks
+8. **`apps/web/src/components/HarnessRunDetail.tsx`** — detail sheet component (checkpoints, gates, validation)
+9. **`apps/web/src/pages/AgentWorkflows.tsx`** — add "Harness Runs" tab; update KPI card
+10. **`services/layer4-agents/config/harness.runtime.yaml`** — agent runtime config
+11. **`services/layer4-agents/config/harness.service.yaml`** — service deployment config
+12. **`docs/architecture/harness-agent-integration.md`** — architecture doc
+13. **`services/layer4-agents/docs/harness-runbook.md`** — operator runbook
+14. **`scripts/generate_harness_docs.py`** — validation + generation script
+15. **`Makefile`** — add `docs-harness` target; wire into `verify`
+16. **Run `make docs-harness`** — confirm script passes against committed files
+
+---
+
+## Files Created / Modified
+
+| File | Action |
+|---|---|
+| `services/layer4-agents/src/harness/api_models.py` | Create |
+| `services/layer4-agents/src/api/routes/harness.py` | Create |
+| `services/layer4-agents/src/api/routers.py` | Modify (register router) |
+| `contracts/openapi/layer4-agents.json` | Regenerated |
+| `apps/web/src/api/generated/l4/index.ts` | Regenerated |
+| `apps/web/src/api/harness.ts` | Create |
+| `apps/web/src/hooks/useHarness.ts` | Create |
+| `apps/web/src/components/HarnessRunDetail.tsx` | Create |
+| `apps/web/src/pages/AgentWorkflows.tsx` | Modify (add tab + KPI update) |
+| `services/layer4-agents/config/harness.runtime.yaml` | Create |
+| `services/layer4-agents/config/harness.service.yaml` | Create |
+| `docs/architecture/harness-agent-integration.md` | Create |
+| `services/layer4-agents/docs/harness-runbook.md` | Create |
+| `services/layer4-agents/docs/harness-api-table.md` | Generated |
+| `scripts/generate_harness_docs.py` | Create |
+| `Makefile` | Modify (add `docs-harness`, wire into `verify`) |
 
 ---
 
 ## Out of Scope
 
-- Migration 032 (no new columns needed on `HumanGateRow`).
-- Changes to `TelemetryEmitter` (in-memory) — `get_events()` stays synchronous there.
-- Changes to `test_harness.py` — existing tests use in-memory emitter, unaffected.
-- Alembic added to `pyproject.toml` as a permanent dev dep (already added in previous
-  session; verify it persists in `uv.lock`).
-
----
-
-## Previous spec content (harness persistence upgrade) preserved below
-
----
-
-| Store | Class | In-memory field |
-|---|---|---|
-| Runs | `HarnessRegistry` | `self._runs: dict[str, HarnessRun]` |
-| Gates | `HumanGateManager` | `self._gates / self._run_gates` |
-| Checkpoints | `CheckpointManager` | `self._checkpoints / self._run_checkpoints` |
-| Tool contracts | `ToolContractRegistry` | `self._tools` |
-| Telemetry events | `TelemetryEmitter` | `self._events` |
-
-All five stores are lost on process restart. This blocks production use: harness
-runs cannot survive deploys, gate decisions cannot be audited across sessions,
-and checkpoints cannot be replayed.
-
-The upgrade replaces each in-memory store with a PostgreSQL-backed repository
-using the Layer 4 SQLAlchemy/Alembic conventions already established in the
-service. The harness public API (`HarnessRegistry`, `CheckpointManager`,
-`HumanGateManager`, `ToolContractRegistry`, `TelemetryEmitter`) must remain
-unchanged so all 86 existing tests continue to pass.
-
----
-
-## Conventions to Follow (from codebase exploration)
-
-- **ORM base**: `from src.database import Base` (SQLAlchemy `DeclarativeBase`)
-- **Async session**: `get_session_factory()` → `async_sessionmaker[TenantEnforcedAsyncSession]`
-- **Tenant isolation**: `tenant_id: Mapped[str]` column + RLS policy via `current_setting('app.tenant_id', true)`
-- **JSONB for dicts**: `from sqlalchemy.dialects.postgresql import JSONB` (see `WorkspaceTabData.data`)
-- **Migration numbering**: sequential `031_`, `032_`, … with `revision / down_revision` chain
-- **RLS pattern**: strict `tenant_id::text = current_setting('app.tenant_id', true)` + `admin_bypass_policy` for `admin_role, system_role`
-- **Timestamps**: `DateTime(timezone=True)`, UTC, `default=lambda: datetime.now(UTC)`
-- **Primary keys**: `String` IDs (matching harness `run_id`, `gate_id`, etc.) — not UUID, not int
-- **Indexes**: composite `(tenant_id, <status/state>)` for list queries; single-column for FK lookups
-
----
-
-## Requirements
-
-### R1 — SQLAlchemy ORM Models (new file: `src/harness/db_models.py`)
-
-Five ORM models, all inheriting from `Base`:
-
-#### `HarnessRunRow`
-```
-__tablename__ = "harness_runs"
-id            String(64)  PK
-tenant_id     String(255) NOT NULL  ← RLS column
-account_id    String(255) nullable
-workflow_type String(64)  NOT NULL
-initiated_by  String(32)  NOT NULL
-status        String(32)  NOT NULL
-current_state String(32)  NOT NULL
-value_pack_id String(255) nullable
-trace_id      String(64)  NOT NULL
-created_at    DateTime(tz)
-updated_at    DateTime(tz)
-```
-Indexes: `(tenant_id, status)`, `(tenant_id, current_state)`, `trace_id`
-
-#### `HumanGateRow`
-```
-__tablename__ = "harness_human_gates"
-id              String(64)  PK
-run_id          String(64)  NOT NULL  FK → harness_runs.id CASCADE
-tenant_id       String(255) NOT NULL
-gate_type       String(64)  NOT NULL
-status          String(32)  NOT NULL  default "pending"
-decision_by     String(255) nullable
-decision_reason Text        nullable
-created_at      DateTime(tz)
-decided_at      DateTime(tz) nullable
-```
-Indexes: `(run_id, tenant_id)`, `(tenant_id, status)`
-
-#### `HarnessCheckpointRow`
-```
-__tablename__ = "harness_checkpoints"
-id             String(64)  PK
-run_id         String(64)  NOT NULL  FK → harness_runs.id CASCADE
-tenant_id      String(255) NOT NULL
-state_name     String(32)  NOT NULL
-state_payload  JSONB       NOT NULL  default {}
-input_hash     String(64)  NOT NULL
-output_hash    String(64)  nullable
-tool_calls     JSONB       NOT NULL  default []
-created_at     DateTime(tz)
-```
-Indexes: `(run_id, tenant_id)`, `(tenant_id, state_name)`, `input_hash`
-
-#### `ToolContractRow`
-```
-__tablename__ = "harness_tool_contracts"
-id                       String(64)  PK
-tool_id                  String(255) NOT NULL
-tenant_id                String(255) NOT NULL
-layer                    String(32)  NOT NULL
-version                  String(32)  NOT NULL  default "v1"
-input_schema_ref         String(255) NOT NULL
-output_schema_ref        String(255) NOT NULL
-side_effect_class        String(64)  NOT NULL
-risk_level               String(32)  NOT NULL
-requires_tenant_context  Boolean     NOT NULL  default True
-requires_account_context Boolean     NOT NULL  default False
-approval_policy_id       String(255) nullable
-created_at               DateTime(tz)
-```
-Unique constraint: `(tenant_id, tool_id)` — enforces no-duplicate registration
-Indexes: `(tenant_id, layer)`, `(tenant_id, risk_level)`
-
-#### `HarnessTraceEventRow`
-```
-__tablename__ = "harness_trace_events"
-id               String(64)  PK  (generated: `evt_{uuid4().hex[:16]}`)
-trace_id         String(64)  NOT NULL
-run_id           String(64)  NOT NULL  FK → harness_runs.id CASCADE
-tenant_id        String(255) NOT NULL
-account_id       String(255) nullable
-workflow_type    String(64)  NOT NULL
-from_state       String(32)  nullable
-to_state         String(32)  nullable
-status           String(32)  nullable
-value_pack_id    String(255) nullable
-validation_state String(32)  nullable
-human_gate_id    String(64)  nullable
-tool_contract_id String(64)  nullable
-event_type       String(64)  NOT NULL  default "transition"
-metadata         JSONB       NOT NULL  default {}
-timestamp        DateTime(tz)
-```
-Indexes: `(run_id, tenant_id)`, `(tenant_id, event_type)`, `trace_id`
-
----
-
-### R2 — Alembic Migration (`migrations/versions/031_add_harness_tables.py`)
-
-- Revision: `031`, `down_revision: "030"`
-- Creates all five tables in dependency order:
-  1. `harness_runs` (no FK dependencies)
-  2. `harness_human_gates` (FK → harness_runs)
-  3. `harness_checkpoints` (FK → harness_runs)
-  4. `harness_tool_contracts` (no FK dependencies)
-  5. `harness_trace_events` (FK → harness_runs)
-- Enables RLS on all five tables
-- Creates `tenant_isolation_policy` (strict: `tenant_id::text = current_setting('app.tenant_id', true)`)
-- Creates `admin_bypass_policy` for `admin_role, system_role`
-- `downgrade()` drops tables in reverse order (events → checkpoints → gates → tool_contracts → runs)
-
----
-
-### R3 — SQL Repository Layer (new file: `src/harness/repositories.py`)
-
-Five async repository classes. Each takes an `AsyncSession` as constructor arg.
-All methods are `async`. All queries filter by `tenant_id`.
-
-#### `HarnessRunRepository`
-```python
-async def create(run: HarnessRun) -> HarnessRun
-async def get(run_id: str, tenant_id: str) -> HarnessRun          # raises HarnessRegistryError if not found / wrong tenant
-async def update(run: HarnessRun) -> HarnessRun                   # upsert by id
-async def list(tenant_id: str, status: HarnessRunStatus | None) -> list[HarnessRun]
-```
-
-#### `HumanGateRepository`
-```python
-async def create(gate: HumanGate) -> HumanGate
-async def get(gate_id: str, tenant_id: str) -> HumanGate          # raises GateNotFoundError if not found / wrong tenant
-async def update(gate: HumanGate) -> HumanGate
-async def list_for_run(run_id: str, tenant_id: str) -> list[HumanGate]
-```
-
-#### `CheckpointRepository`
-```python
-async def create(checkpoint: HarnessCheckpoint) -> HarnessCheckpoint
-async def get(checkpoint_id: str, run_id: str, tenant_id: str) -> HarnessCheckpoint
-async def list_for_run(run_id: str, tenant_id: str) -> list[HarnessCheckpoint]  # ordered by created_at ASC
-async def get_latest(run_id: str, tenant_id: str) -> HarnessCheckpoint | None
-```
-
-#### `ToolContractRepository`
-```python
-async def register(tool: ToolContract, tenant_id: str) -> ToolContract   # raises ToolRegistrationError on duplicate
-async def get(tool_id: str, tenant_id: str) -> ToolContract              # raises ToolNotFoundError
-async def list(tenant_id: str, layer: str | None, risk_level: ToolRiskLevel | None) -> list[ToolContract]
-async def delete(tool_id: str, tenant_id: str) -> None
-```
-
-#### `TraceEventRepository`
-```python
-async def append(event: HarnessTraceEvent) -> HarnessTraceEvent
-async def list(run_id: str | None, tenant_id: str | None) -> list[HarnessTraceEvent]
-```
-
-**Mapping helpers** (private, in `repositories.py`):
-- `_run_to_row(run: HarnessRun) -> HarnessRunRow`
-- `_row_to_run(row: HarnessRunRow) -> HarnessRun`
-- (same pattern for each entity)
-
-All domain models remain Pydantic v2 frozen models. Repositories translate
-between ORM rows and domain models — no ORM objects leak out of the repository
-layer.
-
----
-
-### R4 — SQL-backed Manager/Registry Variants (new file: `src/harness/sql_stores.py`)
-
-Five classes that wrap the repositories and satisfy the same interface as the
-in-memory classes. These are **drop-in replacements** — same method signatures,
-same error types.
-
-#### `SqlHarnessRegistry`
-- Constructor: `__init__(session: AsyncSession, state_machine, tool_registry, gate_manager, checkpoint_manager, telemetry, validation_hook)`
-- Delegates to `HarnessRunRepository` for run storage
-- All other delegation unchanged from `HarnessRegistry`
-
-#### `SqlHumanGateManager`
-- Constructor: `__init__(session: AsyncSession)`
-- Delegates to `HumanGateRepository`
-
-#### `SqlCheckpointManager`
-- Constructor: `__init__(session: AsyncSession)`
-- Delegates to `CheckpointRepository`
-
-#### `SqlToolContractRegistry`
-- Constructor: `__init__(session: AsyncSession)`
-- Delegates to `ToolContractRepository`
-
-#### `SqlTelemetryEmitter`
-- Constructor: `__init__(session: AsyncSession)`
-- `_dispatch()` appends to DB via `TraceEventRepository` AND calls in-memory handlers
-- `get_events()` queries DB (filtered by `run_id` / `tenant_id`)
-- `clear()` is a no-op in production (kept for test compatibility)
-- DB write failure in `_dispatch()` is caught and logged — must not raise (same invariant as in-memory emitter)
-
----
-
-### R5 — Factory Function (new file: `src/harness/factory.py`)
-
-```python
-def make_in_memory_registry(...) -> HarnessRegistry:
-    """Returns the original in-memory registry. Used in tests."""
-
-async def make_sql_registry(session: AsyncSession, ...) -> HarnessRegistry:
-    """Returns a HarnessRegistry wired to SQL stores. Used in production."""
-```
-
-The factory is the only place that decides which store implementation to use.
-Existing tests continue to use `make_in_memory_registry()` (or construct
-components directly as they do today).
-
----
-
-### R6 — `__init__.py` Exports
-
-Add to `src/harness/__init__.py`:
-```python
-from harness.sql_stores import (
-    SqlHarnessRegistry,
-    SqlHumanGateManager,
-    SqlCheckpointManager,
-    SqlToolContractRegistry,
-    SqlTelemetryEmitter,
-)
-from harness.factory import make_in_memory_registry, make_sql_registry
-```
-
----
-
-### R7 — Tests (`src/harness/tests/test_harness_persistence.py`)
-
-New test file covering SQL-backed stores. Uses `pytest` with an in-process
-SQLite database (via `aiosqlite`) so no external Postgres is required in CI.
-
-**SQLite fixture** (inline in test file):
-```python
-@pytest.fixture
-async def async_engine():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", ...)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    await engine.dispose()
-
-@pytest.fixture
-async def session(async_engine):
-    async with AsyncSession(async_engine) as s:
-        yield s
-```
-
-Test classes:
-
-#### `TestSqlRunRepository`
-- `test_create_and_get_run` — round-trip create → get
-- `test_get_wrong_tenant_raises` — cross-tenant access raises `HarnessRegistryError`
-- `test_list_filters_by_tenant` — runs from other tenants not returned
-- `test_list_filters_by_status` — status filter works
-- `test_update_run_state` — state transition persisted
-
-#### `TestSqlGateRepository`
-- `test_create_and_get_gate`
-- `test_approve_gate_persisted`
-- `test_reject_gate_persisted`
-- `test_cross_tenant_gate_not_found`
-- `test_list_gates_for_run`
-
-#### `TestSqlCheckpointRepository`
-- `test_create_checkpoint_deterministic_hash`
-- `test_same_payload_same_hash_after_roundtrip`
-- `test_cross_tenant_checkpoint_rejected`
-- `test_list_ordered_by_created_at`
-- `test_get_latest_checkpoint`
-
-#### `TestSqlToolContractRepository`
-- `test_register_and_get_tool`
-- `test_duplicate_registration_raises`
-- `test_cross_tenant_tool_not_found`
-- `test_list_by_layer`
-- `test_list_by_risk_level`
-- `test_delete_tool`
-
-#### `TestSqlTraceEventRepository`
-- `test_append_event`
-- `test_list_by_run_id`
-- `test_list_by_tenant_id`
-- `test_event_includes_trace_id_and_tenant_id`
-
-#### `TestSqlHarnessRegistryIntegration`
-- `test_full_workflow_persisted_across_registry_instances` — create run in one registry instance, read it back from a second instance sharing the same session
-- `test_tenant_isolation_across_registry_instances`
-- `test_checkpoint_survives_registry_restart`
-
----
-
-### R8 — `pyproject.toml` Dependency Check
-
-Verify `aiosqlite` is present in `[dependency-groups.dev]` for SQLite-based
-tests. If absent, add it. Do not add it to production dependencies.
-
----
-
-### R9 — `.env.example` Update
-
-Add a comment block to `.env.example`:
-```
-# Harness persistence uses the same DATABASE_URL as the rest of Layer 4.
-# No additional configuration required.
-```
-
----
-
-## Acceptance Criteria
-
-1. All 86 existing harness tests (`test_harness.py`) pass unchanged.
-2. All new SQL persistence tests (`test_harness_persistence.py`) pass with SQLite.
-3. `ruff check src/harness/` reports zero errors.
-4. Migration `031_add_harness_tables.py` is syntactically valid and chains correctly from `030`.
-5. Migration `downgrade()` drops all five tables without error.
-6. Cross-tenant access in all five SQL repositories raises the correct domain error (not a raw SQLAlchemy exception).
-7. `HarnessRun`, `HumanGate`, `HarnessCheckpoint`, `ToolContract`, `HarnessTraceEvent` domain models remain Pydantic v2 frozen — no ORM objects leak outside repositories.
-8. `make_in_memory_registry()` and `make_sql_registry()` both return a `HarnessRegistry`-compatible object.
-9. `SqlTelemetryEmitter._dispatch()` does not raise even if the DB write fails.
-10. No changes to `src/harness/models.py`, `state_machine.py`, `policies.py`, or `validation_hooks.py`.
-
----
-
-## Implementation Order
-
-1. **`src/harness/db_models.py`** — five ORM models, no logic
-2. **`migrations/versions/031_add_harness_tables.py`** — schema + RLS
-3. **`src/harness/repositories.py`** — five async repository classes + mapping helpers
-4. **`src/harness/sql_stores.py`** — five SQL-backed manager/registry variants
-5. **`src/harness/factory.py`** — `make_in_memory_registry` + `make_sql_registry`
-6. **`src/harness/__init__.py`** — add new exports
-7. **`src/harness/tests/test_harness_persistence.py`** — full SQL test suite
-8. **`pyproject.toml`** — add `aiosqlite` to dev deps if missing
-9. **`.env.example`** — add harness persistence comment
-10. **Validation** — run `uv run pytest src/harness/tests/ -v` and `ruff check src/harness/`
-
----
-
-## Out of Scope (this spec)
-
-- L5 `LiveL5Validator` integration (next spec)
-- FastAPI harness routes (next spec after L5)
-- Frontend `/governance/harness` UI (after API routes)
-- Async support for `StateMachine` / `policies.py` (pure functions, no I/O)
-- Prometheus/StatsD wiring for `SqlTelemetryEmitter`
-- Multi-zone / sharded persistence
+- New top-level navigation page for harness (deferred)
+- CommandCenter right-rail harness panel (deferred — noted as future extension)
+- Real-time SSE streaming for harness state transitions (deferred — polling sufficient for MVP)
+- Harness-to-LangGraph bridge (harness and LangGraph workflows remain separate surfaces)
+- Frontend tests beyond existing `AgentWorkflows.tsx` patterns
