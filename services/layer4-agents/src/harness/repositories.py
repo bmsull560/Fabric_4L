@@ -285,12 +285,30 @@ class HarnessRunRepository:
         self,
         tenant_id: str,
         status: HarnessRunStatus | None = None,
-    ) -> list[HarnessRun]:
-        stmt = select(HarnessRunRow).where(HarnessRunRow.tenant_id == tenant_id)
+        workflow_type: "HarnessWorkflowType | None" = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[HarnessRun], int]:
+        """Return (items, total_count) for the given filters.
+
+        ``total_count`` reflects the full unsliced count so callers can
+        compute ``has_more`` without relying on slice length.
+        """
+        from sqlalchemy import func, select as sa_select
+
+        base = sa_select(HarnessRunRow).where(HarnessRunRow.tenant_id == tenant_id)
         if status is not None:
-            stmt = stmt.where(HarnessRunRow.status == status.value)
-        result = await self._session.execute(stmt)
-        return [_row_to_run(row) for row in result.scalars().all()]
+            base = base.where(HarnessRunRow.status == status.value)
+        if workflow_type is not None:
+            base = base.where(HarnessRunRow.workflow_type == workflow_type.value)
+
+        count_stmt = sa_select(func.count()).select_from(base.subquery())
+        total: int = (await self._session.execute(count_stmt)).scalar_one()
+
+        page_stmt = base.order_by(HarnessRunRow.created_at.desc()).limit(limit).offset(offset)
+        result = await self._session.execute(page_stmt)
+        items = [_row_to_run(row) for row in result.scalars().all()]
+        return items, total
 
 
 class HumanGateRepository:

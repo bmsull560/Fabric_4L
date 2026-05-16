@@ -1,0 +1,144 @@
+# harness.service.yaml — Service deployment configuration for the Fabric Harness.
+#
+# Defines environment variables, feature flags, service dependencies,
+# concurrency, timeouts, observability, and security posture.
+#
+# This file describes deployment posture and runtime wiring.
+# For agent behavior and tool policies, see harness.runtime.yaml.
+#
+# Schema version must be bumped when adding required keys.
+
+schema_version: "1.0"
+
+# ── Service identity ──────────────────────────────────────────────────────────
+
+service:
+  name: layer4-agents
+  version: "1.0.0"
+  port: 8004
+  base_path: /v1/harness
+
+# ── Database ──────────────────────────────────────────────────────────────────
+
+database:
+  # Connection string read from DATABASE_URL env var at runtime.
+  url_env: DATABASE_URL
+  pool_size: 10
+  max_overflow: 5
+  pool_timeout_seconds: 30
+  # Run Alembic migrations automatically on startup (disable in production
+  # if migrations are applied by a separate CI/CD step).
+  auto_migrate: false
+  migration_target: "head"
+
+# ── Layer 5 Ground Truth integration ─────────────────────────────────────────
+
+l5_integration:
+  # Base URL for the Layer 5 Ground Truth service.
+  # Override with L5_BASE_URL env var; falls back to k8s service DNS.
+  base_url_env: L5_BASE_URL
+  base_url_default: "http://layer5-ground-truth:8005"
+
+  # Service-to-service JWT for L5 API calls.
+  # Must be set in production via L5_SERVICE_TOKEN env var / ExternalSecret.
+  service_token_env: L5_SERVICE_TOKEN
+
+  # Approved TruthObjects older than this are downgraded to NEEDS_REVIEW.
+  stale_threshold_hours: 24
+
+  # Interval between health checks against L5 (used by ValidationHook).
+  health_check_interval_seconds: 30
+
+  # Pagination page size for list_truths queries.
+  list_truths_page_size: 100
+
+# ── Queue / concurrency ───────────────────────────────────────────────────────
+
+queue:
+  # Maximum concurrent harness runs per service instance.
+  max_concurrent_runs: 20
+
+  # Maximum retry attempts for transient failures before marking a run FAILED.
+  max_retries: 3
+
+  # Exponential backoff base (seconds) between retries.
+  retry_backoff_seconds: 2
+
+# ── Timeouts ──────────────────────────────────────────────────────────────────
+
+timeouts:
+  # Maximum wall-clock time for a single harness run before it is marked FAILED.
+  default_run_timeout_seconds: 600
+
+  # Time a human gate may remain PENDING before it is auto-expired.
+  # Set to 0 to disable auto-expiry.
+  gate_decision_timeout_seconds: 86400   # 24 hours
+
+  # HTTP request timeout for outbound L5 calls.
+  l5_request_timeout_seconds: 10
+
+# ── Feature flags ─────────────────────────────────────────────────────────────
+
+feature_flags:
+  # Master switch: expose /v1/harness/* routes.
+  harness_enabled: true
+
+  # Use LiveL5Validator as the primary ClaimValidator.
+  # Requires L5_BASE_URL and L5_SERVICE_TOKEN to be set.
+  # Falls back to SqlRegistry (no validation) when false.
+  live_l5_validation_enabled: true
+
+  # Use SqlHarnessRegistry (PostgreSQL) instead of in-memory registry.
+  # Must be true in production; false is for local unit tests only.
+  sql_registry_enabled: true
+
+# ── Observability ─────────────────────────────────────────────────────────────
+
+observability:
+  # Structured log level for harness operations.
+  log_level: INFO
+
+  # Fraction of harness runs to include in distributed traces (0.0–1.0).
+  trace_sampling_rate: 0.1
+
+  # Emit Prometheus metrics for run counts, gate decisions, validation outcomes.
+  emit_metrics: true
+
+  # Metric prefix for all harness-emitted counters and histograms.
+  metrics_prefix: "harness"
+
+# ── Security ──────────────────────────────────────────────────────────────────
+
+security:
+  # Reject any harness API request that lacks an authenticated tenant context.
+  # Must be true in production.
+  require_tenant_context: true
+
+  # Cross-check request.tenant_id against authenticated context in validate_claims.
+  # Raises HarnessRegistryError on mismatch.
+  validate_claim_tenant_on_submit: true
+
+  # Minimum RBAC role required to call harness write endpoints.
+  # Reads from the existing RBAC middleware; set to null to allow any authenticated user.
+  required_role: null
+
+# ── Health / readiness ────────────────────────────────────────────────────────
+
+health:
+  # Checks performed by GET /v1/harness/health and the /ready probe.
+  readiness_checks:
+    - name: database
+      description: "PostgreSQL session is reachable"
+    - name: l5_ground_truth
+      description: "Layer 5 Ground Truth service responds to get_freshness_summary"
+      required: false   # degraded (not down) if L5 is unreachable
+
+# ── Service dependencies ──────────────────────────────────────────────────────
+
+dependencies:
+  - name: layer5-ground-truth
+    port: 8005
+    required: false   # harness degrades gracefully when L5 is unavailable
+  - name: postgresql
+    port: 5432
+    required: true
