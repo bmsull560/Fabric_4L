@@ -101,6 +101,8 @@ dev = [
     "schemathesis>=4.17.0",
     "selectolax>=0.4.7",
     "trafilatura>=2.0.0",
+    "aiosqlite>=0.20.0",   # SQLite backend for harness persistence tests
+    "alembic>=1.18.4",
 ]
 
 [tool.black]

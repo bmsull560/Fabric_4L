@@ -9,8 +9,8 @@ Invariants:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 from harness.models import (
     ClaimValidationResult,
@@ -18,7 +18,6 @@ from harness.models import (
     HarnessRun,
     HarnessState,
     HarnessTraceEvent,
-    HarnessWorkflowType,
     HumanGate,
     ToolContract,
     ValidationState,
@@ -43,8 +42,8 @@ class TelemetryEmitter:
     """
 
     def __init__(self) -> None:
-        self._handlers: List[EventHandler] = []
-        self._events: List[HarnessTraceEvent] = []  # In-memory store for testing
+        self._handlers: list[EventHandler] = []
+        self._events: list[HarnessTraceEvent] = []  # In-memory store for testing
 
     def add_handler(self, handler: EventHandler) -> None:
         """Register an event handler."""
@@ -55,7 +54,7 @@ class TelemetryEmitter:
         run: HarnessRun,
         from_state: HarnessState,
         to_state: HarnessState,
-        validation_state: Optional[ValidationState] = None,
+        validation_state: ValidationState | None = None,
     ) -> HarnessTraceEvent:
         """Emit a state transition event."""
         event = HarnessTraceEvent(
@@ -151,8 +150,8 @@ class TelemetryEmitter:
         self,
         run: HarnessRun,
         decision: str,
-        tool_contract: Optional[ToolContract] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        tool_contract: ToolContract | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> HarnessTraceEvent:
         """Emit a policy decision event."""
         event = HarnessTraceEvent(
@@ -188,9 +187,9 @@ class TelemetryEmitter:
 
     def get_events(
         self,
-        run_id: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-    ) -> List[HarnessTraceEvent]:
+        run_id: str | None = None,
+        tenant_id: str | None = None,
+    ) -> list[HarnessTraceEvent]:
         """Retrieve emitted events, optionally filtered."""
         events = list(self._events)
         if run_id is not None:

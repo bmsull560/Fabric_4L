@@ -16,13 +16,11 @@ All tests must prove behavior, not just imports.
 
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
-
 # Ensure harness is importable
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -43,13 +41,12 @@ from harness import (
     HarnessRun,
     HarnessRunStatus,
     HarnessState,
-    HarnessTraceEvent,
     HarnessWorkflowType,
     HumanGate,
     HumanGateManager,
     InitiatedBy,
     MockValidator,
-    PublicationBlockedError,
+    StateMachine,
     TelemetryEmitter,
     TerminalStateError,
     ToolContract,
@@ -60,13 +57,11 @@ from harness import (
     ToolRiskLevel,
     ToolSideEffectClass,
     TransitionError,
-    UnavailableValidator,
     ValidationHook,
     ValidationState,
     can_publish_output,
     evaluate_tool_invocation_policy,
     requires_approval,
-    StateMachine,
 )
 
 # ============================================================
@@ -685,7 +680,7 @@ class TestCheckpoints:
 class TestValidationHooks:
     """Tests for L5 validation hooks."""
 
-    def test_passed_validation_permits_publication(
+    async def test_passed_validation_permits_publication(
         self, harness: HarnessRegistry, run: HarnessRun, tenant_id: str
     ) -> None:
         """Passed validation permits publication."""
@@ -700,12 +695,12 @@ class TestValidationHooks:
                 evidence_refs=["ev_1"],
             )
         ]
-        results = harness.validate_claims(tenant_id, requests)
+        results = await harness.validate_claims(tenant_id, requests)
         assert len(results) == 1
         assert results[0].validation_state == ValidationState.PASSED
         assert can_publish_output(run, validation_results=results) is True
 
-    def test_failed_validation_blocks_publication(
+    async def test_failed_validation_blocks_publication(
         self, harness: HarnessRegistry, run: HarnessRun, tenant_id: str
     ) -> None:
         """Failed validation blocks publication."""
@@ -720,11 +715,11 @@ class TestValidationHooks:
                 evidence_refs=["ev_1"],
             )
         ]
-        results = harness.validate_claims(tenant_id, requests)
+        results = await harness.validate_claims(tenant_id, requests)
         assert results[0].validation_state == ValidationState.FAILED
         assert can_publish_output(run, validation_results=results, override_policy=False) is False
 
-    def test_insufficient_evidence_requires_review(
+    async def test_insufficient_evidence_requires_review(
         self, harness: HarnessRegistry, run: HarnessRun, tenant_id: str
     ) -> None:
         """Insufficient evidence requires review."""
@@ -739,11 +734,11 @@ class TestValidationHooks:
                 evidence_refs=["ev_1"],
             )
         ]
-        results = harness.validate_claims(tenant_id, requests)
+        results = await harness.validate_claims(tenant_id, requests)
         assert results[0].validation_state == ValidationState.INSUFFICIENT_EVIDENCE
         assert can_publish_output(run, validation_results=results) is False
 
-    def test_unavailable_validator_does_not_approve(
+    async def test_unavailable_validator_does_not_approve(
         self, harness: HarnessRegistry, run: HarnessRun, tenant_id: str
     ) -> None:
         """Unavailable validator does not approve."""
@@ -758,17 +753,17 @@ class TestValidationHooks:
                 evidence_refs=["ev_1"],
             )
         ]
-        results = harness.validate_claims(tenant_id, requests)
+        results = await harness.validate_claims(tenant_id, requests)
         assert len(results) == 1
         assert results[0].validation_state == ValidationState.INSUFFICIENT_EVIDENCE
         assert results[0].validator == "unavailable"
         assert can_publish_output(run, validation_results=results) is False
 
-    def test_unavailable_validator_never_returns_passed(
+    async def test_unavailable_validator_never_returns_passed(
         self, harness: HarnessRegistry, tenant_id: str
     ) -> None:
         """UnavailableValidator never returns PASSED."""
-        from harness.validation_hooks import UnavailableValidator, ClaimValidationRequest
+        from harness.validation_hooks import ClaimValidationRequest, UnavailableValidator
 
         validator = UnavailableValidator()
         request = ClaimValidationRequest(
@@ -777,11 +772,11 @@ class TestValidationHooks:
             claim_text="Anything",
             evidence_refs=[],
         )
-        result = validator.validate(request)
+        result = await validator.validate(request)
         assert result.validation_state != ValidationState.PASSED
         assert result.validation_state == ValidationState.INSUFFICIENT_EVIDENCE
 
-    def test_mock_validator_allows_configuring_results(
+    async def test_mock_validator_allows_configuring_results(
         self, tenant_id: str
     ) -> None:
         """MockValidator can pre-configure claim results."""
@@ -791,8 +786,8 @@ class TestValidationHooks:
         req1 = ClaimValidationRequest(tenant_id=tenant_id, claim_id="claim_ok", claim_text="OK", evidence_refs=[])
         req2 = ClaimValidationRequest(tenant_id=tenant_id, claim_id="claim_fail", claim_text="Fail", evidence_refs=[])
 
-        result1 = mock.validate(req1)
-        result2 = mock.validate(req2)
+        result1 = await mock.validate(req1)
+        result2 = await mock.validate(req2)
 
         assert result1.validation_state == ValidationState.PASSED
         assert result2.validation_state == ValidationState.FAILED
@@ -1220,7 +1215,7 @@ class TestModels:
 class TestIntegration:
     """Integration tests for full harness workflows."""
 
-    def test_full_workflow_with_validation_pass(
+    async def test_full_workflow_with_validation_pass(
         self, harness: HarnessRegistry, tenant_id: str
     ) -> None:
         """Full workflow with passing validation."""
@@ -1263,7 +1258,7 @@ class TestIntegration:
                 account_id="acct_123",
             )
         ]
-        results = harness.validate_claims(tenant_id, requests)
+        results = await harness.validate_claims(tenant_id, requests)
         assert results[0].validation_state == ValidationState.PASSED
 
         # Publish with validation
@@ -1569,9 +1564,9 @@ class TestAntiDrift:
     def test_no_new_import_drift(self) -> None:
         """Harness uses standard library + Pydantic only."""
         # This test verifies no exotic dependencies
-        import harness.models as models
         # All models should use pydantic BaseModel
-        assert issubclass(HarnessRun, BaseModel := __import__('pydantic').BaseModel)
+        from pydantic import BaseModel
+        assert issubclass(HarnessRun, BaseModel)
 
 
 if __name__ == "__main__":
