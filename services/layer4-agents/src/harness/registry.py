@@ -7,7 +7,7 @@ It does not replace individual layers but governs how they interact.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 from harness.checkpoints import CheckpointManager
 from harness.human_gates import HumanGateManager
@@ -26,12 +26,12 @@ from harness.models import (
     ToolContract,
     ValidationState,
 )
-from harness.validation_hooks import ClaimValidationRequest
-from harness.policies import can_publish_output, PublicationBlockedError
-from harness.state_machine import StateMachine, TerminalStateError, TransitionError, ValidationRequiredError
+from harness.state_machine import (
+    StateMachine,
+)
 from harness.telemetry import TelemetryEmitter
 from harness.tool_contracts import ToolContractRegistry
-from harness.validation_hooks import ValidationHook
+from harness.validation_hooks import ClaimValidationRequest, ValidationHook
 
 
 class HarnessRegistryError(RuntimeError):
@@ -56,12 +56,12 @@ class HarnessRegistry:
 
     def __init__(
         self,
-        state_machine: Optional[StateMachine] = None,
-        tool_registry: Optional[ToolContractRegistry] = None,
-        gate_manager: Optional[HumanGateManager] = None,
-        checkpoint_manager: Optional[CheckpointManager] = None,
-        telemetry: Optional[TelemetryEmitter] = None,
-        validation_hook: Optional[ValidationHook] = None,
+        state_machine: StateMachine | None = None,
+        tool_registry: ToolContractRegistry | None = None,
+        gate_manager: HumanGateManager | None = None,
+        checkpoint_manager: CheckpointManager | None = None,
+        telemetry: TelemetryEmitter | None = None,
+        validation_hook: ValidationHook | None = None,
     ) -> None:
         self._sm = state_machine or StateMachine()
         self._tools = tool_registry or ToolContractRegistry()
@@ -71,7 +71,7 @@ class HarnessRegistry:
         self._validation = validation_hook or ValidationHook()
 
         # Run store
-        self._runs: Dict[str, HarnessRun] = {}
+        self._runs: dict[str, HarnessRun] = {}
 
     # ---- Run Lifecycle ----
 
@@ -80,8 +80,8 @@ class HarnessRegistry:
         tenant_id: str,
         workflow_type: HarnessWorkflowType,
         initiated_by: InitiatedBy,
-        account_id: Optional[str] = None,
-        value_pack_id: Optional[str] = None,
+        account_id: str | None = None,
+        value_pack_id: str | None = None,
     ) -> HarnessRun:
         """Create a new harness run."""
         run = HarnessRun(
@@ -120,10 +120,10 @@ class HarnessRegistry:
         run_id: str,
         tenant_id: str,
         to_state: HarnessState,
-        validation_results: Optional[List[ClaimValidationResult]] = None,
+        validation_results: list[ClaimValidationResult] | None = None,
         human_override: bool = False,
-        state_payload: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[HarnessRun, HarnessTraceEvent]:
+        state_payload: dict[str, Any] | None = None,
+    ) -> tuple[HarnessRun, HarnessTraceEvent]:
         """
         Execute a state transition.
 
@@ -133,7 +133,7 @@ class HarnessRegistry:
         run = self.get_run(run_id, tenant_id)
 
         # Derive validation state from results
-        validation_state: Optional[ValidationState] = None
+        validation_state: ValidationState | None = None
         if validation_results is not None:
             # Aggregate: if any failed, use failed; if any need review, use needs_review
             states = [vr.validation_state for vr in validation_results]
@@ -200,7 +200,7 @@ class HarnessRegistry:
         tenant_id: str,
         decision: GateStatus,
         decision_by: str,
-        decision_reason: Optional[str] = None,
+        decision_reason: str | None = None,
     ) -> HumanGate:
         """Make a decision on a human gate."""
         if decision == GateStatus.APPROVED:
@@ -237,23 +237,34 @@ class HarnessRegistry:
         """Get a gate with tenant scoping."""
         return self._gates.get_gate(gate_id, tenant_id)
 
-    def list_gates_for_run(self, run_id: str, tenant_id: str) -> List[HumanGate]:
+    def list_gates_for_run(self, run_id: str, tenant_id: str) -> list[HumanGate]:
         """List gates for a run."""
         return self._gates.list_gates_for_run(run_id, tenant_id)
 
     # ---- Validation ----
 
-    def validate_claims(
+    async def validate_claims(
         self,
         tenant_id: str,
-        requests: List[ClaimValidationRequest],
-    ) -> List[ClaimValidationResult]:
-        """Validate claims through the L5 hook."""
-        return self._validation.validate_claims(requests)
+        requests: list[ClaimValidationRequest],
+    ) -> list[ClaimValidationResult]:
+        """Validate claims through the L5 hook.
+
+        Raises HarnessRegistryError if any request carries a tenant_id that
+        does not match the authenticated tenant_id, preventing cross-tenant
+        claim submission.
+        """
+        mismatched = [r.claim_id for r in requests if r.tenant_id != tenant_id]
+        if mismatched:
+            raise HarnessRegistryError(
+                f"tenant_id mismatch in validate_claims: "
+                f"claims {mismatched} do not belong to tenant '{tenant_id}'"
+            )
+        return await self._validation.validate_claims(requests)
 
     # ---- Checkpoints ----
 
-    def get_checkpoints(self, run_id: str, tenant_id: str) -> List[HarnessCheckpoint]:
+    def get_checkpoints(self, run_id: str, tenant_id: str) -> list[HarnessCheckpoint]:
         """List checkpoints for a run."""
         return self._checkpoints.list_checkpoints_for_run(run_id, tenant_id)
 
@@ -271,9 +282,9 @@ class HarnessRegistry:
 
     def list_runs(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[HarnessRunStatus] = None,
-    ) -> List[HarnessRun]:
+        tenant_id: str | None = None,
+        status: HarnessRunStatus | None = None,
+    ) -> list[HarnessRun]:
         """List runs with optional filtering."""
         runs = list(self._runs.values())
         if tenant_id is not None:
@@ -288,4 +299,6 @@ class HarnessRegistry:
 
     @property
     def validation_available(self) -> bool:
-        return self._validation.is_available
+        """Sync property — returns True only if primary validator is configured.
+        Use await registry._validation.is_available() for a live health check."""
+        return self._validation._primary is not None

@@ -10,9 +10,9 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -163,25 +163,25 @@ class HarnessRun(BaseModel):
 
     id: str = Field(default_factory=lambda: f"run_{uuid.uuid4().hex[:16]}")
     tenant_id: str
-    account_id: Optional[str] = None
+    account_id: str | None = None
     workflow_type: HarnessWorkflowType
     initiated_by: InitiatedBy
     status: HarnessRunStatus = HarnessRunStatus.QUEUED
     current_state: HarnessState = HarnessState.INIT
-    value_pack_id: Optional[str] = None
+    value_pack_id: str | None = None
     trace_id: str = Field(default_factory=lambda: f"trace_{uuid.uuid4().hex[:16]}")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     def with_state(
         self,
         state: HarnessState,
-        status: Optional[HarnessRunStatus] = None,
+        status: HarnessRunStatus | None = None,
     ) -> Self:
         """Return a new run with updated state and timestamp."""
-        update: Dict[str, Any] = {
+        update: dict[str, Any] = {
             "current_state": state,
-            "updated_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(UTC),
         }
         if status is not None:
             update["status"] = status
@@ -210,7 +210,7 @@ class ToolCallRef(BaseModel):
     tool_contract_id: str
     invocation_id: str
     input_hash: str
-    output_hash: Optional[str] = None
+    output_hash: str | None = None
 
 
 class HarnessCheckpoint(BaseModel):
@@ -226,11 +226,11 @@ class HarnessCheckpoint(BaseModel):
     run_id: str
     tenant_id: str
     state_name: HarnessState
-    state_payload: Dict[str, Any] = Field(default_factory=dict)
+    state_payload: dict[str, Any] = Field(default_factory=dict)
     input_hash: str
-    output_hash: Optional[str] = None
-    tool_calls: List[ToolCallRef] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    output_hash: str | None = None
+    tool_calls: list[ToolCallRef] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @field_validator("run_id", "tenant_id")
     @classmethod
@@ -245,8 +245,8 @@ class HarnessCheckpoint(BaseModel):
         run_id: str,
         tenant_id: str,
         state_name: HarnessState,
-        state_payload: Dict[str, Any],
-        tool_calls: List[ToolCallRef],
+        state_payload: dict[str, Any],
+        tool_calls: list[ToolCallRef],
     ) -> str:
         """Deterministic hash over checkpoint contents."""
         canonical = json.dumps(
@@ -293,7 +293,7 @@ class ToolContract(BaseModel):
     risk_level: ToolRiskLevel
     requires_tenant_context: bool = True
     requires_account_context: bool = False
-    approval_policy_id: Optional[str] = None
+    approval_policy_id: str | None = None
 
     @field_validator("tool_id")
     @classmethod
@@ -325,10 +325,10 @@ class HumanGate(BaseModel):
     tenant_id: str
     gate_type: GateType
     status: GateStatus = GateStatus.PENDING
-    decision_by: Optional[str] = None
-    decision_reason: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    decided_at: Optional[datetime] = None
+    decision_by: str | None = None
+    decision_reason: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    decided_at: datetime | None = None
 
     @property
     def is_terminal(self) -> bool:
@@ -342,7 +342,7 @@ class HumanGate(BaseModel):
         self,
         new_status: GateStatus,
         decision_by: str,
-        decision_reason: Optional[str] = None,
+        decision_reason: str | None = None,
     ) -> Self:
         """Return a new gate with the decision applied."""
         if self.is_terminal and self.status != GateStatus.MODIFIED:
@@ -356,10 +356,10 @@ class HumanGate(BaseModel):
             GateStatus.EXPIRED,
         ):
             raise ValueError(f"Invalid gate decision status: {new_status}")
-        update: Dict[str, Any] = {
+        update: dict[str, Any] = {
             "status": new_status,
             "decision_by": decision_by,
-            "decided_at": datetime.now(timezone.utc),
+            "decided_at": datetime.now(UTC),
         }
         if decision_reason is not None:
             update["decision_reason"] = decision_reason
@@ -375,12 +375,12 @@ class ClaimValidationResult(BaseModel):
     tenant_id: str
     claim_id: str
     validation_state: ValidationState
-    evidence_refs: List[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0)
     trust_score: float = Field(ge=0.0, le=1.0)
     validator: Literal["agent", "human", "policy", "benchmark", "unavailable"]
     reason: str = ""
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class HarnessTraceEvent(BaseModel):
@@ -395,18 +395,18 @@ class HarnessTraceEvent(BaseModel):
     trace_id: str
     run_id: str
     tenant_id: str
-    account_id: Optional[str] = None
+    account_id: str | None = None
     workflow_type: HarnessWorkflowType
-    from_state: Optional[HarnessState] = None
-    to_state: Optional[HarnessState] = None
-    status: Optional[HarnessRunStatus] = None
-    value_pack_id: Optional[str] = None
-    validation_state: Optional[ValidationState] = None
-    human_gate_id: Optional[str] = None
-    tool_contract_id: Optional[str] = None
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    from_state: HarnessState | None = None
+    to_state: HarnessState | None = None
+    status: HarnessRunStatus | None = None
+    value_pack_id: str | None = None
+    validation_state: ValidationState | None = None
+    human_gate_id: str | None = None
+    tool_contract_id: str | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     event_type: str = "transition"
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("tenant_id", "trace_id", "run_id")
     @classmethod

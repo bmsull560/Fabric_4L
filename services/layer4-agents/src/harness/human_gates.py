@@ -9,10 +9,7 @@ Invariants:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
-
-from harness.models import GateStatus, GateType, HarnessTraceEvent, HumanGate, HarnessWorkflowType
+from harness.models import GateStatus, GateType, HarnessTraceEvent, HarnessWorkflowType, HumanGate
 
 
 class GateDecisionError(ValueError):
@@ -42,16 +39,16 @@ class HumanGateManager:
 
     def __init__(self) -> None:
         # Primary store: gate_id -> HumanGate
-        self._gates: Dict[str, HumanGate] = {}
+        self._gates: dict[str, HumanGate] = {}
         # Run index: run_id -> set(gate_id)
-        self._run_gates: Dict[str, set[str]] = {}
+        self._run_gates: dict[str, set[str]] = {}
 
     def create_gate(
         self,
         run_id: str,
         tenant_id: str,
         gate_type: GateType,
-    ) -> Tuple[HumanGate, HarnessTraceEvent]:
+    ) -> tuple[HumanGate, HarnessTraceEvent]:
         """Create a new pending human gate."""
         gate = HumanGate(
             run_id=run_id,
@@ -90,10 +87,10 @@ class HumanGateManager:
             )
         return gate
 
-    def list_gates_for_run(self, run_id: str, tenant_id: str) -> List[HumanGate]:
+    def list_gates_for_run(self, run_id: str, tenant_id: str) -> list[HumanGate]:
         """List all gates for a run, scoped to tenant."""
         gate_ids = self._run_gates.get(run_id, set())
-        gates: List[HumanGate] = []
+        gates: list[HumanGate] = []
         for gid in gate_ids:
             gate = self._gates.get(gid)
             if gate is not None and gate.tenant_id == tenant_id:
@@ -105,8 +102,8 @@ class HumanGateManager:
         gate_id: str,
         tenant_id: str,
         decision_by: str,
-        decision_reason: Optional[str] = None,
-    ) -> Tuple[HumanGate, HarnessTraceEvent]:
+        decision_reason: str | None = None,
+    ) -> tuple[HumanGate, HarnessTraceEvent]:
         """
         Approve a pending gate.
 
@@ -146,8 +143,8 @@ class HumanGateManager:
         gate_id: str,
         tenant_id: str,
         decision_by: str,
-        decision_reason: Optional[str] = None,
-    ) -> Tuple[HumanGate, HarnessTraceEvent]:
+        decision_reason: str | None = None,
+    ) -> tuple[HumanGate, HarnessTraceEvent]:
         """Reject a pending gate."""
         gate = self._get_gate_mutable(gate_id, tenant_id)
 
@@ -180,8 +177,8 @@ class HumanGateManager:
         gate_id: str,
         tenant_id: str,
         decision_by: str,
-        decision_reason: Optional[str] = None,
-    ) -> Tuple[HumanGate, HarnessTraceEvent]:
+        decision_reason: str | None = None,
+    ) -> tuple[HumanGate, HarnessTraceEvent]:
         """Mark a gate as modified (decision with changes)."""
         gate = self._get_gate_mutable(gate_id, tenant_id)
 
@@ -211,7 +208,7 @@ class HumanGateManager:
         self,
         gate_id: str,
         tenant_id: str,
-    ) -> Tuple[HumanGate, HarnessTraceEvent]:
+    ) -> tuple[HumanGate, HarnessTraceEvent]:
         """Expire a pending gate (system-initiated)."""
         gate = self._get_gate_mutable(gate_id, tenant_id)
 

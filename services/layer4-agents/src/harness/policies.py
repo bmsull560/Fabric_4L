@@ -11,8 +11,6 @@ Rules:
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from harness.models import (
     ClaimValidationResult,
     GateStatus,
@@ -95,8 +93,8 @@ def evaluate_tool_invocation_policy(
 
 def evaluate_transition_policy(
     run: HarnessRun,
-    validation_results: Optional[List[ClaimValidationResult]] = None,
-    human_gate: Optional[HumanGate] = None,
+    validation_results: list[ClaimValidationResult] | None = None,
+    human_gate: HumanGate | None = None,
     override_policy_allowed: bool = False,
 ) -> None:
     """
@@ -121,8 +119,8 @@ def evaluate_transition_policy(
 
 def can_publish_output(
     run: HarnessRun,
-    validation_results: Optional[List[ClaimValidationResult]] = None,
-    human_gate_decision: Optional[HumanGate] = None,
+    validation_results: list[ClaimValidationResult] | None = None,
+    human_gate_decision: HumanGate | None = None,
     override_policy: bool = False,
 ) -> bool:
     """
@@ -173,7 +171,7 @@ def can_publish_output(
 
 
 def requires_human_review(
-    validation_results: Optional[List[ClaimValidationResult]],
+    validation_results: list[ClaimValidationResult] | None,
 ) -> bool:
     """Return True if the validation results require human review before publishing."""
     if validation_results is None:

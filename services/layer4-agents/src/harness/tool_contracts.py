@@ -10,10 +10,7 @@ Invariants:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 from harness.models import ToolContract, ToolRiskLevel, ToolSideEffectClass
-from harness.policies import requires_approval
 
 
 class ToolRegistrationError(ValueError):
@@ -37,7 +34,7 @@ class ToolContractRegistry:
 
     def __init__(self) -> None:
         # Tenant-scoped index: tenant_id -> {tool_id -> ToolContract}
-        self._tools: Dict[str, Dict[str, ToolContract]] = {}
+        self._tools: dict[str, dict[str, ToolContract]] = {}
 
     def register_tool(self, tool: ToolContract, tenant_id: str) -> ToolContract:
         """
@@ -72,7 +69,7 @@ class ToolContractRegistry:
         tenant_tools[tool.tool_id] = tool
         return tool
 
-    def get_tool(self, tool_id: str, tenant_id: Optional[str] = None) -> ToolContract:
+    def get_tool(self, tool_id: str, tenant_id: str | None = None) -> ToolContract:
         """
         Retrieve a tool contract by ID.
 
@@ -95,10 +92,10 @@ class ToolContractRegistry:
 
     def list_tools(
         self,
-        tenant_id: Optional[str] = None,
-        layer: Optional[str] = None,
-        risk_level: Optional[ToolRiskLevel] = None,
-    ) -> List[ToolContract]:
+        tenant_id: str | None = None,
+        layer: str | None = None,
+        risk_level: ToolRiskLevel | None = None,
+    ) -> list[ToolContract]:
         """List tools, optionally filtered."""
         if tenant_id is not None:
             tools = list(self._tools.get(tenant_id, {}).values())
@@ -134,8 +131,6 @@ class ToolContractRegistry:
             ApprovalRequiredError: if approval required but not present.
         """
         from harness.policies import (
-            ApprovalRequiredError,
-            PolicyViolationError,
             evaluate_tool_invocation_policy,
         )
 

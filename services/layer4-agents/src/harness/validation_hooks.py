@@ -11,14 +11,9 @@ Rules:
 from __future__ import annotations
 
 import abc
-import random
-from datetime import datetime, timezone
-from typing import List, Optional
 
 from harness.models import (
     ClaimValidationResult,
-    HarnessTraceEvent,
-    HarnessWorkflowType,
     ValidationState,
 )
 
@@ -37,9 +32,9 @@ class ClaimValidationRequest:
         tenant_id: str,
         claim_id: str,
         claim_text: str,
-        evidence_refs: List[str],
-        value_pack_id: Optional[str] = None,
-        account_id: Optional[str] = None,
+        evidence_refs: list[str],
+        value_pack_id: str | None = None,
+        account_id: str | None = None,
     ) -> None:
         self.tenant_id = tenant_id
         self.claim_id = claim_id
@@ -60,7 +55,7 @@ class ClaimValidator(abc.ABC):
     """
 
     @abc.abstractmethod
-    def validate(
+    async def validate(
         self,
         request: ClaimValidationRequest,
     ) -> ClaimValidationResult:
@@ -73,7 +68,7 @@ class ClaimValidator(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def health(self) -> bool:
+    async def health(self) -> bool:
         """Return True if validator is healthy and available."""
         ...
 
@@ -86,7 +81,7 @@ class UnavailableValidator(ClaimValidator):
     This ensures claims cannot slip through without real validation.
     """
 
-    def validate(
+    async def validate(
         self,
         request: ClaimValidationRequest,
     ) -> ClaimValidationResult:
@@ -101,7 +96,7 @@ class UnavailableValidator(ClaimValidator):
             reason="L5 validation service unavailable — claim requires review",
         )
 
-    def health(self) -> bool:
+    async def health(self) -> bool:
         return False
 
 
@@ -121,7 +116,7 @@ class MockValidator(ClaimValidator):
         """Pre-configure a result for a specific claim."""
         self._results[claim_id] = state
 
-    def validate(
+    async def validate(
         self,
         request: ClaimValidationRequest,
     ) -> ClaimValidationResult:
@@ -140,7 +135,7 @@ class MockValidator(ClaimValidator):
             reason=f"Mock validation result: {state.value}",
         )
 
-    def health(self) -> bool:
+    async def health(self) -> bool:
         return True
 
 
@@ -153,16 +148,16 @@ class ValidationHook:
 
     def __init__(
         self,
-        primary_validator: Optional[ClaimValidator] = None,
-        fallback_validator: Optional[ClaimValidator] = None,
+        primary_validator: ClaimValidator | None = None,
+        fallback_validator: ClaimValidator | None = None,
     ) -> None:
         self._primary = primary_validator
         self._fallback = fallback_validator or UnavailableValidator()
 
-    def validate_claims(
+    async def validate_claims(
         self,
-        requests: List[ClaimValidationRequest],
-    ) -> List[ClaimValidationResult]:
+        requests: list[ClaimValidationRequest],
+    ) -> list[ClaimValidationResult]:
         """
         Validate multiple claims.
 
@@ -171,18 +166,24 @@ class ValidationHook:
           2. If primary is unhealthy, use fallback (which never approves).
           3. Return results for all claims.
         """
-        validator = self._primary if (self._primary and self._primary.health()) else self._fallback
-        return [validator.validate(req) for req in requests]
+        primary_healthy = self._primary is not None and await self._primary.health()
+        validator = self._primary if primary_healthy else self._fallback
+        results = []
+        for req in requests:
+            results.append(await validator.validate(req))
+        return results
 
-    def validate_single(
+    async def validate_single(
         self,
         request: ClaimValidationRequest,
     ) -> ClaimValidationResult:
         """Validate a single claim."""
-        validator = self._primary if (self._primary and self._primary.health()) else self._fallback
-        return validator.validate(request)
+        primary_healthy = self._primary is not None and await self._primary.health()
+        validator = self._primary if primary_healthy else self._fallback
+        return await validator.validate(request)
 
-    @property
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """True if the primary validator is healthy."""
-        return self._primary is not None and self._primary.health()
+        if self._primary is None:
+            return False
+        return await self._primary.health()

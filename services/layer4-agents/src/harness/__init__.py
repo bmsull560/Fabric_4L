@@ -24,46 +24,52 @@ Invariants:
   - Unavailable L5 validation routes to needs_review — never silently approves.
 """
 
-from harness.models import (
-    HarnessRun,
-    HarnessCheckpoint,
-    ToolContract,
-    HumanGate,
-    ClaimValidationResult,
-    HarnessTraceEvent,
-    HarnessWorkflowType,
-    HarnessRunStatus,
-    HarnessState,
-    ToolLayer,
-    ToolSideEffectClass,
-    ToolRiskLevel,
-    GateType,
-    GateStatus,
-    ValidationState,
-    InitiatedBy,
-)
-from harness.state_machine import StateMachine, TransitionError, TerminalStateError, ValidationRequiredError
-from harness.policies import (
-    requires_approval,
-    can_publish_output,
-    evaluate_transition_policy,
-    evaluate_tool_invocation_policy,
-    ApprovalRequiredError,
-    PublicationBlockedError,
-)
-from harness.tool_contracts import (
-    ToolContractRegistry,
-    ToolRegistrationError,
-    ToolNotFoundError,
-)
+from harness.checkpoints import CheckpointError, CheckpointManager
 from harness.human_gates import (
-    HumanGateManager,
     GateDecisionError,
     GateExpiredError,
     GateNotFoundError,
+    HumanGateManager,
 )
-from harness.checkpoints import CheckpointManager, CheckpointError
+from harness.models import (
+    ClaimValidationResult,
+    GateStatus,
+    GateType,
+    HarnessCheckpoint,
+    HarnessRun,
+    HarnessRunStatus,
+    HarnessState,
+    HarnessTraceEvent,
+    HarnessWorkflowType,
+    HumanGate,
+    InitiatedBy,
+    ToolContract,
+    ToolLayer,
+    ToolRiskLevel,
+    ToolSideEffectClass,
+    ValidationState,
+)
+from harness.policies import (
+    ApprovalRequiredError,
+    PublicationBlockedError,
+    can_publish_output,
+    evaluate_tool_invocation_policy,
+    evaluate_transition_policy,
+    requires_approval,
+)
+from harness.registry import HarnessRegistry, HarnessRegistryError
+from harness.state_machine import (
+    StateMachine,
+    TerminalStateError,
+    TransitionError,
+    ValidationRequiredError,
+)
 from harness.telemetry import TelemetryEmitter
+from harness.tool_contracts import (
+    ToolContractRegistry,
+    ToolNotFoundError,
+    ToolRegistrationError,
+)
 from harness.validation_hooks import (
     ClaimValidationRequest,
     ClaimValidator,
@@ -72,7 +78,30 @@ from harness.validation_hooks import (
     ValidationHook,
     ValidationUnavailableError,
 )
-from harness.registry import HarnessRegistry, HarnessRegistryError
+
+
+def __getattr__(name: str):  # noqa: N807
+    """Lazy imports for SQL-backed stores and factory — avoids pulling in
+    SQLAlchemy ORM models at harness import time (keeps standalone tests fast)."""
+    _sql = {
+        "SqlCheckpointManager",
+        "SqlHarnessRegistry",
+        "SqlHumanGateManager",
+        "SqlTelemetryEmitter",
+        "SqlToolContractRegistry",
+    }
+    _factory = {"make_in_memory_registry", "make_sql_registry", "make_live_l5_registry"}
+    _l5 = {"LiveL5Validator"}
+    if name in _sql:
+        from harness import sql_stores as _m
+        return getattr(_m, name)
+    if name in _factory:
+        from harness import factory as _m
+        return getattr(_m, name)
+    if name in _l5:
+        from harness import live_l5_validator as _m
+        return getattr(_m, name)
+    raise AttributeError(f"module 'harness' has no attribute {name!r}")
 
 __all__ = [
     # Models
@@ -128,4 +157,16 @@ __all__ = [
     # Registry
     "HarnessRegistry",
     "HarnessRegistryError",
+    # SQL-backed stores
+    "SqlCheckpointManager",
+    "SqlHarnessRegistry",
+    "SqlHumanGateManager",
+    "SqlTelemetryEmitter",
+    "SqlToolContractRegistry",
+    # Factory
+    "make_in_memory_registry",
+    "make_sql_registry",
+    "make_live_l5_registry",
+    # Live L5 validator
+    "LiveL5Validator",
 ]
