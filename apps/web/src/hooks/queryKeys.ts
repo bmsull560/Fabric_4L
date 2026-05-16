@@ -213,6 +213,17 @@ export const QK = {
     detail: (id: string) => ["workflows", "detail", id] as const,
   },
 
+  harness: {
+    layerTag: QUERY_LAYER_TAGS.layer4,
+    all: ["harness"] as const,
+    runs: (filters: { status?: string; workflow_type?: string; limit?: number; offset?: number }) =>
+      ["harness", "runs", stableKey(filters)] as const,
+    run: (id: string) => ["harness", "run", id] as const,
+    checkpoints: (runId: string) => ["harness", "checkpoints", runId] as const,
+    gates: (runId: string) => ["harness", "gates", runId] as const,
+    health: () => ["harness", "health"] as const,
+  },
+
   businessCases: {
     layerTag: QUERY_LAYER_TAGS.layer4,
     all: ["business-cases"] as const,
