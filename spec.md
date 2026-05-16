@@ -1,424 +1,310 @@
-# Harness UI — Regression Coverage Complete; Production Signoff
-
-## Classification
-
-**Harness UI regression coverage complete; production signoff pending Node 22 TypeScript verification.**
+# Spec: Harness UI — Playwright E2E Coverage
 
 ## Status
-Confirmed — ready for implementation
-
----
-
-## Current State
-
-All harness integration work is complete and committed on `feat/harness-live-l5-validator`. The following was delivered:
-
-- `services/layer4-agents/src/harness/api_models.py` — Pydantic request/response models
-- `services/layer4-agents/src/api/routes/harness.py` — 12 FastAPI endpoints
-- `services/layer4-agents/src/api/routers.py` — harness router registered at `/v1`
-- `apps/web/src/api/harness.ts` — TypeScript types and `harnessApi` client
-- `apps/web/src/hooks/useHarness.ts` — TanStack Query hooks with polling
-- `apps/web/src/hooks/queryKeys.ts` — `QK.harness.*` key group
-- `apps/web/src/components/HarnessRunDetail.tsx` — Sheet with state progress, gates, checkpoints
-- `apps/web/src/pages/AgentWorkflows.tsx` — "Harness Runs" tab, updated KPI card
-- `services/layer4-agents/config/harness.runtime.yaml` — per-workflow-type runtime config
-- `services/layer4-agents/config/harness.service.yaml` — service deployment config
-- `docs/architecture/harness-agent-integration.md` — architecture doc with API reference
-- `services/layer4-agents/docs/harness-runbook.md` — operator runbook
-- `scripts/generate_harness_docs.py` — validation script (`--check` / `--fix` modes)
-- `Makefile` — `docs-harness` target wired into `make verify`
-
-Two bugs were found and fixed during regression testing:
-
-1. **`useHarness.ts`**: `POLL_INTERVALS` was imported from `./useApiShared` (does not export it). Fixed to import from `./usePolling`.
-2. **`AgentWorkflows.tsx`**: Harness `DataTable` passed `headers={...}` instead of `columns={...}`. Fixed to `columns={...}`.
-
-Two regression test files were added:
-
-- `apps/web/src/hooks/useHarness.test.ts` — 15 tests (import smoke, layer key, path, polling guards, mutation call signatures)
-- `apps/web/src/pages/AgentWorkflows.harness.test.tsx` — 8 tests (tab render, empty/loading/error states, View opens sheet, Cancel calls transition mutation)
-
----
+Draft — pending user confirmation
 
 ## Problem Statement
 
-TypeScript verification (`pnpm tsc --noEmit`) could not be confirmed in the session environment (Node 20, project requires ≥22). The `tsc` binary was run directly from `node_modules` and produced **zero harness-related errors** — all errors are pre-existing in unrelated files (`useValueSignals.ts`, `TargetsAdmin.*`, `valueSignal.ts`). Production signoff requires confirming this in a proper Node ≥22 environment and fixing any harness-specific errors that surface.
+The backend harness domain (`services/layer4-agents/src/harness/`) defines `HarnessRun`, `HarnessCheckpoint`, `HumanGate`, and `ClaimValidationResult` models with a full state machine. However:
+
+1. **No frontend UI exists** for harness runs. `AgentWorkflows` (`/context/agents`) has no "Harness Runs" tab, no `HarnessRunDetail` component, and no `useHarnessRuns` hook.
+2. **No API routes are registered** for `/v1/harness/*` in `services/layer4-agents/src/api/routers.py`.
+3. **No E2E coverage** exists for any harness-specific flow.
+
+This spec defines the Playwright E2E test suite to be written **TDD-first** to drive and regression-protect the Harness UI implementation. Tests are expected to fail until the UI is wired.
+
+---
+
+## Scope
+
+### In scope
+- `apps/web/e2e/contracts/harness-runs.spec.ts` — mocked contract tests (primary deliverable)
+- `apps/web/e2e/journeys/j25-harness-run-lifecycle.spec.ts` — backend-integrated smoke spec (optional, tagged `@backend`)
+- `apps/web/e2e/pages/AgentWorkflowsPage.ts` — page object for the AgentWorkflows page (Harness Runs tab)
+- `apps/web/e2e/pages/HarnessRunDetailPage.ts` — page object for the HarnessRunDetail panel
+- Fixture data for `HarnessRun`, `HarnessCheckpoint`, `HumanGate`, and `ClaimValidationResult`
+
+### Out of scope
+- Implementing the frontend components (`HarnessRunDetail`, `useHarnessRuns`, etc.)
+- Implementing the backend API routes (`/v1/harness/*`)
+- Modifying existing E2E specs
+- Auth/session lifecycle tests (covered by `j0-auth-session.spec.ts`)
+- Broad governance tests unrelated to harness runs
+
+---
+
+## Existing Infrastructure to Reuse
+
+| Asset | Path | Usage |
+|---|---|---|
+| Contract test base | `e2e/fixtures/contract-test.ts` | Base `test` fixture with API harness auto-installed |
+| Journey fixture | `e2e/helpers/journey-fixture.ts` | `journeyTest`, `authedPage`, `addMocks` |
+| API harness | `e2e/helpers/api-harness.ts` | `MockEndpoint`, `installApiHarness`, `isLiveMode` |
+| Auth helpers | `e2e/fixtures/auth-helpers.ts` | `seedAuthState`, `clearAuthState` |
+| Tier helpers | `e2e/fixtures/tier-helpers.ts` | `setUserTier`, `clearUserTier` |
+| Account helpers | `e2e/fixtures/account-helpers.ts` | `setSelectedAccount`, `TEST_ACCOUNTS` |
+| Existing page objects | `e2e/pages/` | `AppShellPage` for navigation |
+| Playwright config | `apps/web/playwright.config.ts` | `contracts` project (Chromium, mocked) |
+| Run command | `pnpm test:e2e:contracts` | Runs the `contracts` project |
+
+---
+
+## API Contract Assumptions
+
+The following API routes are assumed to be implemented (or mocked) before tests pass:
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/agents/harness/runs` | List harness runs (paginated) |
+| `GET` | `/api/v1/agents/harness/runs/:runId` | Get single run detail |
+| `GET` | `/api/v1/agents/harness/runs/:runId/checkpoints` | List checkpoints for a run |
+| `GET` | `/api/v1/agents/harness/runs/:runId/gates` | List human gates for a run |
+| `POST` | `/api/v1/agents/harness/gates/:gateId/decide` | Approve or reject a gate (gate-scoped, not run-scoped) |
+
+These paths follow the existing `l4` prefix convention (`/agents` → Layer 4).
+
+---
+
+## Fixture Data Shapes
+
+Derived from `services/layer4-agents/src/harness/models.py`.
+
+### `HarnessRun` fixture
+```typescript
+{
+  id: "run_abc123",
+  tenant_id: "tenant-test-001",
+  account_id: "acct-meridian-001",
+  workflow_type: "business_case_generation",
+  initiated_by: "user",
+  status: "running",           // "queued" | "running" | "waiting_for_human" | "failed" | "completed" | "cancelled"
+  current_state: "VALIDATE_CLAIMS", // HarnessState enum value
+  trace_id: "trace_xyz789",
+  created_at: "2025-01-15T10:00:00Z",
+  updated_at: "2025-01-15T10:05:00Z"
+}
+```
+
+### `HarnessCheckpoint` fixture
+```typescript
+{
+  id: "chk_001",
+  run_id: "run_abc123",
+  tenant_id: "tenant-test-001",
+  state_name: "GENERATE_HYPOTHESES",
+  state_payload: { hypotheses_count: 4 },
+  input_hash: "abc123def456",
+  output_hash: "789xyz012",
+  tool_calls: [],
+  created_at: "2025-01-15T10:02:00Z"
+}
+```
+
+### `HumanGate` fixture (pending)
+```typescript
+{
+  id: "gate_001",
+  run_id: "run_abc123",
+  tenant_id: "tenant-test-001",
+  gate_type: "approve_claims",
+  status: "pending",           // "pending" | "approved" | "rejected" | "modified" | "expired"
+  decision_by: null,
+  decision_reason: null,
+  created_at: "2025-01-15T10:04:00Z",
+  decided_at: null
+}
+```
+
+### `ClaimValidationResult` fixture
+```typescript
+{
+  id: "cvr_001",
+  tenant_id: "tenant-test-001",
+  claim_id: "claim_001",
+  validation_state: "needs_review",  // "passed" | "failed" | "needs_review" | "insufficient_evidence"
+  evidence_refs: ["ev_001"],
+  confidence: 0.72,
+  trust_score: 0.68,
+  validator: "agent",
+  reason: "Confidence below threshold",
+  created_at: "2025-01-15T10:03:00Z"
+}
+```
 
 ---
 
 ## Requirements
 
-### 1. TypeScript Verification
+### R1 — AgentWorkflows Harness Runs Tab
 
-**Accepted approach (confirmed):** TypeScript verification is complete via `node_modules/.bin/tsc --noEmit` run under Node 20. This is accepted because:
+- `AgentWorkflows` at `/context/agents` must render a "Harness Runs" tab alongside the existing "Workflow Dashboard", "Whitespace Analysis", and "Business Cases" tabs.
+- The tab must be visible to users with `advanced` or `admin` tier.
+- Selecting the tab must render the harness runs list.
 
-1. `node_modules/.bin/tsc --noEmit` ran successfully
-2. It produced zero harness-related errors
-3. Harness-specific unit and page tests passed
-4. The prior blocker was inability to run TypeScript at all — that blocker is resolved
-5. Node 20 vs project-required Node ≥22 is an environment caveat, not a harness implementation failure
+### R2 — Harness Runs List
 
-**Final report must state:**
-- TypeScript: passed via `node_modules/.bin/tsc --noEmit`
-- Harness-related TypeScript errors: 0
-- Environment caveat: run under Node 20; project package policy expects Node ≥22
-- Recommended CI confirmation: re-run under Node ≥22 in normal CI/dev environment
+- The list must fetch from `GET /api/v1/agents/harness/runs`.
+- Each row must display: run ID, workflow type, status badge, current state, and created date.
+- Status badges must use the existing `StatusBadge` primitive.
+- Loading, empty, and error states must use the existing `QueryState` component.
 
-**If a Node ≥22 run later reveals harness-specific errors**, the fix scope is:
+### R3 — Run Selection → HarnessRunDetail
 
-- Harness files directly changed or added: `harness.ts`, `useHarness.ts`, `HarnessRunDetail.tsx`, `AgentWorkflows.tsx`, harness tests
-- Shared types/utilities **only** where harness integration exposed or broke an existing contract: query key types, `DataTable` prop typing, API client layer/path typing, shared polling constants/types, shared test fixtures used by harness tests
-- Do not broaden into unrelated app-wide TypeScript cleanup
-- Do not revert harness changes unless errors reveal a fundamental integration mistake that cannot be fixed surgically
-- If shared types are touched, the final report must explain: which harness usage required the change, why it is backward-compatible, which existing tests confirm no regression
+- Clicking a run row must open a `HarnessRunDetail` panel (right-rail drawer, consistent with `WorkflowDetail`).
+- The detail panel must display: run ID, trace ID, workflow type, status, current state.
 
-### 2. Bug Fix Preservation
+### R4 — State Timeline / Checkpoints
 
-The following fixes must remain intact:
+- The detail panel must render a timeline of `HarnessCheckpoint` records fetched from `GET /api/v1/agents/harness/runs/:runId/checkpoints`.
+- Each checkpoint must show: state name, created timestamp, and input hash (truncated).
+- The timeline must be ordered chronologically (oldest first).
 
-| File | Fix |
-|---|---|
-| `apps/web/src/hooks/useHarness.ts` | `POLL_INTERVALS` imported from `./usePolling`, not `./useApiShared` |
-| `apps/web/src/pages/AgentWorkflows.tsx` | Harness `DataTable` uses `columns={...}`, not `headers={...}` |
+### R5 — Human Gates
 
-### 3. Test Preservation
+- When a run has `status: "waiting_for_human"`, the detail panel must fetch gates from `GET /api/v1/agents/harness/runs/:runId/gates`.
+- Pending gates must render an approve button and a reject button.
+- Terminal gates (approved/rejected/expired) must render as read-only with their decision status.
 
-The following test files must remain and continue to pass:
+### R6 — Approve / Reject Actions
 
-| File | Tests |
-|---|---|
-| `apps/web/src/hooks/useHarness.test.ts` | 15 tests |
-| `apps/web/src/pages/AgentWorkflows.harness.test.tsx` | 8 tests |
+- Clicking "Approve" must call `POST /api/v1/agents/harness/gates/:gateId/decide` with `{ status: "approved", decision_reason?: string, human_override: false }`.
+- Clicking "Reject" must call the same endpoint with `{ status: "rejected", decision_reason?: string, human_override: false }`.
+- `decision_by` is **not** sent by the client — it is derived server-side from the authenticated user context.
+- After a successful decision, the gate status must update in the UI (optimistic update or refetch).
+- Buttons must be disabled while the mutation is pending.
 
-### 4. No Mock State (confirm unchanged)
+### R7 — Polling Behaviour
 
-- All harness data flows through `harnessApi` → `apiClient` → real `/v1/harness/*` endpoints
-- Gate approve/reject calls `useDecideGate` → `harnessApi.decideGate`
-- Polling stops when `isTerminalState(run.current_state)` returns true
-- Pending gates poll at `POLL_INTERVALS.workflows` (5 s) and stop when no pending gates remain
+- Non-terminal runs (`status` not in `completed | failed | cancelled`) must poll the run detail at `POLL_INTERVALS.workflows` (5 s).
+- Terminal runs must not poll (no `refetchInterval`).
+- The polling pattern must follow `useActiveWorkflows` as the reference implementation.
+
+### R8 — Empty / Loading / Error States
+
+- Loading: skeleton or spinner consistent with `QueryState` loading pattern.
+- Empty: "No harness runs found." message with sub-message.
+- Error: error message consistent with `QueryState` error pattern.
+- All three states must be testable via mocked API responses.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `pnpm tsc --noEmit` run in Node ≥22 environment
-- [ ] Zero TypeScript errors attributable to harness files
-- [ ] Pre-existing TypeScript errors documented and left untouched
-- [ ] `useHarness.test.ts`: 15/15 passing
-- [ ] `AgentWorkflows.harness.test.tsx`: 8/8 passing
-- [ ] `make docs-harness` exits 0
-- [ ] Both bug fixes confirmed present in final state
-
----
-
-## Implementation Steps
-
-1. Run `pnpm tsc --noEmit` in a Node ≥22 environment
-2. Triage errors: separate harness-introduced from pre-existing
-3. Fix harness-introduced errors only (if any)
-4. Re-run harness tests to confirm fixes did not break coverage
-5. Re-run `make docs-harness` to confirm doc validation still passes
-6. Produce final verification report
-
----
-
-## Final Verification Report Template
-
-```
-## Harness UI — Final Verification Report
-
-### Bug Fixes (preserved)
-- useHarness.ts: POLL_INTERVALS from ./usePolling ✅
-- AgentWorkflows.tsx: DataTable columns= prop ✅
-
-### Harness-specific tests
-- useHarness.test.ts: 15/15 ✅
-- AgentWorkflows.harness.test.tsx: 8/8 ✅
-
-### Broader suite baseline (pre-existing, not caused by harness work)
-- Baseline before harness work: 19 test files failing / 122 tests failing
-- After harness work: 16 test files failing / 100 tests failing (net improvement from DataTable bug fix)
-- Harness-introduced regressions: 0
-
-### TypeScript verification
-- Command: node_modules/.bin/tsc --noEmit
-- Harness-related errors: 0
-- Pre-existing errors (not touched): useValueSignals.ts, TargetsAdmin.*, valueSignal.ts
-- Environment: Node 20 (project requires ≥22 — environment caveat, not a harness failure)
-- Result: PASSED
-- Recommended CI confirmation: re-run under Node ≥22
-
-### make docs-harness
-- Result: all checks passed ✅
-
-### Production signoff
-- Frontend Harness UI verification: COMPLETE
-- Classification: Harness UI regression coverage complete; production signoff pending Node ≥22 CI confirmation
-```
-
----
-
-## Out of Scope
-
-- Fixing pre-existing TypeScript errors in `useValueSignals.ts`, `TargetsAdmin.*`, `valueSignal.ts`
-- Cleaning the broader test suite baseline (100 pre-existing failures)
-- Any new harness features or UI changes
-
----
-
-## [ARCHIVED] Original Implementation Spec
-
-The sections below are the original implementation spec, preserved for reference. All items were completed.
-
-### 1. Backend — FastAPI Harness Routes
-
-Create `services/layer4-agents/src/api/routes/harness.py` and register it in `src/api/routers.py` under prefix `/v1`.
-
-**Run management:**
-- `POST   /v1/harness/runs` — create a new `HarnessRun`
-- `GET    /v1/harness/runs` — list runs for authenticated tenant (filterable by `status`, `workflow_type`)
-- `GET    /v1/harness/runs/{run_id}` — get a single run
-- `POST   /v1/harness/runs/{run_id}/transition` — advance state machine (`to_state`, optional `validation_results`, `human_override`, `state_payload`)
-- `DELETE /v1/harness/runs/{run_id}` — cancel/archive a run
-
-**Checkpoints:**
-- `GET    /v1/harness/runs/{run_id}/checkpoints` — list checkpoints for a run
-- `GET    /v1/harness/runs/{run_id}/checkpoints/latest` — get latest checkpoint
-
-**Human gates:**
-- `GET    /v1/harness/runs/{run_id}/gates` — list gates for a run
-- `POST   /v1/harness/runs/{run_id}/gates` — create a gate (`gate_type`)
-- `POST   /v1/harness/gates/{gate_id}/decide` — approve / reject / modify / expire a gate
-
-**Validation:**
-- `POST   /v1/harness/runs/{run_id}/validate` — validate claims for a run (delegates to `ValidationHook`)
-
-**Health:**
-- `GET    /v1/harness/health` — returns `validation_available`, `l5_healthy`, `db_healthy`
-
-**Constraints:**
-- All routes must extract `tenant_id` from authenticated context (never from request body).
-- All routes must use `make_live_l5_registry` (or `make_sql_registry` when L5 is not configured) injected via FastAPI dependency.
-- Error responses must follow the existing error shape used by `/v1/workflows/*`.
-- All Pydantic request/response models must live in `src/harness/api_models.py` (new file).
-
-### 2. OpenAPI Contract Update
-
-After routes are registered, regenerate `contracts/openapi/layer4-agents.json` via `make contracts`. The harness paths must appear in the contract. The frontend generated client (`apps/web/src/api/generated/l4/`) must be regenerated via `make contract-freshness`.
-
-### 3. Frontend — TypeScript API Client
-
-Create `apps/web/src/api/harness.ts`:
-- TypeScript types mirroring `HarnessRun`, `HarnessCheckpoint`, `HumanGate`, `ClaimValidationResult`, `HarnessState`, `HarnessRunStatus`, `GateStatus`, `GateType`, `ValidationState`
-- `harnessApi` object with typed functions for each route group (runs, checkpoints, gates, validate, health)
-- Follows the existing pattern in `apps/web/src/api/workflows.ts`
-
-### 4. Frontend — React Query Hooks
-
-Create `apps/web/src/hooks/useHarness.ts`:
-- `useHarnessRuns({ status?, workflow_type?, limit, offset })` — paginated list
-- `useHarnessRun(runId)` — single run with polling when status is non-terminal
-- `useHarnessCheckpoints(runId)` — checkpoint list
-- `useHarnessGates(runId)` — gate list
-- `useCreateHarnessRun()` — mutation
-- `useTransitionHarnessRun()` — mutation (advance state)
-- `useDecideGate()` — mutation (approve/reject/modify/expire)
-- `useValidateHarnessClaims()` — mutation
-- Follows the existing patterns in `apps/web/src/hooks/useWorkflows.ts` (TanStack Query, `QK` query keys, `STALE_TIME`, `POLL_INTERVALS`)
-
-### 5. Frontend — AgentWorkflows.tsx Extension
-
-Extend `apps/web/src/pages/AgentWorkflows.tsx` to add a **"Harness Runs"** tab alongside the existing "Workflow Dashboard", "Whitespace Analysis", and "Business Cases" tabs.
-
-The Harness Runs tab must display:
-- A paginated list of harness runs (run ID, workflow type, current state, status badge, created at)
-- Per-run inline actions: **Resume** (transition to next state), **Retry** (re-enter failed state), **Cancel** (transition to CANCELLED)
-- A **View** button that opens a `HarnessRunDetail` sheet showing:
-  - Run metadata (ID, tenant, workflow type, initiated by, trace ID)
-  - Current state and status with visual state machine progress
-  - Checkpoint list (state name, created at, input hash)
-  - Human gate list (gate type, status, decision by, decision reason) with **Approve** / **Reject** actions for `PENDING` gates
-  - Validation outcomes (claim ID, state, confidence, validator, reason)
-  - Available control actions based on current state
-
-**Constraints:**
-- Preserve existing page structure, `PageHeader`, `Tabs`, `SectionCard`, `DataTable`, `StatusBadge`, `QueryState` primitives from `WfPrimitives`
-- Do not introduce new UI libraries
-- Add loading, empty, and error states consistent with existing patterns
-- The "Human-in-Loop Pending" KPI card on the dashboard tab should count pending harness gates in addition to workflow pending count
-
-### 6. YAML Configuration Files
-
-#### `services/layer4-agents/config/harness.runtime.yaml`
-
-Agent/workflow runtime configuration. Must include:
-- `schema_version`
-- Per-workflow-type sections (`roi_calculator`, `whitespace_analysis`, `business_case`, `orchestrator`) each with:
-  - `allowed_tools` list
-  - `denied_tools` list
-  - `budget`: `max_steps`, `max_retries`, `timeout_seconds`, `max_cost_usd`
-  - `invariants`: `require_human_approval` (list of states), `max_tool_calls_per_run`
-  - `validation`: `require_l5_validation` (bool), `stale_threshold_hours`
-  - `checkpointing`: `enabled` (bool), `checkpoint_on_states` (list)
-  - `failure_policy`: `on_l5_unavailable` (`degrade` | `block`), `on_gate_timeout` (`expire` | `block`)
-  - `audit`: `emit_trace_events` (bool), `log_level`
-- References to corresponding `.abom.json` manifests in `services/layer4-agents/manifests/`
-
-#### `services/layer4-agents/config/harness.service.yaml`
-
-Service deployment configuration. Must include:
-- `schema_version`
-- `service`: name, version, port
-- `database`: pool size, timeout, migration auto-run
-- `l5_integration`: base_url env var, service_token env var, stale_threshold_hours, health_check_interval_seconds
-- `queue`: concurrency, max_retries, retry_backoff_seconds
-- `timeouts`: default_run_timeout_seconds, gate_decision_timeout_seconds
-- `feature_flags`: `harness_enabled`, `live_l5_validation_enabled`, `sql_registry_enabled`
-- `observability`: log_level, trace_sampling_rate, emit_metrics
-- `security`: require_tenant_context, validate_claim_tenant_on_submit
-- `health`: readiness_checks list
-
-### 7. Documentation
-
-#### `docs/architecture/harness-agent-integration.md` (new file)
-
-Architecture-level document covering:
-- Harness purpose and role in the six-layer pipeline
-- Relationship to LangGraph workflows and existing `/v1/workflows/*` surface
-- Key concepts: runs, state machine, transitions, checkpoints, human gates, validation hook, LiveL5Validator
-- Data flow diagram (text/ASCII): UI → API → SqlHarnessRegistry → L5 → UI
-- Tenant isolation model
-- Security and RBAC notes
-- Extension points (custom validators, new workflow types, pack integration)
-
-#### `services/layer4-agents/docs/harness-runbook.md` (new file)
-
-Operator/developer runbook covering:
-- Setup and environment variables (`L5_BASE_URL`, `L5_SERVICE_TOKEN`, `DATABASE_URL`)
-- Factory selection: `make_in_memory_registry` vs `make_sql_registry` vs `make_live_l5_registry`
-- API reference: all `/v1/harness/*` endpoints with method, path, request schema, response schema, status codes, and example payloads
-- Common workflows: create run → transition → validate → gate → complete
-- Human gate lifecycle: create → pending → approve/reject → effect on run
-- Validation outcomes: state mapping table, staleness behavior, fallback behavior
-- Checkpoint usage: deterministic hashing, replay, verify_payload_unchanged
-- Failure modes: L5 unavailable, gate timeout, state machine violation, tenant mismatch
-- Recovery procedures: how to resume a stuck run, how to expire a stale gate
-- Observability: trace events, structured logs, metrics emitted
-- Testing guidance: unit (MockValidator), integration (SQLite), contract, E2E expectations
-- Known limitations and future extension points
-
-### 8. Generation and Validation Script
-
-#### `scripts/generate_harness_docs.py`
-
-A Python script that:
-1. **Validates** required documentation files exist and are non-empty:
-   - `docs/architecture/harness-agent-integration.md`
-   - `services/layer4-agents/docs/harness-runbook.md`
-2. **Validates** required YAML config files exist, are syntactically valid YAML, and contain required top-level keys:
-   - `services/layer4-agents/config/harness.runtime.yaml` — required keys: `schema_version`, `workflows`
-   - `services/layer4-agents/config/harness.service.yaml` — required keys: `schema_version`, `service`, `l5_integration`, `feature_flags`
-3. **Generates** a Markdown table of all harness API endpoints (method, path, summary) by introspecting the FastAPI router from `src/api/routes/harness.py` and writes it to `services/layer4-agents/docs/harness-api-table.md`
-4. **In `--check` mode** (default for CI): compares the generated endpoint table against the committed file and fails with a diff if stale
-5. **In `--fix` mode**: overwrites the committed file with the freshly generated output
-6. Exits non-zero with clear, actionable error messages on any failure
-
-#### Makefile target
-
-```makefile
-.PHONY: docs-harness
-docs-harness: ## Validate harness docs and config; regenerate API table
-	python scripts/generate_harness_docs.py --check
-```
-
-Wire `docs-harness` into the existing `verify` target by appending it to the `verify` recipe dependencies.
-
----
-
-## Acceptance Criteria
-
-### Backend
-- [ ] `GET /v1/harness/runs` returns 200 with paginated run list scoped to authenticated tenant
-- [ ] `POST /v1/harness/runs/{run_id}/transition` advances state and returns updated run + trace event
-- [ ] `POST /v1/harness/gates/{gate_id}/decide` with `approved` transitions gate and is reflected in run
-- [ ] `POST /v1/harness/runs/{run_id}/validate` returns `ClaimValidationResult` list
-- [ ] All routes return 403/404 (not 500) on tenant mismatch or missing resource
-- [ ] Harness paths appear in `contracts/openapi/layer4-agents.json` after `make contracts`
-
-### Frontend
-- [ ] "Harness Runs" tab is visible on `AgentWorkflows.tsx` and renders paginated run list
-- [ ] Run detail sheet shows checkpoints, gates, and validation outcomes
-- [ ] Approve/Reject gate actions call the API and optimistically update the UI
-- [ ] Resume/Retry/Cancel actions call the correct transition endpoint
-- [ ] Loading, empty, and error states are present and consistent with existing page patterns
-- [ ] No new UI libraries introduced
-
-### YAML Config
-- [ ] `harness.runtime.yaml` is syntactically valid and contains all required sections
-- [ ] `harness.service.yaml` is syntactically valid and contains all required sections
-- [ ] Both files are committed to `services/layer4-agents/config/`
-
-### Documentation
-- [ ] `docs/architecture/harness-agent-integration.md` covers all required sections
-- [ ] `services/layer4-agents/docs/harness-runbook.md` covers all required sections including full API reference
-- [ ] `services/layer4-agents/docs/harness-api-table.md` is generated and committed
-
-### Automation
-- [ ] `python scripts/generate_harness_docs.py --check` exits 0 when all files are present and current
-- [ ] `python scripts/generate_harness_docs.py --check` exits non-zero with actionable message when a file is missing or stale
-- [ ] `make docs-harness` invokes the script successfully
-- [ ] `make verify` includes `docs-harness` and fails if harness docs/config are missing or stale
-
----
-
-## Implementation Order
-
-1. **`src/harness/api_models.py`** — Pydantic request/response models for all harness routes
-2. **`src/api/routes/harness.py`** — FastAPI router with all 12 endpoints; inject `SqlHarnessRegistry` via dependency
-3. **`src/api/routers.py`** — register harness router at `/v1`
-4. **`make contracts`** — regenerate `contracts/openapi/layer4-agents.json`
-5. **`make contract-freshness`** — regenerate `apps/web/src/api/generated/l4/`
-6. **`apps/web/src/api/harness.ts`** — TypeScript types and `harnessApi` client
-7. **`apps/web/src/hooks/useHarness.ts`** — TanStack Query hooks
-8. **`apps/web/src/components/HarnessRunDetail.tsx`** — detail sheet component (checkpoints, gates, validation)
-9. **`apps/web/src/pages/AgentWorkflows.tsx`** — add "Harness Runs" tab; update KPI card
-10. **`services/layer4-agents/config/harness.runtime.yaml`** — agent runtime config
-11. **`services/layer4-agents/config/harness.service.yaml`** — service deployment config
-12. **`docs/architecture/harness-agent-integration.md`** — architecture doc
-13. **`services/layer4-agents/docs/harness-runbook.md`** — operator runbook
-14. **`scripts/generate_harness_docs.py`** — validation + generation script
-15. **`Makefile`** — add `docs-harness` target; wire into `verify`
-16. **Run `make docs-harness`** — confirm script passes against committed files
-
----
-
-## Files Created / Modified
-
-| File | Action |
+| ID | Criterion |
 |---|---|
-| `services/layer4-agents/src/harness/api_models.py` | Create |
-| `services/layer4-agents/src/api/routes/harness.py` | Create |
-| `services/layer4-agents/src/api/routers.py` | Modify (register router) |
-| `contracts/openapi/layer4-agents.json` | Regenerated |
-| `apps/web/src/api/generated/l4/index.ts` | Regenerated |
-| `apps/web/src/api/harness.ts` | Create |
-| `apps/web/src/hooks/useHarness.ts` | Create |
-| `apps/web/src/components/HarnessRunDetail.tsx` | Create |
-| `apps/web/src/pages/AgentWorkflows.tsx` | Modify (add tab + KPI update) |
-| `services/layer4-agents/config/harness.runtime.yaml` | Create |
-| `services/layer4-agents/config/harness.service.yaml` | Create |
-| `docs/architecture/harness-agent-integration.md` | Create |
-| `services/layer4-agents/docs/harness-runbook.md` | Create |
-| `services/layer4-agents/docs/harness-api-table.md` | Generated |
-| `scripts/generate_harness_docs.py` | Create |
-| `Makefile` | Modify (add `docs-harness`, wire into `verify`) |
+| AC-01 | `AgentWorkflows` renders a "Harness Runs" tab |
+| AC-02 | Harness Runs tab is visible for `advanced` and `admin` tiers |
+| AC-03 | Harness runs list renders from mocked `GET /api/v1/agents/harness/runs` |
+| AC-04 | Each run row shows ID, workflow type, status badge, current state |
+| AC-05 | Clicking a run opens `HarnessRunDetail` panel |
+| AC-06 | Detail panel shows run metadata (ID, trace ID, type, status, state) |
+| AC-07 | Checkpoints render in chronological order from mocked fixture |
+| AC-08 | Pending human gate renders approve and reject buttons |
+| AC-09 | Approve button calls `POST /api/v1/agents/harness/gates/:gateId/decide` with `{ status: "approved" }` |
+| AC-10 | Reject button calls `POST /api/v1/agents/harness/gates/:gateId/decide` with `{ status: "rejected" }` |
+| AC-11 | Buttons are disabled while mutation is pending |
+| AC-12 | Terminal gate renders as read-only (no approve/reject buttons) |
+| AC-13 | Non-terminal run triggers polling (network request observed within 6 s) |
+| AC-14 | Terminal run does not trigger polling after initial load |
+| AC-15 | Loading state renders skeleton/spinner |
+| AC-16 | Empty state renders "No harness runs found." |
+| AC-17 | Error state renders error message |
+| AC-18 | `@backend` smoke spec lists real runs and opens one detail (when `PLAYWRIGHT_BACKEND_URL` is set) |
 
 ---
 
-## Out of Scope
+## Implementation Approach
 
-- New top-level navigation page for harness (deferred)
-- CommandCenter right-rail harness panel (deferred — noted as future extension)
-- Real-time SSE streaming for harness state transitions (deferred — polling sufficient for MVP)
-- Harness-to-LangGraph bridge (harness and LangGraph workflows remain separate surfaces)
-- Frontend tests beyond existing `AgentWorkflows.tsx` patterns
+Steps are ordered for TDD: write tests first, then implement to make them pass.
+
+1. **Add fixture data** — Create `apps/web/e2e/fixtures/harness-fixtures.ts` with typed `HarnessRun`, `HarnessCheckpoint`, `HumanGate`, and `ClaimValidationResult` factory functions and canned fixture sets (running run, terminal run, run with pending gate, run with approved gate, empty list, error response).
+
+2. **Add page objects** — Create `apps/web/e2e/pages/AgentWorkflowsPage.ts` with locators for the Harness Runs tab, run rows, and run row click action. Create `apps/web/e2e/pages/HarnessRunDetailPage.ts` with locators for the detail panel, checkpoint timeline, gate approve/reject buttons, and gate status display.
+
+3. **Export page objects** — Add both new page objects to `apps/web/e2e/pages/index.ts`.
+
+4. **Write mocked contract spec** — Create `apps/web/e2e/contracts/harness-runs.spec.ts` using `import { test, expect } from '../fixtures/contract-test'`. Cover all AC-01 through AC-17. Mock all `/api/v1/agents/harness/*` routes via `page.route()`. Use `setUserTier(page, 'admin')` and `seedAuthState(page)` in `beforeEach`. Use `clearUserTier` and `clearAuthState` in `afterEach`. The gate decide mock must use the gate-scoped route `POST /api/v1/agents/harness/gates/:gateId/decide` with `DecideHumanGateRequest` payload (`status`, optional `decision_reason`, `human_override`).
+
+5. **Write backend-integrated smoke spec** — Create `apps/web/e2e/journeys/j25-harness-run-lifecycle.spec.ts` using `journeyTest`. Tag all tests `@backend`. Cover AC-18. Guard with `journeyTest.skip(!isLiveMode(), 'PLAYWRIGHT_BACKEND_URL is required for j25 backend-integrated Harness smoke tests')`. Add a `TODO(j25)` comment: once `/v1/harness/*` endpoints are merged and in backend-integrated CI, replace the skip guard with `requireBackendOrThrow()` to match `j11`/`j16`/`j19`.
+
+6. **Register harness mock routes in API harness** — Add default mock entries for `/api/v1/agents/harness/runs` (empty list) to `apps/web/e2e/helpers/api-harness.ts` `DEFAULT_MOCKS` so pages that incidentally hit this endpoint don't break existing tests.
+
+7. **Verify guard compliance** — Run `pnpm test:e2e:guard` to confirm no critical E2E skip violations are introduced.
+
+8. **Run contract suite** — Run `pnpm test:e2e:contracts` (or `playwright test --project=contracts e2e/contracts/harness-runs.spec.ts`). All tests are expected to **fail** (red phase) until the UI is implemented.
+
+---
+
+## File Deliverables
+
+```
+apps/web/e2e/
+├── contracts/
+│   └── harness-runs.spec.ts               ← primary mocked spec (new)
+├── journeys/
+│   └── j25-harness-run-lifecycle.spec.ts  ← @backend smoke spec (new)
+├── fixtures/
+│   └── harness-fixtures.ts                ← typed fixture factories (new)
+├── pages/
+│   ├── AgentWorkflowsPage.ts              ← page object for /context/agents (new)
+│   ├── HarnessRunDetailPage.ts            ← page object for detail panel (new)
+│   └── index.ts                           ← updated to export new page objects
+└── helpers/
+    └── api-harness.ts                     ← updated DEFAULT_MOCKS for /harness/runs
+```
+
+---
+
+## Verified Assumptions
+
+Both assumptions from the initial spec have been confirmed against the codebase.
+
+### Assumption 1 — `POST .../decide` payload shape ✅ Resolved
+
+The backend has no `/decide` route yet. When built, the canonical contract is:
+
+**Endpoint:** `POST /v1/harness/gates/{gate_id}/decide`
+
+**Request payload** (client sends):
+```typescript
+type DecideHumanGateRequest = {
+  status: "approved" | "rejected" | "modified";
+  decision_reason?: string;
+  human_override?: boolean;
+  metadata?: Record<string, unknown>;
+}
+```
+
+**Response** (server creates — `decision_by` is derived from auth context, never trusted from client):
+```typescript
+type HumanGateDecision = {
+  gate_id: string;
+  run_id: string;
+  tenant_id: string;
+  status: "approved" | "rejected" | "modified";
+  decision_by: string;           // server-derived from auth context
+  decision_reason?: string;
+  decided_at: string;
+  human_override: boolean;
+}
+```
+
+Note the route is `POST /v1/harness/gates/{gate_id}/decide` (gate-scoped, not run-scoped). The frontend call chain is: `useDecideGate` → `harnessApi.decideGate` → `apiClient.post('l4', '/harness/gates/{id}/decide', payload)`.
+
+The mocked contract spec (`harness-runs.spec.ts`) must be updated to use this route pattern and payload shape.
+
+### Assumption 2 — `@backend` smoke test skip behaviour ✅ Resolved
+
+`j25` uses `journeyTest.skip(!isLiveMode(), ...)` — graceful skip while the backend contract is incomplete. This is intentional and temporary.
+
+**Promotion rule:** Once `/v1/harness/*` endpoints are merged and included in backend-integrated CI, `j25` must be promoted to `requireBackendOrThrow()` to match `j11`/`j16`/`j19`. A `TODO(j25)` comment marks the promotion trigger in the spec file.
+
+---
+
+## Risk / Follow-up
+
+- **Backend API routes not yet registered**: `/v1/harness/*` routes do not exist in `routers.py`. The backend-integrated spec will fail until these are added. The mocked spec is fully self-contained and can run immediately.
+- **Frontend components not yet implemented**: `HarnessRunDetail`, `useHarnessRuns`, and the "Harness Runs" tab do not exist. All tests will fail (red phase) until the UI is built. This is intentional — the spec drives the implementation.
+- **Polling test reliability**: Polling assertions (AC-13, AC-14) use network request observation with a 6 s window. If CI is slow, the timeout may need adjustment.
+- **`j25` skip → throw promotion**: Tracked by `TODO(j25)` in the spec file. Trigger: Harness backend endpoints merged and in backend-integrated CI.
+
