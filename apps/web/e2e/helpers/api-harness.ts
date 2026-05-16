@@ -197,6 +197,21 @@ const DEFAULT_MOCKS: MockEndpoint[] = [
     pattern: '**/api/v1/value-trees**',
     body: { trees: [], total: 0 },
   },
+  // Harness runs — default empty list so pages that incidentally hit this
+  // endpoint don't break existing tests. Harness-specific tests override
+  // this via page.route() before the harness installs its catch-all.
+  {
+    pattern: '**/api/v1/agents/harness/runs',
+    body: { items: [], total: 0, has_more: false },
+  },
+  // Wildcard fallback for run sub-resources (checkpoints, gates, etc.).
+  // Returns 404 rather than {} so that tests which forget to mock a
+  // sub-resource fail loudly instead of silently receiving empty data.
+  {
+    pattern: '**/api/v1/agents/harness/runs/**',
+    status: 404,
+    body: { detail: 'Not found — add an explicit mock for this harness sub-resource in your test' },
+  },
 ];
 
 // ── Glob → RegExp helper ────────────────────────────────────────────────────
