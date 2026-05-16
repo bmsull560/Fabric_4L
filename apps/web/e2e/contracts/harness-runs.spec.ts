@@ -25,6 +25,10 @@
  *
  * All API routes are mocked — no backend required.
  * Uses the contract-test fixture which auto-installs the API harness.
+ *
+ * TDD RED PHASE: test.fail() is applied at the describe level so that CI
+ * reports these as "expected failures" (green) rather than broken
+ * infrastructure. Remove test.fail() once the Harness UI is implemented.
  */
 import { test, expect, type Page } from '../fixtures/contract-test';
 import { setUserTier, clearUserTier } from '../fixtures/tier-helpers';
@@ -41,7 +45,6 @@ import {
   RUNNING_RUN_CHECKPOINTS,
   PENDING_GATE,
   APPROVED_GATE,
-  HARNESS_API,
 } from '../fixtures/harness-fixtures';
 
 // ── Shared mock helpers ──────────────────────────────────────────────────────
@@ -52,8 +55,13 @@ import {
  * These override the DEFAULT_MOCKS empty-list fallback from the API harness.
  */
 async function mockHarnessRunsList(page: Page, body: unknown, status = 200): Promise<void> {
-  await page.route('**/api/v1/agents/harness/runs', async (route) => {
-    if (route.request().method() === 'GET') {
+  // Trailing ** matches optional query strings (e.g. ?tenant_id=...).
+  // The URL check ensures this only intercepts the list endpoint, not
+  // sub-resources like /runs/123 or /runs/123/checkpoints.
+  await page.route('**/api/v1/agents/harness/runs**', async (route) => {
+    const url = new URL(route.request().url());
+    const isListEndpoint = /\/harness\/runs\/?$/.test(url.pathname);
+    if (route.request().method() === 'GET' && isListEndpoint) {
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     } else {
       await route.continue();
@@ -77,13 +85,21 @@ async function mockHarnessCheckpoints(
   body: unknown,
 ): Promise<void> {
   await page.route(`**/api/v1/agents/harness/runs/${runId}/checkpoints`, async (route) => {
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    } else {
+      await route.continue();
+    }
   });
 }
 
 async function mockHarnessGates(page: Page, runId: string, body: unknown): Promise<void> {
   await page.route(`**/api/v1/agents/harness/runs/${runId}/gates`, async (route) => {
-    await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
+    } else {
+      await route.continue();
+    }
   });
 }
 
@@ -108,6 +124,12 @@ async function mockGateDecide(
 // ── Test suite ───────────────────────────────────────────────────────────────
 
 test.describe('Contract: Harness Runs UI', () => {
+  // All tests in this suite are expected to fail until the Harness UI is
+  // implemented. test.fail() inverts pass/fail so CI stays green.
+  // Remove this line once HarnessRunDetail, useHarnessRuns, and the
+  // "Harness Runs" tab are wired.
+  test.fail();
+
   let workflowsPage: AgentWorkflowsPage;
   let detailPage: HarnessRunDetailPage;
 
@@ -244,14 +266,17 @@ test.describe('Contract: Harness Runs UI', () => {
       await detailPage.assertCheckpointVisible('RESOLVE_CONTEXT');
       await detailPage.assertCheckpointVisible('GENERATE_HYPOTHESES');
 
-      // Verify chronological order: INIT appears before GENERATE_HYPOTHESES in DOM
-      const initIndex = await page.getByText('INIT').first().evaluate((el) => {
-        const all = Array.from(document.querySelectorAll('[data-testid="checkpoint-item"], [class*="checkpoint"]'));
-        return all.findIndex((node) => node.contains(el));
-      });
-      const genIndex = await page.getByText('GENERATE_HYPOTHESES').first().evaluate((el) => {
-        const all = Array.from(document.querySelectorAll('[data-testid="checkpoint-item"], [class*="checkpoint"]'));
-        return all.findIndex((node) => node.contains(el));
+      // Verify chronological order in a single atomic DOM snapshot to avoid
+      // race conditions between two separate evaluate() calls.
+      const [initIndex, genIndex] = await page.evaluate(() => {
+        const items = Array.from(
+          document.querySelectorAll('[data-testid="checkpoint-item"], [class*="checkpoint"]'),
+        );
+        const textOf = (el: Element) => el.textContent ?? '';
+        return [
+          items.findIndex((el) => textOf(el).includes('INIT')),
+          items.findIndex((el) => textOf(el).includes('GENERATE_HYPOTHESES')),
+        ];
       });
       // Guard: both must be found in the timeline (not -1) before comparing order
       expect(initIndex).toBeGreaterThanOrEqual(0);

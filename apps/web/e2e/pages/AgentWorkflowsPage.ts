@@ -38,9 +38,14 @@ export class AgentWorkflowsPage {
     // Page title
     this.pageTitle = page.getByRole('heading', { name: /workflow dashboard/i });
 
-    // Tabs — match the Tabs primitive used in AgentWorkflows.tsx
-    this.workflowDashboardTab = page.getByRole('button', { name: /workflow dashboard/i });
-    this.harnessRunsTab = page.getByRole('button', { name: /harness runs/i });
+    // Tabs — WfPrimitives Tabs renders triggers as <button role="tab">.
+    // Fallback to role="button" covers non-standard implementations.
+    this.workflowDashboardTab = page.getByRole('tab', { name: /workflow dashboard/i }).or(
+      page.getByRole('button', { name: /workflow dashboard/i }),
+    );
+    this.harnessRunsTab = page.getByRole('tab', { name: /harness runs/i }).or(
+      page.getByRole('button', { name: /harness runs/i }),
+    );
 
     // Harness Runs list container — identified by section heading
     this.harnessRunsSection = page.getByTestId('harness-runs-section').or(
@@ -83,7 +88,7 @@ export class AgentWorkflowsPage {
    * Get a run row by its run ID text.
    */
   getRunRowById(runId: string): Locator {
-    return this.page.getByText(runId).locator('..').locator('..');
+    return this.harnessRunRows.filter({ hasText: runId });
   }
 
   /**

@@ -293,7 +293,8 @@ export const WAITING_RUN_LIST: PaginatedHarnessRuns = {
 // ── API route patterns ───────────────────────────────────────────────────────
 
 export const HARNESS_API = {
-  runs: '**/api/v1/agents/harness/runs',
+  // Trailing ** matches optional query strings (e.g. ?tenant_id=...)
+  runs: '**/api/v1/agents/harness/runs**',
   runDetail: (runId: string) => `**/api/v1/agents/harness/runs/${runId}`,
   checkpoints: (runId: string) => `**/api/v1/agents/harness/runs/${runId}/checkpoints`,
   gates: (runId: string) => `**/api/v1/agents/harness/runs/${runId}/gates`,

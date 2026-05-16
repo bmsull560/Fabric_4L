@@ -80,8 +80,8 @@ export class HarnessRunDetailPage {
     this.gateSection = page.getByTestId('human-gate-section').or(
       page.locator('[data-section="human-gate"]'),
     );
-    this.approveButton = page.getByRole('button', { name: /approve/i });
-    this.rejectButton = page.getByRole('button', { name: /reject/i });
+    this.approveButton = this.panel.getByRole('button', { name: /approve/i });
+    this.rejectButton = this.panel.getByRole('button', { name: /reject/i });
     this.gateStatusDisplay = page.getByTestId('gate-status').or(
       page.locator('[data-field="gate-status"]'),
     );

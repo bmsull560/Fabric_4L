@@ -306,6 +306,5 @@ The mocked contract spec (`harness-runs.spec.ts`) must be updated to use this ro
 - **Backend API routes not yet registered**: `/v1/harness/*` routes do not exist in `routers.py`. The backend-integrated spec will fail until these are added. The mocked spec is fully self-contained and can run immediately.
 - **Frontend components not yet implemented**: `HarnessRunDetail`, `useHarnessRuns`, and the "Harness Runs" tab do not exist. All tests will fail (red phase) until the UI is built. This is intentional — the spec drives the implementation.
 - **Polling test reliability**: Polling assertions (AC-13, AC-14) use network request observation with a 6 s window. If CI is slow, the timeout may need adjustment.
-- **`harness-runs.spec.ts` needs route correction**: The mocked spec currently uses `POST .../runs/:runId/gates/:gateId/decide`. This must be updated to `POST /v1/harness/gates/:gateId/decide` (gate-scoped) with the `DecideHumanGateRequest` payload shape before the backend-integrated spec is finalized.
 - **`j25` skip → throw promotion**: Tracked by `TODO(j25)` in the spec file. Trigger: Harness backend endpoints merged and in backend-integrated CI.
 

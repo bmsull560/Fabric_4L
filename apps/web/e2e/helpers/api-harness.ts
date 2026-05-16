@@ -201,7 +201,8 @@ const DEFAULT_MOCKS: MockEndpoint[] = [
   // endpoint don't break existing tests. Harness-specific tests override
   // this via page.route() before the harness installs its catch-all.
   {
-    pattern: '**/api/v1/agents/harness/runs',
+    // Trailing ** matches optional query strings (e.g. ?tenant_id=...)
+    pattern: '**/api/v1/agents/harness/runs**',
     body: { items: [], total: 0, has_more: false },
   },
   // Wildcard fallback for run sub-resources (checkpoints, gates, etc.).
