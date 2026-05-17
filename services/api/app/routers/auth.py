@@ -82,8 +82,7 @@ async def signup(payload: SignupRequest) -> TokenResponse:
             detail="An account with this email already exists",
         )
 
-    import uuid as _uuid
-    tenant_id = str(_uuid.uuid4())
+    tenant_id = str(uuid.uuid4())
     tenant = Tenant(
         id=tenant_id,
         name=payload.tenant_name,
