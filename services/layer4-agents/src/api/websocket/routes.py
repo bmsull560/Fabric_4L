@@ -142,7 +142,7 @@ async def workflow_websocket(
     # P1-13 FIX: Reject JWT in query parameter (prevents logging by proxies)
     if token:
         logger.warning(
-            "WebSocket authentication failed",
+            "WebSocket authentication failed: AUTH_QUERY_TOKEN_FORBIDDEN",
             extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", "workflow_id": workflow_id},
         )
         await websocket.close(code=1008, reason="Authentication failed")
@@ -167,7 +167,8 @@ async def workflow_websocket(
         tenant_id, user_id = _extract_tenant_from_token(ws_token)
     except WebSocketAuthError as e:
         logger.warning(
-            "WebSocket authentication failed",
+            "Authentication failed: %s",
+            e.code,
             extra={"auth_code": e.code, "workflow_id": workflow_id},
         )
         await websocket.close(code=1008, reason="Authentication failed")
