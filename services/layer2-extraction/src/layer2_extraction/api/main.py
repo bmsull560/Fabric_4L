@@ -301,7 +301,6 @@ async def _set_pipeline_job(
     try:
         job = await job_store.get_job(job_id)
     except KeyError:
-        import logging
         logging.getLogger(__name__).warning(
             "_set_pipeline_job: job %s not found; skipping update", job_id
         )
