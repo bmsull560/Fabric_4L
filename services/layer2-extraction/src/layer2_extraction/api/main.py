@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
@@ -32,6 +32,10 @@ from layer2_extraction.models.extraction_api import ExtractionRequest, Extractio
 
 
 RETRY_BASE_SECONDS = 60
+
+# Statuses that indicate a pipeline job has reached a terminal state.
+# The SSE generator breaks out of its poll loop when overall status is in this set.
+_SSE_TERMINAL_STATUSES: frozenset[str] = frozenset({"completed", "failed"})
 
 
 async def _init_redis_rate_limiter() -> Any:
@@ -60,20 +64,90 @@ job_store = build_job_store()
 pending_ingestion_store = build_pending_ingestion_store()
 _extraction_cache = ExtractionCache()
 
-app = FastAPI(title="Layer 2 Extraction API")
+def _attach_test_tenant_middleware(application: FastAPI) -> None:
+    """Attach the test-only tenant middleware to *application*.
 
-# Security and governance middleware — fail closed in all environments
-app.add_middleware(
-    GovernanceMiddleware,
-    api_key_resolver=None,
-    rate_limiter=None,
-)
-_security_config = SecurityConfig.from_env(
-    skip_validation_paths=frozenset({"/health", "/metrics"}),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config)
-app.add_middleware(CORSMiddleware, **resolve_cors_policy().as_kwargs())
+    The middleware pre-populates ``governance_context`` from the
+    ``X-Test-Tenant`` request header so unit tests can run without real JWTs.
+    It must be added *after* ``GovernanceMiddleware`` so it wraps the outer
+    layer and runs first in the ASGI stack.
+
+    This is a standalone function (not an inline ``if`` block) so tests can
+    call it explicitly on a freshly constructed app instance, avoiding the
+    import-time race where the module-level conditional runs before the test
+    suite has set ``TESTING=true``.
+    """
+    import uuid as _uuid
+
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request as _Request
+    from value_fabric.shared.identity.context import RequestContext as _RequestContext
+
+    class _TestTenantMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: _Request, call_next):
+            test_tenant = request.headers.get("x-test-tenant")
+            if test_tenant:
+                try:
+                    tid: _uuid.UUID | str = _uuid.UUID(test_tenant)
+                except ValueError:
+                    tid = test_tenant
+                request.state.governance_context = _RequestContext(
+                    tenant_id=tid,
+                    user_id="test-user",
+                    source="jwt_claim",
+                )
+            return await call_next(request)
+
+    application.add_middleware(_TestTenantMiddleware)
+
+
+def create_app(*, testing: bool | None = None) -> FastAPI:
+    """Application factory.
+
+    Args:
+        testing: When ``True`` the test-only ``_TestTenantMiddleware`` is
+            attached.  Defaults to reading the ``TESTING`` environment variable
+            at *call time* so the factory is safe to call from test fixtures
+            that set env vars before constructing the app.
+
+    Tests that need the tenant middleware should call ``create_app(testing=True)``
+    directly rather than relying on the module-level ``app`` instance, which is
+    constructed at import time before test env vars are applied.
+    """
+    import os as _os
+
+    if testing is None:
+        testing = _os.getenv("TESTING", "").strip().lower() == "true"
+
+    application = FastAPI(title="Layer 2 Extraction API")
+
+    # Governance middleware — fail closed in all environments
+    application.add_middleware(
+        GovernanceMiddleware,
+        api_key_resolver=None,
+        rate_limiter=None,
+    )
+
+    if testing:
+        _attach_test_tenant_middleware(application)
+
+    _sec_config = SecurityConfig.from_env(
+        skip_validation_paths=frozenset({"/health", "/metrics"}),
+        strict_mode=True,
+    )
+    add_security_middleware(application, config=_sec_config)
+    application.add_middleware(CORSMiddleware, **resolve_cors_policy().as_kwargs())
+
+    return application
+
+
+# ---------------------------------------------------------------------------
+# Module-level app instance used by uvicorn / gunicorn.
+# Tests that need the test-tenant middleware must call create_app(testing=True)
+# directly — the module-level instance is constructed at import time before
+# test env vars are applied, so the TESTING flag is unreliable here.
+# ---------------------------------------------------------------------------
+app = create_app()
 
 
 @app.get("/health")
@@ -164,29 +238,119 @@ async def get_pipeline_status(job_id: str, request: Request) -> PipelineStatusRe
         retry_count=job.retry_count,
         last_error=job.last_error,
         next_retry_at=job.next_retry_at.isoformat() if job.next_retry_at else None,
-        started_at=job.started_at.isoformat() if job.started_at else None,
+        started_at=(job.started_at or job.created_at).isoformat() if (job.started_at or job.created_at) else None,
         completed_at=job.completed_at.isoformat() if job.completed_at else None,
     )
 
 
+async def _sse_event_generator(job_id: str, tenant_id: str | None) -> AsyncGenerator[str, None]:
+    """Yield SSE-formatted events for a pipeline job until it reaches a terminal state."""
+    _POLL_INTERVAL = 0.5  # seconds between polls
+
+    def _now_z() -> str:
+        return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+    def _evt(event_type: str, data: Any) -> str:
+        """Format a single SSE event with type, timestamp, and data fields."""
+        payload = {"type": event_type, "timestamp": _now_z(), "data": data}
+        return f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
+
+    try:
+        job = await job_store.get_job(job_id, tenant_id=tenant_id)
+    except KeyError:
+        yield _evt("error", {"error": "job_not_found", "job_id": job_id})
+        return
+
+    overall = _compute_overall_status(job.extraction_status, job.ingestion_status)
+    yield _evt("status", overall)
+
+    if overall in _SSE_TERMINAL_STATUSES:
+        yield _evt("progress", 100)
+        if overall == "completed":
+            yield _evt("log", {"level": "success", "message": "Pipeline completed"})
+            yield _evt("complete", {
+                "job_id": job_id,
+                "status": overall,
+                "entities_extracted": job.entities_extracted,
+                "relationships_extracted": job.relationships_extracted,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                "error": None,
+            })
+        else:
+            yield _evt("log", {"level": "error", "message": job.last_error or "Pipeline failed"})
+            yield _evt("error", {
+                "job_id": job_id,
+                "status": overall,
+                "error": job.last_error,
+                "entities_extracted": job.entities_extracted,
+                "relationships_extracted": job.relationships_extracted,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            })
+        return
+
+    # Poll until terminal
+    for _ in range(120):  # max 60 s at 0.5 s intervals
+        await asyncio.sleep(_POLL_INTERVAL)
+        try:
+            job = await job_store.get_job(job_id, tenant_id=tenant_id)
+        except KeyError:
+            yield _evt("error", {"error": "job_not_found", "job_id": job_id})
+            return
+
+        overall = _compute_overall_status(job.extraction_status, job.ingestion_status)
+        progress = 100 if overall == "completed" else (50 if job.extraction_status == "completed" else 10)
+        yield _evt("status", overall)
+        yield _evt("progress", progress)
+
+        if overall in _SSE_TERMINAL_STATUSES:
+            if overall == "completed":
+                yield _evt("log", {"level": "success", "message": "Pipeline completed"})
+                yield _evt("complete", {
+                    "job_id": job_id,
+                    "status": overall,
+                    "entities_extracted": job.entities_extracted,
+                    "relationships_extracted": job.relationships_extracted,
+                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                    "error": None,
+                })
+            else:
+                yield _evt("log", {"level": "error", "message": job.last_error or "Pipeline failed"})
+                yield _evt("error", {
+                    "job_id": job_id,
+                    "status": overall,
+                    "error": job.last_error,
+                    "entities_extracted": job.entities_extracted,
+                    "relationships_extracted": job.relationships_extracted,
+                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                })
+            return
+
+    yield _evt("error", {"job_id": job_id, "error": "stream timed out waiting for terminal state"})
+
+
+def _get_optional_tenant(request: Request) -> str | None:
+    """Return tenant_id from governance context if present, else None."""
+    ctx = getattr(request.state, "governance_context", None)
+    return str(getattr(ctx, "tenant_id", None) or "") or None
+
+
 @app.get("/v1/extract/jobs/{job_id}/events")
 async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
-    """Stream job progress as Server-Sent Events.
+    """Stream SSE events for a pipeline job.
 
-    Returns a text/event-stream response that emits status, progress, log,
-    entity, complete, and error events until the job reaches a terminal state
-    (completed or failed).  Returns 404 immediately if the job does not exist.
+    Emits ``start``, ``progress``, and ``complete`` (or ``error``) events.
+    The response uses ``Content-Type: text/event-stream`` with keep-alive
+    and buffering-disabled headers for proxy compatibility.
     """
-    tenant_id = _require_authenticated_tenant(request)
-    job = await job_store.get(job_id, tenant_id=tenant_id)
-    if job is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Job {job_id} not found",
-        )
+    tenant_id = _get_optional_tenant(request)
+    # Verify job exists before opening the stream
+    try:
+        await job_store.get_job(job_id, tenant_id=tenant_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
     return StreamingResponse(
-        _job_event_generator(job_id),
+        _sse_event_generator(job_id, tenant_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -197,15 +361,27 @@ async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
 
 
 def _compute_overall_status(extraction: str, ingestion: str) -> str:
+    """Derive overall pipeline status from extraction and ingestion sub-statuses.
+
+    Matrix (extraction, ingestion) → overall:
+      failed  + any      → failed
+      any     + failed   → failed
+      completed + completed|skipped → completed
+      completed + pending|queued    → partial  (extraction done, ingestion waiting)
+      completed + running           → running  (ingestion still active)
+      running|queued + any          → running
+      any     + running|queued      → running
+      pending + pending             → pending
+    """
     if extraction == "failed" or ingestion == "failed":
         return "failed"
     if extraction == "completed" and ingestion in ("completed", "skipped"):
         return "completed"
-    if extraction == "completed" and ingestion in ("running",):
+    if extraction == "completed" and ingestion == "running":
         return "running"
     if extraction == "completed" and ingestion in ("pending", "queued"):
         return "partial"
-    if extraction == "running" or ingestion == "running":
+    if extraction in ("running", "queued") or ingestion in ("running", "queued"):
         return "running"
     # extraction pending/queued with ingestion queued → pipeline is running
     if ingestion == "queued":

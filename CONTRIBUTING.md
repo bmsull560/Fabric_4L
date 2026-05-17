@@ -22,21 +22,22 @@ git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env — fill in OPENAI_API_KEY and JWT_SECRET at minimum
+# Edit .env — fill in TOGETHER_API_KEY and JWT_SECRET at minimum
 
 # 3. Start infrastructure
-cd value-fabric && docker compose up -d
+docker compose up -d
 
-# 4. Install Python dependencies (per layer)
-cd layer4-agents && pip install -e ".[dev]"
+# 4. Install all service dev dependencies (installs into the pytest pipx venv)
+make setup
 
 # 5. Install frontend dependencies
-cd frontend && pnpm install
+pnpm --dir apps/web install
 
 # 6. Run migrations
 make migrate
 
 # 7. Verify everything passes
+make setup && make test-layer1 test-layer2 test-layer3 test-layer4 test-layer5 test-layer6
 make verify
 ```
 

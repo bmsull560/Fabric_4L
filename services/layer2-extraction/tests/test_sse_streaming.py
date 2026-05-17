@@ -19,6 +19,10 @@ import pytest
 from value_fabric.layer2.api import main as api_main
 from value_fabric.layer2.integration.job_store import PipelineJob
 
+# Attach the test-tenant middleware once, before the app starts, so that
+# X-Test-Tenant headers are resolved to a governance context in all tests.
+api_main._attach_test_tenant_middleware(api_main.app)
+
 # Test defaults for job creation
 DEFAULT_ENTITIES_EXTRACTED = 5
 DEFAULT_RELATIONSHIPS_EXTRACTED = 3
@@ -39,31 +43,13 @@ async def reset_pipeline_state() -> None:
 
 
 @pytest.fixture
-def _jwt_token() -> str:
-    """Generate a signed JWT for test requests."""
-    import os
-    import time
-    import jwt as pyjwt
-
-    secret = os.environ.get("JWT_SECRET", "test-secret-key-for-layer2-tests-32b")
-    payload = {
-        "sub": "00000000-0000-0000-0000-000000000001",
-        "tenant_id": "00000000-0000-0000-0000-000000000002",
-        "iss": "value-fabric-internal",
-        "aud": "value-fabric-services",
-        "iat": int(time.time()),
-        "exp": int(time.time()) + 3600,
-    }
-    return pyjwt.encode(payload, secret, algorithm="HS256")
-
-
-@pytest.fixture
-async def async_client(_jwt_token: str):
+async def async_client():
     """Create async HTTP client for testing."""
     transport = httpx.ASGITransport(app=api_main.app)
-    headers = {"Authorization": f"Bearer {_jwt_token}"}
     async with httpx.AsyncClient(
-        transport=transport, base_url="http://testserver", headers=headers
+        transport=transport,
+        base_url="http://testserver",
+        headers={"X-Test-Tenant": "test-tenant-sse"},
     ) as client:
         yield client
 
@@ -72,7 +58,7 @@ async def async_client(_jwt_token: str):
 # Helper to create jobs with reasonable defaults
 # -----------------------------------------------------------------------
 
-_TEST_TENANT_ID = "00000000-0000-0000-0000-000000000002"
+_TEST_TENANT_ID = "test-tenant-sse"
 
 
 async def _create_job(

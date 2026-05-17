@@ -10,8 +10,14 @@ from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
+# Canonical name for the privileged system tenant.  All code that needs to
+# pass or compare the system-tenant ID must use this constant — never a bare
+# string literal — so that typos are caught at import time and grep searches
+# are reliable.
+SYSTEM_TENANT_ID: str = "system"
+
 # Reserved tenant keywords for system/admin operations
-RESERVED_TENANT_KEYWORDS = frozenset({"system", "admin", "internal"})
+RESERVED_TENANT_KEYWORDS: frozenset[str] = frozenset({SYSTEM_TENANT_ID, "admin", "internal"})
 
 
 class TenantContextError(Exception):
