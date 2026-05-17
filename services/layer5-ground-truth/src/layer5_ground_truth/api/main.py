@@ -570,12 +570,6 @@ def _validate_jwt_secret(secret: str) -> None:
             f"Generate a secure secret: openssl rand -base64 32"
         )
 
-    if any(secret_lower.startswith(p) for p in _JWT_WEAK_PREFIXES):
-        raise RuntimeError(
-            f"JWT_SECRET starts with a known weak/placeholder prefix. "
-            f"Generate a secure secret: openssl rand -base64 32"
-        )
-
     if _JWT_WEAK_PATTERN.match(secret_lower):
         raise RuntimeError(
             f"JWT_SECRET '{secret}' matches a weak secret pattern. "
