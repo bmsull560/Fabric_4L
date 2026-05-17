@@ -240,3 +240,52 @@ def get_openai_provider(config: dict[str, Any] | None = None) -> OpenAIProvider:
 def get_provider_adapters(config: dict[str, Any] | None = None) -> dict[str, OpenAIProvider]:
     """Registry of configured provider adapters for conformance tests and orchestration wiring."""
     return {"openai": get_openai_provider(config)}
+
+
+def get_llm_provider(config: dict[str, Any] | None = None) -> Any:
+    """Return the active LLM provider based on ``LAYER4_LLM_PROVIDER`` env var.
+
+    Provider resolution order:
+    1. ``LAYER4_LLM_PROVIDER`` environment variable
+    2. ``config["llm_provider"]`` if present
+    3. Default: ``"together"``
+
+    Supported values: ``"together"``, ``"openai"``
+
+    Returns an instance implementing the ``LLMProvider`` protocol.
+    """
+    import os
+
+    provider_name = (
+        os.getenv("LAYER4_LLM_PROVIDER")
+        or (config.get("llm_provider") if config and hasattr(config, "get") else None)
+        or getattr(config, "llm_provider", None)
+        or "together"
+    ).lower()
+
+    if provider_name == "together":
+        from .together_provider import TogetherAIProvider
+
+        api_key = (
+            os.getenv("LAYER4_TOGETHER_API_KEY")
+            or (config.get("together_api_key") if config and hasattr(config, "get") else None)
+            or getattr(config, "together_api_key", None)
+        )
+        base_url = (
+            os.getenv("LAYER4_TOGETHER_BASE_URL", "https://api.together.ai/v1")
+        )
+        timeout = float(os.getenv("LAYER4_TOGETHER_TIMEOUT_SECONDS", "60"))
+        return TogetherAIProvider(api_key=api_key, base_url=base_url, timeout=timeout)
+
+    if provider_name == "openai":
+        return get_openai_provider(config)
+
+    if provider_name == "anthropic":
+        raise NotImplementedError(
+            "Anthropic provider is not implemented; set LAYER4_LLM_PROVIDER to 'together' or 'openai'."
+        )
+
+    raise ValueError(
+        f"Unknown LLM provider: {provider_name!r}. "
+        "Supported values: 'together', 'openai'."
+    )

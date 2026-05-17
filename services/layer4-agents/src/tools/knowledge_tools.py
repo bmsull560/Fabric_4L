@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from typing import Any
@@ -27,7 +28,7 @@ from ..models.tool_schemas import (
 )
 from ..shared.domain import context as tenant_context
 from ..shared.domain.context import TenantContextError
-from ..services.llm_provider import get_openai_provider
+from ..services.llm_provider import get_llm_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -265,10 +266,23 @@ class SemanticSearchTool(BaseTool):
     def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.vector_store_url = config.get("vector_store_url") if config else None
-        self.embedding_model = (
-            config.get("embedding_model", "text-embedding-3-large")
-            if config
+        # Default embedding model is provider-dependent.
+        # Together.ai uses "togethercomputer/m2-bert-80M-8k-retrieval";
+        # OpenAI uses "text-embedding-3-large".
+        _default_provider = (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (config.get("llm_provider") if config else None)
+            or "together"
+        ).lower()
+        _default_embedding = (
+            "togethercomputer/m2-bert-80M-8k-retrieval"
+            if _default_provider == "together"
             else "text-embedding-3-large"
+        )
+        self.embedding_model = (
+            config.get("embedding_model", _default_embedding)
+            if config
+            else _default_embedding
         )
         self.pinecone_api_key = config.get("pinecone_api_key") if config else None
         self.pinecone_index = (
@@ -295,7 +309,7 @@ class SemanticSearchTool(BaseTool):
 
     async def _get_embedding(self, text: str) -> list[float]:
         """Get embedding for text using OpenAI."""
-        response = await get_openai_provider(self.config).embed(
+        response = await get_llm_provider(self.config).embed(
             model=self.embedding_model,
             text=text,
         )

@@ -170,6 +170,10 @@ class TelemetryEmitter:
         self._dispatch(event)
         return event
 
+    def emit(self, event: HarnessTraceEvent) -> None:
+        """Public entry point for emitting a pre-built trace event."""
+        self._dispatch(event)
+
     def _dispatch(self, event: HarnessTraceEvent) -> None:
         """Send event to all handlers and in-memory store."""
         self._events.append(event)

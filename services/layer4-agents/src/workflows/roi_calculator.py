@@ -8,13 +8,18 @@ zero downstream.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..agents.base import AgentResult
+from ..harness.prompt_registry import get_prompt_registry
 from ..models.agent_state import ROIAgentState, ROIInputData, ROIResult, WorkflowStatus
 from ..models.workflow_config import ROI_WORKFLOW_CONFIG
+from ..services.governed_llm_client import GovernedLLMClient
+from ..services.llm_provider import get_llm_provider
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
 from .queries import get_benchmark_variables_query, get_value_driver_formulas_query
@@ -194,6 +199,9 @@ class ROICalculatorWorkflow(BaseWorkflow):
 
         if tool_name == "aggregate_roi":
             return await self._execute_aggregate_roi(state)
+
+        if tool_name == "generate_hypotheses":
+            return await self._execute_llm(state)
 
         return await super()._execute_tool(tool_name, state, config)
 
@@ -529,3 +537,153 @@ class ROICalculatorWorkflow(BaseWorkflow):
             aggregated=aggregated,
             detailed_results=calc_results,
         ).model_dump()
+
+    # -----------------------------------------------------------------------
+    # Step 6 – LLM hypothesis generation
+    # -----------------------------------------------------------------------
+    async def _execute_llm(self, state: ROIAgentState) -> dict[str, Any]:
+        """Generate LLM-enriched ROI hypotheses from aggregated formula outputs.
+
+        Uses the ``roi_calculator/hypothesis_generation`` prompt with
+        ``GovernedLLMClient`` so every call is traced and cost-tracked.
+        Returns an ``AgentResult`` serialised to dict.
+
+        Degrades gracefully: if the LLM call fails, returns an unenriched
+        ``AgentResult`` with ``human_review_required=True``.
+        """
+        agg_prior = state.output_data.get("aggregate", {})
+        aggregated = agg_prior.get("aggregated") or {}
+        detailed = agg_prior.get("detailed_results") or []
+
+        account_name = (
+            state.input_data.get("account_name")
+            or state.input_data.get("prospect_name")
+            or (state.roi_input.prospect_id if state.roi_input else "Unknown Account")
+        )
+        tenant_id = _tenant_id_from_state(state) or ""
+        trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id")
+
+        # Build the AgentResult shell — starts degraded
+        agent_result = AgentResult(
+            payload={},
+            workflow_type="roi_calculator",
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+        )
+
+        try:
+            registry = get_prompt_registry()
+            system_tmpl = registry.get("roi_calculator", "system")
+            hyp_tmpl = registry.get("roi_calculator", "hypothesis_generation")
+
+            # Summarise formula outputs for the prompt (keep token budget lean)
+            formula_summary = [
+                {
+                    "value_driver": r.get("value_driver_name"),
+                    "result": r.get("result"),
+                    "unit": r.get("unit"),
+                    "confidence": r.get("confidence"),
+                }
+                for r in detailed[:10]  # cap at 10 drivers
+            ]
+            value_drivers_summary = {
+                "total_annual_value": aggregated.get("total_annual_value"),
+                "simple_roi_percent": aggregated.get("simple_roi_percent"),
+                "three_year_npv": aggregated.get("three_year_npv"),
+                "payback_period_months": aggregated.get("payback_period_months"),
+                "average_confidence": aggregated.get("average_confidence"),
+            }
+
+            industry = (
+                state.input_data.get("industry_vertical")
+                or (state.roi_input.industry_vertical if state.roi_input else None)
+                or "technology"
+            )
+            company_size = (
+                str(state.input_data.get("company_size", ""))
+                or (str(state.roi_input.company_size or "") if state.roi_input else "")
+            )
+            benchmarks = (
+                state.output_data.get("fetch_benchmarks", {}).get("benchmarks") or {}
+            )
+
+            user_content = hyp_tmpl.render(
+                account_name=account_name,
+                formula_outputs_json=json.dumps(formula_summary, indent=2),
+                value_drivers_json=json.dumps(value_drivers_summary, indent=2),
+                benchmarks_json=json.dumps(benchmarks, indent=2),
+                industry=industry or "technology",
+                company_size=company_size or "mid-market",
+            )
+
+            messages = [
+                {"role": "system", "content": system_tmpl.body},
+                {"role": "user", "content": user_content},
+            ]
+
+            provider = get_llm_provider(self.config)
+            client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(),
+            )
+
+            llm_result = await client.call(
+                model_task=hyp_tmpl.model_task,
+                messages=messages,
+                temperature=hyp_tmpl.temperature,
+                max_tokens=hyp_tmpl.max_tokens,
+                response_format={"type": "json_object"},
+                call_id=f"roi_hyp_{trace_id or 'unknown'}",
+            )
+
+            # Parse the JSON response
+            parsed = client._parse_json(llm_result.content)
+            if not parsed or "hypothesis" not in parsed:
+                raise ValueError("invalid_structured_output")
+
+            agent_result.payload = {
+                "hypothesis": parsed.get("hypothesis", ""),
+                "confidence_rationale": parsed.get("confidence_rationale", ""),
+                "key_drivers": parsed.get("key_drivers", []),
+                "risks": parsed.get("risks", []),
+                "narrative_summary": parsed.get("narrative_summary", ""),
+                "evidence_refs": parsed.get("evidence_refs", []),
+                "aggregated_roi": aggregated,
+            }
+            agent_result.mark_llm_enriched(
+                model=llm_result.model,
+                prompt_tokens=llm_result.prompt_tokens,
+                completion_tokens=llm_result.completion_tokens,
+                confidence=float(parsed.get("confidence", aggregated.get("average_confidence", 0.5))),
+            )
+            logger.info(
+                "ROI hypothesis generation complete: model=%s tokens=%d cost=$%.4f",
+                llm_result.model,
+                llm_result.total_tokens,
+                llm_result.cost_usd,
+            )
+
+        except Exception:
+            logger.warning("ROI LLM hypothesis generation failed", extra={"code": "llm_failed"})
+            agent_result.payload = {
+                "hypothesis": "",
+                "confidence_rationale": "",
+                "key_drivers": [],
+                "risks": [],
+                "narrative_summary": "",
+                "evidence_refs": [],
+                "aggregated_roi": aggregated,
+            }
+            agent_result.degraded_reason = "llm_failed"
+
+        return agent_result.to_dict()
+
+    def _resolve_provider_name(self) -> str:
+        """Return the active provider name from config or env."""
+        import os
+        return (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (self.config.get("llm_provider") if isinstance(self.config, dict) else None)
+            or getattr(self.config, "llm_provider", None)
+            or "together"
+        )

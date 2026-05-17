@@ -169,6 +169,12 @@ ROI_WORKFLOW_CONFIG = WorkflowConfig(
         NodeConfig(
             id="aggregate", name="Aggregate ROI", node_type=NodeType.TOOL, tool_name="aggregate_roi"
         ),
+        NodeConfig(
+            id="generate_hypotheses",
+            name="Generate ROI Hypotheses",
+            node_type=NodeType.TOOL,
+            tool_name="generate_hypotheses",
+        ),
         NodeConfig(id="end", name="End", node_type=NodeType.END),
     ],
     edges=[
@@ -180,7 +186,8 @@ ROI_WORKFLOW_CONFIG = WorkflowConfig(
         EdgeConfig(
             source="validate", target="substitute_vars", condition="retry_needed", priority=1
         ),
-        EdgeConfig(source="aggregate", target="end"),
+        EdgeConfig(source="aggregate", target="generate_hypotheses"),
+        EdgeConfig(source="generate_hypotheses", target="end"),
     ],
 )
 
@@ -214,13 +221,20 @@ WHITESPACE_WORKFLOW_CONFIG = WorkflowConfig(
             node_type=NodeType.TOOL,
             tool_name="score_opportunity",
         ),
+        NodeConfig(
+            id="generate_hypotheses",
+            name="Generate Whitespace Hypotheses",
+            node_type=NodeType.TOOL,
+            tool_name="generate_hypotheses",
+        ),
         NodeConfig(id="end", name="End", node_type=NodeType.END),
     ],
     edges=[
         EdgeConfig(source="analyze_prospect", target="query_capabilities"),
         EdgeConfig(source="query_capabilities", target="identify_gaps"),
         EdgeConfig(source="identify_gaps", target="score_opportunity"),
-        EdgeConfig(source="score_opportunity", target="end"),
+        EdgeConfig(source="score_opportunity", target="generate_hypotheses"),
+        EdgeConfig(source="generate_hypotheses", target="end"),
     ],
 )
 
@@ -250,6 +264,12 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
             llm_prompt="generate_business_case_section",
         ),
         NodeConfig(
+            id="validate_claims",
+            name="Validate Claims",
+            node_type=NodeType.LLM,
+            llm_prompt="validate_claims",
+        ),
+        NodeConfig(
             id="assemble",
             name="Assemble Document",
             node_type=NodeType.TOOL,
@@ -261,7 +281,8 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
         EdgeConfig(source="gather_inputs", target="run_roi"),
         EdgeConfig(source="run_roi", target="verify_truth_requirements"),
         EdgeConfig(source="verify_truth_requirements", target="generate_narrative"),
-        EdgeConfig(source="generate_narrative", target="assemble"),
+        EdgeConfig(source="generate_narrative", target="validate_claims"),
+        EdgeConfig(source="validate_claims", target="assemble"),
         EdgeConfig(source="assemble", target="end"),
     ],
 )

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WhitespaceHypothesisSet",
+  "type": "object",
+  "required": ["hypotheses"],
+  "properties": {
+    "hypotheses": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["hypothesis_text", "supporting_evidence", "confidence", "recommended_action"],
+        "properties": {
+          "hypothesis_text": { "type": "string" },
+          "supporting_evidence": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "recommended_action": { "type": "string" }
+        }
+      }
+    }
+  }
+}
