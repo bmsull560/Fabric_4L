@@ -77,7 +77,7 @@ function NodeRow({ node, depth, onToggle }: { node: TreeNode; depth: number; onT
     <div>
       <div className={`flex items-center gap-2 py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors group ${depth === 0 ? "bg-primary/5 border border-primary/20" : ""}`} style={{ marginLeft: indent }}>
         <GripVertical className="w-4 h-4 text-muted-foreground/30 shrink-0 cursor-grab opacity-0 group-hover:opacity-100" />
-        {hasChildren ? <button onClick={() => onToggle(node.id)} className="shrink-0">{node.expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground/60" /> : <ChevronRight className="w-4 h-4 text-muted-foreground/60" />}</button> : <div className="w-4 shrink-0" />}
+        {hasChildren ? <button onClick={() => onToggle(node.id)} className="shrink-0" aria-label={node.expanded ? `Collapse ${node.label}` : `Expand ${node.label}`}>{node.expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground/60" /> : <ChevronRight className="w-4 h-4 text-muted-foreground/60" />}</button> : <div className="w-4 shrink-0" />}
         <div className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${typeColors[node.type]}`}>{node.type === "goal" ? "G" : node.type === "driver" ? "D" : "L"}</div>
         <span className="text-sm font-medium text-foreground flex-1 min-w-0 truncate">{node.label}</span>
         {node.aiGenerated && <Sparkles className="w-3 h-3 text-primary shrink-0" />}
