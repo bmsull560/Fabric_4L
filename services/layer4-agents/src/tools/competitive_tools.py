@@ -35,7 +35,7 @@ from ..contracts.artifacts import (
     EconomicDifferenceCategory,
 )
 from ..models.tool_schemas import ToolCategory
-from ..services.llm_provider import LLMProvider, get_openai_provider
+from ..services.llm_provider import LLMProvider, get_llm_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -217,7 +217,7 @@ Return a JSON array of EconomicDifference objects with these fields:
 
     def _get_llm_provider(self) -> LLMProvider:
         if self._llm_provider is None:
-            self._llm_provider = get_openai_provider(self.config)
+            self._llm_provider = get_llm_provider(self.config)
         return self._llm_provider
 
     async def _query_graph_for_competitor(

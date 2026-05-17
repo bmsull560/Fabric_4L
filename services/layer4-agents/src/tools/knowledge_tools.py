@@ -27,7 +27,7 @@ from ..models.tool_schemas import (
 )
 from ..shared.domain import context as tenant_context
 from ..shared.domain.context import TenantContextError
-from ..services.llm_provider import get_openai_provider
+from ..services.llm_provider import get_llm_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -295,7 +295,7 @@ class SemanticSearchTool(BaseTool):
 
     async def _get_embedding(self, text: str) -> list[float]:
         """Get embedding for text using OpenAI."""
-        response = await get_openai_provider(self.config).embed(
+        response = await get_llm_provider(self.config).embed(
             model=self.embedding_model,
             text=text,
         )

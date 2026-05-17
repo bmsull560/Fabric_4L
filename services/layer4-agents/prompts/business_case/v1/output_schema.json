@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BusinessCaseSections",
+  "type": "object",
+  "required": ["section_type", "content", "claims", "evidence_refs", "confidence"],
+  "properties": {
+    "section_type": { "type": "string" },
+    "content": { "type": "string" },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["claim_text", "claim_type", "evidence_refs", "confidence"],
+        "properties": {
+          "claim_text": { "type": "string" },
+          "claim_type": { "type": "string", "enum": ["metric", "benchmark", "outcome", "risk"] },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+        }
+      }
+    },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+  }
+}

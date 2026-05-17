@@ -33,7 +33,7 @@ from ..models.tool_schemas import (
     ToolCategory,
 )
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
-from ..services.llm_provider import get_openai_provider
+from ..services.llm_provider import get_llm_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ Maximum {max_length} words.""",
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
 
-        provider = get_openai_provider(self.config)
+        provider = get_llm_provider(self.config)
 
         response = await provider.complete_text(
             model=decision.model,

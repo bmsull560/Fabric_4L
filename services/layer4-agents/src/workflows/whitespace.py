@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any
 
 from value_fabric.shared.identity.context import require_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..agents.base import AgentResult
+from ..harness.prompt_registry import get_prompt_registry
 from ..metrics import get_metrics
 from ..metrics.llm_cost_calculator import LLMCostCalculator
 from ..models.agent_state import (
@@ -18,8 +21,9 @@ from ..models.agent_state import (
     WorkflowStatus,
 )
 from ..models.workflow_config import WHITESPACE_WORKFLOW_CONFIG
+from ..services.governed_llm_client import GovernedLLMClient
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
-from ..services.llm_provider import get_openai_provider
+from ..services.llm_provider import get_llm_provider
 from ..tools.registry import ToolRegistry, ToolResult
 from .base import BaseWorkflow
 
@@ -130,6 +134,9 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
         elif tool_name == "score_opportunity":
             return await self._execute_score_opportunity(state)
 
+        elif tool_name == "generate_hypotheses":
+            return await self._execute_llm_hypotheses(state)
+
         return await super()._execute_tool(tool_name, state, config)
 
     async def _execute_analyze_prospect(self, state: WhitespaceAgentState) -> dict[str, Any]:
@@ -151,7 +158,7 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
         decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
-        provider = get_openai_provider(self.config)
+        provider = get_llm_provider(self.config)
 
         # P1-12 FIX: Wrap user content in delimiters to prevent prompt injection
         prompt = f"""Extract structured business needs from the following prospect description.
@@ -427,4 +434,161 @@ Return ONLY the JSON object, no other text."""
             },
             "recommendations": recommendations,
         })
+
+    # -----------------------------------------------------------------------
+    # LLM hypothesis generation
+    # -----------------------------------------------------------------------
+    async def _execute_llm_hypotheses(self, state: WhitespaceAgentState) -> dict[str, Any]:
+        """Generate LLM-enriched whitespace hypotheses from gap analysis + opportunity score.
+
+        Runs three sequential prompts:
+        1. ``extraction`` — re-summarise entities and signals from prospect needs
+        2. ``gap_analysis`` — structured gap analysis against capabilities
+        3. ``hypothesis_generation`` — value hypotheses from gaps + opportunity score
+
+        Degrades gracefully on any LLM failure.
+        """
+        tenant_id = (
+            state.metadata.get("tenant_id")
+            or state.input_data.get("tenant_id")
+            or ""
+        )
+        trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id")
+        account_name = (
+            state.input_data.get("account_name")
+            or state.input_data.get("prospect_name")
+            or (state.whitespace_input.prospect_id if state.whitespace_input else "Unknown")
+        )
+
+        agent_result = AgentResult(
+            payload={},
+            workflow_type="whitespace_analysis",
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+        )
+
+        try:
+            registry = get_prompt_registry()
+            system_tmpl = registry.get("whitespace_analysis", "system")
+            extraction_tmpl = registry.get("whitespace_analysis", "extraction")
+            gap_tmpl = registry.get("whitespace_analysis", "gap_analysis")
+            hyp_tmpl = registry.get("whitespace_analysis", "hypothesis_generation")
+
+            provider = get_llm_provider(self.config)
+            client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(),
+            )
+            system_msg = {"role": "system", "content": system_tmpl.body}
+
+            # ── Step 1: extraction ──────────────────────────────────────
+            needs_text = (
+                state.whitespace_input.prospect_needs
+                if state.whitespace_input
+                else state.input_data.get("prospect_needs", "")
+            )
+            extraction_content = extraction_tmpl.render(
+                account_name=account_name,
+                source_material=needs_text or "",
+            )
+            extraction_result = await client.call(
+                model_task=extraction_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": extraction_content}],
+                temperature=extraction_tmpl.temperature,
+                max_tokens=extraction_tmpl.max_tokens,
+                call_id=f"ws_extract_{trace_id or 'unknown'}",
+            )
+            extracted = client._parse_json(extraction_result.content)
+
+            # ── Step 2: gap analysis ────────────────────────────────────
+            gaps_prior = state.output_data.get("identify_gaps", {})
+            search_results = {
+                "gaps": gaps_prior.get("gaps", [])[:8],
+                "coverage_percentage": gaps_prior.get("coverage_percentage", 0),
+                "capabilities_matched": gaps_prior.get("capabilities_matched", []),
+            }
+            gap_content = gap_tmpl.render(
+                account_name=account_name,
+                needs_json=json.dumps(extracted, indent=2),
+                search_results_json=json.dumps(search_results, indent=2),
+            )
+            gap_result = await client.call(
+                model_task=gap_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": gap_content}],
+                temperature=gap_tmpl.temperature,
+                max_tokens=gap_tmpl.max_tokens,
+                call_id=f"ws_gap_{trace_id or 'unknown'}",
+            )
+            gap_analysis = client._parse_json(gap_result.content)
+
+            # ── Step 3: hypothesis generation ──────────────────────────
+            score_prior = state.output_data.get("score_opportunity", {})
+            opportunity_score = score_prior.get("opportunity_score", score_prior.get("score", 0))
+            hyp_content = hyp_tmpl.render(
+                account_name=account_name,
+                gap_analysis_json=json.dumps(gap_analysis, indent=2),
+                opportunity_score=str(opportunity_score),
+            )
+            hyp_result = await client.call(
+                model_task=hyp_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": hyp_content}],
+                temperature=hyp_tmpl.temperature,
+                max_tokens=hyp_tmpl.max_tokens,
+                call_id=f"ws_hyp_{trace_id or 'unknown'}",
+            )
+            hypotheses = client._parse_json(hyp_result.content)
+
+            # Aggregate token usage across all three calls
+            total_prompt = (
+                extraction_result.prompt_tokens
+                + gap_result.prompt_tokens
+                + hyp_result.prompt_tokens
+            )
+            total_completion = (
+                extraction_result.completion_tokens
+                + gap_result.completion_tokens
+                + hyp_result.completion_tokens
+            )
+            confidence = float(
+                hypotheses.get("confidence", gap_analysis.get("confidence", 0.6))
+            )
+
+            agent_result.payload = {
+                "extracted_entities": extracted,
+                "gap_analysis": gap_analysis,
+                "hypotheses": hypotheses.get("hypotheses", []),
+                "opportunity_score": opportunity_score,
+            }
+            agent_result.mark_llm_enriched(
+                model=hyp_result.model,
+                prompt_tokens=total_prompt,
+                completion_tokens=total_completion,
+                confidence=confidence,
+            )
+            logger.info(
+                "Whitespace hypothesis generation complete: model=%s tokens=%d",
+                hyp_result.model,
+                total_prompt + total_completion,
+            )
+
+        except Exception as exc:
+            logger.warning("Whitespace LLM hypothesis generation failed: %s", exc)
+            agent_result.payload = {
+                "extracted_entities": {},
+                "gap_analysis": {},
+                "hypotheses": [],
+                "opportunity_score": 0,
+            }
+            agent_result.degraded_reason = f"llm_failed: {exc}"
+
+        return agent_result.to_dict()
+
+    def _resolve_provider_name(self) -> str:
+        import os
+        return (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (self.config.get("llm_provider") if isinstance(self.config, dict) else None)
+            or getattr(self.config, "llm_provider", None)
+            or "together"
+        )
 
