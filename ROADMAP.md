@@ -4432,3 +4432,217 @@ Sprint 3:  Task 103 (uv) ──► Task 104 (Cost) ──► Task 105 (Grafana)
 **Go/No-Go Target:** After Sprint 2 = 93% readiness | After Sprint 3 = 97% readiness
 
 ---
+
+## 4-Sprint MVP Delivery Roadmap
+
+**Cadence:** 3 weeks per sprint · 12 weeks total  
+**Audience:** Internal dev team  
+**Grounded in:** Confirmed platform gaps from live codebase audit (2026-05-17)  
+**Principle:** Each sprint builds on the previous — Sprint 1 unblocks Sprint 2, Sprint 2 unblocks Sprint 3, Sprint 3 unblocks Sprint 4.
+
+---
+
+### Sprint 1 — Foundations & Test Infrastructure (Weeks 1–3)
+
+**Goal:** Every service test suite runs from the repo root without manual venv activation, CI is green, and new contributors can onboard in one command.
+
+**Backlog (ordered by priority):**
+
+| # | Priority | Item | Layer/Owner |
+|---|---|---|---|
+| 1 | P0 | Add `make setup` target — bootstraps all service venvs via `pip install -e ".[dev]"` | DevOps |
+| 2 | P0 | Fix `test-layer*` Makefile targets to invoke pytest through service venvs (not global `$(PYTEST)`) | DevOps |
+| 3 | P0 | Scope root `pytest.ini` `addopts` to avoid injecting missing plugins into service runs | DevOps |
+| 4 | P1 | Verify `make test-layer1`, `test-layer4`, `test-layer5`, `test-layer6` pass with zero collection errors | All layers |
+| 5 | P1 | Confirm CI pipeline (`build-deploy.yml`) runs `make setup && make test` end-to-end | DevOps |
+| 6 | P2 | Document `make setup && make test` in `CONTRIBUTING.md` as the canonical onboarding flow | DevOps |
+
+**Done criteria:**
+- `make setup && make test-layer1 test-layer4 test-layer5 test-layer6` completes with zero collection errors on a clean checkout
+- CI pipeline passes on `main`
+- `CONTRIBUTING.md` reflects the updated onboarding command
+
+**Demo checklist:**
+- [ ] Run `make setup` from scratch — show it completes without errors
+- [ ] Run `make test-layer4` — show zero collection errors
+- [ ] Show CI pipeline green on latest commit
+
+**Flexibility:** Item 6 (CONTRIBUTING.md update) can slip to Sprint 2 if velocity is constrained.
+
+**Retrospective template:**
+```
+### Sprint 1 Retrospective
+
+**What went well:**
+-
+
+**What didn't go well:**
+-
+
+**Blockers encountered:**
+-
+
+**Action items for Sprint 2:**
+-
+
+**Velocity note:** Estimated X items; completed Y. Slipped items: [list or none]
+```
+
+---
+
+### Sprint 2 — Core Fixes & Architecture (Weeks 4–6)
+
+**Goal:** All Layer 4 tests pass, `CoreferenceResolver` deduplicates entities, and `platform-contract` is Pydantic v2 clean — no functional no-ops in the critical path.
+
+**Backlog (ordered by priority):**
+
+| # | Priority | Item | Layer/Owner |
+|---|---|---|---|
+| 1 | P0 | Fix `HarnessRunRepository.list()` tuple mismatch — unpack tuple in 3 failing tests | Layer 4 |
+| 2 | P0 | Fix stale `get_openai_provider` mock patch in `test_analyze_prospect_returns_complete_result` | Layer 4 |
+| 3 | P0 | Fix `BusinessCaseInputData` fixture — add missing required field | Layer 4 |
+| 4 | P1 | Fix `SignalDetectionAgent` 0-signal parsing regression | Layer 4 |
+| 5 | P1 | Resolve 8 Layer 4 collection failures (`testcontainers`, tracing module) | Layer 4 |
+| 6 | P1 | Implement `CoreferenceResolver.resolve()` — name+type deduplication with provenance merge | Layer 2 |
+| 7 | P2 | Migrate `packages/platform-contract` from Pydantic v1 `@validator`/`@root_validator` to `@field_validator`/`@model_validator` | Shared |
+
+**Done criteria:**
+- `make test-layer4` passes 226/226 harness tests
+- `test_analyze_prospect_returns_complete_result`, `test_business_case_handles_all_sections_failing`, `test_detect_signals_returns_complete_result` all pass
+- `CoreferenceResolver` unit tests pass: passthrough, exact-dup merge, partial-match no-merge
+- Zero Pydantic deprecation warnings in contract test output
+
+**Demo checklist:**
+- [ ] Show `make test-layer4` output: 226/226 passing
+- [ ] Show `CoreferenceResolver` test run with deduplication cases
+- [ ] Show contract tests passing with zero deprecation warnings
+
+**Flexibility:** Item 7 (Pydantic v2 migration) can slip to Sprint 3 if items 1–6 consume the full sprint.
+
+**Retrospective template:**
+```
+### Sprint 2 Retrospective
+
+**What went well:**
+-
+
+**What didn't go well:**
+-
+
+**Blockers encountered:**
+-
+
+**Action items for Sprint 3:**
+-
+
+**Velocity note:** Estimated X items; completed Y. Slipped items: [list or none]
+```
+
+---
+
+### Sprint 3 — Feature Expansion & Integration (Weeks 7–9)
+
+**Goal:** Layer 3 gaps closed, k8s manifests are cluster-deployable, frontend tests pass, and the Layer 2→3 pipeline is verified end-to-end.
+
+**Backlog (ordered by priority):**
+
+| # | Priority | Item | Layer/Owner |
+|---|---|---|---|
+| 1 | P0 | Fix `apps/web` failing tests — update MSW handlers to match current API shapes; fix auth redirect fixtures | Frontend |
+| 2 | P1 | Implement Layer 3 formula category filter (`formulas.py:579` — replace `pass`) | Layer 3 |
+| 3 | P1 | Refactor k8s image references to Kustomize `images:` overlay pattern (remove `services/<name>:*` paths) | DevOps |
+| 4 | P1 | Update Layer 4 k8s secret names: `openai-secret` → `llm-provider-secret`; add `TOGETHER_API_KEY` to `k8s/secrets.yml.template` | DevOps |
+| 5 | P2 | Verify GHCR base image access (public vs PAT-gated); document in workflow comments | DevOps |
+| 6 | P2 | Write Layer 2 → Layer 3 pipeline integration test (tenant scoping + provenance preservation) | Layer 2/3 |
+
+**Done criteria:**
+- `pnpm --dir apps/web test` passes (all tests green)
+- `GET /formulas/variables?category=<x>` returns only matching variables
+- All `k8s/base/` and top-level manifests use Kustomize image placeholders (no `services/<name>:*` paths)
+- `k8s/secrets.yml.template` includes `TOGETHER_API_KEY`
+- Layer 2 → Layer 3 integration test passes with correct tenant scoping
+
+**Demo checklist:**
+- [ ] Show `pnpm --dir apps/web test` passing
+- [ ] Show `GET /formulas/variables?category=Financial` returning filtered results
+- [ ] Show `kubectl kustomize k8s/base/` rendering valid image references
+- [ ] Run Layer 2 → Layer 3 integration test live
+
+**Flexibility:** Item 6 (L2→L3 integration test) can slip to Sprint 4 if frontend test fixes are larger than estimated. Note: frontend tests require Node 22 — coordinate with devcontainer upgrade.
+
+**Retrospective template:**
+```
+### Sprint 3 Retrospective
+
+**What went well:**
+-
+
+**What didn't go well:**
+-
+
+**Blockers encountered:**
+-
+
+**Action items for Sprint 4:**
+-
+
+**Velocity note:** Estimated X items; completed Y. Slipped items: [list or none]
+```
+
+---
+
+### Sprint 4 — Polish & Release Preparation (Weeks 10–12)
+
+**Goal:** Platform meets its own production-readiness checklist, a release candidate is tagged, UAT is completed, and the next iteration is planned.
+
+**Backlog (ordered by priority):**
+
+| # | Priority | Item | Layer/Owner |
+|---|---|---|---|
+| 1 | P0 | Layer 3 tenant isolation audit — enumerate all Cypher queries; verify `tenant_id` filters; add hostile cross-tenant tests | Layer 3 |
+| 2 | P0 | Golden path J1 E2E test — ROI workflow end-to-end with live Layer 4 backend; add to CI as smoke test | Layer 4 |
+| 3 | P1 | Resolve `SqlTelemetryEmitter.get_events()` — implement or remove with callers updated | Layer 1 |
+| 4 | P1 | Bug fixing and QA pass — address issues surfaced during Sprints 1–3 | All |
+| 5 | P1 | Finalize documentation — update `docs/readiness/current.md`, `CONTRIBUTING.md`, `k8s/README.md` | All |
+| 6 | P2 | Produce release candidate — tag `v1.0.0-rc.1`, verify Docker images build and push to GHCR | DevOps |
+| 7 | P2 | User acceptance testing — run golden path J1 with a real tenant account; capture feedback | All |
+| 8 | P2 | Plan next iteration — document top 3 Sprint 5 candidates based on UAT feedback | PM |
+
+**Done criteria:**
+- All Layer 3 Neo4j queries verified to filter by `tenant_id`; hostile cross-tenant tests added and passing
+- Golden path J1 ROI workflow completes in CI smoke test
+- `SqlTelemetryEmitter.get_events()` implemented or removed (no `NotImplementedError` in production path)
+- `docs/readiness/current.md` updated to reflect final state
+- Release candidate tag `v1.0.0-rc.1` exists with passing CI
+- UAT sign-off documented
+
+**Demo checklist:**
+- [ ] Show hostile cross-tenant test failing before fix, passing after
+- [ ] Show golden path J1 smoke test passing in CI
+- [ ] Show `v1.0.0-rc.1` tag and passing CI pipeline
+- [ ] Present UAT feedback summary and Sprint 5 candidate items
+
+**Flexibility:** Items 7–8 (UAT and next-iteration planning) can extend into a brief post-sprint wrap-up if the release candidate is delayed.
+
+**Retrospective template:**
+```
+### Sprint 4 Retrospective
+
+**What went well:**
+-
+
+**What didn't go well:**
+-
+
+**Blockers encountered:**
+-
+
+**Next iteration candidates (Sprint 5):**
+1.
+2.
+3.
+
+**Velocity note:** Estimated X items; completed Y. Slipped items: [list or none]
+```
+
+---

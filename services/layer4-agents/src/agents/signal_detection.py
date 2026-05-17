@@ -92,7 +92,7 @@ class SignalDetectionAgent(BaseAgent):
     def _get_layer3_client(self):
         """Get or create Layer 3 knowledge client."""
         if self.layer3_client is None:
-            from ..integration.layer3_client import Layer3KnowledgeClient
+            from ..integration.layer3_client import Layer3Client as Layer3KnowledgeClient
 
             self.layer3_client = Layer3KnowledgeClient(
                 base_url=self.config.get("layer3_url", "http://layer3-knowledge:8000"),
