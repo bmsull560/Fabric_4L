@@ -250,7 +250,7 @@ def get_llm_provider(config: dict[str, Any] | None = None) -> Any:
     2. ``config["llm_provider"]`` if present
     3. Default: ``"together"``
 
-    Supported values: ``"together"``, ``"openai"``, ``"anthropic"``
+    Supported values: ``"together"``, ``"openai"``
 
     Returns an instance implementing the ``LLMProvider`` protocol.
     """
@@ -281,17 +281,11 @@ def get_llm_provider(config: dict[str, Any] | None = None) -> Any:
         return get_openai_provider(config)
 
     if provider_name == "anthropic":
-        # Anthropic uses the same OpenAI-compatible interface via the openai SDK
-        # with a different base URL.  Fall back to OpenAI provider for now.
-        import logging
-        logging.getLogger(__name__).warning(
-            "Anthropic provider requested but not yet implemented; falling back to OpenAI."
+        raise NotImplementedError(
+            "Anthropic provider is not implemented; set LAYER4_LLM_PROVIDER to 'together' or 'openai'."
         )
-        return get_openai_provider(config)
 
-    import logging
-    logging.getLogger(__name__).warning(
-        "Unknown LLM provider %r; falling back to Together.ai.", provider_name
+    raise ValueError(
+        f"Unknown LLM provider: {provider_name!r}. "
+        "Supported values: 'together', 'openai'."
     )
-    from .together_provider import TogetherAIProvider
-    return TogetherAIProvider()

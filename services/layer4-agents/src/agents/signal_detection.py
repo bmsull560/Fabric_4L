@@ -35,6 +35,7 @@ class SignalDetectionAgent__detect_signalsResult(TypedDictModel):
     message: str
     processing_metadata: Any
     signals: list[Any]
+    llm_output: Any | None = None
 
 class SignalDetectionAgent__extract_signals_from_layer2Result(TypedDictModel):
     duration_ms: int
@@ -628,7 +629,7 @@ class SignalDetectionAgent(BaseAgent):
             confidence = float(narrative_data.get("confidence", 0.7))
 
             agent_result.payload = {
-                "classified_signals": classified.get("signals", []),
+                "classified_signals": classified.get("classified_signals", []),
                 "hypotheses": hypotheses.get("hypotheses", []),
                 "narrative": narrative_data.get("narrative", ""),
                 "top_signals": narrative_data.get("top_signals", []),
@@ -646,8 +647,8 @@ class SignalDetectionAgent(BaseAgent):
                 total_prompt + total_completion,
             )
 
-        except Exception as exc:
-            logger.warning("Signal detection LLM layer failed: %s", exc)
+        except Exception:
+            logger.warning("Signal detection LLM layer failed", extra={"code": "llm_failed"})
             agent_result.payload = {
                 "classified_signals": [],
                 "hypotheses": [],
@@ -655,7 +656,7 @@ class SignalDetectionAgent(BaseAgent):
                 "top_signals": [],
                 "evidence_refs": [],
             }
-            agent_result.degraded_reason = f"llm_failed: {exc}"
+            agent_result.degraded_reason = "llm_failed"
 
         return agent_result.to_dict()
 

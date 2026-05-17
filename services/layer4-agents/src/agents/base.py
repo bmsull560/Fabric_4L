@@ -507,6 +507,8 @@ class AgentResult:
 
     def _apply_governance_rules(self) -> None:
         """Enforce degraded-output invariants."""
+        # Clamp confidence to valid range before any governance decisions.
+        self.confidence = max(0.0, min(1.0, self.confidence))
         reasons: list[str] = []
 
         if not self.llm_enrichment:
