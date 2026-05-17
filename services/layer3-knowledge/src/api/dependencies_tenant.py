@@ -17,8 +17,8 @@ from fastapi import Depends, HTTPException, Request, status
 if TYPE_CHECKING:
     from value_fabric.shared.identity.context import RequestContext
 
-from api.dependencies import get_neo4j_driver
-from db.query_execution import TenantExecutionContext, TenantQueryExecutor
+from ..api.dependencies import get_neo4j_driver
+from ..db.query_execution import TenantExecutionContext, TenantQueryExecutor
 from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 try:
@@ -155,11 +155,13 @@ class Neo4jTenantSession:
                 raise ValueError(
                     "Raw Cypher touching tenant-owned labels must include explicit tenant predicates"
                 )
-            params.setdefault("tenant_id", self._tenant_id)
-            params.setdefault("_tenant_id", self._tenant_id)
+            # Force-assign: session tenant_id always wins over caller-supplied value.
+            params["tenant_id"] = self._tenant_id
+            params["_tenant_id"] = self._tenant_id
         elif self._tenant_id and not self._is_bypass:
-            params.setdefault("tenant_id", self._tenant_id)
-            params.setdefault("_tenant_id", self._tenant_id)
+            # Force-assign: prevent callers from spoofing tenant_id in write params.
+            params["tenant_id"] = self._tenant_id
+            params["_tenant_id"] = self._tenant_id
 
         return await TenantQueryExecutor.run(self._session.run, query_text, params, TenantExecutionContext(tenant_id=self._tenant_id, is_bypass=self._is_bypass))
 
@@ -198,8 +200,9 @@ class Neo4jTenantSession:
                             "Raw Cypher touching tenant-owned labels must include explicit tenant predicates"
                         )
                 if self._tenant_id:
-                    params.setdefault("tenant_id", self._tenant_id)
-                    params.setdefault("_tenant_id", self._tenant_id)
+                    # Force-assign: session tenant_id always wins over caller-supplied value.
+                    params["tenant_id"] = self._tenant_id
+                    params["_tenant_id"] = self._tenant_id
                 return await TenantQueryExecutor.run(self._tx.run, query_text, params, TenantExecutionContext(tenant_id=self._tenant_id))
 
         return TenantTx(tx, self._tenant_id)

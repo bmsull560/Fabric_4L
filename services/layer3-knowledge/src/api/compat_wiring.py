@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from api.versioning import (
+from ..api.versioning import (
     initialize_versioning,
     migrate_v1_to_v2_ingestion_request,
     migrate_v1_to_v2_search_request,

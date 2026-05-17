@@ -475,6 +475,7 @@ def encode_jwt(
     payload: dict = {
         tenant_claim: str(tenant_id),
         "iat": now,
+        "nbf": now,  # services/api decode_token requires nbf; keep in sync
         "exp": now + expires_in_seconds,
         "iss": os.getenv("JWT_ISSUER", _DEFAULT_INTERNAL_ISSUER),
         "aud": os.getenv("JWT_AUDIENCE", _DEFAULT_INTERNAL_AUDIENCE),

@@ -84,8 +84,9 @@ class TenantQueryExecutor:
     ) -> Any:
         params = dict(parameters or {})
         if context.tenant_id:
-            params.setdefault("tenant_id", context.tenant_id)
-            params.setdefault("_tenant_id", context.tenant_id)
+            # Force-assign: context tenant_id always wins over caller-supplied value.
+            params["tenant_id"] = context.tenant_id
+            params["_tenant_id"] = context.tenant_id
 
         cls._validate(query=query, params=params, context=context)
         return await run_callable(query, params)

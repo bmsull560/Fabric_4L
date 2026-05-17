@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
-from api.dependencies_tenant import create_neo4j_tenant_session
+from ...api.dependencies_tenant import create_neo4j_tenant_session
 
 router = APIRouter(prefix="/v1/calculators", tags=["calculators"])
 

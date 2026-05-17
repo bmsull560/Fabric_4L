@@ -1,9 +1,9 @@
 """Analytics package initialization."""
 
 # Import existing analytics components
-from analytics.centrality import CentralityAnalyzer
-from analytics.communities import CommunityDetector
-from analytics.manager import (
+from ..analytics.centrality import CentralityAnalyzer
+from ..analytics.communities import CommunityDetector
+from ..analytics.manager import (
     AggregationType,
     AnalyticsConfig,
     AnalyticsEvent,
@@ -20,7 +20,7 @@ from analytics.manager import (
     get_analytics_manager,
     initialize_analytics,
 )
-from analytics.similarity import SimilarityAnalyzer
+from ..analytics.similarity import SimilarityAnalyzer
 
 __all__ = [
     # Existing analytics components

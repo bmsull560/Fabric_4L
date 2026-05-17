@@ -1,6 +1,6 @@
 """Security package initialization."""
 
-from security.monitor import (
+from ..security.monitor import (
     AlertStatus,
     AnomalyDetector,
     DetectionMethod,
@@ -16,7 +16,7 @@ from security.monitor import (
     get_security_monitor,
     initialize_security_monitoring,
 )
-from security.query_validator import (
+from ..security.query_validator import (
     QueryValidator,
     UnsafePatternError,
     UnscopedQueryError,

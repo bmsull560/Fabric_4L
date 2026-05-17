@@ -1,6 +1,6 @@
 from value_fabric.shared.fastapi_framework import RouterMount, include_router_mounts
 
-from api.routes import (
+from ..api.routes import (
     benchmarks,
     calculators,
     compat_aliases,

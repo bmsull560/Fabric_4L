@@ -24,9 +24,9 @@ from pydantic import BaseModel, Field
 from value_fabric.shared.models.typed_dict import TypedDictModel
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
-from services.case_study_service import CaseStudy, CaseStudyService
-from services.evidence_search import EvidenceSearchService
-from api.dependencies import get_neo4j_driver
+from ...services.case_study_service import CaseStudy, CaseStudyService
+from ...services.evidence_search import EvidenceSearchService
+from ...api.dependencies import get_neo4j_driver
 
 
 class delete_case_studyResult(TypedDictModel):

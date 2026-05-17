@@ -7,8 +7,8 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from api.dependencies import AppState, get_app_state
-from api.models import AuditLogEntry, AuditLogResponse, ProvenanceStep, ProvenanceTrailResponse
+from ...api.dependencies import AppState, get_app_state
+from ...api.models import AuditLogEntry, AuditLogResponse, ProvenanceStep, ProvenanceTrailResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

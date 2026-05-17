@@ -1,11 +1,25 @@
 """Shared fixtures for security tests."""
 
 import os
+import sys
+from pathlib import Path
 from typing import Callable, Generator
 
 import pytest
 import jwt
 from unittest.mock import MagicMock, AsyncMock
+
+# Layer 3 source root is needed by tests that import value_fabric.layer3.*
+# (e.g. test_neo4j_cross_tenant_write_isolation.py).  The value_fabric.layer3
+# shim appends services/layer3-knowledge/src to its __path__, but bare
+# intra-package imports inside that tree (e.g. ``from api.dependencies import
+# ...``) still require the src root to be on sys.path directly.
+# Scoped here rather than in the root conftest to avoid the ``src`` namespace
+# collision documented in conftest.py.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_L3_SRC = str(_REPO_ROOT / "services" / "layer3-knowledge" / "src")
+if _L3_SRC not in sys.path:
+    sys.path.insert(0, _L3_SRC)
 
 # Lazy imports for optional dependencies
 def _get_psycopg2():

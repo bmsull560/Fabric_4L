@@ -324,7 +324,8 @@ class TestOIDCErrorHandling:
 
     @pytest.mark.asyncio
     async def test_discover_404_error(self, oidc_client):
-        """Discovery should not retry on 404 errors."""
+        """Discovery must not retry on 404 and must raise OIDCDiscoveryError (non-retryable)."""
+        from value_fabric.shared.identity.oidc import OIDCDiscoveryError
         with patch.object(oidc_client._http_client, "get") as mock_get:
             mock_get.side_effect = httpx.HTTPStatusError(
                 "Not Found",
@@ -332,15 +333,21 @@ class TestOIDCErrorHandling:
                 response=Mock(status_code=404),
             )
 
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(OIDCDiscoveryError):
                 await oidc_client.discover("https://auth.example.com")
 
-            # Should not retry on 404
+            # Must not retry on 4xx
             assert mock_get.call_count == 1
 
     @pytest.mark.asyncio
     async def test_discover_retry_on_500(self, oidc_client):
-        """Discovery should retry on 500 errors."""
+        """Discovery must retry exactly once on 500 and succeed with a valid document."""
+        _valid_doc = {
+            "issuer": "https://auth.example.com",
+            "authorization_endpoint": "https://auth.example.com/authorize",
+            "token_endpoint": "https://auth.example.com/token",
+            "jwks_uri": "https://auth.example.com/.well-known/jwks.json",
+        }
         with patch.object(oidc_client._http_client, "get") as mock_get:
             mock_get.side_effect = [
                 httpx.HTTPStatusError(
@@ -348,7 +355,7 @@ class TestOIDCErrorHandling:
                     request=Mock(),
                     response=Mock(status_code=500),
                 ),
-                Mock(raise_for_status=Mock(), json=Mock(return_value={"issuer": "https://auth.example.com"})),
+                Mock(raise_for_status=Mock(), json=Mock(return_value=_valid_doc)),
             ]
 
             result = await oidc_client.discover("https://auth.example.com")

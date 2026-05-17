@@ -1,6 +1,6 @@
 """API gateway and service mesh package initialization."""
 
-from gateway.api_gateway import (
+from ..gateway.api_gateway import (
     APIGateway,
     CircuitBreaker,
     CircuitState,

@@ -126,7 +126,7 @@ class IngestRequest(BaseModel):
         None,
         min_length=1,
         max_length=255,
-        description="Optional tenant UUID hint for compatibility; authenticated tenant context is authoritative and any provided value must match it",
+        description="Optional tenant hint for compatibility; authenticated tenant context is authoritative and any provided value must match it",
         examples=["12345678-1234-1234-1234-123456789abc"],
     )
 
