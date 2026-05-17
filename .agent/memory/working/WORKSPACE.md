@@ -1,30 +1,18 @@
 # Workspace (live task state)
 
 ## Current task
-Fabric Harness MVP — verified and linted.
+PR 375 remediation: fix Layer 2 tenant propagation/job-store compatibility and the auth `uuid` runtime error.
 
 ## Status
-COMPLETE. All 86 harness tests pass. Ruff clean (200 auto-fixes applied, 2 manual fixes).
+In progress. Source changes applied; validation narrowed to file-level analyzer checks.
 
 ## What was done
-- Discovered harness was already fully implemented in `services/layer4-agents/src/harness/`
-- Ran 86 tests: all passed (0.28s)
-- Applied ruff auto-fixes (200 issues: import sorting, `typing.Dict/List/Tuple` → `dict/list/tuple`, `Optional[X]` → `X | None`)
-- Fixed 2 remaining ruff issues manually in `test_harness.py` (walrus operator → explicit import)
-- Confirmed 86/86 tests still pass after lint fixes
-
-## Files touched
-- `src/harness/__init__.py` — import sort fixed
-- `src/harness/models.py` — typing modernized
-- `src/harness/state_machine.py` — typing modernized
-- `src/harness/policies.py` — typing modernized
-- `src/harness/tool_contracts.py` — typing modernized
-- `src/harness/human_gates.py` — typing modernized
-- `src/harness/checkpoints.py` — typing modernized
-- `src/harness/telemetry.py` — typing modernized
-- `src/harness/validation_hooks.py` — typing modernized
-- `src/harness/registry.py` — typing modernized
-- `src/harness/tests/test_harness.py` — walrus operator fix
+- Added the missing `uuid` import in `services/api/app/routers/auth.py`
+- Made `services/layer2-extraction/src/layer2_extraction/integration/job_store.py` compatible with the SSE tests (`set`/`get`/`delete`, optional `source_url`, `created_at`)
+- Tightened `build_job_store()` to fail closed in production without `REDIS_URL`
+- Threaded `tenant_id` through the Layer 2 extraction pipeline and job mutation helper
+- Added tenant-aware artifact reads and job deletion cleanup
+- Fixed the SSE test async-fixture annotation and the Redis ping type narrowing in Layer 2
 
 ## Next step
-Archive this workspace on next session start.
+Review remaining analyzer noise from third-party stub gaps only if it blocks the PR review flow.

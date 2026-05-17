@@ -12,6 +12,7 @@ Validates:
 import asyncio
 import json
 from datetime import UTC, datetime
+from typing import AsyncGenerator
 
 import httpx
 import pytest
@@ -25,7 +26,7 @@ DEFAULT_RELATIONSHIPS_EXTRACTED = 3
 
 
 @pytest.fixture(autouse=True)
-async def reset_pipeline_state() -> None:
+async def reset_pipeline_state() -> AsyncGenerator[None, None]:
     """Clear pipeline jobs before each test."""
     # Get all jobs and delete them
     jobs = await api_main.job_store.list_jobs()

@@ -203,6 +203,7 @@ async def extract_and_ingest(
         source_url=payload.source_url,
         content=payload.markdown_content,
         config=payload.extraction_config or {},
+        tenant_id=tenant_id,
     )
     return ExtractAndIngestResponse(
         job_id=job_id,
@@ -248,15 +249,8 @@ async def _sse_event_generator(job_id: str, tenant_id: str | None) -> AsyncGener
         payload = {"type": event_type, "timestamp": _now_z(), "data": data}
         return f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
 
-    first_poll = True
-
     # Poll until terminal
     for _ in range(120):  # max 60 s at 0.5 s intervals
-        if first_poll:
-            first_poll = False
-        else:
-            await asyncio.sleep(_POLL_INTERVAL)
-
         try:
             job = await job_store.get_job(job_id, tenant_id=tenant_id)
         except KeyError:
@@ -289,40 +283,9 @@ async def _sse_event_generator(job_id: str, tenant_id: str | None) -> AsyncGener
                     "completed_at": job.completed_at.isoformat() if job.completed_at else None,
                 })
             return
-        await asyncio.sleep(_POLL_INTERVAL)
-        try:
-            job = await job_store.get_job(job_id, tenant_id=tenant_id)
-        except KeyError:
-            yield _evt("error", {"error": "job_not_found", "job_id": job_id})
-            return
-
-        overall = _compute_overall_status(job.extraction_status, job.ingestion_status)
-        progress = 100 if overall == "completed" else (50 if job.extraction_status == "completed" else 10)
-        yield _evt("status", overall)
+        progress = 50 if job.extraction_status == "completed" else 10
         yield _evt("progress", progress)
-
-        if overall in _SSE_TERMINAL_STATUSES:
-            if overall == "completed":
-                yield _evt("log", {"level": "success", "message": "Pipeline completed"})
-                yield _evt("complete", {
-                    "job_id": job_id,
-                    "status": overall,
-                    "entities_extracted": job.entities_extracted,
-                    "relationships_extracted": job.relationships_extracted,
-                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                    "error": None,
-                })
-            else:
-                yield _evt("log", {"level": "error", "message": job.last_error or "Pipeline failed"})
-                yield _evt("error", {
-                    "job_id": job_id,
-                    "status": overall,
-                    "error": job.last_error,
-                    "entities_extracted": job.entities_extracted,
-                    "relationships_extracted": job.relationships_extracted,
-                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                })
-            return
+        await asyncio.sleep(_POLL_INTERVAL)
 
     yield _evt("error", {"job_id": job_id, "error": "stream timed out waiting for terminal state"})
 
@@ -392,10 +355,11 @@ async def _set_pipeline_job(
     relationships_extracted: int | None = None,
     retry_count: int | None = None,
     completed_at: datetime | None = None,
-    last_error: str | None = _UNSET,
-    next_retry_at: datetime | None = _UNSET,
+    last_error: object = _UNSET,
+    next_retry_at: object = _UNSET,
+    tenant_id: str | None = None,
 ) -> None:
-    job = await job_store.get_job(job_id)
+    job = await job_store.get_job(job_id, tenant_id=tenant_id)
     if extraction_status is not None:
         job.extraction_status = extraction_status
     if ingestion_status is not None:
@@ -561,16 +525,18 @@ async def run_extract_and_ingest(
     source_url: str,
     content: str,
     config: dict[str, Any],
+    tenant_id: str | None = None,
 ) -> None:
     """Run full extract-and-ingest pipeline."""
-    await _set_pipeline_job(job_id, extraction_status="running")
+    await _set_pipeline_job(job_id, extraction_status="running", tenant_id=tenant_id)
     try:
         artifacts = await run_extraction(job_id, source_url, content, config)
     except Exception:
         await _set_pipeline_job(
             job_id,
             extraction_status="failed",
-            overall_status="failed",
+            ingestion_status="failed",
+            tenant_id=tenant_id,
         )
         return
 
@@ -591,11 +557,12 @@ async def run_extract_and_ingest(
                     extraction_status="completed",
                     ingestion_status="completed",
                     completed_at=datetime.now(),
+                    tenant_id=tenant_id,
                 )
             else:
-                await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 ingestion failed")
+                await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 ingestion failed", tenant_id=tenant_id)
         else:
-            await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 unavailable")
+            await _queue_for_retry(job_id, source_url, artifacts, "Layer 3 unavailable", tenant_id=tenant_id)
     finally:
         await client.close()
 
@@ -605,6 +572,7 @@ async def _queue_for_retry(
     source_url: str,
     artifacts: ExtractionArtifacts,
     error: str,
+    tenant_id: str | None = None,
 ) -> None:
     result_json = json.dumps({
         "source_url": source_url,
@@ -634,6 +602,7 @@ async def _queue_for_retry(
         retry_count=1,
         last_error=error,
         next_retry_at=next_retry,
+        tenant_id=tenant_id,
     )
 
 
