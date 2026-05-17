@@ -122,6 +122,10 @@ def test_entity_data():
     }
 
 
+@pytest.mark.skipif(
+    not _runtime_enabled_for({"l1"}),
+    reason="L1 runtime not enabled. Set RUN_RUNTIME_L1=1 or RUN_RUNTIME_CONTRACTS=1.",
+)
 class TestL1RoutesExist:
     """Verify L4 client routes match actual L1 endpoints."""
 
@@ -171,6 +175,10 @@ class TestL1RoutesExist:
         assert response.status_code in [404, 401, 403, 200], f"Unexpected status: {response.status_code}"
 
 
+@pytest.mark.skipif(
+    not _runtime_enabled_for({"l2"}),
+    reason="L2 runtime not enabled. Set RUN_RUNTIME_L2=1 or RUN_RUNTIME_CONTRACTS=1.",
+)
 class TestL2RoutesExist:
     """Verify L4 client routes match actual L2 endpoints."""
 
