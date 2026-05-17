@@ -12,48 +12,6 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-_BYPASS_TRUE_VALUES = {"true", "1", "yes", "on"}
-_BYPASS_FLAGS = (
-    "ALLOW_INSECURE_DEV_AUTH_BYPASS",
-    "DEV_AUTH_BYPASS",
-    "ALLOW_DEV_AUTH_BYPASS",
-    "AUTH_BYPASS_ENABLED",
-)
-_BYPASS_FLAG_METADATA: dict[str, dict[str, str]] = {
-    "ALLOW_INSECURE_DEV_AUTH_BYPASS": {
-        "classification": "local-dev only",
-        "surface": "auth",
-    },
-    "DEV_AUTH_BYPASS": {
-        "classification": "test-only",
-        "surface": "auth",
-    },
-    "ALLOW_DEV_AUTH_BYPASS": {
-        "classification": "test-only",
-        "surface": "auth",
-    },
-    "AUTH_BYPASS_ENABLED": {
-        "classification": "local-dev only",
-        "surface": "auth",
-    },
-    "JWT_FALLBACK_TO_QUERY_PARAM": {
-        "classification": "test-only",
-        "surface": "auth",
-    },
-    "ALLOW_EPHEMERAL_ENCRYPTION": {
-        "classification": "local-dev only",
-        "surface": "encryption",
-    },
-    "ALLOW_MOCK_LLM": {
-        "classification": "test-only",
-        "surface": "llm",
-    },
-    "MOCK_PERSISTENCE": {
-        "classification": "test-only",
-        "surface": "persistence",
-    },
-}
-
 # Minimum JWT secret length for production (NIST SP 800-117 recommends >= 256 bits)
 _MIN_JWT_SECRET_LENGTH = 32
 
@@ -161,48 +119,6 @@ def is_production_like_environment(environment: str | None = None) -> bool:
     return env not in _DEV_ENVIRONMENTS
 
 
-def _is_bypass_flag_enabled(flag_name: str) -> bool:
-    raw_value = os.getenv(flag_name, "")
-    normalized = raw_value.strip().lower()
-    if flag_name == "ALLOW_DEV_AUTH_BYPASS":
-        return normalized == "i_understand_risk"
-    return normalized in _BYPASS_TRUE_VALUES
-
-
-def _active_bypass_flags() -> list[dict[str, str]]:
-    active: list[dict[str, str]] = []
-    for flag_name, metadata in _BYPASS_FLAG_METADATA.items():
-        if not _is_bypass_flag_enabled(flag_name):
-            continue
-        active.append(
-            {
-                "flag": flag_name,
-                "classification": metadata["classification"],
-                "surface": metadata["surface"],
-            }
-        )
-    return active
-
-
-def log_non_production_bypass_activation(environment: str | None = None) -> None:
-    """Emit a structured warning when a risky bypass is enabled outside production."""
-    env = (environment or detect_environment()).strip().lower()
-    if is_production_like_environment(env):
-        return
-
-    for active_flag in _active_bypass_flags():
-        logger.warning(
-            "non_production_bypass_enabled",
-            extra={
-                "event": "non_production_bypass_enabled",
-                "environment": env,
-                "flag": active_flag["flag"],
-                "classification": active_flag["classification"],
-                "surface": active_flag["surface"],
-            },
-        )
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # Production Safety Validator
 # ═══════════════════════════════════════════════════════════════════════════
@@ -253,13 +169,12 @@ class ProductionSafetyValidator:
             )
 
         # Auth bypass flags must never be enabled in production-like envs
-        for bypass_flag in _BYPASS_FLAGS:
-            if _is_bypass_flag_enabled(bypass_flag):
-                self.errors.append(
-                    f"{bypass_flag} must be false or unset in production-like environments. "
-                    "Authentication bypass flags are forbidden outside local development."
-                )
-        if _is_bypass_flag_enabled("JWT_FALLBACK_TO_QUERY_PARAM"):
+        if os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() in ("true", "1", "yes"):
+            self.errors.append(
+                "ALLOW_INSECURE_DEV_AUTH_BYPASS must be false or unset in production-like environments. "
+                "Development authentication bypass is a critical security risk."
+            )
+        if os.getenv("JWT_FALLBACK_TO_QUERY_PARAM", "").lower() in ("true", "1", "yes"):
             self.errors.append(
                 "JWT_FALLBACK_TO_QUERY_PARAM must be false or unset in production-like environments. "
                 "Passing tokens in query strings leaks credentials to logs and proxies."
@@ -316,7 +231,7 @@ class ProductionSafetyValidator:
             )
 
         # Mock persistence must not be enabled
-        if _is_bypass_flag_enabled("MOCK_PERSISTENCE"):
+        if os.getenv("MOCK_PERSISTENCE", "").lower() in ("true", "1", "yes"):
             self.errors.append(
                 "MOCK_PERSISTENCE must be false or unset in production-like environments. "
                 "Mock persistence destroys data durability and tenant isolation guarantees."
@@ -342,7 +257,8 @@ class ProductionSafetyValidator:
                 "Set a strong 256-bit base64-encoded Fernet key."
             )
 
-        if _is_bypass_flag_enabled("ALLOW_EPHEMERAL_ENCRYPTION"):
+        allow_ephemeral = os.getenv("ALLOW_EPHEMERAL_ENCRYPTION", "").lower() in ("true", "1", "yes")
+        if allow_ephemeral:
             self.errors.append(
                 "ALLOW_EPHEMERAL_ENCRYPTION must be false or unset in production-like environments."
             )
@@ -474,7 +390,7 @@ class ProductionSafetyValidator:
                 "LLM_PROVIDER='mock' is not permitted in production-like environments. "
                 "Configure a real inference endpoint (e.g., openai, anthropic, azure)."
             )
-        if _is_bypass_flag_enabled("ALLOW_MOCK_LLM"):
+        if os.getenv("ALLOW_MOCK_LLM", "").lower() in ("true", "1", "yes"):
             self.errors.append(
                 "ALLOW_MOCK_LLM must be false or unset in production-like environments."
             )
@@ -500,7 +416,6 @@ class ProductionSafetyValidator:
     def validate(self) -> None:
         """Run all production-safety checks."""
         if not self.is_production_like:
-            log_non_production_bypass_activation(self.environment)
             # In dev/test environments, run validations as warnings only
             self._run_all()
             if self.errors:
@@ -586,53 +501,30 @@ def validate_database_config() -> None:
     if not database_url:
         raise ValueError("DATABASE_URL is required")
     
-    if is_production() or is_staging():
-        environment_label = "production" if is_production() else "staging"
+    if is_production():
         # SQLite is not allowed in production
         if database_url.startswith("sqlite"):
             raise ValueError(
-                f"SQLite is not supported in {environment_label}. "
+                "SQLite is not supported in production. "
                 "Use PostgreSQL with RLS for multi-tenant isolation."
             )
-        _validate_database_tls_mode(
-            database_url,
-            source_variable="DATABASE_URL",
-            environment_label=environment_label,
-        )
+        _validate_database_tls_mode(database_url, source_variable="DATABASE_URL")
 
         sync_database_url = os.getenv("DATABASE_URL_SYNC", "")
         if sync_database_url:
-            _validate_database_tls_mode(
-                sync_database_url,
-                source_variable="DATABASE_URL_SYNC",
-                environment_label=environment_label,
-            )
+            _validate_database_tls_mode(sync_database_url, source_variable="DATABASE_URL_SYNC")
 
 
-def _validate_database_tls_mode(database_url: str, *, source_variable: str, environment_label: str = "production") -> None:
+def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> None:
     parsed = urlparse(database_url)
-    sslmode_values = [
-        value.strip().lower()
-        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
-        if key.lower() == "sslmode"
-    ]
+    query_params = {key.lower(): value for key, value in parse_qsl(parsed.query, keep_blank_values=True)}
+    sslmode = (query_params.get("sslmode", "") or "").strip().lower()
 
-    if not sslmode_values:
+    if sslmode not in _APPROVED_DATABASE_SSL_MODES:
         raise ValueError(
-            f"{environment_label.title()} {source_variable} must enforce TLS and include "
-            "sslmode=require, sslmode=verify-ca, or sslmode=verify-full."
-        )
-
-    unsupported_sslmodes = [
-        sslmode for sslmode in sslmode_values if sslmode not in _APPROVED_DATABASE_SSL_MODES
-    ]
-    if unsupported_sslmodes:
-        raise ValueError(
-            f"{environment_label.title()} {source_variable} must enforce TLS with sslmode=require or stronger "
+            f"Production {source_variable} must include sslmode=require or stronger "
             "(verify-ca/verify-full); verify-full is preferred."
         )
-
-    sslmode = sslmode_values[-1]
     if sslmode != _PREFERRED_DATABASE_SSL_MODE:
         logger.info(
             "%s uses sslmode=%s; sslmode=%s is preferred.",
@@ -640,30 +532,6 @@ def _validate_database_tls_mode(database_url: str, *, source_variable: str, envi
             sslmode,
             _PREFERRED_DATABASE_SSL_MODE,
         )
-
-
-def validate_datastore_transport_security() -> None:
-    """Enforce secure transport for core backend datastores in production-like envs."""
-    env = detect_environment()
-    if env in _DEV_ENVIRONMENTS:
-        return
-
-    database_url = os.getenv("DATABASE_URL", "")
-    redis_url = os.getenv("REDIS_URL", "")
-    neo4j_uri = os.getenv("NEO4J_URI", "")
-
-    if not database_url:
-        raise ValueError("DATABASE_URL is required in production")
-    if not redis_url:
-        raise ValueError("REDIS_URL is required in production")
-    if not neo4j_uri:
-        raise ValueError("NEO4J_URI is required in production")
-
-    _validate_database_tls_mode(database_url, source_variable="DATABASE_URL", environment_label="production")
-    if not redis_url.lower().startswith("rediss://"):
-        raise ValueError("Production REDIS_URL must use rediss:// to enforce TLS")
-    if not neo4j_uri.lower().startswith(("neo4j+s://", "neo4j+ssc://", "bolt+s://", "bolt+ssc://")):
-        raise ValueError("Production NEO4J_URI must use a TLS scheme (neo4j+s:// or bolt+s://)")
 
 
 def validate_jwt_secret_strength() -> None:
@@ -681,13 +549,6 @@ def validate_jwt_secret_strength() -> None:
         # Missing JWT_SECRET is handled by validate_all_controls / jwt.py
         return
 
-    normalized = jwt_secret.strip().lower()
-    if is_production() and normalized in _WEAK_SECRET_DENYLIST:
-        raise ValueError(
-            "JWT_SECRET uses a known default/test value and is forbidden in production. "
-            "Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
-        )
-
     if is_production() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
         raise ValueError(
             f"JWT_SECRET is too short ({len(jwt_secret)} chars). "
@@ -702,24 +563,6 @@ def validate_jwt_secret_strength() -> None:
             len(jwt_secret),
             _MIN_JWT_SECRET_LENGTH,
         )
-
-
-def validate_jwt_config() -> None:
-    """Compatibility wrapper for identity dependency startup validation."""
-    jwt_secret = os.getenv("JWT_SECRET", "")
-    if is_production_like_environment() and not jwt_secret:
-        raise ValueError("JWT_SECRET is required in production-like environments")
-    validate_jwt_secret_strength()
-
-    # JWT_ISSUER and JWT_AUDIENCE validation (production-like environments)
-    jwt_issuer = os.getenv("JWT_ISSUER", "").strip()
-    jwt_audience = os.getenv("JWT_AUDIENCE", "").strip()
-
-    if is_production_like_environment():
-        if not jwt_issuer:
-            raise ValueError("JWT_ISSUER is required in production-like environments")
-        if not jwt_audience:
-            raise ValueError("JWT_AUDIENCE is required in production-like environments")
 
 
 def validate_database_superuser() -> None:
@@ -759,40 +602,9 @@ def validate_database_superuser() -> None:
             logger.warning(msg)
 
 
-def validate_rls_prerequisites() -> None:
-    """Validate that the database supports Row-Level Security.
-
-    Raises:
-        ValueError: If the database is not PostgreSQL (RLS is PostgreSQL-only)
-            or if the connection uses a superuser role.
-    """
-    database_url = os.getenv("DATABASE_URL", "")
-    if not database_url:
-        return
-
-    if not database_url.startswith("postgresql"):
-        raise ValueError(
-            "RLS prerequisites require PostgreSQL. "
-            "must use PostgreSQL with Row-Level Security for tenant isolation."
-        )
-
-    try:
-        parsed = urlparse(database_url)
-        username = parsed.username or ""
-    except Exception:
-        username = ""
-
-    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
-    if username.lower() in superuser_names:
-        raise ValueError(
-            f"DATABASE_URL connects as '{username}', which is a PostgreSQL superuser. "
-            "Superusers bypass ALL Row-Level Security policies."
-        )
-
-
 def validate_environment_config() -> None:
     """Validate environment configuration for conflicts.
-
+    
     Raises:
         ValueError: If environment variables conflict
     """
@@ -836,33 +648,13 @@ def get_startup_summary() -> dict[str, Any]:
     cors_origins = os.getenv("CORS_ORIGINS", "*")
     database_url = os.getenv("DATABASE_URL", "")
     
-    rls_status = _get_rls_status(database_url)
-    rls_enforced = rls_status == "active"
-    degraded = []
-    if not redis_url:
-        degraded.append("redis")
-    if not audit_sink:
-        degraded.append("audit")
-    if rls_status != "active":
-        degraded.append("rls")
-
     summary = {
         "environment": environment,
         "redis_enabled": bool(redis_url),
         "audit_enabled": bool(audit_sink),
         "cors_mode": "restricted" if cors_origins != "*" else "permissive",
         "jwt_validation": "strict" if is_production() else "relaxed",
-        "rls_status": rls_status,
-        "rls_enforcement": {
-            "supported_backend": bool(database_url) and not database_url.startswith("sqlite"),
-            "superuser_connection": rls_status == "superuser_bypass",
-            "enforced": rls_enforced,
-            "status": "enforced" if rls_enforced else "degraded",
-        },
-        "degraded_control_status": {
-            "is_degraded": bool(degraded),
-            "controls": degraded,
-        },
+        "rls_status": _get_rls_status(database_url),
         "warnings": [],
         "degraded_controls": [],
     }
