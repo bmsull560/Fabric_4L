@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import timedelta
 from typing import Literal
 
@@ -73,9 +74,9 @@ class UserResponse(BaseModel):
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(payload: SignupRequest) -> TokenResponse:
     """Create a new tenant and user, then return a JWT."""
-    # Check for existing user with the same email — cross-tenant lookup uses
-    # the "system" reserved keyword to bypass per-tenant scoping.
-    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
+    # Cross-tenant email uniqueness check — requires explicit allow_system_scope
+    # so the bypass cannot be triggered by an arbitrary caller passing "system".
+    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -118,8 +119,8 @@ async def signup(payload: SignupRequest) -> TokenResponse:
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest) -> TokenResponse:
     """Authenticate a user and return a JWT."""
-    # Cross-tenant email lookup — "system" bypasses per-tenant scoping.
-    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
+    # Cross-tenant email lookup — requires explicit allow_system_scope.
+    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if not users:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -172,7 +173,7 @@ async def invite_user(
             detail="Only tenant admins can invite users",
         )
 
-    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
+    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -204,7 +205,7 @@ async def invite_user(
 @router.post("/accept-invite", response_model=TokenResponse)
 async def accept_invite(payload: AcceptInviteRequest) -> TokenResponse:
     """Accept an invitation by setting a password and activating the account."""
-    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
+    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if not users:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

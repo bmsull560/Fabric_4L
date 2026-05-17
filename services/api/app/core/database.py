@@ -138,14 +138,20 @@ class InMemoryTable(Generic[T]):
         self,
         tenant_id: str | None = None,
         filter_fn: Callable[[T], bool] | None = None,
+        *,
+        allow_system_scope: bool = False,
     ) -> builtins.list[T]:
         normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="list")
         with self._lock:
             items = list(self._store.values())
         if _is_tenant_scoped_field(self.tenant_field):
-            # Reserved keywords (system, admin, internal) bypass per-tenant
-            # filtering — they are used for cross-tenant system operations only.
-            if normalized_tenant_id not in RESERVED_TENANT_KEYWORDS:
+            # Cross-tenant reads are only permitted when the caller explicitly
+            # opts in via allow_system_scope=True AND passes a reserved keyword.
+            # Passing a reserved keyword alone is not sufficient — this prevents
+            # any caller from obtaining unscoped reads by guessing "system".
+            if allow_system_scope and normalized_tenant_id in RESERVED_TENANT_KEYWORDS:
+                pass  # intentional cross-tenant read
+            else:
                 items = [i for i in items if self._get_tenant_id(i) == normalized_tenant_id]
         if filter_fn:
             items = [i for i in items if filter_fn(i)]
@@ -263,14 +269,18 @@ class SQLiteTable(Generic[T]):
         self,
         tenant_id: str | None = None,
         filter_fn: Callable[[T], bool] | None = None,
+        *,
+        allow_system_scope: bool = False,
     ) -> builtins.list[T]:
         normalized_tenant_id = self._require_tenant_scope(tenant_id, operation="list")
         query = "SELECT payload FROM fabric_api_records WHERE table_name = ?"
         params: list[Any] = [self.name]
         if _is_tenant_scoped_field(self.tenant_field):
-            # Reserved keywords (system, admin, internal) bypass per-tenant
-            # filtering — used for cross-tenant system operations only.
-            if normalized_tenant_id not in RESERVED_TENANT_KEYWORDS:
+            # Cross-tenant reads require explicit opt-in via allow_system_scope=True
+            # in addition to a reserved keyword — string value alone is not enough.
+            if allow_system_scope and normalized_tenant_id in RESERVED_TENANT_KEYWORDS:
+                pass  # intentional cross-tenant read
+            else:
                 query += " AND tenant_id = ?"
                 params.append(normalized_tenant_id)
         query += " ORDER BY id"
