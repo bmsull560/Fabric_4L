@@ -275,3 +275,173 @@ class TestEdgeCases:
                 validate_jwt_config()
             except ImportError as exc:
                 raise AssertionError("Required shared.identity.dependencies import is unavailable") from exc
+
+
+# ---------------------------------------------------------------------------
+# P0 expansion: runtime decode_jwt attack vectors
+# ---------------------------------------------------------------------------
+
+import time as _time
+import jwt as _jwt
+
+_RUNTIME_SECRET = "runtime-test-secret-must-be-32chars!!"
+_RUNTIME_ISSUER = "value-fabric-internal"
+_RUNTIME_AUDIENCE = "value-fabric-services"
+_RUNTIME_TENANT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+_RUNTIME_ENV = {
+    "JWT_SECRET": _RUNTIME_SECRET,
+    "JWT_ALGORITHM": "HS256",
+    "JWT_ISSUER": _RUNTIME_ISSUER,
+    "JWT_AUDIENCE": _RUNTIME_AUDIENCE,
+}
+
+
+def _make_token(payload: dict, *, secret: str = _RUNTIME_SECRET) -> str:
+    return _jwt.encode(payload, secret, algorithm="HS256")
+
+
+def _valid_claims(**overrides) -> dict:
+    now = int(_time.time())
+    base = {
+        "sub": "user-1",
+        "tenant_id": _RUNTIME_TENANT,
+        "iss": _RUNTIME_ISSUER,
+        "aud": _RUNTIME_AUDIENCE,
+        "iat": now,
+        "exp": now + 600,
+    }
+    base.update(overrides)
+    return base
+
+
+@pytest.mark.security
+@pytest.mark.jwt_config
+class TestRuntimeDecodeAttackVectors:
+    """P0: decode_jwt must reject all known token-level attack vectors.
+
+    These tests complement TestProductionJWTSecretValidation (startup config)
+    by verifying the runtime decode path fails closed on adversarial inputs.
+    """
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_expired_token_raises_401(self):
+        """Expired token raises HTTPException 401."""
+        from fastapi import HTTPException
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        token = _make_token(_valid_claims(
+            exp=int(_time.time()) - 60,
+            iat=int(_time.time()) - 120,
+        ))
+        with pytest.raises(HTTPException) as exc_info:
+            decode_jwt(token)
+        assert exc_info.value.status_code == 401, (
+            f"Expired token should raise 401, got {exc_info.value.status_code}."
+        )
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_wrong_audience_rejected(self):
+        """Token with wrong audience is rejected (returns None)."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        token = _make_token(_valid_claims(aud="wrong-audience"))
+        assert decode_jwt(token) is None, (
+            "Token with wrong audience must be rejected. "
+            "P0: Audience bypass allows cross-service token reuse."
+        )
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_wrong_issuer_rejected(self):
+        """Token with wrong issuer is rejected (returns None)."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        token = _make_token(_valid_claims(iss="https://attacker.example.com"))
+        assert decode_jwt(token) is None, (
+            "Token with wrong issuer must be rejected. "
+            "P0: Issuer bypass allows tokens from untrusted IdPs."
+        )
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_malformed_token_returns_none(self):
+        """Truncated or garbage tokens return None without raising."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        assert decode_jwt("not.a.jwt") is None
+        assert decode_jwt("eyJhbGciOiJIUzI1NiJ9.truncated") is None
+        assert decode_jwt("") is None
+        assert decode_jwt("....") is None
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_wrong_secret_rejected(self):
+        """Token signed with a different secret is rejected."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        token = _make_token(_valid_claims(), secret="completely-different-secret-32ch!!")
+        assert decode_jwt(token) is None, (
+            "Token signed with wrong secret must be rejected. "
+            "P0: Signature bypass."
+        )
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_missing_tenant_id_rejected(self):
+        """Token without tenant_id claim returns None (fail closed)."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        claims = _valid_claims()
+        claims.pop("tenant_id")
+        token = _make_token(claims)
+        assert decode_jwt(token) is None, (
+            "Token without tenant_id must be rejected. "
+            "P0: Missing tenant_id would allow unscoped access."
+        )
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_missing_exp_rejected(self):
+        """Token without exp claim is rejected."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        claims = _valid_claims()
+        claims.pop("exp")
+        token = _make_token(claims)
+        assert decode_jwt(token) is None, (
+            "Token without exp must be rejected. "
+            "P0: Non-expiring tokens are a persistent credential risk."
+        )
+
+    @patch.dict("os.environ", _RUNTIME_ENV, clear=False)
+    def test_none_algorithm_rejected(self):
+        """Token with 'none' algorithm is rejected (algorithm confusion attack)."""
+        import base64
+        import json
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        header = base64.urlsafe_b64encode(
+            json.dumps({"alg": "none", "typ": "JWT"}).encode()
+        ).decode().rstrip("=")
+        payload = base64.urlsafe_b64encode(
+            json.dumps(_valid_claims()).encode()
+        ).decode().rstrip("=")
+        none_alg_token = f"{header}.{payload}."
+
+        result = decode_jwt(none_alg_token)
+        assert result is None, (
+            "Token with 'none' algorithm must be rejected. "
+            "P0: Algorithm confusion attack."
+        )
+
+    @patch.dict("os.environ", {**_RUNTIME_ENV, "JWT_REVOKED_KIDS": "revoked-kid-001"}, clear=False)
+    def test_revoked_kid_rejected(self):
+        """Token with a revoked kid is rejected before signature verification."""
+        from value_fabric.shared.identity.jwt import decode_jwt
+
+        token = _jwt.encode(
+            _valid_claims(),
+            _RUNTIME_SECRET,
+            algorithm="HS256",
+            headers={"kid": "revoked-kid-001"},
+        )
+        assert decode_jwt(token) is None, (
+            "Token with revoked kid must be rejected. "
+            "P0: Revoked key bypass."
+        )

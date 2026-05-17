@@ -149,13 +149,38 @@ class RequestContext:
         return self.has_role(Role.SUPER_ADMIN) or self.has_role("super_admin")
 
     def has_permission(self, permission: Permission | str) -> bool:
-        """Return True if the effective permission set includes *permission*."""
-        permission_val = permission.value if isinstance(permission, Permission) else permission
-        permission_values = {
-            value.value if isinstance(value, Permission) else str(value)
-            for value in self.permissions
-        }
-        return permission_val in permission_values or "all" in permission_values
+        """Return True if the effective permission set includes *permission*.
+
+        Only known ``Permission`` enum values are matched. Raw strings that are
+        not valid enum members (including wildcards like ``"*"`` or ``"all"``)
+        are never treated as granting access — the check fails closed.
+        """
+        # Resolve the requested permission to its canonical enum value string.
+        # Unknown strings are rejected immediately (fail closed).
+        if isinstance(permission, Permission):
+            permission_val = permission.value
+        else:
+            try:
+                permission_val = Permission(permission).value
+            except ValueError:
+                return False
+
+        # Build the set of known permission values in a single pass.
+        # Permission enum instances are resolved directly; raw strings are
+        # coerced through the enum and discarded if unrecognised (including
+        # wildcards like "*" or "all" that may have slipped through from a
+        # JWT claim before extract_context_from_jwt filtering was in place).
+        known_values: set[str] = set()
+        for p in self.permissions:
+            if isinstance(p, Permission):
+                known_values.add(p.value)
+            else:
+                try:
+                    known_values.add(Permission(str(p)).value)
+                except ValueError:
+                    pass  # unknown string — discard silently
+
+        return permission_val in known_values
 
     def has_any_permission(self, *permissions: Permission | str) -> bool:
         return any(self.has_permission(p) for p in permissions)
