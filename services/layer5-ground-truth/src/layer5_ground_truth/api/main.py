@@ -377,6 +377,16 @@ def create_app() -> FastAPI:
     )
     add_security_middleware(app, config=_security_config_l5)
 
+    class _AppStateRateLimiterProxy:
+        def __init__(self, application: FastAPI):
+            self._application = application
+
+        async def check(self, rate_key, config):
+            limiter = getattr(self._application.state, "redis_rate_limiter", None)
+            if limiter is None:
+                return None
+            return await limiter.check(rate_key, config)
+
     # GovernanceMiddleware — provides auth and tenant context with rate limiting.
     # Fail closed in production and staging; dev bypass requires explicit opt-in.
     #
@@ -386,7 +396,7 @@ def create_app() -> FastAPI:
     # In production-like environments Redis is always required; the lifespan
     # handler calls `await redis_client.ping()` to verify connectivity before
     # accepting traffic.
-    redis_rate_limiter = getattr(app.state, "redis_rate_limiter", None)
+    redis_rate_limiter = _AppStateRateLimiterProxy(app)
 
     try:
         from value_fabric.shared.identity.middleware import GovernanceMiddleware
@@ -566,19 +576,13 @@ def _validate_jwt_secret(secret: str) -> None:
 
     if secret_lower in JWT_SECRET_DENYLIST:
         raise RuntimeError(
-            f"JWT_SECRET '{secret}' is a known weak/placeholder value. "
-            f"Generate a secure secret: openssl rand -base64 32"
-        )
-
-    if any(secret_lower.startswith(p) for p in _JWT_WEAK_PREFIXES):
-        raise RuntimeError(
-            f"JWT_SECRET starts with a known weak/placeholder prefix. "
+            "JWT_SECRET is a known weak/placeholder value. "
             f"Generate a secure secret: openssl rand -base64 32"
         )
 
     if _JWT_WEAK_PATTERN.match(secret_lower):
         raise RuntimeError(
-            f"JWT_SECRET '{secret}' matches a weak secret pattern. "
+            "JWT_SECRET matches a weak secret pattern. "
             f"Generate a secure secret: openssl rand -base64 32"
         )
 
