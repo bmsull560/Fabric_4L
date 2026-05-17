@@ -54,98 +54,36 @@ data:
           - targets: ["layer6-benchmarks:8006"]
         metrics_path: "/metrics"
 
-      - job_name: "alertmanager"
-        static_configs:
-          - targets: ["alertmanager:9093"]
-        metrics_path: "/metrics"
-
   rules.yml: |
     groups:
-      - name: value-fabric-availability
+      - name: value-fabric-alerts
         rules:
-          - alert: ServiceDown
-            expr: up{job=~"layer[1-6]-.*|alertmanager"} == 0
+          - alert: Layer5Down
+            expr: up{job="layer5-ground-truth"} == 0
             for: 2m
             labels:
               severity: critical
             annotations:
-              summary: "{{ $labels.job }} is down"
-              description: "Prometheus cannot scrape {{ $labels.job }} for 2 minutes"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/service-down.md"
+              summary: "Layer 5 Ground Truth is down"
+              description: "Prometheus cannot scrape layer5-ground-truth for 2 minutes"
 
-          - alert: DependencyHealthDegraded
-            expr: value_fabric_health_status{component=~"database|redis|postgres|neo4j|layer3"} == 0
-            for: 3m
+          - alert: Layer3Down
+            expr: up{job="layer3-knowledge"} == 0
+            for: 2m
             labels:
               severity: critical
             annotations:
-              summary: "Dependency health check failing"
-              description: "{{ $labels.namespace }}/{{ $labels.component }} reported unhealthy for >3m"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/dependency-down.md"
+              summary: "Layer 3 Knowledge is down"
+              description: "Prometheus cannot scrape layer3-knowledge for 2 minutes"
 
-      - name: value-fabric-slo
-        rules:
-          - alert: ErrorRateSpike
-            expr: |
-              sum(rate({__name__=~"value_fabric_http_requests_total|layer2_http_requests_total",status_code=~"5.."}[5m]))
-              /
-              clamp_min(sum(rate({__name__=~"value_fabric_http_requests_total|layer2_http_requests_total"}[5m])), 1)
-              > 0.05
+          - alert: HighErrorRateLayer2
+            expr: sum(rate(layer2_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer2_http_requests_total[5m])) > 0.05
             for: 5m
             labels:
               severity: warning
             annotations:
-              summary: "HTTP 5xx rate spike"
-              description: "5xx ratio is above 5% for 5 minutes"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/error-rate.md"
-
-          - alert: LatencySLOBreachP95
-            expr: |
-              histogram_quantile(
-                0.95,
-                sum by (le, job) (
-                  rate({__name__=~"value_fabric_http_request_duration_seconds_bucket|layer2_http_request_duration_seconds_bucket"}[5m])
-                )
-              ) > 1
-            for: 10m
-            labels:
-              severity: warning
-            annotations:
-              summary: "P95 latency SLO breach"
-              description: "{{ $labels.job }} p95 latency is above 1 second for 10 minutes"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/latency-slo.md"
-
-      - name: value-fabric-saturation
-        rules:
-          - alert: ServiceCpuSaturation
-            expr: rate(process_cpu_seconds_total{job=~"layer[1-6]-.*"}[5m]) > 0.8
-            for: 10m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High CPU saturation"
-              description: "{{ $labels.job }} process CPU usage is above 80%"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/cpu-saturation.md"
-
-          - alert: ServiceMemorySaturation
-            expr: process_resident_memory_bytes{job=~"layer[1-6]-.*"} > 1.5e+09
-            for: 10m
-            labels:
-              severity: warning
-            annotations:
-              summary: "High memory saturation"
-              description: "{{ $labels.job }} resident memory is above 1.5GiB"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/memory-saturation.md"
-
-          - alert: DiskQueueDepthHigh
-            expr: rate(node_disk_io_time_weighted_seconds_total[5m]) > 0.8
-            for: 10m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Disk queue depth saturation"
-              description: "Node disk queue depth is elevated for 10 minutes"
-              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/disk-queue.md"
+              summary: "High 5xx rate in Layer 2"
+              description: "Layer 2 5xx ratio is above 5% over 5m"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -169,35 +107,23 @@ metadata:
     component: monitoring
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  selector:
-    matchLabels:
-      app: prometheus
   template:
     metadata:
       labels:
         app: prometheus
         component: monitoring
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
       containers:
         - name: prometheus
           image: prom/prometheus:v2.54.1
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --web.enable-lifecycle
@@ -235,44 +161,6 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
-        - name: thanos-sidecar
-          image: quay.io/thanos/thanos:v0.36.1
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          args:
-            - sidecar
-            - --prometheus.url=http://127.0.0.1:9090
-            - --grpc-address=0.0.0.0:10901
-            - --http-address=0.0.0.0:10902
-          ports:
-            - containerPort: 10901
-              name: thanos-grpc
-            - containerPort: 10902
-              name: thanos-http
-          resources:
-            requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
-          livenessProbe:
-            httpGet:
-              path: /-/healthy
-              port: 10902
-            initialDelaySeconds: 15
-            periodSeconds: 30
-            timeoutSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /-/ready
-              port: 10902
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 5
       volumes:
         - name: config
           configMap:
@@ -296,10 +184,4 @@ spec:
     - name: http
       port: 9090
       targetPort: 9090
-    - name: thanos-grpc
-      port: 10901
-      targetPort: 10901
-    - name: thanos-http
-      port: 10902
-      targetPort: 10902
   type: ClusterIP

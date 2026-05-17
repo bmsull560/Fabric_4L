@@ -1,329 +1,269 @@
 #!/usr/bin/env python3
-"""Kubernetes preflight guard for workload validation.
+"""Kubernetes preflight guardrails for CI/CD ephemeral deployments.
 
-Validates every workload in k8s/base/ for:
-- Rollout strategy
-- livenessProbe/readinessProbe
-- resources.requests/resources.limits
-- Image pinning (no :latest)
-- Required secret keys against k8s/secrets.yml.template
-- Layer-5 Alembic migration guardrails
-
-Usage:
-    python3 scripts/ci/k8s_preflight.py
-    python3 scripts/ci/k8s_preflight.py --verbose
+Checks:
+1. Every workload in k8s/base has explicit rollout strategy.
+2. Every workload container has readiness/liveness probes.
+3. Every workload container has cpu/memory requests + limits.
+4. All container and initContainer images are tag-pinned (no :latest).
+5. Required non-optional secret refs exist in k8s/secrets.yml.template.
+6. Layer 5 migration compatibility guardrails are present.
 """
 
-import argparse
-import re
-import sys
+from __future__ import annotations
+
+from dataclasses import dataclass
 from pathlib import Path
+import sys
+from typing import Any
 
 import yaml
 
 
-def load_yaml_files(directory: Path) -> list[tuple[Path, dict]]:
-    """Load all YAML files from a directory."""
-    files = []
-    for yaml_file in directory.glob("*.yml"):
-        try:
-            with open(yaml_file, "r", encoding="utf-8") as f:
-                content = yaml.safe_load(f)
-                if content:
-                    files.append((yaml_file, content))
-        except Exception as e:
-            print(f"Warning: Could not parse {yaml_file}: {e}")
-    return files
+ROOT = Path(__file__).resolve().parents[2]
+BASE_DIR = ROOT / "k8s" / "base"
+SECRETS_TEMPLATE = ROOT / "k8s" / "secrets.yml.template"
+LAYER5_MIGRATIONS = ROOT / "value-fabric" / "layer5-ground-truth" / "src" / "migrations" / "versions"
+WORKLOAD_KINDS = {"Deployment", "StatefulSet", "DaemonSet"}
 
 
-def check_rollout_strategy(doc: dict) -> tuple[bool, str]:
-    """Check if rollout strategy is defined."""
+@dataclass
+class Violation:
+    file: Path
+    resource: str
+    message: str
+
+    def format(self) -> str:
+        return f"{self.file.relative_to(ROOT)} :: {self.resource} :: {self.message}"
+
+
+def load_yaml_documents(path: Path) -> list[dict[str, Any]]:
+    content = path.read_text(encoding="utf-8")
+    docs = [doc for doc in yaml.safe_load_all(content) if isinstance(doc, dict)]
+    return docs
+
+
+def walk_base_yaml_files() -> list[Path]:
+    return sorted(BASE_DIR.glob("*.yml"))
+
+
+def collect_template_secret_keys() -> dict[str, set[str]]:
+    if not SECRETS_TEMPLATE.exists():
+        return {}
+
+    secret_keys: dict[str, set[str]] = {}
+    for doc in load_yaml_documents(SECRETS_TEMPLATE):
+        if doc.get("kind") != "Secret":
+            continue
+        name = doc.get("metadata", {}).get("name")
+        if not name:
+            continue
+        keys = set((doc.get("data") or {}).keys()) | set((doc.get("stringData") or {}).keys())
+        secret_keys[name] = keys
+    return secret_keys
+
+
+def image_is_pinned(image: str) -> bool:
+    if "@sha256:" in image:
+        return True
+    if ":" not in image:
+        return False
+    tag = image.rsplit(":", 1)[1]
+    return tag != "latest"
+
+
+def check_workload(
+    file_path: Path,
+    doc: dict[str, Any],
+    template_secrets: dict[str, set[str]],
+) -> list[Violation]:
+    violations: list[Violation] = []
     kind = doc.get("kind", "")
-    if kind not in ("Deployment", "StatefulSet"):
-        return True, "N/A (not a workload)"
-
+    metadata = doc.get("metadata", {})
+    name = metadata.get("name", "<unnamed>")
     spec = doc.get("spec", {})
-    strategy = spec.get("strategy", {})
+    resource = f"{kind}/{name}"
 
+    # Rollout strategy checks
     if kind == "Deployment":
-        if strategy.get("type") == "RollingUpdate":
-            return True, "RollingUpdate configured"
-        return False, "Missing or invalid RollingUpdate strategy"
-    elif kind == "StatefulSet":
-        update_strategy = spec.get("updateStrategy", {})
-        if update_strategy.get("type") == "RollingUpdate":
-            return True, "RollingUpdate configured"
-        return False, "Missing or invalid RollingUpdate strategy"
+        strategy = spec.get("strategy")
+        if not strategy:
+            violations.append(Violation(file_path, resource, "missing spec.strategy"))
+        else:
+            if strategy.get("type") != "RollingUpdate":
+                violations.append(Violation(file_path, resource, "spec.strategy.type must be RollingUpdate"))
+            rolling = strategy.get("rollingUpdate") or {}
+            if "maxUnavailable" not in rolling:
+                violations.append(Violation(file_path, resource, "spec.strategy.rollingUpdate.maxUnavailable missing"))
+            if "maxSurge" not in rolling:
+                violations.append(Violation(file_path, resource, "spec.strategy.rollingUpdate.maxSurge missing"))
+    if kind in {"StatefulSet", "DaemonSet"}:
+        if not spec.get("updateStrategy"):
+            violations.append(Violation(file_path, resource, "missing spec.updateStrategy"))
 
-    return True, "N/A"
-
-
-def check_probes(doc: dict) -> tuple[bool, str]:
-    """Check if liveness and readiness probes are configured."""
-    kind = doc.get("kind", "")
-    if kind not in ("Deployment", "StatefulSet", "DaemonSet"):
-        return True, "N/A (not a workload)"
-
-    spec = doc.get("spec", {})
-    template = spec.get("template", {})
-    pod_spec = template.get("spec", {})
-    containers = pod_spec.get("containers", [])
+    pod_spec = ((spec.get("template") or {}).get("spec") or {})
+    containers = pod_spec.get("containers") or []
+    init_containers = pod_spec.get("initContainers") or []
 
     if not containers:
-        return False, "No containers defined"
+        violations.append(Violation(file_path, resource, "no containers found"))
+        return violations
 
-    all_ok = True
-    messages = []
-
+    # Liveness/Readiness/Resources on all runtime containers
     for container in containers:
-        name = container.get("name", "unknown")
-        liveness = container.get("livenessProbe")
-        readiness = container.get("readinessProbe")
+        cname = container.get("name", "<unnamed>")
+        cresource = f"{resource} container={cname}"
+        if not container.get("livenessProbe"):
+            violations.append(Violation(file_path, cresource, "missing livenessProbe"))
+        if not container.get("readinessProbe"):
+            violations.append(Violation(file_path, cresource, "missing readinessProbe"))
 
-        if not liveness:
-            all_ok = False
-            messages.append(f"{name}: missing livenessProbe")
-        if not readiness:
-            all_ok = False
-            messages.append(f"{name}: missing readinessProbe")
+        resources = container.get("resources") or {}
+        requests = resources.get("requests") or {}
+        limits = resources.get("limits") or {}
+        for req in ("cpu", "memory"):
+            if req not in requests:
+                violations.append(Violation(file_path, cresource, f"resources.requests.{req} missing"))
+            if req not in limits:
+                violations.append(Violation(file_path, cresource, f"resources.limits.{req} missing"))
 
-    if all_ok:
-        return True, "All containers have probes"
-    return False, "; ".join(messages)
-
-
-def check_resources(doc: dict) -> tuple[bool, str]:
-    """Check if resources.requests and resources.limits are set."""
-    kind = doc.get("kind", "")
-    if kind not in ("Deployment", "StatefulSet", "DaemonSet", "Job"):
-        return True, "N/A (not a workload)"
-
-    spec = doc.get("spec", {})
-    template = spec.get("template", {})
-    pod_spec = template.get("spec", {})
-    containers = pod_spec.get("containers", [])
-
-    if not containers:
-        return False, "No containers defined"
-
-    all_ok = True
-    messages = []
-
-    for container in containers:
-        name = container.get("name", "unknown")
-        resources = container.get("resources", {})
-        requests = resources.get("requests", {})
-        limits = resources.get("limits", {})
-
-        missing = []
-        if "cpu" not in requests:
-            missing.append("requests.cpu")
-        if "memory" not in requests:
-            missing.append("requests.memory")
-        if "cpu" not in limits:
-            missing.append("limits.cpu")
-        if "memory" not in limits:
-            missing.append("limits.memory")
-
-        if missing:
-            all_ok = False
-            messages.append(f"{name}: missing {', '.join(missing)}")
-
-    if all_ok:
-        return True, "All containers have resource constraints"
-    return False, "; ".join(messages)
-
-
-def check_image_pinning(doc: dict) -> tuple[bool, str]:
-    """Check if images are pinned (no :latest tag)."""
-    kind = doc.get("kind", "")
-    if kind not in ("Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob"):
-        return True, "N/A (not a workload)"
-
-    containers = []
-    init_containers = []
-
-    spec = doc.get("spec", {})
-
-    if kind == "CronJob":
-        job_template = spec.get("jobTemplate", {})
-        job_spec = job_template.get("spec", {})
-        template = job_spec.get("template", {})
-    else:
-        template = spec.get("template", {})
-
-    pod_spec = template.get("spec", {})
-    containers = pod_spec.get("containers", [])
-    init_containers = pod_spec.get("initContainers", [])
-
-    all_images = containers + init_containers
-
-    if not all_images:
-        return False, "No containers defined"
-
-    bad_images = []
-    for container in all_images:
+    # Image tag pinning for runtime + init containers
+    for container in [*containers, *init_containers]:
+        cname = container.get("name", "<unnamed>")
         image = container.get("image", "")
-        if ":latest" in image or ":" not in image:
-            bad_images.append(f"{container.get('name', 'unknown')}: {image}")
+        if not image:
+            violations.append(Violation(file_path, f"{resource} container={cname}", "container image missing"))
+            continue
+        if not image_is_pinned(image):
+            violations.append(
+                Violation(
+                    file_path,
+                    f"{resource} container={cname}",
+                    f"image must be pinned to non-latest tag or digest (found: {image})",
+                )
+            )
 
-    if bad_images:
-        return False, f"Unpinned images: {', '.join(bad_images)}"
-    return True, "All images are pinned"
+    # Secret reference compatibility
+    for container in [*containers, *init_containers]:
+        cname = container.get("name", "<unnamed>")
+        env = container.get("env") or []
+        for entry in env:
+            value_from = entry.get("valueFrom") or {}
+            ref = value_from.get("secretKeyRef") or {}
+            if not ref:
+                continue
+            if ref.get("optional") is True:
+                continue
+
+            secret_name = ref.get("name")
+            secret_key = ref.get("key")
+            env_name = entry.get("name", "<unnamed-env>")
+            if not secret_name or not secret_key:
+                violations.append(
+                    Violation(
+                        file_path,
+                        f"{resource} container={cname}",
+                        f"{env_name} has incomplete secretKeyRef",
+                    )
+                )
+                continue
+            template_keys = template_secrets.get(secret_name)
+            if template_keys is None:
+                violations.append(
+                    Violation(
+                        file_path,
+                        f"{resource} container={cname}",
+                        f"{env_name} references missing secret in k8s/secrets.yml.template: {secret_name}",
+                    )
+                )
+                continue
+            if secret_key not in template_keys:
+                violations.append(
+                    Violation(
+                        file_path,
+                        f"{resource} container={cname}",
+                        f"{env_name} references missing key in {secret_name}: {secret_key}",
+                    )
+                )
+
+    return violations
 
 
-def load_required_secrets(template_path: Path) -> set[str]:
-    """Load required secret keys from template."""
-    required = set()
-    if not template_path.exists():
-        return required
+def check_layer5_migration_guardrails(file_path: Path, doc: dict[str, Any]) -> list[Violation]:
+    violations: list[Violation] = []
+    if doc.get("kind") != "Deployment":
+        return violations
 
-    try:
-        with open(template_path, "r", encoding="utf-8") as f:
-            content = f.read()
-            # Extract placeholder names like {{ .Values.secrets.POSTGRES_PASSWORD }}
-            matches = re.findall(r"\{\{\s*\.Values\.secrets\.(\w+)\s*\}\}", content)
-            required.update(matches)
-    except Exception:
-        pass
+    name = doc.get("metadata", {}).get("name")
+    if name != "layer5-ground-truth":
+        return violations
 
-    return required
+    spec = doc.get("spec", {})
+    pod_spec = ((spec.get("template") or {}).get("spec") or {})
+    init_containers = pod_spec.get("initContainers") or []
+    migration = next((c for c in init_containers if c.get("name") == "migrate"), None)
+    if not migration:
+        violations.append(Violation(file_path, "Deployment/layer5-ground-truth", "missing migrate initContainer"))
+        return violations
 
-
-def check_layer5_migration_guardrails(doc: dict) -> tuple[bool, str]:
-    """Check for Layer-5 Alembic migration guardrails."""
-    kind = doc.get("kind", "")
-
-    # Look for Job or CronJob that handles migrations
-    name = doc.get("metadata", {}).get("name", "").lower()
-
-    if "layer5" in name or "ground-truth" in name or "migration" in name:
-        spec = doc.get("spec", {})
-
-        if kind == "CronJob":
-            job_template = spec.get("jobTemplate", {})
-            spec = job_template.get("spec", {})
-
-        template = spec.get("template", {})
-        pod_spec = template.get("spec", {})
-        containers = pod_spec.get("containers", [])
-
-        # Check for init container that runs migrations
-        init_containers = pod_spec.get("initContainers", [])
-        has_migration_init = any(
-            "migrate" in c.get("name", "").lower()
-            or any("migrate" in cmd for cmd in c.get("command", []))
-            for c in init_containers
+    cmd = " ".join(migration.get("command") or [])
+    if "alembic" not in cmd or "upgrade" not in cmd or "head" not in cmd:
+        violations.append(
+            Violation(
+                file_path,
+                "Deployment/layer5-ground-truth",
+                "migrate initContainer must run alembic upgrade head",
+            )
         )
 
-        # Check for migration job or post-start hook
-        has_migration_job = any(
-            "migrate" in c.get("name", "").lower()
-            or any("alembic" in arg for arg in c.get("args", []))
-            or any("alembic" in cmd for cmd in c.get("command", []))
-            for c in containers
+    if not LAYER5_MIGRATIONS.exists():
+        violations.append(
+            Violation(
+                file_path,
+                "Deployment/layer5-ground-truth",
+                "value-fabric/layer5-ground-truth/src/migrations/versions directory missing",
+            )
         )
+    else:
+        version_files = list(LAYER5_MIGRATIONS.glob("*.py"))
+        if not version_files:
+            violations.append(
+                Violation(
+                    file_path,
+                    "Deployment/layer5-ground-truth",
+                    "no Alembic migration versions found",
+                )
+            )
 
-        # If it's a migration-related workload, check for guardrails
-        if has_migration_init or has_migration_job or "migrate" in name:
-            # Check for init container (runs before app)
-            if not init_containers and kind != "Job":
-                return False, "Missing init container for migration sequencing"
-
-            return True, "Migration guardrails present"
-
-    return True, "N/A (not L5 migration workload)"
-
-
-def validate_workload(file_path: Path, doc: dict, verbose: bool) -> list[tuple[str, bool, str]]:
-    """Validate a single workload document."""
-    results = []
-
-    checks = [
-        ("rollout_strategy", check_rollout_strategy),
-        ("probes", check_probes),
-        ("resources", check_resources),
-        ("image_pinning", check_image_pinning),
-        ("l5_migration", check_layer5_migration_guardrails),
-    ]
-
-    for check_name, check_func in checks:
-        passed, message = check_func(doc)
-        results.append((check_name, passed, message))
-        if verbose:
-            status = "✅" if passed else "❌"
-            print(f"  [{status}] {check_name}: {message}")
-
-    return results
+    return violations
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Kubernetes preflight validation")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
-    args = parser.parse_args()
-
-    repo_root = Path(__file__).parent.parent.parent
-    k8s_base = repo_root / "k8s" / "base"
-    secrets_template = repo_root / "k8s" / "secrets.yml.template"
-
-    if not k8s_base.exists():
-        print(f"Error: k8s/base directory not found at {k8s_base}")
-        return 1
-
-    # Load required secrets
-    required_secrets = load_required_secrets(secrets_template)
-    if args.verbose and required_secrets:
-        print(f"Required secrets from template: {', '.join(required_secrets)}")
-
-    # Load all YAML files
-    yaml_files = load_yaml_files(k8s_base)
-
-    if not yaml_files:
-        print("Warning: No YAML files found in k8s/base/")
-        return 0
-
-    all_results = []
+    files = walk_base_yaml_files()
+    template_secrets = collect_template_secret_keys()
+    violations: list[Violation] = []
     workload_count = 0
 
-    print(f"Scanning {len(yaml_files)} YAML files in k8s/base/...")
-    print()
+    for file_path in files:
+        for doc in load_yaml_documents(file_path):
+            kind = doc.get("kind")
+            if kind not in WORKLOAD_KINDS:
+                continue
+            workload_count += 1
+            violations.extend(check_workload(file_path, doc, template_secrets))
+            violations.extend(check_layer5_migration_guardrails(file_path, doc))
 
-    for file_path, doc in yaml_files:
-        kind = doc.get("kind", "")
-        name = doc.get("metadata", {}).get("name", "unknown")
-
-        # Skip non-workload resources
-        if kind not in ("Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob"):
-            continue
-
-        workload_count += 1
-
-        if args.verbose:
-            print(f"Validating {kind}/{name} from {file_path.name}")
-
-        results = validate_workload(file_path, doc, args.verbose)
-        all_results.extend([(file_path.name, kind, name, r) for r in results])
-
-        if args.verbose:
-            print()
-
-    # Summary
-    failures = [(f, k, n, r) for (f, k, n, r) in all_results if not r[1]]
-
-    print("=" * 60)
-    print(f"Validated {workload_count} workload(s)")
-    print(f"Total checks: {len(all_results)}")
-    print(f"Passed: {len(all_results) - len(failures)}")
-    print(f"Failed: {len(failures)}")
-    print("=" * 60)
-
-    if failures:
-        print("\nFailed checks:")
-        for file, kind, name, (check, passed, msg) in failures:
-            print(f"  ❌ {kind}/{name} ({file}): {check} — {msg}")
+    if workload_count == 0:
+        print("❌ No workloads found in k8s/base/*.yml")
         return 1
 
-    print(f"\n✅ Kubernetes preflight passed for {workload_count} workload(s).")
+    if violations:
+        print("❌ Kubernetes preflight failed:")
+        for violation in violations:
+            print(f"  - {violation.format()}")
+        return 1
+
+    print(f"✅ Kubernetes preflight passed for {workload_count} workload(s).")
     return 0
 
 

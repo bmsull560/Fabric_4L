@@ -8,35 +8,23 @@ metadata:
     component: database
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: neo4j
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  selector:
-    matchLabels:
-      app: neo4j
   template:
     metadata:
       labels:
         app: neo4j
         component: database
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 7474
-        runAsGroup: 7474
-        fsGroup: 7474
-        seccompProfile:
-          type: RuntimeDefault
       containers:
         - name: neo4j
           image: neo4j:5-community
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
           ports:
             - containerPort: 7474
               name: http
