@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 
 from app.core.database import db
+from value_fabric.shared.database.tenant_validation import SYSTEM_TENANT_ID
 from app.core.security import (
     create_access_token,
     get_current_user,
@@ -72,15 +73,17 @@ class UserResponse(BaseModel):
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(payload: SignupRequest) -> TokenResponse:
     """Create a new tenant and user, then return a JWT."""
-    # Check for existing user with the same email
-    existing = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    # Check for existing user with the same email — cross-tenant lookup uses
+    # the "system" reserved keyword to bypass per-tenant scoping.
+    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
         )
 
-    tenant_id = f"tenant-{payload.email.split('@')[0].lower()}"
+    import uuid as _uuid
+    tenant_id = str(_uuid.uuid4())
     tenant = Tenant(
         id=tenant_id,
         name=payload.tenant_name,
@@ -116,7 +119,8 @@ async def signup(payload: SignupRequest) -> TokenResponse:
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest) -> TokenResponse:
     """Authenticate a user and return a JWT."""
-    users = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    # Cross-tenant email lookup — "system" bypasses per-tenant scoping.
+    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
     if not users:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -169,7 +173,7 @@ async def invite_user(
             detail="Only tenant admins can invite users",
         )
 
-    existing = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -201,7 +205,7 @@ async def invite_user(
 @router.post("/accept-invite", response_model=TokenResponse)
 async def accept_invite(payload: AcceptInviteRequest) -> TokenResponse:
     """Accept an invitation by setting a password and activating the account."""
-    users = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email)
     if not users:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

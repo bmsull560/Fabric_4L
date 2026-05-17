@@ -40,9 +40,20 @@ async def reset_pipeline_state() -> None:
 
 @pytest.fixture
 async def async_client():
-    """Create async HTTP client for testing."""
-    transport = httpx.ASGITransport(app=api_main.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    """Create async HTTP client for testing.
+
+    Uses ``create_app(testing=True)`` so the test-tenant middleware is attached
+    regardless of when the module was first imported.  This avoids the race
+    where ``os.environ.setdefault("TESTING", "true")`` runs after the
+    module-level ``app`` was already constructed without the middleware.
+    """
+    test_app = api_main.create_app(testing=True)
+    transport = httpx.ASGITransport(app=test_app)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers={"X-Test-Tenant": "test-tenant-sse"},
+    ) as client:
         yield client
 
 

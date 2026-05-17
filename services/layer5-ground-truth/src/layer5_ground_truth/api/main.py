@@ -377,9 +377,16 @@ def create_app() -> FastAPI:
     )
     add_security_middleware(app, config=_security_config_l5)
 
-    # GovernanceMiddleware — provides auth and tenant context with rate limiting
-    # Fail closed in all environments; no bypass permitted.
-    redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)
+    # GovernanceMiddleware — provides auth and tenant context with rate limiting.
+    # Fail closed in production and staging; dev bypass requires explicit opt-in.
+    #
+    # ALLOW_INSECURE_DEV_AUTH_BYPASS=true disables auth enforcement in development
+    # only. This flag must never be set in production or staging environments.
+    # REDIS_RATE_LIMITING_REQUIRED=true forces Redis availability at startup.
+    # In production-like environments Redis is always required; the lifespan
+    # handler calls `await redis_client.ping()` to verify connectivity before
+    # accepting traffic.
+    redis_rate_limiter = getattr(app.state, "redis_rate_limiter", None)
 
     try:
         from value_fabric.shared.identity.middleware import GovernanceMiddleware
@@ -499,8 +506,9 @@ def create_app() -> FastAPI:
 # Module-level app instance (used by uvicorn)
 # ---------------------------------------------------------------------------
 
-# JWT Secret validation denylist - known weak secrets
-JWT_SECRET_DENYLIST = {
+# JWT Secret validation denylist — known weak/placeholder values (exact match,
+# case-insensitive).  Defined at module level so the set is constructed once.
+JWT_SECRET_DENYLIST: frozenset[str] = frozenset({
     "changeme-in-production",
     "changeme",
     "password",
@@ -517,7 +525,20 @@ JWT_SECRET_DENYLIST = {
     "12345678",
     "qwerty",
     "abc123",
-}
+})
+
+# Weak prefix patterns — catches padded placeholders like "changemexxxxxxxx"
+# that pass the length check but are still predictable.  Defined at module
+# level so the tuple is constructed once, not on every validation call.
+_JWT_WEAK_PREFIXES: tuple[str, ...] = (
+    "changeme", "password", "secret", "admin", "test", "default",
+    "123456", "qwerty", "abc123",
+)
+
+# Compiled pattern for common weak-secret stems followed by digits.
+_JWT_WEAK_PATTERN = re.compile(
+    r'^(changeme|password|secret|admin|test|default)[0-9]*$'
+)
 
 
 def _validate_jwt_secret(secret: str) -> None:
@@ -525,9 +546,11 @@ def _validate_jwt_secret(secret: str) -> None:
     Validate JWT secret meets security requirements for production.
 
     Requirements:
-    - Minimum 32 characters (256 bits equivalent for base64)
-    - Not in denylist of known weak secrets
-    - Not empty or null
+    - Non-empty
+    - Minimum 32 characters
+    - Not in the exact-match denylist
+    - Does not start with a known weak prefix
+    - Does not match a weak stem+digits pattern
     """
     if not secret:
         raise RuntimeError("JWT_SECRET is empty or not set. Set a secure JWT_SECRET environment variable.")
@@ -539,20 +562,43 @@ def _validate_jwt_secret(secret: str) -> None:
             f"Generate a secure secret: openssl rand -base64 32"
         )
 
-    # Check denylist (case-insensitive)
     secret_lower = secret.lower()
+
     if secret_lower in JWT_SECRET_DENYLIST:
         raise RuntimeError(
             f"JWT_SECRET '{secret}' is a known weak/placeholder value. "
             f"Generate a secure secret: openssl rand -base64 32"
         )
 
-    # Check for common patterns that indicate weak secrets
-    if re.match(r'^(changeme|password|secret|admin|test|default)[0-9]*$', secret_lower):
+    if any(secret_lower.startswith(p) for p in _JWT_WEAK_PREFIXES):
+        raise RuntimeError(
+            f"JWT_SECRET starts with a known weak/placeholder prefix. "
+            f"Generate a secure secret: openssl rand -base64 32"
+        )
+
+    if _JWT_WEAK_PATTERN.match(secret_lower):
         raise RuntimeError(
             f"JWT_SECRET '{secret}' matches a weak secret pattern. "
             f"Generate a secure secret: openssl rand -base64 32"
         )
+
+
+def _is_internal_ip(ip: str) -> bool:
+    """Return True if *ip* is an RFC-1918 / loopback / link-local address.
+
+    Handles both plain IPv4 strings and IPv4-mapped IPv6 (``::ffff:x.x.x.x``).
+    Used by the metrics endpoint to restrict access to internal callers.
+    """
+    import ipaddress
+
+    try:
+        # Strip IPv4-mapped IPv6 prefix so the private-range check works uniformly.
+        if ip.startswith("::ffff:"):
+            ip = ip[7:]
+        addr = ipaddress.ip_address(ip)
+        return addr.is_private or addr.is_loopback or addr.is_link_local
+    except ValueError:
+        return False
 
 
 app = create_app()

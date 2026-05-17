@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel
 from value_fabric.shared.database import MissingTenantContextError, require_tenant_context
+from value_fabric.shared.database.tenant_validation import RESERVED_TENANT_KEYWORDS
 
 from app.core.config import get_settings
 from app.models.schemas import (
@@ -142,7 +143,10 @@ class InMemoryTable(Generic[T]):
         with self._lock:
             items = list(self._store.values())
         if _is_tenant_scoped_field(self.tenant_field):
-            items = [i for i in items if self._get_tenant_id(i) == normalized_tenant_id]
+            # Reserved keywords (system, admin, internal) bypass per-tenant
+            # filtering — they are used for cross-tenant system operations only.
+            if normalized_tenant_id not in RESERVED_TENANT_KEYWORDS:
+                items = [i for i in items if self._get_tenant_id(i) == normalized_tenant_id]
         if filter_fn:
             items = [i for i in items if filter_fn(i)]
         return items
@@ -264,8 +268,11 @@ class SQLiteTable(Generic[T]):
         query = "SELECT payload FROM fabric_api_records WHERE table_name = ?"
         params: list[Any] = [self.name]
         if _is_tenant_scoped_field(self.tenant_field):
-            query += " AND tenant_id = ?"
-            params.append(normalized_tenant_id)
+            # Reserved keywords (system, admin, internal) bypass per-tenant
+            # filtering — used for cross-tenant system operations only.
+            if normalized_tenant_id not in RESERVED_TENANT_KEYWORDS:
+                query += " AND tenant_id = ?"
+                params.append(normalized_tenant_id)
         query += " ORDER BY id"
         with self._lock:
             rows = self._connection.execute(query, params).fetchall()
