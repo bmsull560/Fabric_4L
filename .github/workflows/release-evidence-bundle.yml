@@ -65,14 +65,14 @@ jobs:
         run: docker push ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }}
 
       - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@314ff8b43182423b84c50b1670b0e10f858f2d98 # master (post-v0.36.0)
         with:
           image-ref: ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }}
           format: sarif
           output: trivy-${{ matrix.service }}.sarif
 
       - name: Trivy HTML report
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@314ff8b43182423b84c50b1670b0e10f858f2d98 # master (post-v0.36.0)
         with:
           image-ref: ${{ env.REGISTRY }}/fabric_4l/${{ matrix.service }}:${{ github.sha }}
           format: html
@@ -114,7 +114,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
 
       - name: Bandit SAST
         run: |
