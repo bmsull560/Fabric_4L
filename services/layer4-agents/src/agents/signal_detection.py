@@ -404,12 +404,12 @@ class SignalDetectionAgent(BaseAgent):
         # PainSignal requires confidence_explanation min_length=10; pad if needed
         confidence_explanation = (
             raw_explanation if len(raw_explanation) >= 10
-            else (raw_explanation + " (extracted)").ljust(10)
+            else (raw_explanation.strip() + " (extracted)").ljust(10)
         )
         description = raw_signal.get("description", "")
         # PainSignal requires description min_length=10
         if len(description) < 10:
-            description = (description + " (extracted)").ljust(10)
+            description = (description.strip() + " (extracted)").ljust(10)
         return PainSignal(
             id=f"sig_{self._id_gen.generate()[:12]}",
             name=raw_signal.get("name", "Unknown Signal"),
