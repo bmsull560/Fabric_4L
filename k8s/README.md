@@ -64,6 +64,30 @@ Requires metrics-server: `kubectl apply -f https://github.com/kubernetes-sigs/me
 Critical services maintain availability during disruptions:
 - **layer4-agents**: `minAvailable: 1`
 
+### Image Registry
+
+Service images are published to `ghcr.io/bmsull560/fabric_4l/<service>`.
+
+The `k8s/base/kustomization.yaml` `images:` block maps the placeholder names
+used in manifests (`services/<name>:main`) to the real registry paths.
+Environment overlays override `newTag` to pin a specific version.
+
+**CI secrets required:**
+
+| Secret | Purpose |
+|---|---|
+| `GHCR_TOKEN` | Push/pull access to `ghcr.io/bmsull560/fabric_4l/*` |
+| `GHCR_USERNAME` | Registry username (defaults to `github.actor`) |
+
+**Cross-org base images (`ghcr.io/value-fabric/base-images/`):**
+
+These images are **private** — a `GHCR_TOKEN` with read access to the
+`value-fabric` org is required. The CI workflow (`build-deploy.yml`) has a
+`Verify cross-org base image access` step that falls back to public Docker Hub
+images if the `value-fabric` org images are inaccessible. If the primary images
+are unavailable and you need them, add a PAT with `read:packages` scope to the
+`GHCR_TOKEN` secret in the repository settings.
+
 ### Image Pinning
 
 Production overlay uses SHA256 digest pinning (immutable references):

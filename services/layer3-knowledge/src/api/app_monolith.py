@@ -1911,8 +1911,8 @@ async def batch_entity_operations(
         for i, operation in enumerate(request.operations):
             try:
                 if operation.operation == "create":
-                    # Create entity
-                    result = await _create_entity(neo4j_driver, operation)
+                    # Create entity — pass tenant_id so the node is scoped correctly
+                    result = await _create_entity(neo4j_driver, operation, tenant_id)
                     if result["success"]:
                         successful += 1
                         created_entities.append(result["entity_id"])
@@ -2092,16 +2092,26 @@ async def batch_analytics(
 
 
 # Helper functions for batch operations
-async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, Any]:
+async def _create_entity(
+    driver, operation: BatchEntityOperation, tenant_id: str
+) -> dict[str, Any]:
     """Create a single entity in Neo4j.
 
     Args:
         driver: Neo4j async driver
         operation: Batch entity operation with entity_type and properties
+        tenant_id: Tenant identifier — required for multi-tenant scoping.
+            Must be a non-empty string; the type system enforces this at
+            the call site so callers cannot accidentally omit it.
 
     Returns:
         Dict with success flag and entity_id or error message
     """
+    if not tenant_id:
+        return _create_entityResult.model_validate(
+            {"success": False, "error": "tenant_id is required for entity creation"}
+        )
+
     try:
         entity_id = str(uuid.uuid4())
 
@@ -2109,6 +2119,7 @@ async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, A
             query = """
             CREATE (n:Entity {
                 id: $id,
+                tenant_id: $tenant_id,
                 entity_type: $entity_type,
                 created_at: datetime(),
                 updated_at: datetime()
@@ -2120,6 +2131,7 @@ async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, A
                 query,
                 {
                     "id": entity_id,
+                    "tenant_id": tenant_id,
                     "entity_type": operation.entity_type.value
                     if operation.entity_type
                     else "Unknown",
