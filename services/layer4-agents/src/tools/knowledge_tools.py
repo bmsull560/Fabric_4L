@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from typing import Any
@@ -268,7 +269,6 @@ class SemanticSearchTool(BaseTool):
         # Default embedding model is provider-dependent.
         # Together.ai uses "togethercomputer/m2-bert-80M-8k-retrieval";
         # OpenAI uses "text-embedding-3-large".
-        import os
         _default_provider = (
             os.getenv("LAYER4_LLM_PROVIDER")
             or (config.get("llm_provider") if config else None)

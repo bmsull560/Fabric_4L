@@ -1047,17 +1047,19 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                         tenant_id=tenant_id if not os.getenv("LAYER5_SERVICE_TOKEN") else None,
                     )
                     validator = LiveL5Validator(client=l5_client)
-                    result = await validator.validate(
-                        ClaimValidationRequest(
-                            tenant_id=tenant_id,
-                            claim_id=claim.get("claim_id", claim_text[:64]),
-                            claim_text=claim_text,
-                            evidence_refs=claim.get("evidence_refs", []),
-                            account_id=str(state.case_input.opportunity_id) if state.case_input else None,
-                            value_pack_id="business_case",
+                    try:
+                        result = await validator.validate(
+                            ClaimValidationRequest(
+                                tenant_id=tenant_id,
+                                claim_id=claim.get("claim_id", claim_text[:64]),
+                                claim_text=claim_text,
+                                evidence_refs=claim.get("evidence_refs", []),
+                                account_id=str(state.case_input.opportunity_id) if state.case_input else None,
+                                value_pack_id="business_case",
+                            )
                         )
-                    )
-                    await l5_client.close()
+                    finally:
+                        await l5_client.close()
                     if result.validation_state.value == "passed":
                         validated.append({**claim, "l5_status": "validated", "evidence": result.evidence_refs})
                     else:
