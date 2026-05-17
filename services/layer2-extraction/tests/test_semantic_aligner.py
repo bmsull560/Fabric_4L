@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from layer2_extraction.alignment.semantic_aligner import SemanticAligner
 
 
