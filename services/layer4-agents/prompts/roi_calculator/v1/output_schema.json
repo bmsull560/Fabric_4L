@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RoiHypothesisOutput",
+  "type": "object",
+  "required": ["hypothesis", "confidence", "confidence_rationale", "key_drivers", "risks", "narrative_summary", "evidence_refs"],
+  "properties": {
+    "hypothesis": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "confidence_rationale": { "type": "string" },
+    "key_drivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["driver_name", "calculated_value", "explanation"],
+        "properties": {
+          "driver_name": { "type": "string" },
+          "calculated_value": { "type": "string" },
+          "explanation": { "type": "string" }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["risk", "severity"],
+        "properties": {
+          "risk": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+        }
+      }
+    },
+    "narrative_summary": { "type": "string" },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } }
+  }
+}

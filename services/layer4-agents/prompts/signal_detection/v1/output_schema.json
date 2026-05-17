@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SignalDetectionOutput",
+  "description": "Final output contract for the Signal Detection agent",
+  "type": "object",
+  "required": ["account_name", "signals", "hypotheses", "narrative", "confidence"],
+  "properties": {
+    "account_name": { "type": "string" },
+    "signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["signal_id", "signal_type", "description", "confidence", "source_ref"],
+        "properties": {
+          "signal_id": { "type": "string" },
+          "signal_type": {
+            "type": "string",
+            "enum": ["growth", "risk", "opportunity", "churn", "expansion", "competitive", "unknown"]
+          },
+          "description": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "source_ref": { "type": "string" },
+          "entities": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["hypothesis_text", "signal_cluster", "confidence", "recommended_action"],
+        "properties": {
+          "hypothesis_text": { "type": "string" },
+          "signal_cluster": { "type": "array", "items": { "type": "string" } },
+          "supporting_evidence": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "recommended_action": { "type": "string" }
+        }
+      }
+    },
+    "narrative": { "type": "string" },
+    "top_signals": { "type": "array", "items": { "type": "string" } },
+    "evidence_refs": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+  }
+}
