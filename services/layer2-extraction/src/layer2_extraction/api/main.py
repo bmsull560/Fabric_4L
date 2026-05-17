@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,6 +32,7 @@ from layer2_extraction.models.extraction_api import ExtractionRequest, Extractio
 
 
 RETRY_BASE_SECONDS = 60
+router = APIRouter()
 
 # Statuses that indicate a pipeline job has reached a terminal state.
 # The SSE generator breaks out of its poll loop when overall status is in this set.
@@ -137,20 +138,12 @@ def create_app(*, testing: bool | None = None) -> FastAPI:
     )
     add_security_middleware(application, config=_sec_config)
     application.add_middleware(CORSMiddleware, **resolve_cors_policy().as_kwargs())
+    application.include_router(router)
 
     return application
 
 
-# ---------------------------------------------------------------------------
-# Module-level app instance used by uvicorn / gunicorn.
-# Tests that need the test-tenant middleware must call create_app(testing=True)
-# directly — the module-level instance is constructed at import time before
-# test env vars are applied, so the TESTING flag is unreliable here.
-# ---------------------------------------------------------------------------
-app = create_app()
-
-
-@app.get("/health")
+@router.get("/health")
 async def health_check():
     return {"status": "ok"}
 
@@ -189,7 +182,7 @@ def _require_authenticated_tenant(request: Request) -> str:
     return str(tenant_id)
 
 
-@app.post("/v1/extract-and-ingest", response_model=ExtractAndIngestResponse)
+@router.post("/v1/extract-and-ingest", response_model=ExtractAndIngestResponse)
 async def extract_and_ingest(
     payload: ExtractionRequest,
     request: Request,
@@ -219,7 +212,7 @@ async def extract_and_ingest(
     )
 
 
-@app.get("/v1/extract/status/{job_id}", response_model=PipelineStatusResponse)
+@router.get("/v1/extract/status/{job_id}", response_model=PipelineStatusResponse)
 async def get_pipeline_status(job_id: str, request: Request) -> PipelineStatusResponse:
     tenant_id = _require_authenticated_tenant(request)
     try:
@@ -340,7 +333,7 @@ def _get_optional_tenant(request: Request) -> str | None:
     return str(getattr(ctx, "tenant_id", None) or "") or None
 
 
-@app.get("/v1/extract/jobs/{job_id}/events")
+@router.get("/v1/extract/jobs/{job_id}/events")
 async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
     """Stream SSE events for a pipeline job.
 
@@ -642,3 +635,11 @@ async def _queue_for_retry(
         last_error=error,
         next_retry_at=next_retry,
     )
+
+
+# ---------------------------------------------------------------------------
+# Module-level app instance used by uvicorn / gunicorn.
+# Tests that need the test-tenant middleware should call create_app(testing=True)
+# explicitly to guarantee middleware attachment independent of import timing.
+# ---------------------------------------------------------------------------
+app = create_app()
