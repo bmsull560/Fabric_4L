@@ -27,7 +27,8 @@ def main() -> int:
     for path in tracked_files():
         data = path.read_bytes()
         if b"\x00" in data:
-            offenders.append(f"{path} (nul_count={data.count(b'\x00')})")
+            nul_count = data.count(b"\x00")
+            offenders.append(f"{path} (nul_count={nul_count})")
 
     if offenders:
         print("ERROR: NUL-byte guard failed: tracked files with embedded \\x00 detected:")
