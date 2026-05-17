@@ -212,7 +212,7 @@ class TestSqlRunRepository:
         run_b = _make_run(tenant_id=TENANT_B)
         await repo.create(run_a)
         await repo.create(run_b)
-        results = await repo.list(TENANT_A)
+        results, _total = await repo.list(TENANT_A)
         ids = [r.id for r in results]
         assert run_a.id in ids
         assert run_b.id not in ids
@@ -221,8 +221,8 @@ class TestSqlRunRepository:
         repo = HarnessRunRepository(session)
         run = _make_run()
         await repo.create(run)
-        queued = await repo.list(TENANT_A, status=HarnessRunStatus.QUEUED)
-        running = await repo.list(TENANT_A, status=HarnessRunStatus.RUNNING)
+        queued, _total_q = await repo.list(TENANT_A, status=HarnessRunStatus.QUEUED)
+        running, _total_r = await repo.list(TENANT_A, status=HarnessRunStatus.RUNNING)
         assert any(r.id == run.id for r in queued)
         assert not any(r.id == run.id for r in running)
 
@@ -647,7 +647,7 @@ class TestSqlHarnessRegistryIntegration:
             workflow_type=HarnessWorkflowType.VALUE_MODEL_GENERATION,
             initiated_by=InitiatedBy.USER,
         )
-        runs_a = await reg.list_runs(tenant_id=TENANT_A)
+        runs_a, _total = await reg.list_runs(tenant_id=TENANT_A)
         assert all(r.tenant_id == TENANT_A for r in runs_a)
         assert len(runs_a) == 1
 

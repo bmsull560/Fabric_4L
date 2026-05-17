@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: web
-          image: apps/web:latest
+          image: ghcr.io/bmsull560/fabric_4l/web:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

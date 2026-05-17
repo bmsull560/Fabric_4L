@@ -164,8 +164,9 @@ cache_dir = ".mypy_cache"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "src/harness/tests"]
 addopts = "-v --tb=short"
+pythonpath = ["src", "../..", "../../packages/shared/src", "../../services/layer3-knowledge/src"]
 markers = [
     "unit: Fast unit tests with no external dependencies",
     "integration: Integration tests with real services (DB, cache)",
