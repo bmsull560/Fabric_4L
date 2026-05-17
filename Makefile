@@ -27,7 +27,9 @@ ARTIFACT_DIR := artifacts/release
 
 PYTHON ?= python3
 PIP    := pip install -e
-PYTEST := python -m pytest -v --tb=short
+# Use the pipx-managed pytest binary so service deps installed via `make setup`
+# are available without activating a per-service venv.
+PYTEST := pytest -v --tb=short
 
 # Ensure mypy is available before running typecheck targets
 MYPY_VERSION_CHECK := $(shell mypy --version 2>/dev/null || echo "mypy_not_found")
@@ -258,23 +260,30 @@ test-fast: ## Run only fast tests (exclude slow and e2e)
 
 # ─── Setup ───────────────────────────────────────────────────────────────────
 
-setup: ## Install all service dev dependencies into the active Python environment
-	@echo "→ Installing shared packages..."
-	pip install -e "packages/shared/src" 2>/dev/null || true
-	pip install -e "packages/platform-contract/src/python" 2>/dev/null || true
-	@echo "→ Installing Layer 1 dev dependencies..."
-	cd services/layer1-ingestion && pip install -e ".[dev]" -q
-	@echo "→ Installing Layer 2 dev dependencies..."
-	cd services/layer2-extraction && pip install -e ".[dev]" -q
-	@echo "→ Installing Layer 3 dev dependencies..."
-	cd services/layer3-knowledge && pip install -e ".[dev]" -q 2>/dev/null || pip install -e "." -q
-	@echo "→ Installing Layer 4 dev dependencies..."
-	cd services/layer4-agents && pip install -e ".[dev]" -q
-	@echo "→ Installing Layer 5 dev dependencies..."
-	cd services/layer5-ground-truth && pip install -e ".[dev]" -q
-	@echo "→ Installing Layer 6 dev dependencies..."
-	cd services/layer6-benchmarks && pip install -e ".[dev]" -q
-	@echo "✅  All service dependencies installed"
+setup: ## Install all service dev dependencies into the pytest pipx venv
+	@PYTEST_BIN=$$(which pytest 2>/dev/null); \
+	if [ -z "$$PYTEST_BIN" ]; then \
+	  echo "ERROR: pytest not found in PATH. Install via: pipx install pytest"; \
+	  exit 1; \
+	fi; \
+	PYTEST_PY=$$(head -1 "$$PYTEST_BIN" | sed 's|#!||'); \
+	echo "→ Installing into $$PYTEST_PY"; \
+	$$PYTEST_PY -m pip install pytest-timeout pytest-randomly -q; \
+	$$PYTEST_PY -m pip install -e "packages/shared/src" -q 2>/dev/null || true; \
+	$$PYTEST_PY -m pip install -e "packages/platform-contract/src/python" -q 2>/dev/null || true; \
+	echo "→ Installing Layer 1 dev dependencies..."; \
+	cd services/layer1-ingestion && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 2 dev dependencies..."; \
+	cd services/layer2-extraction && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 3 dev dependencies..."; \
+	cd services/layer3-knowledge && ($$PYTEST_PY -m pip install -e ".[dev]" -q 2>/dev/null || $$PYTEST_PY -m pip install -e "." -q) && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 4 dev dependencies..."; \
+	cd services/layer4-agents && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 5 dev dependencies..."; \
+	cd services/layer5-ground-truth && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 6 dev dependencies..."; \
+	cd services/layer6-benchmarks && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "✅  All service dependencies installed into $$PYTEST_PY"
 
 # ─── Layer-Specific Tests ─────────────────────────────────────────────────────
 
