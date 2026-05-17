@@ -104,10 +104,15 @@ class TogetherAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
         }
         if max_tokens is not None:
             kwargs["max_tokens"] = max_tokens
-        # Together.ai supports {"type": "json_object"} but not json_schema mode.
+        # Together.ai supports {"type": "json_object"} only for models in the allowlist.
         # Callers that need JSON should use extract_structured() instead.
         if response_format is not None and response_format.get("type") == "json_object":
-            kwargs["response_format"] = response_format
+            if model in _JSON_MODE_SUPPORTED_MODELS:
+                kwargs["response_format"] = response_format
+            else:
+                logger.debug(
+                    "Skipping json_object response_format for unsupported model %s", model
+                )
 
         response = await self._get_client().chat.completions.create(**kwargs)
         usage = response.usage
@@ -188,8 +193,8 @@ class TogetherAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
             # If json_object mode caused a 400, retry without it
             if use_json_mode and ("400" in str(exc) or "bad request" in str(exc).lower()):
                 logger.warning(
-                    "json_object mode rejected for model %s, retrying without it: %s",
-                    request.model, exc,
+                    "json_object mode rejected for model %s, retrying without it",
+                    request.model,
                 )
                 kwargs.pop("response_format", None)
                 try:
@@ -268,9 +273,9 @@ class TogetherAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
         msg = str(exc)
         lowered = msg.lower()
         if "timeout" in lowered:
-            return AdapterError(ErrorCategory.TIMEOUT, msg, retryable=True)
+            return AdapterError(ErrorCategory.TIMEOUT, "provider_timeout", retryable=True)
         if "rate" in lowered and "limit" in lowered:
-            return AdapterError(ErrorCategory.RATE_LIMIT, msg, retryable=True)
+            return AdapterError(ErrorCategory.RATE_LIMIT, "provider_rate_limited", retryable=True)
         if "401" in msg or "unauthorized" in lowered:
-            return AdapterError(ErrorCategory.AUTH, msg, retryable=False)
-        return AdapterError(ErrorCategory.PROVIDER, msg, retryable=False)
+            return AdapterError(ErrorCategory.AUTH, "provider_auth_failed", retryable=False)
+        return AdapterError(ErrorCategory.PROVIDER, "provider_error", retryable=False)

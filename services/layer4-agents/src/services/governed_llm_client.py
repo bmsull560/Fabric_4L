@@ -153,9 +153,7 @@ class GovernedLLMClient:
         for attempt in range(1, max_attempts + 1):
             t0 = time.monotonic()
             try:
-                from services.llm_provider import LLMTextResponse
-
-                response: LLMTextResponse = await self._provider.complete_text(
+                response = await self._provider.complete_text(
                     model=model,
                     messages=messages,
                     temperature=temperature if temperature is not None else 0.2,
@@ -168,6 +166,10 @@ class GovernedLLMClient:
                     response.usage.prompt_tokens,
                     response.usage.completion_tokens,
                 )
+                max_cost = float(self._config.get("llm", {}).get("max_cost_per_call_usd", 0.0) or 0.0)
+                if max_cost and cost > max_cost:
+                    self._emit_call_failed(model_task, model, "cost_limit_exceeded", call_id)
+                    raise RuntimeError("cost_limit_exceeded")
                 result = LLMCallResult(
                     content=response.content,
                     model=model,
@@ -187,16 +189,16 @@ class GovernedLLMClient:
                 last_exc = exc
                 category = self._classify_error(exc)
                 logger.warning(
-                    "LLM call failed (attempt %d/%d, category=%s, model=%s): %s",
-                    attempt, max_attempts, category, model, exc,
+                    "LLM call failed (attempt %d/%d, category=%s, model=%s)",
+                    attempt, max_attempts, category, model,
                 )
                 if category not in retryable or attempt == max_attempts:
-                    self._emit_call_failed(model_task, model, str(exc), call_id)
+                    self._emit_call_failed(model_task, model, category, call_id)
                     raise
                 await asyncio.sleep(backoff * (2 ** (attempt - 1)))
 
         # Should not reach here, but satisfy type checker
-        self._emit_call_failed(model_task, model, str(last_exc), call_id)
+        self._emit_call_failed(model_task, model, "exhausted_attempts", call_id)
         raise RuntimeError(f"LLM call exhausted {max_attempts} attempts") from last_exc
 
     async def call_structured(
@@ -365,11 +367,7 @@ class GovernedLLMClient:
     @staticmethod
     def _build_cost_calculator() -> Any | None:
         try:
-            import importlib.util
-            spec = importlib.util.find_spec("metrics.llm_cost_calculator")
-            if spec is None:
-                return None
-            from metrics.llm_cost_calculator import LLMCostCalculator
+            from ..metrics.llm_cost_calculator import LLMCostCalculator
             return LLMCostCalculator()
         except Exception:
             return None
