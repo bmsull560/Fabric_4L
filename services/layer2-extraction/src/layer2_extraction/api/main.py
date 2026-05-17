@@ -221,6 +221,8 @@ _SSE_POLL_INTERVAL = 0.5  # seconds between polls for non-terminal jobs
 
 async def _job_event_generator(
     job_id: str,
+    *,
+    tenant_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Yield SSE-formatted events for a job until it reaches a terminal state."""
 
