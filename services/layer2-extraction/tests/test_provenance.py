@@ -10,34 +10,19 @@ Covers:
 - get_provenance_tracker() singleton
 """
 
-import importlib
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
-
-# ---------------------------------------------------------------------------
-# Direct module import (avoids pulling numpy via the package __init__.py chain)
-# ---------------------------------------------------------------------------
-
-_provenance_path = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "layer2_extraction"
-    / "output"
-    / "provenance.py"
+import layer2_extraction.output.provenance as _prov_mod
+from layer2_extraction.output.provenance import (
+    SourceDocument,
+    LLMCall,
+    ExtractionStep,
+    ExtractionActivity,
+    ExtractionActivityStatus,
+    ProvenanceTracker,
+    get_provenance_tracker,
+    create_llm_call_record,
 )
-_spec = importlib.util.spec_from_file_location("provenance", _provenance_path)
-_prov_mod = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_prov_mod)
-
-SourceDocument = _prov_mod.SourceDocument
-LLMCall = _prov_mod.LLMCall
-ExtractionStep = _prov_mod.ExtractionStep
-ExtractionActivity = _prov_mod.ExtractionActivity
-ExtractionActivityStatus = _prov_mod.ExtractionActivityStatus
-ProvenanceTracker = _prov_mod.ProvenanceTracker
-get_provenance_tracker = _prov_mod.get_provenance_tracker
-create_llm_call_record = _prov_mod.create_llm_call_record
 
 
 # ---------------------------------------------------------------------------

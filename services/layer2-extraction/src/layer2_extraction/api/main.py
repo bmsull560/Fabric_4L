@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
@@ -167,16 +169,118 @@ async def get_pipeline_status(job_id: str, request: Request) -> PipelineStatusRe
     )
 
 
+@app.get("/v1/extract/jobs/{job_id}/events")
+async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
+    """Stream job progress as Server-Sent Events.
+
+    Returns a text/event-stream response that emits status, progress, log,
+    entity, complete, and error events until the job reaches a terminal state
+    (completed or failed).  Returns 404 immediately if the job does not exist.
+    """
+    tenant_id = _require_authenticated_tenant(request)
+    job = await job_store.get(job_id, tenant_id=tenant_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} not found",
+        )
+
+    return StreamingResponse(
+        _job_event_generator(job_id, tenant_id=tenant_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 def _compute_overall_status(extraction: str, ingestion: str) -> str:
     if extraction == "failed" or ingestion == "failed":
         return "failed"
-    if extraction == "completed" and ingestion == "completed":
+    if extraction == "completed" and ingestion in ("completed", "skipped"):
         return "completed"
-    if extraction == "completed" and ingestion != "completed":
+    if extraction == "completed" and ingestion in ("running",):
+        return "running"
+    if extraction == "completed" and ingestion in ("pending", "queued"):
         return "partial"
     if extraction == "running" or ingestion == "running":
         return "running"
+    # extraction pending/queued with ingestion queued → pipeline is running
+    if ingestion == "queued":
+        return "running"
     return "pending"
+
+
+# Statuses that terminate the SSE stream
+_SSE_TERMINAL_STATUSES: frozenset[str] = frozenset({"completed", "failed"})
+
+_SSE_POLL_INTERVAL = 0.5  # seconds between polls for non-terminal jobs
+
+
+async def _job_event_generator(
+    job_id: str,
+    *,
+    tenant_id: str | None = None,
+) -> AsyncGenerator[str, None]:
+    """Yield SSE-formatted events for a job until it reaches a terminal state."""
+
+    def _now_iso() -> str:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+    def _event(event_type: str, data: Any) -> str:
+        payload = json.dumps({"type": event_type, "timestamp": _now_iso(), "data": data})
+        return f"data: {payload}\n\n"
+
+    # Check job exists first
+    job = await job_store.get(job_id, tenant_id=tenant_id)
+    if job is None:
+        return  # caller raises 404 before entering generator
+
+    while True:
+        job = await job_store.get(job_id, tenant_id=tenant_id)
+        if job is None:
+            yield _event("error", {"error": f"Job {job_id} not found", "job_id": job_id})
+            return
+
+        overall = _compute_overall_status(job.extraction_status, job.ingestion_status)
+
+        # Always emit current status
+        yield _event("status", overall)
+
+        if overall in _SSE_TERMINAL_STATUSES:
+            # Terminal: emit progress 100, log, entity summary, and complete/error
+            yield _event("progress", 100)
+
+            if overall == "completed":
+                yield _event("log", {"level": "success", "message": "Extraction and ingestion complete"})
+                if job.entities_extracted > 0:
+                    yield _event("entity", {
+                        "entities_extracted": job.entities_extracted,
+                        "relationships_extracted": job.relationships_extracted,
+                    })
+                yield _event("complete", {
+                    "job_id": job_id,
+                    "status": "completed",
+                    "entities_extracted": job.entities_extracted,
+                    "relationships_extracted": job.relationships_extracted,
+                    "error": None,
+            else:  # failed
+                yield _event("log", {"level": "error", "message": job.last_error or "Job failed"})
+                yield _event("error", {
+                    "job_id": job_id,
+                    "error": job.last_error or "Job failed",
+                })
+            return
+
+        # Non-terminal: emit progress and poll again
+        if overall == "running":
+            yield _event("progress", 50)
+        else:
+            yield _event("progress", 0)
+
+        await asyncio.sleep(_SSE_POLL_INTERVAL)
 
 
 _UNSET = object()
@@ -194,7 +298,13 @@ async def _set_pipeline_job(
     last_error: str | None = _UNSET,
     next_retry_at: datetime | None = _UNSET,
 ) -> None:
-    job = await job_store.get_job(job_id)
+    try:
+        job = await job_store.get_job(job_id)
+    except KeyError:
+        logging.getLogger(__name__).warning(
+            "_set_pipeline_job: job %s not found; skipping update", job_id
+        )
+        return
     if extraction_status is not None:
         job.extraction_status = extraction_status
     if ingestion_status is not None:
@@ -369,7 +479,6 @@ async def run_extract_and_ingest(
         await _set_pipeline_job(
             job_id,
             extraction_status="failed",
-            overall_status="failed",
         )
         return
 

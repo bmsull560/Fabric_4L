@@ -16,7 +16,7 @@ class PipelineJob(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     job_id: str
-    source_url: str
+    source_url: str = ""
     overall_status: str = "pending"
     extraction_status: str = "pending"
     ingestion_status: str = "pending"
@@ -27,6 +27,7 @@ class PipelineJob(BaseModel):
     next_retry_at: datetime | None = None
     started_at: datetime = Field(default_factory=datetime.now)
     completed_at: datetime | None = None
+    created_at: datetime | None = None
     tenant_id: str | None = None
 
 
@@ -66,6 +67,20 @@ class InMemoryJobStore:
         if tenant_id is not None:
             jobs = [j for j in jobs if j.tenant_id == tenant_id]
         return jobs
+
+    # Convenience aliases used by tests and SSE endpoint
+    async def get(self, job_id: str, *, tenant_id: str | None = None) -> PipelineJob | None:
+        try:
+            return await self.get_job(job_id, tenant_id=tenant_id)
+        except KeyError:
+            return None
+
+    async def set(self, job: PipelineJob) -> None:
+        await self.set_job(job)
+
+    async def delete(self, job_id: str) -> None:
+        self._jobs.pop(job_id, None)
+        self._artifacts.pop(job_id, None)
 
 
 class RedisJobStore:
@@ -147,11 +162,30 @@ class RedisJobStore:
     async def close(self) -> None:
         await self._redis.close()
 
+    # Convenience aliases used by tests and SSE endpoint
+    async def get(self, job_id: str, *, tenant_id: str | None = None) -> PipelineJob | None:
+        try:
+            return await self.get_job(job_id, tenant_id=tenant_id)
+        except KeyError:
+            return None
+
+    async def set(self, job: PipelineJob) -> None:
+        await self.set_job(job)
+
+    async def delete(self, job_id: str) -> None:
+        await self._redis.delete(self._job_key(job_id))
+        await self._redis.delete(self._artifact_key(job_id))
+
 
 def build_job_store() -> InMemoryJobStore | RedisJobStore:
     """Factory for job store based on environment."""
     env = os.environ.get("ENVIRONMENT", os.environ.get("APP_ENV", "development")).lower()
     redis_url = os.environ.get("REDIS_URL")
-    if env in ("production", "staging") and redis_url:
+    if env in ("production", "staging"):
+        if not redis_url:
+            raise RuntimeError(
+                "REDIS_URL is required in production/staging environments. "
+                "Set the REDIS_URL environment variable."
+            )
         return RedisJobStore(redis_url)
     return InMemoryJobStore()

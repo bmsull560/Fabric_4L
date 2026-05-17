@@ -39,16 +39,41 @@ async def reset_pipeline_state() -> None:
 
 
 @pytest.fixture
-async def async_client():
+def _jwt_token() -> str:
+    """Generate a signed JWT for test requests."""
+    import os
+    import time
+    import jwt as pyjwt
+
+    secret = os.environ.get("JWT_SECRET", "test-secret-key-for-layer2-tests-32b")
+    payload = {
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000002",
+        "iss": "value-fabric-internal",
+        "aud": "value-fabric-services",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,
+    }
+    return pyjwt.encode(payload, secret, algorithm="HS256")
+
+
+@pytest.fixture
+async def async_client(_jwt_token: str):
     """Create async HTTP client for testing."""
     transport = httpx.ASGITransport(app=api_main.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    headers = {"Authorization": f"Bearer {_jwt_token}"}
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver", headers=headers
+    ) as client:
         yield client
 
 
 # -----------------------------------------------------------------------
 # Helper to create jobs with reasonable defaults
 # -----------------------------------------------------------------------
+
+_TEST_TENANT_ID = "00000000-0000-0000-0000-000000000002"
+
 
 async def _create_job(
     job_id: str = "test-job",
@@ -63,6 +88,7 @@ async def _create_job(
     now = datetime.now(UTC)
     job = PipelineJob(
         job_id=job_id,
+        tenant_id=_TEST_TENANT_ID,
         extraction_status=extraction_status,
         ingestion_status=ingestion_status,
         created_at=now.isoformat(),
