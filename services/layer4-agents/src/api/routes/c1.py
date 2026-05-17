@@ -14,9 +14,11 @@ import os
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from value_fabric.shared.identity.dependencies import require_authenticated
+from value_fabric.shared.identity.context import RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,10 @@ class C1StreamRequest(BaseModel):
 
 
 @router.post("/c1/stream")
-async def stream_c1(request: C1StreamRequest) -> StreamingResponse:
+async def stream_c1(
+    request: C1StreamRequest,
+    _ctx: RequestContext = Depends(require_authenticated),
+) -> StreamingResponse:
     """Proxy a streaming request to the Thesys C1 API.
 
     The server attaches the ``THESYS_API_KEY`` so the secret is never

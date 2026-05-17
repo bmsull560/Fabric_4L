@@ -6,7 +6,8 @@ Create Date: 2026-04-24
 
 SECURITY FIX: Migrations 007 and 013 created RLS policies with:
 
-    USING (tenant_id IS NULL OR tenant_id::text = current_setting(...))
+    USING (tenant_id IS NULL  -- unsafe: NULL rows visible to all tenants
+           OR tenant_id::text = current_setting(...))
 
 The ``tenant_id IS NULL`` clause means any row inserted without a tenant_id
 is visible to ALL tenants — a global data leak vector. If any code path
