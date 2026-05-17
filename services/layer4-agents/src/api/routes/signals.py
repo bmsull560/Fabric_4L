@@ -9,6 +9,7 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Any
 
@@ -313,8 +314,9 @@ async def review_signal(
 
     from ...integration.layer3_client import Layer3Client
 
+    layer3_url = os.getenv("LAYER3_URL", "http://layer3-knowledge:8003")
     reviewed_at = datetime.now(UTC).isoformat()
-    async with Layer3Client() as client:
+    async with Layer3Client(base_url=layer3_url) as client:
         response = await client.review_signal(
             signal_id=signal_id,
             account_id=request.account_id,

@@ -268,7 +268,10 @@ class TestToolRegistryContractCompliance:
         self, registry, registered_failing_tool
     ):
         """Proof 3: Registry tool failure does not raise as normal control flow."""
-        result = await registry.execute("registered_failing_tool", {"trigger": "fail"})
+        result = await registry.execute(
+            "registered_failing_tool",
+            {"trigger": "fail", "tenant_id": "12345678-1234-1234-1234-123456789abc"},
+        )
 
         # Should return ToolResult, not raise
         assert isinstance(result, ToolResult)

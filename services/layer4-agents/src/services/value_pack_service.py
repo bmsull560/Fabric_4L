@@ -330,6 +330,7 @@ class Neo4jValuePackService(IValuePackService):
                 outputs=outputs,
                 errors=errors,
                 completed_at=completed_at,
+                tenant_id=tenant_id,
             )
 
         return PackExecutionResult(
