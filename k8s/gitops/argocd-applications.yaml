@@ -1,3 +1,19 @@
+# OPERATIONAL GAP — ArgoCD not installed
+# These Application resources are defined and ready to apply, but ArgoCD itself
+# has no installation manifest in this repository. There is no argocd namespace
+# setup, no ArgoCD CRD installation, and no ArgoCD controller deployment.
+#
+# The environment-promotion.yml workflow currently falls back to `kubectl apply`
+# in the ephemeral kind cluster. The "Trigger ArgoCD sync" steps are no-ops.
+#
+# To operationalise GitOps:
+#   1. Install ArgoCD: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#   2. Apply this file: kubectl apply -f k8s/gitops/argocd-applications.yaml
+#   3. Wire the sync steps in environment-promotion.yml to use the ArgoCD API or CLI.
+#
+# Argo Rollouts canary manifests for L1 and L4 are in k8s/gitops/rollouts/ but
+# also require the Argo Rollouts controller to be installed separately.
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -1,4 +1,21 @@
-"""FastAPI tracing middleware and integration."""
+"""FastAPI tracing middleware and integration.
+
+INTEROPERABILITY GAP:
+This module uses a custom tracer implementation (tracing/tracer.py) rather than
+the OpenTelemetry SDK directly. The custom tracer propagates W3C trace context
+headers and records spans, but its internal span format does not interoperate
+with standard OTel collectors (Jaeger, Tempo, OTLP receivers) without an
+adaptation layer.
+
+Layer 1 and Layer 4 use the OpenTelemetry SDK (opentelemetry-sdk) directly.
+To achieve end-to-end distributed tracing across all layers, this middleware
+should be migrated to use the OTel SDK's FastAPI instrumentation:
+  opentelemetry-instrumentation-fastapi
+
+Until that migration is complete, Layer 3 traces are isolated from the
+platform-wide trace context and cannot be correlated with L1/L4 spans in
+a standard OTel backend.
+"""
 
 from collections.abc import Callable
 from typing import Any, Optional
