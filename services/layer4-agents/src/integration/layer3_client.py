@@ -67,11 +67,7 @@ class Layer3Client:
             self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client
 
-    def _get_headers(
-        self,
-        tenant_id: str | None = None,
-        passthrough_headers: dict[str, str] | None = None,
-    ) -> dict[str, str]:
+    def _get_headers(self, tenant_id: str | None = None) -> dict[str, str]:
         """Build request headers with tenant context.
 
         Args:
@@ -93,8 +89,6 @@ class Layer3Client:
             if service_auth:
                 headers[SERVICE_AUTH_HEADER] = service_auth
 
-        if passthrough_headers:
-            headers.update(passthrough_headers)
         return headers
 
     def _get_effective_tenant(self, tenant_id: str | None) -> str:
@@ -296,25 +290,6 @@ class Layer3Client:
         result = await self._make_request("POST", url, effective_tenant, json=signal_data)
         return result.get("signal_id", "")
 
-    async def ingest(
-        self,
-        ingestion_payload: dict[str, Any],
-        tenant_id: str | None = None,
-        passthrough_headers: dict[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """Call canonical Layer 3 ingestion endpoint."""
-        effective_tenant = self._get_effective_tenant(tenant_id)
-        url = f"{self.base_url}/v1/ingest"
-        client = await self._get_client()
-        headers = self._get_headers(effective_tenant, passthrough_headers=passthrough_headers)
-        try:
-            response = await client.post(url, json=ingestion_payload, headers=headers)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error("Layer3 ingest call failed: %s", e)
-            raise Layer3ClientError(f"Layer3 ingest call failed: {e}") from e
-
     async def find_matching_evidence(
         self,
         signal_description: str,
@@ -451,63 +426,36 @@ class Layer3Client:
             payload["decision_note"] = decision_note
         return await self._make_request("PATCH", url, effective_tenant, json=payload) or {}
 
-    async def get_benchmark_variables(
+
+    async def decide_evidence(
         self,
-        industry: str,
+        evidence_id: str,
+        account_id: str,
+        case_id: str,
+        decision: str,
+        reviewer_id: str,
+        decision_note: str | None = None,
         tenant_id: str | None = None,
     ) -> dict[str, Any]:
-        """Fetch benchmark variables and defaults for an industry vertical.
-
-        Replaces the Cypher-in-L4 pattern from ``workflows/queries.py``.
-        Returns a dict with keys ``industry``, ``variables``, ``defaults``,
-        and optionally ``benchmark_id``.
-
-        Args:
-            industry: Industry vertical to look up.
-            tenant_id: Tenant ID for RLS (uses default if None).
-
-        Returns:
-            BenchmarkVariablesResponse payload as a dict.
-
-        Raises:
-            Layer3ClientError: If the Layer 3 request fails.
-        """
         effective_tenant = self._get_effective_tenant(tenant_id)
-        url = f"{self.base_url}/v1/knowledge/benchmarks/variables"
-        return await self._make_request(
-            "GET", url, effective_tenant, params={"industry": industry}
-        )
+        url = f"{self.base_url}/v1/evidence/{evidence_id}/decision"
+        payload: dict[str, Any] = {"account_id": account_id, "case_id": case_id, "decision": decision, "reviewer_id": reviewer_id}
+        if decision_note:
+            payload["decision_note"] = decision_note
+        return await self._make_request("PATCH", url, effective_tenant, json=payload) or {}
 
-    async def get_value_driver_formulas(
+    async def link_evidence_driver(
         self,
-        driver_ids: list[str],
+        evidence_id: str,
+        driver_id: str,
+        account_id: str,
+        case_id: str,
         tenant_id: str | None = None,
     ) -> dict[str, Any]:
-        """Fetch value driver formulas by ID list.
-
-        Replaces the Cypher-in-L4 pattern from ``workflows/queries.py``.
-        Returns a dict with keys ``drivers`` (list of formula dicts) and
-        ``missing_ids`` (IDs not found in the graph).
-
-        Args:
-            driver_ids: Value driver IDs to look up. Must be non-empty.
-            tenant_id: Tenant ID for RLS (uses default if None).
-
-        Returns:
-            ValueDriverFormulasResponse payload as a dict.
-
-        Raises:
-            ValueError: If driver_ids is empty.
-            Layer3ClientError: If the Layer 3 request fails.
-        """
-        if not driver_ids:
-            raise ValueError("driver_ids must be a non-empty list")
         effective_tenant = self._get_effective_tenant(tenant_id)
-        url = f"{self.base_url}/v1/knowledge/value-drivers/formulas"
-        # FastAPI accepts repeated query params for list fields
-        params = [("driver_ids", d) for d in driver_ids]
-        return await self._make_request("GET", url, effective_tenant, params=params)
-
+        url = f"{self.base_url}/v1/evidence/{evidence_id}/drivers/{driver_id}"
+        payload = {"account_id": account_id, "case_id": case_id}
+        return await self._make_request("POST", url, effective_tenant, json=payload) or {}
     async def close(self) -> None:
         """Close HTTP client and release resources."""
         if self._client:

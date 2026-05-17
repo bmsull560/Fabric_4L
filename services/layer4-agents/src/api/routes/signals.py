@@ -9,11 +9,10 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome
 from value_fabric.shared.identity.context import RequestContext
@@ -113,6 +112,29 @@ class SignalReviewResponse(BaseModel):
     decision_note: str | None = None
 
 
+
+
+class EvidenceDecisionRequest(BaseModel):
+    account_id: str
+    case_id: str
+    decision: str
+    decision_note: str | None = None
+
+
+class EvidenceDriverLinkRequest(BaseModel):
+    account_id: str
+    case_id: str
+
+
+class EvidenceDecisionResponse(BaseModel):
+    evidence_id: str
+    account_id: str
+    case_id: str
+    decision: str
+    reviewed_by: str
+    reviewed_at: str
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    confidence: float | None = None
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -314,9 +336,8 @@ async def review_signal(
 
     from ...integration.layer3_client import Layer3Client
 
-    layer3_url = os.getenv("LAYER3_URL", "http://layer3-knowledge:8003")
     reviewed_at = datetime.now(UTC).isoformat()
-    async with Layer3Client(base_url=layer3_url) as client:
+    async with Layer3Client() as client:
         response = await client.review_signal(
             signal_id=signal_id,
             account_id=request.account_id,
@@ -460,79 +481,53 @@ async def stream_signals_to_websocket(
     # Execute with streaming
     await agent.execute(task, context)
 
-class EvidenceDecisionRequest(BaseModel):
-    account_id: str
-    case_id: str
-    decision: str = Field(..., description="accepted|rejected|attached_to_driver")
-    driver_id: str | None = None
-    decision_note: str | None = None
 
-
-class EvidenceDecisionResponse(BaseModel):
-    evidence_id: str
-    account_id: str
-    case_id: str
-    decision: str
-    driver_id: str | None = None
-    reviewed_by: str | None = None
-    reviewed_at: str
-    provenance: dict[str, Any] = Field(default_factory=dict)
-    confidence: float = 0.0
-
-
-_EVIDENCE_DECISIONS: dict[tuple[str, str, str], dict[str, Any]] = {}
-
-
-
-@router.post("/evidence/{evidence_id}/decisions", response_model=EvidenceDecisionResponse)
+@router.patch("/evidence/{evidence_id}/decision", response_model=EvidenceDecisionResponse)
 async def decide_evidence(
     evidence_id: str,
     request: EvidenceDecisionRequest,
-    http_request: Request,
     ctx: RequestContext = Depends(require_authenticated),
 ) -> EvidenceDecisionResponse:
-    if request.decision not in {"accepted", "rejected", "attached_to_driver"}:
-        raise HTTPException(status_code=400, detail="decision must be accepted, rejected, or attached_to_driver")
+    if request.decision not in {"accepted", "rejected"}:
+        raise HTTPException(status_code=400, detail="decision must be accepted or rejected")
+    from ...integration.layer3_client import Layer3Client
+    now = datetime.now(UTC).isoformat()
+    async with Layer3Client() as client:
+        response = await client.decide_evidence(
+            evidence_id=evidence_id,
+            account_id=request.account_id,
+            case_id=request.case_id,
+            decision=request.decision,
+            reviewer_id=ctx.user_id,
+            decision_note=request.decision_note,
+            tenant_id=ctx.tenant_id,
+        )
+    return EvidenceDecisionResponse(
+        evidence_id=evidence_id,
+        account_id=request.account_id,
+        case_id=request.case_id,
+        decision=response.get("decision", request.decision),
+        reviewed_by=response.get("reviewed_by", ctx.user_id),
+        reviewed_at=response.get("reviewed_at", now),
+        provenance=response.get("provenance", {}),
+        confidence=response.get("confidence"),
+    )
 
-    reviewed_at = datetime.now(UTC).isoformat()
-    record = {
-        "evidence_id": evidence_id,
-        "account_id": request.account_id,
-        "case_id": request.case_id,
-        "decision": request.decision,
-        "driver_id": request.driver_id,
-        "reviewed_by": ctx.user_id,
-        "reviewed_at": reviewed_at,
-        "provenance": {
-            "tenant_id": str(ctx.tenant_id),
-            "scope": {"account_id": request.account_id, "case_id": request.case_id},
-            "source": "layer4-agents",
-        },
-        "confidence": 0.9 if request.decision == "accepted" else 0.75,
-    }
-    _EVIDENCE_DECISIONS[(str(ctx.tenant_id), request.account_id, evidence_id)] = record
 
-    if request.decision == "attached_to_driver" and request.driver_id:
-        driver = http_request.app.state.neo4j_driver
-        query = """
-        MERGE (e:Evidence {id: $evidence_id, account_id: $account_id, tenant_id: $tenant_id})
-        MERGE (d:ValueHypothesis {id: $driver_id, account_id: $account_id, tenant_id: $tenant_id})
-        MERGE (e)-[r:ATTACHED_TO_DRIVER]->(d)
-        SET r.case_id = $case_id,
-            r.decision_note = $decision_note,
-            r.updated_at = datetime()
-        """
-        async with driver.session() as session:
-            await session.run(
-                query,
-                {
-                    "evidence_id": evidence_id,
-                    "driver_id": request.driver_id,
-                    "account_id": request.account_id,
-                    "tenant_id": str(ctx.tenant_id),
-                    "case_id": request.case_id,
-                    "decision_note": request.decision_note,
-                },
-            )
-
-    return EvidenceDecisionResponse(**record)
+@router.post("/evidence/{evidence_id}/drivers/{driver_id}")
+async def link_evidence_driver(
+    evidence_id: str,
+    driver_id: str,
+    request: EvidenceDriverLinkRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    from ...integration.layer3_client import Layer3Client
+    async with Layer3Client() as client:
+        response = await client.link_evidence_driver(
+            evidence_id=evidence_id,
+            driver_id=driver_id,
+            account_id=request.account_id,
+            case_id=request.case_id,
+            tenant_id=ctx.tenant_id,
+        )
+    return {"evidence_id": evidence_id, "driver_id": driver_id, **(response or {})}
