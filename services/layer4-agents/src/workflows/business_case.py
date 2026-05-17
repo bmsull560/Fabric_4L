@@ -1004,12 +1004,15 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             return agent_result.to_dict()
 
         try:
+            # Resolve tenant first — MissingTenantContextError must degrade, not crash.
+            organization_id = self._resolve_organization_id(state)
+
             registry = get_prompt_registry()
             system_tmpl = registry.get("business_case", "system")
             validate_tmpl = registry.get("business_case", "validate_claims")
 
             provider = get_llm_provider(self.config)
-            client = GovernedLLMClient(
+            llm_client = GovernedLLMClient(
                 provider=provider,
                 provider_name=self._resolve_provider_name(),
             )
@@ -1018,7 +1021,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 account_name=account_name,
                 sections_json=json.dumps(sections, indent=2),
             )
-            llm_result = await client.call(
+            llm_result = await llm_client.call(
                 model_task=validate_tmpl.model_task,
                 messages=[
                     {"role": "system", "content": system_tmpl.body},
@@ -1028,32 +1031,59 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 max_tokens=validate_tmpl.max_tokens,
                 call_id=f"bc_validate_{trace_id or 'unknown'}",
             )
-            parsed = client._parse_json(llm_result.content)
+            parsed = llm_client._parse_json(llm_result.content)
             extracted_claims = parsed.get("claims", [])
+
+            # Build one Layer 5 client and validator for the entire validation run.
+            from ..harness.live_l5_validator import LiveL5Validator
+
+            layer5_url: str | None = os.getenv(
+                "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
+            )
+            service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
 
             # Validate each claim against Layer 5 (best-effort)
             validated: list[dict] = []
             unverified: list[dict] = []
 
-            for claim in extracted_claims[:20]:  # cap at 20 claims per run
-                claim_text = claim.get("claim_text", "")
-                if not claim_text:
-                    continue
+            if not layer5_url:
+                # L5 unavailable due to missing config — mark all claims as unavailable.
+                logger.warning("LAYER5_GROUND_TRUTH_URL not set; skipping L5 claim validation")
+                for claim in extracted_claims[:20]:
+                    claim_text = claim.get("claim_text", "")
+                    if claim_text:
+                        unverified.append({
+                            **claim,
+                            "l5_status": "unavailable",
+                            "reason": "Layer 5 validator unavailable: missing configuration",
+                        })
+            else:
+                l5_client = Layer5GroundTruthClient(
+                    base_url=layer5_url,
+                    service_token=service_token,
+                    tenant_id=organization_id if not service_token else None,
+                )
+                validator = LiveL5Validator(client=l5_client)
                 try:
-                    from ..harness.live_l5_validator import LiveL5Validator
-                    validator = LiveL5Validator()
-                    result = await validator.validate_claim(
-                        claim_text=claim_text,
-                        tenant_id=tenant_id,
-                        context={"account_name": account_name, "workflow": "business_case"},
-                    )
-                    if result.get("validated"):
-                        validated.append({**claim, "l5_status": "validated", "evidence": result.get("evidence", [])})
-                    else:
-                        unverified.append({**claim, "l5_status": "unverified", "reason": result.get("reason", "")})
-                except Exception as val_exc:
-                    logger.debug("L5 validation unavailable for claim: %s", val_exc)
-                    unverified.append({**claim, "l5_status": "unavailable"})
+                    for claim in extracted_claims[:20]:  # cap at 20 claims per run
+                        claim_text = claim.get("claim_text", "")
+                        if not claim_text:
+                            continue
+                        try:
+                            result = await validator.validate_claim(
+                                claim_text=claim_text,
+                                tenant_id=tenant_id,
+                                context={"account_name": account_name, "workflow": "business_case"},
+                            )
+                            if result.get("validated"):
+                                validated.append({**claim, "l5_status": "validated", "evidence": result.get("evidence", [])})
+                            else:
+                                unverified.append({**claim, "l5_status": "unverified", "reason": result.get("reason", "")})
+                        except Exception as val_exc:
+                            logger.debug("L5 validation unavailable for claim: %s", val_exc)
+                            unverified.append({**claim, "l5_status": "unavailable"})
+                finally:
+                    await l5_client.close()
 
             has_unverified = len(unverified) > 0
             confidence = (
@@ -1086,6 +1116,17 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 "Business case claim validation: %d validated, %d unverified",
                 len(validated), len(unverified),
             )
+
+        except MissingTenantContextError as exc:
+            logger.warning("Business case claim validation: missing tenant context: %s", exc)
+            agent_result.payload = {
+                "validated_claims": [],
+                "unverified_claims": [],
+                "claim_count": 0,
+            }
+            agent_result.degraded_reason = "missing_tenant_context"
+            agent_result.human_review_required = True
+            agent_result.customer_facing_allowed = False
 
         except Exception as exc:
             logger.warning("Business case claim validation failed: %s", exc)

@@ -16,6 +16,11 @@ _repo_root = _layer4_dir.parent.parent.resolve()  # layer4-agents -> services ->
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
+# Add src/ so bare `from harness.X` imports in src/harness/__init__.py resolve
+_src_dir = _layer4_dir / "src"
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
+
 # Settings are instantiated by several service imports during collection.
 # Keep tests hermetic while still allowing callers to provide real endpoints.
 os.environ.setdefault("LAYER4_LAYER1_API_URL", "http://localhost:8001")
