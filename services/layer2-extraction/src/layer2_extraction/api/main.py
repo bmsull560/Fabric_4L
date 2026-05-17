@@ -271,7 +271,6 @@ async def _job_event_generator(
                     "job_id": job_id,
                     "error": job.last_error or "Job failed",
                 })
-                yield _event("progress", 100)
             return
 
         # Non-terminal: emit progress and poll again
