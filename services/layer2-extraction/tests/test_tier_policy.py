@@ -6,22 +6,12 @@ Validates:
 - Route-to-tier resolution
 """
 
-import importlib.util
-import sys
-from pathlib import Path
-
-# Load tier_policy module directly from file to avoid circular imports
-tier_policy_path = Path(__file__).parent.parent / "src" / "layer2_extraction" / "api" / "tier_policy.py"
-spec = importlib.util.spec_from_file_location("tier_policy", tier_policy_path)
-tier_policy = importlib.util.module_from_spec(spec)
-sys.modules["tier_policy"] = tier_policy
-spec.loader.exec_module(tier_policy)
-
-# Import the needed items
-AccessTier = tier_policy.AccessTier
-ExtractionOperation = tier_policy.ExtractionOperation
-can_perform_operation = tier_policy.can_perform_operation
-get_tier_for_route = tier_policy.get_tier_for_route
+from layer2_extraction.api.tier_policy import (
+    AccessTier,
+    ExtractionOperation,
+    can_perform_operation,
+    get_tier_for_route,
+)
 
 
 class TestCanPerformOperation:

@@ -1,5 +1,8 @@
 """Pytest bootstrap for Layer 2 extraction tests.
 
+JWT_SECRET is set before any app module is imported so that GovernanceMiddleware
+initialises with a known secret that matches the test JWT tokens.
+
 The Layer 2 test suite may use a lightweight ``openai`` stub because specific
 unit tests bypass client construction and do not exercise the OpenAI SDK. The
 repository package namespace, however, must never be stubbed: repository-level
@@ -8,8 +11,10 @@ collection imports Layer 3 and Layer 4 tests in the same interpreter, and a
 into a non-package. H-04 therefore makes the shared ``value_fabric`` imports a
 mandatory collection-time dependency instead of masking them with stubs.
 """
-
 from __future__ import annotations
+
+import os as _os
+_os.environ.setdefault("JWT_SECRET", "test-secret-key-for-layer2-tests-32b")
 
 import importlib
 import sys
@@ -77,7 +82,9 @@ _sdk_trace_exp.BatchSpanProcessor = getattr(_sdk_trace_exp, "BatchSpanProcessor"
 try:
     import asyncpg  # noqa: F401
 except ImportError:
-    sys.modules["asyncpg"] = MagicMock()
+    _asyncpg_stub = types.ModuleType("asyncpg")
+    _asyncpg_stub.__spec__ = importlib.util.spec_from_loader("asyncpg", loader=None)
+    sys.modules["asyncpg"] = _asyncpg_stub
 
 # ---------------------------------------------------------------------------
 # value_fabric.shared is a mandatory repository package. Import it for an
