@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
@@ -342,7 +342,7 @@ async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
     The response uses ``Content-Type: text/event-stream`` with keep-alive
     and buffering-disabled headers for proxy compatibility.
     """
-    tenant_id = _get_optional_tenant(request)
+    tenant_id = _require_authenticated_tenant(request)
     # Verify job exists before opening the stream
     try:
         await job_store.get_job(job_id, tenant_id=tenant_id)
@@ -350,7 +350,7 @@ async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
         raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
     return StreamingResponse(
-        _sse_event_generator(job_id, tenant_id),
+        _job_event_generator(job_id, tenant_id=tenant_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -397,6 +397,8 @@ _SSE_POLL_INTERVAL = 0.5  # seconds between polls for non-terminal jobs
 
 async def _job_event_generator(
     job_id: str,
+    *,
+    tenant_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Yield SSE-formatted events for a job until it reaches a terminal state."""
 
@@ -408,12 +410,12 @@ async def _job_event_generator(
         return f"data: {payload}\n\n"
 
     # Check job exists first
-    job = await job_store.get(job_id)
+    job = await job_store.get(job_id, tenant_id=tenant_id)
     if job is None:
         return  # caller raises 404 before entering generator
 
     while True:
-        job = await job_store.get(job_id)
+        job = await job_store.get(job_id, tenant_id=tenant_id)
         if job is None:
             yield _event("error", {"error": f"Job {job_id} not found", "job_id": job_id})
             return
@@ -477,7 +479,6 @@ async def _set_pipeline_job(
     try:
         job = await job_store.get_job(job_id)
     except KeyError:
-        import logging
         logging.getLogger(__name__).warning(
             "_set_pipeline_job: job %s not found; skipping update", job_id
         )
