@@ -1,6 +1,6 @@
 """Documentation package initialization."""
 
-from docs.api_documentation import (
+from ..docs.api_documentation import (
     API_DOCUMENTATION,
     APIEndpoint,
     APIError,

@@ -12,7 +12,7 @@ Canonical route ownership:
 
 from __future__ import annotations
 
-from api.app_monolith import (
+from ..api.app_monolith import (
     _security_config_l3,
     app,
     close_app_state,
@@ -20,7 +20,7 @@ from api.app_monolith import (
     init_telemetry,
     lifespan,
 )
-from api.routes.system import get_system_metrics, set_app_metrics
+from ..api.routes.system import get_system_metrics, set_app_metrics
 
 __all__ = [
     "_security_config_l3",

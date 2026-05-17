@@ -15,7 +15,7 @@ from typing import Any
 
 from aiocache import Cache
 
-from cache.redis_cache import CacheConfig, RedisCache_get_statsResult
+from ..cache.redis_cache import CacheConfig, RedisCache_get_statsResult
 
 logger = logging.getLogger(__name__)
 

@@ -12,14 +12,26 @@ import pytest
 from value_fabric.layer4 import database_facade as database
 
 
+def _canonical_db():
+    """Return the module whose globals _emit_tenant_context_set_audit reads.
+
+    The facade copies names from src.database into its own globals, but the
+    canonical functions still read globals from their defining module.
+    Patching the facade's namespace has no effect on those functions.
+    """
+    canonical = getattr(database, "_CANONICAL", None)
+    return canonical if canonical is not None else database
+
+
 @pytest.mark.asyncio
 async def test_emit_tenant_context_set_audit_emits_event_when_audit_available(monkeypatch):
     """Audit helper emits TENANT_CONTEXT_SET with expected context payload."""
     fake_emit = AsyncMock()
-    monkeypatch.setattr(database, "AUDIT_AVAILABLE", True)
-    monkeypatch.setattr(database, "emit_audit_event", fake_emit)
-    monkeypatch.setattr(database, "AuditAction", SimpleNamespace(TENANT_CONTEXT_SET="TENANT_CONTEXT_SET"))
-    monkeypatch.setattr(database, "AuditOutcome", SimpleNamespace(SUCCESS="SUCCESS"))
+    _db = _canonical_db()
+    monkeypatch.setattr(_db, "AUDIT_AVAILABLE", True)
+    monkeypatch.setattr(_db, "emit_audit_event", fake_emit)
+    monkeypatch.setattr(_db, "AuditAction", SimpleNamespace(TENANT_CONTEXT_SET="TENANT_CONTEXT_SET"))
+    monkeypatch.setattr(_db, "AuditOutcome", SimpleNamespace(SUCCESS="SUCCESS"))
 
     class _Details:
         def __init__(self, **kwargs):
@@ -28,7 +40,7 @@ async def test_emit_tenant_context_set_audit_emits_event_when_audit_available(mo
         def model_dump(self, exclude_none=True):
             return dict(self.kwargs)
 
-    monkeypatch.setattr(database, "TenantContextSetDetails", _Details)
+    monkeypatch.setattr(_db, "TenantContextSetDetails", _Details)
 
     context = SimpleNamespace(
         isolation_tier="shared",
@@ -57,14 +69,15 @@ async def test_emit_tenant_context_set_audit_emits_event_when_audit_available(mo
 @pytest.mark.asyncio
 async def test_emit_tenant_context_set_audit_is_non_blocking_on_emit_error(monkeypatch):
     """Audit emission failures must not raise and break request flow."""
-    monkeypatch.setattr(database, "AUDIT_AVAILABLE", True)
+    _db = _canonical_db()
+    monkeypatch.setattr(_db, "AUDIT_AVAILABLE", True)
 
     async def _boom(**_kwargs):
         raise RuntimeError("audit backend unavailable")
 
-    monkeypatch.setattr(database, "emit_audit_event", _boom)
-    monkeypatch.setattr(database, "AuditAction", SimpleNamespace(TENANT_CONTEXT_SET="TENANT_CONTEXT_SET"))
-    monkeypatch.setattr(database, "AuditOutcome", SimpleNamespace(SUCCESS="SUCCESS"))
+    monkeypatch.setattr(_db, "emit_audit_event", _boom)
+    monkeypatch.setattr(_db, "AuditAction", SimpleNamespace(TENANT_CONTEXT_SET="TENANT_CONTEXT_SET"))
+    monkeypatch.setattr(_db, "AuditOutcome", SimpleNamespace(SUCCESS="SUCCESS"))
 
     class _Details:
         def __init__(self, **kwargs):
@@ -73,7 +86,7 @@ async def test_emit_tenant_context_set_audit_is_non_blocking_on_emit_error(monke
         def model_dump(self, exclude_none=True):
             return dict(self.kwargs)
 
-    monkeypatch.setattr(database, "TenantContextSetDetails", _Details)
+    monkeypatch.setattr(_db, "TenantContextSetDetails", _Details)
 
     context = SimpleNamespace(
         isolation_tier="shared",

@@ -42,6 +42,15 @@ _LAYER2_SRC = _REPO_ROOT / "services" / "layer2-extraction" / "src"
 if _LAYER2_SRC.exists() and str(_LAYER2_SRC) not in sys.path:
     sys.path.insert(0, str(_LAYER2_SRC))
 
+# Layer 3 src root is required so that intra-package bare imports inside
+# services/layer3-knowledge/src (e.g. ``from api.dependencies import ...``)
+# resolve correctly when tests import via the value_fabric.layer3 shim.
+# Added to sys.path (not as a src.* namespace entry) to avoid the namespace
+# collision documented below.
+_LAYER3_SRC = _REPO_ROOT / "services" / "layer3-knowledge" / "src"
+if _LAYER3_SRC.exists() and str(_LAYER3_SRC) not in sys.path:
+    sys.path.insert(0, str(_LAYER3_SRC))
+
 
 def _install_legacy_src_namespace() -> None:
     """Expose legacy ``src.*`` imports deterministically for repo collection.

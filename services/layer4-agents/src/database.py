@@ -144,8 +144,8 @@ async def _emit_tenant_context_set_audit(
             request_id=context.request_id,
             details=details.model_dump(exclude_none=True),
         )
-    except (AttributeError, TypeError) as exc:
-        # P0: Log debug only - don't fail the request
+    except Exception as exc:
+        # Audit emission must never break request flow — log and continue.
         logger.debug("Tenant context audit emission failed (non-critical): %s", exc)
 
 
@@ -380,9 +380,20 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
                 fail_safe_mode=FAIL_SAFE_MODE,
                 reserved_keywords=RESERVED_TENANT_KEYWORDS,
             )
-        except (ValueError, TypeError) as exc:
+        except (ValueError, TypeError, SharedTenantContextError) as exc:
+            # Increment per-error-type counters so metrics stay accurate
+            # regardless of which validation path executes.
+            if tenant_id is None:
+                _tenant_validation_metrics["missing_context_errors"] += 1
+            elif str(tenant_id).strip() == "":
+                _tenant_validation_metrics["empty_tenant_errors"] += 1
+            else:
+                _tenant_validation_metrics["uuid_format_errors"] += 1
             _tenant_validation_metrics["validation_failures"] += 1
-            raise exc
+            # Re-raise as local TenantContextError for a stable exception contract.
+            if not isinstance(exc, TenantContextError):
+                raise TenantContextError(str(exc)) from exc
+            raise
 
     # Fallback to local implementation
     if tenant_id is None:
@@ -541,6 +552,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
+async def get_db_with_tenant(
+    request: Request,
+    context: RequestContext = Depends(get_request_context),  # type: ignore
+) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for DB sessions with required tenant context.
+
+    DEPRECATED: Use get_db_from_context() for all new endpoints. This stub
+    exists only to satisfy the compatibility-guard contract and emit a
+    deprecation warning when legacy callers are present.
+    """
+    _allow_compat_only_db_dependency("get_db_with_tenant")
+    warnings.warn(
+        "get_db_with_tenant() is deprecated. Use get_db_from_context() for proper tenant isolation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    async for session in get_db_from_context(context):
+        yield session
 
 
 async def get_db_from_context(

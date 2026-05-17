@@ -39,19 +39,41 @@ async def test_redis_failure_fail_closed_default_and_fallback_mode_contract() ->
     from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
     from value_fabric.shared.identity.rate_limiting import RateLimitConfig
 
-    limiter = RedisRateLimiter(redis_client=None)
-    config = RateLimitConfig(requests_per_minute=60, burst_size=5)
+    # The security conftest patches RedisRateLimiter.check at class level to
+    # always return allowed=True (prevents rate-limit interference in auth tests).
+    # This test specifically exercises the real check() logic, so restore the
+    # original method for its duration.
+    import tests.security.conftest as _sec_conftest
+    _orig = getattr(_sec_conftest, "_orig_rl_check", None)
 
     async def boom(*, key: str, limit: int, window_seconds: int):
         raise RuntimeError("redis unavailable")
 
-    limiter._adapter.check = boom  # type: ignore[method-assign]
+    config = RateLimitConfig(requests_per_minute=60, burst_size=5)
 
-    with patch.dict(os.environ, {"RATE_LIMIT_FAIL_MODE": "closed"}, clear=False):
-        closed_result = await limiter.check("tenant:a:key:1", config)
+    # Remove any pre-existing RATE_LIMIT_FAIL_MODE so patch.dict starts clean.
+    os.environ.pop("RATE_LIMIT_FAIL_MODE", None)
 
-    with patch.dict(os.environ, {"RATE_LIMIT_FAIL_MODE": "local_fallback"}, clear=False):
-        fallback_results = [await limiter.check("tenant:a:key:1", config) for _ in range(6)]
+    try:
+        if _orig is not None:
+            RedisRateLimiter.check = _orig  # type: ignore[method-assign]
+
+        limiter = RedisRateLimiter(redis_client=None)
+        limiter._adapter.check = boom  # type: ignore[method-assign]
+
+        with patch.dict(os.environ, {"RATE_LIMIT_FAIL_MODE": "closed"}, clear=False):
+            closed_result = await limiter.check("tenant:a:key:1", config)
+
+        # Fresh limiter for fallback test so the in-memory counter starts at zero.
+        fallback_limiter = RedisRateLimiter(redis_client=None)
+        fallback_limiter._adapter.check = boom  # type: ignore[method-assign]
+        with patch.dict(os.environ, {"RATE_LIMIT_FAIL_MODE": "local_fallback"}, clear=False):
+            fallback_results = [await fallback_limiter.check("tenant:a:key:1", config) for _ in range(6)]
+    finally:
+        # Always restore the conftest patch so other tests are unaffected.
+        if _orig is not None:
+            from tests.security.conftest import _patched_rl_check  # type: ignore[attr-defined]
+            RedisRateLimiter.check = _patched_rl_check  # type: ignore[method-assign]
 
     assert closed_result.allowed is False
     assert closed_result.retry_after is not None

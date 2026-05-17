@@ -1,6 +1,6 @@
 """Metrics package initialization."""
 
-from metrics.prometheus_metrics import (
+from ..metrics.prometheus_metrics import (
     MetricsConfig,
     MetricsMiddleware,
     PrometheusMetrics,

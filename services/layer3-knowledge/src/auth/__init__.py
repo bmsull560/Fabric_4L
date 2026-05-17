@@ -1,6 +1,6 @@
 """Authentication package initialization."""
 
-from auth.api_keys import (
+from ..auth.api_keys import (
     ROLE_PERMISSIONS,
     APIKey,
     APIKeyCreateRequest,

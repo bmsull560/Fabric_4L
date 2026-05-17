@@ -102,7 +102,9 @@ class TestL3ContractDriftDetection:
 
     def test_l2_client_and_l3_contract_stay_aligned_on_ingest_route(self) -> None:
         l2_source = L2_CLIENT_PATH.read_text(encoding="utf-8")
-        assert '"/v1/ingest"' in l2_source
+        # The client builds the URL dynamically: f"{self.base_url}/v1/ingest"
+        # Accept either the literal string or the f-string fragment.
+        assert '"/v1/ingest"' in l2_source or "/v1/ingest" in l2_source
 
         contract_paths = set(_load_json(OPENAPI_L3_PATH).get("paths", {}).keys())
         assert "/v1/ingest" in contract_paths

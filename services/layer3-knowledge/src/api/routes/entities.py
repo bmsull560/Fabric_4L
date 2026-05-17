@@ -17,15 +17,15 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.identity.isolation import TenantScopedCypher
 
 from logging_config import get_logger
-from api.dependencies import (
+from ...api.dependencies import (
     AppState,
     get_app_state,
     get_graph_rag,
 )
-from api.dependencies_tenant import Neo4jTenantSession, get_neo4j_with_tenant
-from api.exception_mapping import map_exception_to_http_error
-from api.exceptions import DatabaseError, ValidationError
-from api.models import (
+from ...api.dependencies_tenant import Neo4jTenantSession, get_neo4j_with_tenant
+from ...api.exception_mapping import map_exception_to_http_error
+from ...api.exceptions import DatabaseError, ValidationError
+from ...api.models import (
     EntityDetail,
     EntityFilterRequest,
     EntityListResponse,

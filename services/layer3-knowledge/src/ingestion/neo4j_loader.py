@@ -20,10 +20,10 @@ from neo4j import AsyncDriver
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF
 
-from config import Settings, get_settings
-from db.driver import get_driver
-from schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
-from ingestion.validators import RequiredFieldValidator
+from ..config import Settings, get_settings
+from ..db.driver import get_driver
+from ..schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
+from ..ingestion.validators import RequiredFieldValidator
 
 logger = logging.getLogger(__name__)
 

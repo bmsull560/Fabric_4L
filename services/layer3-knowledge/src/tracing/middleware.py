@@ -26,7 +26,7 @@ from starlette.responses import StreamingResponse
 from value_fabric.shared.observability.trace_context import canonical_trace_headers
 
 from logging_config import get_logger
-from tracing.tracer import (
+from ..tracing.tracer import (
     Span,
     SpanContext,
     SpanKind,

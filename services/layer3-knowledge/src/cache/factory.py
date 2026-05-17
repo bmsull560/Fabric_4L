@@ -10,9 +10,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
-from cache.aiocache_adapter import AiocacheCacheAdapter
-from cache.ports import CachePort, LegacyCacheAdapter
-from cache.redis_cache import CacheConfig, RedisCache
+from ..cache.aiocache_adapter import AiocacheCacheAdapter
+from ..cache.ports import CachePort, LegacyCacheAdapter
+from ..cache.redis_cache import CacheConfig, RedisCache
 
 
 class CacheProviderName(StrEnum):

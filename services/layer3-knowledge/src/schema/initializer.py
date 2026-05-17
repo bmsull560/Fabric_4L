@@ -13,9 +13,9 @@ from neo4j.exceptions import (
 )
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from config import Settings, get_settings
-from db.driver import get_driver
-from schema.constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS, Constraint, Index
+from ..config import Settings, get_settings
+from ..db.driver import get_driver
+from ..schema.constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS, Constraint, Index
 
 
 class SchemaInitializer_health_checkResult(TypedDictModel):

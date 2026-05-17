@@ -1,6 +1,6 @@
 """Performance package initialization."""
 
-from performance.cache import (
+from ..performance.cache import (
     CacheConfig,
     CacheEntry,
     CacheManager,

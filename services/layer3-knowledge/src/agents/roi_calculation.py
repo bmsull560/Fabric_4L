@@ -16,7 +16,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from agents.base import AgentResult, BaseAgent
+from ..agents.base import AgentResult, BaseAgent
 
 
 class ROICalculationAgent__run_sensitivity_analysisResult(TypedDictModel):

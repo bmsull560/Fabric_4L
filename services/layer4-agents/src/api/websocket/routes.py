@@ -145,7 +145,10 @@ async def workflow_websocket(
             "WebSocket authentication failed: AUTH_QUERY_TOKEN_FORBIDDEN",
             extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", "workflow_id": workflow_id},
         )
-        await websocket.close(code=1008, reason="Authentication failed")
+        await websocket.close(
+            code=1008,
+            reason="Authentication via query param is forbidden; use Sec-WebSocket-Protocol header",
+        )
         return
 
     # P1-13 FIX: Accept JWT from Sec-WebSocket-Protocol header instead
