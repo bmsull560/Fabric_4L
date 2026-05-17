@@ -70,15 +70,27 @@ jobs:
         id: sha
         run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
 
+      - name: Reject mutable image tag inputs
+        # Mutable tags (latest, main, branch names) are forbidden in the build pipeline.
+        # All published images must be addressable by immutable sha-<8char> ref only.
+        # When triggered via workflow_dispatch with a custom image_tag, that value is
+        # validated here. On push triggers the ref is always the SHA-derived default.
+        # The environment-promotion workflow enforces the same rule on the promotion side.
+        run: |
+          ref="${{ inputs.image_tag || format('sha-{0}', steps.sha.outputs.short) }}"
+          if [[ "$ref" == "latest" ]] || [[ "$ref" =~ ^(main|master|develop|dev|staging|production|stable|edge|nightly)$ ]]; then
+            echo "::error::Mutable image tag rejected: $ref. Use sha-<commit> refs only."
+            exit 1
+          fi
+          echo "Image ref is immutable: $ref"
+
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
+          context: ${{ matrix.layer == 'frontend' && 'frontend' || format('services/{0}', matrix.layer) }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:${{ github.ref_name }}
-            ${{ inputs.push_latest && format('{0}/{1}/fabric_4l/{2}:latest', env.REGISTRY, github.repository_owner, matrix.layer) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |

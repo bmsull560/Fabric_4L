@@ -14,7 +14,18 @@ def enforce_authenticated_tenant(
     route: str,
     operation: str,
 ) -> None:
-    """Reject body/header tenant mismatch against authenticated context."""
+    """Reject body/header tenant mismatch against authenticated context.
+
+    IMPORTANT — explicit call required:
+    This helper is NOT applied by middleware. Each router that accepts a
+    body or header tenant_id must call this function explicitly before
+    processing the request. There is no automatic enforcement layer.
+
+    Failure to call this on a route that accepts tenant_id in the request
+    body or headers leaves that route vulnerable to X-Tenant-ID header
+    spoofing (TEST_AUDIT.md P0 gap #1). See services/api/app/routers/ for
+    the expected call pattern.
+    """
     if body_tenant_id is None:
         return
     if str(body_tenant_id) == str(authenticated_tenant_id):

@@ -100,18 +100,26 @@ def install_error_response_openapi(app: FastAPI) -> None:
 
 
 def is_production() -> bool:
-    """Check if running in production environment.
-    
-    Checks multiple common environment variable names for compatibility
-    across different layers and deployment configurations.
+    """Return True when running in a production-like environment.
+
+    Fails closed: if no recognised environment variable is set, or if the
+    value is not an explicit development/test token, the function returns
+    True so that error details are sanitised rather than leaked.
+
+    Explicit development tokens (case-insensitive): development, dev, test,
+    testing, local.  Everything else — including an absent or empty env var —
+    is treated as production-safe.
     """
+    # Keep in sync with security/config.py::_DEV_ENVIRONMENTS
+    _DEVELOPMENT_TOKENS = {"development", "dev", "test", "testing", "local", "ci"}
     env = (
-        os.getenv("ENVIRONMENT") 
-        or os.getenv("ENV") 
+        os.getenv("ENVIRONMENT")
+        or os.getenv("ENV")
         or os.getenv("APP_ENV")
-        or "development"
-    ).lower()
-    return env in ("production", "prod", "staging", "stg")
+        or ""
+    ).lower().strip()
+    # Empty string (no env var set) falls through to the default True return.
+    return env not in _DEVELOPMENT_TOKENS
 
 
 def sanitize_error_details(details: dict[str, Any] | None) -> dict[str, Any] | None:

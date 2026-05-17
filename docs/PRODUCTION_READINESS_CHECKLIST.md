@@ -2,7 +2,7 @@
 
 > **Purpose:** Pass/fail criteria for production deployments.  
 > **Owner:** Platform Engineering  
-> **Last Updated:** 2026-04-14  
+> **Last Updated:** 2026-05-17  
 > **Related:** [Supply Chain Security](docs/supply-chain/SUPPLY_CHAIN_SECURITY.md)
 
 ---
@@ -31,7 +31,7 @@ Before any production deployment:
 | S7 | **Non-root containers** | All 7 images run as non-root user (verified by CI) | P0 | ✅ PASS |
 | S8 | **Network policies active** | Deny-all default + per-layer allowlists applied | P0 | ✅ PASS |
 | S9 | **DAST baseline** | OWASP ZAP baseline scan completes against all API surfaces | P1 | ✅ PASS |
-| S10 | **SBOMs generated** | CycloneDX SBOM exists for every deployed image | P1 | ✅ PASS |
+| S10 | **SBOMs generated** | Source-level SBOM scan runs on every PR (`source-sbom-pr` job in `security-gates-merged.yml` and `source-sbom-scan` job in `supply-chain.yml`); image-level SBOM and SLSA provenance run at release only (`sbom-scan`/`provenance` jobs in `supply-chain.yml` require pre-built images and trigger on `workflow_call`/`workflow_dispatch` only — not on every PR) | P1 | ⚠️ PARTIAL |
 | S11 | **Secrets via Vault/Infisical** | No secrets in K8s manifests; all injected via ExternalSecret | P0 | ✅ PASS |
 | S12 | **JWT signing key rotated** | JWT signing key age < 30 days | P1 | ✅ PASS |
 | S13 | **API key rotation** | All API keys age < 90 days | P1 | ✅ PASS |
@@ -50,7 +50,7 @@ Before any production deployment:
 | R1 | **Health checks configured** | Every Dockerfile has HEALTHCHECK; K8s has liveness + readiness probes | P0 | ✅ PASS |
 | R2 | **Pod Disruption Budgets** | PDB configured for L2, L3, L4, frontend (`minAvailable ≥ 1`) | P0 | ✅ PASS |
 | R3 | **Rolling update strategy** | `maxUnavailable: 0` ensures zero-downtime deploys | P0 | ✅ PASS |
-| R4 | **Rollback runbook** | `docs/runbooks/deployment-rollback.md` exists and tested | P0 | ✅ PASS |
+| R4 | **Rollback runbook** | `docs/troubleshooting/runbooks/infrastructure/deployment-rollback.md` exists; covers K8s rollback via `kubectl rollout undo`. ArgoCD-based rollback steps are documented but ArgoCD is not operationally installed — those steps cannot be executed until ArgoCD is wired in. DB schema rollback is not covered. | P0 | ⚠️ PARTIAL |
 | R5 | **DR policy documented** | `docs/reliability/dr-policy.md` exists with RTO/RPO targets | P0 | ✅ PASS |
 | R6 | **DR gameday executed** | Region loss + service failover drills documented | P1 | ✅ PASS |
 | R7 | **Backup/restore tested** | `make test-backup-drills` passes | P1 | ✅ PASS |
@@ -89,8 +89,19 @@ Before any production deployment:
 | C6 | **Vendor risk policy** | `docs/trust/vendor-risk-policy.md` exists with assessment criteria | P1 | ✅ PASS |
 | C7 | **Data commitments** | `docs/trust/customer-data-commitments.md` published | P1 | ✅ PASS |
 | C8 | **NIST SSDF alignment** | All PO/PS/PW/RV practices mapped to controls | P0 | ✅ PASS |
-| C9 | **SLSA Level 3** | Provenance attestations generated and verifiable | P0 | ✅ PASS |
+| C9 | **SLSA Level 3** | Provenance attestation workflow exists (`provenance` job in `supply-chain.yml`) but only triggers on `workflow_call`/`workflow_dispatch` — not on every PR build. SLSA Level 3 requires hermetic, non-falsifiable provenance on every build; the current setup does not meet that bar for PR builds. | P0 | ⚠️ PARTIAL |
 | C10 | **Accessibility** | axe-core critical scan passes for all public pages | P1 | ✅ PASS |
+
+---
+
+## Security Test Coverage
+
+| # | Check | Criteria | Priority | Status |
+|---|-------|----------|----------|--------|
+| T1 | **P0 security gates pass** | All 5 P0 test files pass in `critical-gates.yml` on every PR (`p0-auth-boundaries`, `p0-jwt-config`, `p0-cross-tenant-write`, `p0-auth-source`, `p0-rate-limit-safety`) | P0 | ✅ PASS |
+| T2 | **P1 security tests present** | All 9 P1 test files exist in `tests/security/` (`test_context_validation.py`, `test_service_account_validation.py`, `test_rbac_expanded.py`, `test_rate_limit_response.py`, `test_rate_limit_window.py`, `test_audit_resilience.py`, `test_auth_logging.py`, `test_dev_bypass.py`, `test_request_tracing.py`) | P1 | ✅ PASS |
+| T3 | **Overall assurance score** | `tests/TEST_AUDIT.md` self-reported score is **62%** against a 92% GA target — a 30-point deficit. 12 P0 release-blocking gaps remain open, concentrated in tenant isolation, auth bypass, and RLS enforcement. | P1 | ❌ FAIL — score 62%, target 92% |
+| T4 | **No conditional assertions** | No `if response.status_code` patterns in security tests | P2 | ⚠️ PARTIAL — 8 P2 brittle-test issues documented in gap matrix; deferred to follow-up |
 
 ---
 
@@ -98,16 +109,21 @@ Before any production deployment:
 
 | Category | Total Checks | P0 Checks | All P0 Pass? |
 |----------|-------------|-----------|-------------|
-| Security | 18 | 12 | ✅ |
-| Reliability | 12 | 8 | ✅ |
+| Security | 18 | 12 | ⚠️ S10 PARTIAL |
+| Reliability | 12 | 8 | ⚠️ R4 PARTIAL (ArgoCD not installed) |
 | Scalability | 8 | 3 | ✅ |
-| Compliance | 10 | 5 | ✅ |
-| **Total** | **48** | **28** | **✅** |
+| Compliance | 10 | 5 | ⚠️ C9 PARTIAL (SLSA not on every PR) |
+| Security Test Coverage | 4 | 1 | ✅ T1 PASS |
+| **Total** | **52** | **29** | **❌ See R4(P0), C9(P0), T3(P1)** |
 
 ---
 
 ## Deployment Decision
 
-- **All 28 P0 checks PASS** → ✅ **CLEARED FOR PRODUCTION**
-- **Any P0 check FAIL** → ❌ **DEPLOYMENT BLOCKED** — resolve before proceeding
+- **All P0 checks PASS** → ✅ **CLEARED FOR PRODUCTION**
+- **Any P0 check FAIL or PARTIAL** → ❌ **DEPLOYMENT BLOCKED** — resolve before proceeding
 - **P1/P2 failures** → ⚠️ **DEPLOY WITH TRACKING** — create issue and assign owner
+
+**Current status: ❌ BLOCKED** — R4 (rollback runbook incomplete without ArgoCD) and C9 (SLSA
+provenance not generated on every PR build) are P0 partials. Resolve ArgoCD installation and
+extend `supply-chain.yml` provenance trigger before clearing for production.
