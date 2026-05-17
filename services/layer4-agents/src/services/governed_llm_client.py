@@ -34,6 +34,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Internal exceptions
+# ---------------------------------------------------------------------------
+
+
+class _CostCapExceeded(Exception):
+    """Raised internally when a call's computed cost exceeds max_cost_per_call_usd.
+
+    Never retried. Telemetry is emitted at the raise site before this is raised.
+    """
+
+
+# ---------------------------------------------------------------------------
 # Config path
 # ---------------------------------------------------------------------------
 
@@ -102,6 +114,9 @@ class GovernedLLMClient:
         self._telemetry = telemetry
         self._config = self._load_runtime_config(runtime_config_path or _RUNTIME_CONFIG_PATH)
         self._cost_calc = self._build_cost_calculator()
+        self._max_cost_per_call_usd: float | None = (
+            self._config.get("llm", {}).get("max_cost_per_call_usd")
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -166,10 +181,20 @@ class GovernedLLMClient:
                     response.usage.prompt_tokens,
                     response.usage.completion_tokens,
                 )
-                max_cost = float(self._config.get("llm", {}).get("max_cost_per_call_usd", 0.0) or 0.0)
-                if max_cost and cost > max_cost:
-                    self._emit_call_failed(model_task, model, "cost_limit_exceeded", call_id)
-                    raise RuntimeError("cost_limit_exceeded")
+                if self._max_cost_per_call_usd is not None and cost > self._max_cost_per_call_usd:
+                    self._emit_raw(
+                        "llm_call_failed",
+                        {
+                            "model_task": model_task,
+                            "model": model,
+                            "provider": self._provider_name,
+                            "error": "cost_cap_exceeded",
+                            "cost_usd": cost,
+                            "max_cost_usd": self._max_cost_per_call_usd,
+                            **({"call_id": call_id} if call_id else {}),
+                        },
+                    )
+                    raise _CostCapExceeded()
                 result = LLMCallResult(
                     content=response.content,
                     model=model,
@@ -184,6 +209,9 @@ class GovernedLLMClient:
                 self._emit_call_complete(result, call_id)
                 return result
 
+            except _CostCapExceeded:
+                # Telemetry already emitted at the raise site. Never retry.
+                raise
             except Exception as exc:
                 latency_ms = (time.monotonic() - t0) * 1000
                 last_exc = exc

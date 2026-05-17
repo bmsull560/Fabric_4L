@@ -20,6 +20,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..harness.prompt_registry import get_prompt_registry
 from ..messaging.signal_events import (
+    ErrorCategory,
     SignalCompletedEvent,
     SignalDiscoveredEvent,
     SignalFailedEvent,
@@ -334,16 +335,46 @@ class SignalDetectionAgent(BaseAgent):
                 },
             )
 
+            # Always emit the stream failure event before deciding how to handle.
             if self.stream_callback:
                 event = SignalFailedEvent(
                     prospect_id=prospect_data.get("account_id", ""),
-                    error=str(e),
-                    stage="extraction",
-                    recoverable=False,
+                    error_category=ErrorCategory.UNKNOWN,
+                    error_message=str(e),
+                    retryable=False,
                 )
                 await self._emit_event(event)
 
-            raise
+            # Governance and programming errors (ValueError subclasses: missing
+            # tenant context, invalid state, policy violations) must propagate so
+            # the caller can handle them explicitly. Safe LLM runtime failures
+            # (network, timeout, rate-limit, parse) degrade gracefully.
+            if isinstance(e, ValueError):
+                raise
+
+            agent_result = AgentResult(
+                payload={},
+                workflow_type="signal_detection",
+                tenant_id=ctx.tenant_id or "",
+                trace_id=ctx.trace_id or "",
+            )
+            agent_result.payload = {
+                "classified_signals": [],
+                "hypotheses": [],
+                "narrative": "",
+                "top_signals": [],
+                "evidence_refs": [],
+            }
+            agent_result.degraded_reason = "llm_failed"
+            agent_result.human_review_required = True
+            agent_result.customer_facing_allowed = False
+
+            return SignalDetectionAgent__detect_signalsResult.model_validate({
+                "signals": [],
+                "processing_metadata": processing_metadata,
+                "message": f"Signal detection degraded: {type(e).__name__}",
+                "llm_output": agent_result.to_dict(),
+            })
 
     async def _stream_detection(
         self,
