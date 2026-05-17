@@ -7,15 +7,15 @@ metadata:
     app: layer5-ground-truth
     component: layer5
 spec:
-  replicas: 2
+  replicas: 1
+  selector:
+    matchLabels:
+      app: layer5-ground-truth
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  selector:
-    matchLabels:
-      app: layer5-ground-truth
   template:
     metadata:
       labels:
@@ -31,28 +31,22 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: services/layer5-ground-truth:main
-          imagePullPolicy: Always
+          image: value-fabric/layer5-ground-truth:main
           command: ["alembic", "upgrade", "head"]
           env:
             - name: DATABASE_URL_SYNC
               valueFrom:
-                secretKeyRef:
-                  name: layer5-db-credentials
-                  key: DATABASE_URL_SYNC
+                configMapKeyRef:
+                  name: value-fabric-config
+                  key: LAYER5_DATABASE_URL_SYNC
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false  # Alembic may need write access for cache
             capabilities:
               drop: ["ALL"]
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
       containers:
-        # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: services/layer5-ground-truth:main
-          imagePullPolicy: Always
+          image: value-fabric/layer5-ground-truth:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -66,15 +60,9 @@ spec:
                 name: value-fabric-config
           env:
             - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: layer5-db-credentials
-                  key: DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth"
             - name: DATABASE_URL_SYNC
-              valueFrom:
-                secretKeyRef:
-                  name: layer5-db-credentials
-                  key: DATABASE_URL_SYNC
+              value: "postgresql+psycopg2://postgres:postgres@postgres:5432/ground_truth"
             - name: LAYER3_BASE_URL
               valueFrom:
                 configMapKeyRef:
@@ -110,20 +98,6 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          startupProbe:
-            httpGet:
-              path: /api/v1/health
-              port: 8005
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 30
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      volumes:
-        - name: tmp
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -10,7 +10,6 @@
 
 - [Authentication](#authentication)
 - [Error Response Format](#error-response-format)
-- [Deprecation Policy](#deprecation-policy)
 - [Layer 1 — Ingestion](#layer-1--ingestion)
 - [Layer 2 — Extraction](#layer-2--extraction)
 - [Layer 3 — Knowledge Graph](#layer-3--knowledge-graph)
@@ -50,43 +49,11 @@ All layers return errors in a consistent JSON envelope:
 }
 ```
 
----
-
-## Deprecation Policy
-
-Value Fabric uses a structured deprecation process to manage API evolution.
-
-### Deprecation Headers
-
-Deprecated endpoints return the following headers:
-
-| Header | Description |
-|--------|-------------|
-| `Warning` | RFC 7234 warning: `299 - "Deprecated since {date}"` |
-| `X-Deprecated-Since` | ISO 8601 date when deprecation started |
-| `X-Target-Removal-Date` | Scheduled removal date |
-| `X-Deprecation-Owner` | Team responsible for the feature |
-
-### Deprecation Register
-
-- Machine-readable: `docs/deprecation_register.json`
-- Human-readable: `docs/deprecation_inventory.md`
-
-### Timeline
-
-- **Announcement**: 90 days notice minimum
-- **Migration**: 60-90 days for updates
-- **Removal**: On target date, CI gate enforces
-
-### CI Gate
-
-```bash
-make check-deprecations  # Fails on overdue items
-```
-
-Override with `DEPRECATION_ALLOW_OVERDUE=true` (not recommended for production).
-
----
+| Field              | Type   | Description                                |
+| ------------------ | ------ | ------------------------------------------ |
+| `error.code`       | string | Machine-readable error code.               |
+| `error.message`    | string | Human-readable explanation.                |
+| `error.details`    | object | Optional additional context (field errors, trace IDs, etc.). |
 
 ### Common HTTP Status Codes
 
@@ -328,61 +295,6 @@ Knowledge graph API backed by Neo4j and pgvector.
   "status": "completed"
 }
 ```
-
-### Graph API Field Aliases
-
-The Layer 3 Graph API (`/v1/graph/*`, `/v1/entity/*`) returns node and edge data with **backward-compatible field aliases** to support both legacy and modern client implementations.
-
-#### Node Fields (GraphNode)
-
-| Internal Field | Alias (Preferred) | Description |
-| -------------- | ----------------- | ----------- |
-| `label`        | `name`            | Human-readable entity name |
-| `type`         | `entity_type`     | Entity classification (e.g., "Capability", "UseCase") |
-| `confidence`   | `confidence_score`| Confidence value (0.0 - 1.0) |
-
-Graph responses may include compatibility aliases during the migration window, but canonical fields should be treated as source of truth.
-
-**Example:**
-```json
-{
-  "id": "cap-123",
-  "label": "Invoice Processing",
-  "name": "Invoice Processing",
-  "type": "Capability",
-  "entity_type": "Capability",
-  "confidence": 0.92,
-  "confidence_score": 0.92
-}
-```
-
-#### Edge Fields (GraphEdge / GraphRelationship)
-
-| Canonical Field (Preferred) | Deprecated Alias | Description |
-| -------------- | ----------------- | ----------- |
-| `type`         | `relationship_type` | Relationship classification (e.g., "ENABLES", "DRIVES") |
-
-**Example:**
-```json
-{
-  "source": "cap-123",
-  "target": "uc-456",
-  "type": "ENABLES",
-  "relationship_type": "ENABLES",
-  "confidence": 0.88
-}
-```
-
-#### Implementation Notes
-
-- **Serialization**: Pydantic models output both fields via custom `model_dump()` overrides.
-- **Validation**: Incoming requests may use either field name; the API normalizes internally.
-- **Deprecation**: Compatibility aliases are deprecated and scheduled for removal in **v2.4 (2026-07-01)**:
-  - Node aliases: `label`, `type`, `confidence`
-  - Edge alias: `relationship_type`
-- **Recommendation**: New clients should read/write only canonical fields:
-  - Node: `name`, `entity_type`, `confidence_score`
-  - Edge: `type`
 
 ---
 
@@ -726,3 +638,24 @@ Every layer exposes a standard health check:
 
 > **Status: Deferred.**  
 > Postman / OpenAPI-based collection exports for each layer are planned for a future milestone. In the meantime, use the OpenAPI specs in `contracts/openapi/` to generate client stubs or import into API testing tools.
+
+---
+
+## Deprecation Schedule & Headers
+
+Deprecated endpoints emit schedule headers so clients can migrate predictably:
+
+- `Warning: 299 - "<message>"`
+- `X-Deprecated-Since: YYYY-MM-DD`
+- `X-Target-Removal-Date: YYYY-MM-DD`
+- `X-Deprecation-Owner: <owner>`
+
+Current schedule source of truth: `docs/deprecation_register.json`.
+
+Highlighted routes:
+
+| Endpoint | Preferred Replacement | Deprecated Since | Target Removal |
+|---|---|---|---|
+| `POST /v1/query` | `POST /v1/query/graph` | `2026-04-14` | `2026-08-01` |
+| `POST /v1/search` | `POST /v1/search/hybrid` | `2026-04-14` | `2026-08-01` |
+| `GET /health` (Layer 1 legacy route) | `GET /api/v1/ingestion/health` | `2026-04-14` | `2026-08-01` |

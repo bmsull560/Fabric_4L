@@ -1,16 +1,16 @@
 """HTTPX-based fast path crawler for static content ingestion.
 
 Provides high-performance static page fetching with SPA detection,
-content extraction, and execution metrics for Layer 1 ingestion.
+content extraction, retry logic, and execution metrics for Layer 1 ingestion.
 """
 
 from __future__ import annotations
 
 import asyncio
 import hashlib
-import ipaddress
+import math
+import random
 import re
-import socket
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -25,6 +25,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 class HttpxCrawler_get_statsResult(TypedDictModel):
     config: dict[str, Any]
+    total_retries: int
 
 logger = structlog.get_logger()
 
@@ -54,6 +55,7 @@ class FastPathResult:
     content_type: str = ""
     headers: dict[str, str] = field(default_factory=dict)
     original_html_length: int = 0  # P1 Fix: Store original size before truncation
+    retry_count: int = 0  # Number of retry attempts made before success or final failure
 
 
 @dataclass
@@ -72,13 +74,20 @@ class HttpxCrawlerConfig:
     max_concurrent_requests: int = 20
     spa_script_threshold: int = 5  # Scripts to trigger SPA detection
     spa_content_ratio_threshold: float = 0.02
-    max_redirects: int = 5
 
-
-class SSRFProtectionError(ValueError):
-    """Raised when a crawler URL targets a prohibited network boundary."""
-
-    pass
+    # Retry configuration
+    max_retries: int = 3
+    """Maximum number of retry attempts for retriable failures (0 disables retries)."""
+    retry_backoff_base: float = 1.0
+    """Base delay in seconds for exponential backoff between retries."""
+    retry_backoff_max: float = 60.0
+    """Maximum delay in seconds between retries (caps exponential growth)."""
+    retry_jitter: bool = True
+    """Add random jitter to backoff delays to avoid thundering-herd problems."""
+    retry_on_status_codes: list[int] = field(
+        default_factory=lambda: [429, 500, 502, 503, 504]
+    )
+    """HTTP status codes that trigger a retry attempt."""
 
 
 class HttpxCrawler:
@@ -108,64 +117,7 @@ class HttpxCrawler:
         self._client: httpx.AsyncClient | None = None
         self._semaphore: asyncio.Semaphore | None = None
         self.logger = logger.bind(crawler="HttpxCrawler")
-
-    async def _validate_public_url(self, url: str) -> str:
-        """Validate that a URL resolves only to public network addresses."""
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            raise SSRFProtectionError("Only http and https URLs are allowed")
-        if not parsed.hostname:
-            raise SSRFProtectionError("URL must include a hostname")
-        if parsed.username or parsed.password:
-            raise SSRFProtectionError("Credentials in crawler URLs are not allowed")
-
-        hostname = parsed.hostname.strip().rstrip(".")
-        if hostname.lower() in {"localhost", "localhost.localdomain"}:
-            raise SSRFProtectionError("Localhost crawler targets are not allowed")
-
-        try:
-            addresses = [ipaddress.ip_address(hostname)]
-        except ValueError:
-            loop = asyncio.get_running_loop()
-            try:
-                infos = await loop.getaddrinfo(
-                    hostname,
-                    parsed.port or (443 if parsed.scheme == "https" else 80),
-                    type=socket.SOCK_STREAM,
-                )
-            except socket.gaierror as exc:
-                raise SSRFProtectionError(f"Unable to resolve crawler target: {hostname}") from exc
-            addresses = [ipaddress.ip_address(info[-1][0]) for info in infos]
-
-        for address in addresses:
-            if (
-                address.is_private
-                or address.is_loopback
-                or address.is_link_local
-                or address.is_multicast
-                or address.is_reserved
-                or address.is_unspecified
-            ):
-                raise SSRFProtectionError(
-                    f"Crawler target resolves to prohibited address: {address}"
-                )
-
-        return url
-
-    async def _get_with_validated_redirects(self, url: str) -> httpx.Response:
-        """Fetch a URL while validating every redirect hop against SSRF rules."""
-        current_url = await self._validate_public_url(url)
-        for _ in range(self.config.max_redirects + 1):
-            response = await self._client.get(current_url, follow_redirects=False)
-            if response.status_code not in {301, 302, 303, 307, 308}:
-                return response
-
-            location = response.headers.get("location")
-            if not location:
-                return response
-            current_url = await self._validate_public_url(urljoin(current_url, location))
-
-        raise SSRFProtectionError("Too many redirects while fetching crawler target")
+        self._total_retries: int = 0  # Cumulative retry count across all fetch calls
 
     async def __aenter__(self) -> HttpxCrawler:
         """Async context manager entry."""
@@ -217,6 +169,9 @@ class HttpxCrawler:
     async def fetch(self, url: str) -> FastPathResult:
         """Fetch a single URL via HTTPX with full processing.
 
+        Retries are applied automatically for retriable status codes and
+        transient network errors according to the crawler configuration.
+
         Args:
             url: URL to fetch
 
@@ -226,108 +181,213 @@ class HttpxCrawler:
         if not self._client:
             raise RuntimeError("Crawler not started. Use async context manager.")
 
-        start_time = time.monotonic()
+        return await self._fetch_with_retry(url)
 
-        try:
-            url = await self._validate_public_url(url)
-            async with self._semaphore:
-                response = await self._get_with_validated_redirects(url)
+    async def _fetch_with_retry(self, url: str) -> FastPathResult:
+        """Internal fetch implementation with exponential-backoff retry logic.
 
-            fetch_time = int((time.monotonic() - start_time) * 1000)
+        Attempts the request up to ``config.max_retries + 1`` times.  Each
+        failed attempt that returns a retriable status code or a transient
+        network error waits an exponentially-increasing delay (optionally
+        jittered) before the next attempt.  The ``Retry-After`` response
+        header is respected when present on 429 responses.
 
-            if response.status_code != 200:
-                return self._create_error_result(
+        Args:
+            url: URL to fetch
+
+        Returns:
+            FastPathResult from the first successful (or final failed) attempt
+        """
+        max_attempts = self.config.max_retries + 1
+        retry_count = 0
+
+        for attempt in range(max_attempts):
+            start_time = time.monotonic()
+
+            try:
+                async with self._semaphore:
+                    response = await self._client.get(url)
+
+                fetch_time = int((time.monotonic() - start_time) * 1000)
+
+                # Check if this status code is retriable
+                if (
+                    response.status_code != 200
+                    and response.status_code in self.config.retry_on_status_codes
+                    and attempt < max_attempts - 1
+                ):
+                    retry_count += 1
+                    self._total_retries += 1
+                    wait_seconds = self._compute_backoff(attempt, response)
+                    self.logger.warning(
+                        "Retriable HTTP error, retrying",
+                        url=url,
+                        status_code=response.status_code,
+                        attempt=attempt + 1,
+                        max_attempts=max_attempts,
+                        wait_seconds=wait_seconds,
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
+
+                if response.status_code != 200:
+                    return self._create_error_result(
+                        url=url,
+                        status_code=response.status_code,
+                        fetch_time_ms=fetch_time,
+                        error_type="http_error",
+                        headers=dict(response.headers),
+                        retry_count=retry_count,
+                    )
+
+                # P1 Fix: Get full HTML first for link extraction
+                full_html = response.text
+                original_length = len(full_html)
+
+                # Limit HTML size for processing (after extracting links)
+                html = full_html[: self.config.max_html_size]
+                content_type = response.headers.get("content-type", "")
+
+                # Quick SPA detection
+                is_spa = self._detect_spa_shell(html)
+
+                # Extract structured content
+                parsed = LexborHTMLParser(html)
+                title_tag = parsed.css_first("title")
+                title = title_tag.text() if title_tag else ""
+
+                # Use trafilatura for clean text extraction
+                text_content = trafilatura.extract(
+                    html,
+                    include_comments=False,
+                    include_tables=True,
+                    no_fallback=False,
+                ) or ""
+
+                # P1 Fix: Extract links from FULL HTML before truncation
+                links = self._extract_links(full_html, url)
+
+                # Content hash for deduplication (truncated for efficiency)
+                content_hash = hashlib.sha256(text_content.encode()).hexdigest()[:CONTENT_HASH_PREFIX_LENGTH]
+
+                return FastPathResult(
                     url=url,
                     status_code=response.status_code,
+                    html=html[:MAX_STORAGE_HTML_LENGTH],  # Truncate for storage
+                    title=title,
+                    text_content=text_content,
+                    content_hash=content_hash,
+                    links_found=links,
+                    is_spa_detected=is_spa,
                     fetch_time_ms=fetch_time,
-                    error_type="http_error",
+                    content_type=content_type,
                     headers=dict(response.headers),
+                    original_html_length=original_length,  # P1 Fix: Store original length
+                    retry_count=retry_count,
                 )
 
-            # P1 Fix: Get full HTML first for link extraction
-            full_html = response.text
-            original_length = len(full_html)
+            except httpx.TimeoutException:
+                fetch_time = int((time.monotonic() - start_time) * 1000)
+                if attempt < max_attempts - 1:
+                    retry_count += 1
+                    self._total_retries += 1
+                    wait_seconds = self._compute_backoff(attempt)
+                    self.logger.warning(
+                        "Fetch timeout, retrying",
+                        url=url,
+                        timeout=self.config.timeout_seconds,
+                        attempt=attempt + 1,
+                        max_attempts=max_attempts,
+                        wait_seconds=wait_seconds,
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
 
-            # Limit HTML size for processing (after extracting links)
-            html = full_html[: self.config.max_html_size]
-            content_type = response.headers.get("content-type", "")
+                self.logger.warning("Fetch timeout (all retries exhausted)", url=url, timeout=self.config.timeout_seconds)
+                return self._create_error_result(
+                    url=url,
+                    status_code=504,
+                    fetch_time_ms=fetch_time,
+                    error_type="timeout",
+                    retry_count=retry_count,
+                )
 
-            # Quick SPA detection
-            is_spa = self._detect_spa_shell(html)
+            except httpx.NetworkError as e:
+                fetch_time = int((time.monotonic() - start_time) * 1000)
+                if attempt < max_attempts - 1:
+                    retry_count += 1
+                    self._total_retries += 1
+                    wait_seconds = self._compute_backoff(attempt)
+                    self.logger.warning(
+                        "Network error, retrying",
+                        url=url,
+                        error=str(e),
+                        attempt=attempt + 1,
+                        max_attempts=max_attempts,
+                        wait_seconds=wait_seconds,
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
 
-            # Extract structured content
-            parsed = LexborHTMLParser(html)
-            title_tag = parsed.css_first("title")
-            title = title_tag.text() if title_tag else ""
+                self.logger.error("Network error (all retries exhausted)", url=url, error=str(e))
+                return self._create_error_result(
+                    url=url,
+                    status_code=0,
+                    fetch_time_ms=fetch_time,
+                    error_type=f"network_error:{type(e).__name__}",
+                    retry_count=retry_count,
+                )
 
-            # Use trafilatura for clean text extraction
-            text_content = trafilatura.extract(
-                html,
-                include_comments=False,
-                include_tables=True,
-                no_fallback=False,
-            ) or ""
+            except Exception as e:
+                fetch_time = int((time.monotonic() - start_time) * 1000)
+                self.logger.error("Fetch failed", url=url, error=str(e), exc_info=True)
+                return self._create_error_result(
+                    url=url,
+                    status_code=0,
+                    fetch_time_ms=fetch_time,
+                    error_type=f"exception:{type(e).__name__}",
+                    retry_count=retry_count,
+                )
 
-            # P1 Fix: Extract links from FULL HTML before truncation
-            links = self._extract_links(full_html, url)
+        # Unreachable — loop always returns or continues, but satisfies type-checker
+        raise RuntimeError(f"Retry loop exhausted without result for {url}")  # pragma: no cover
 
-            # Content hash for deduplication (truncated for efficiency)
-            content_hash = hashlib.sha256(text_content.encode()).hexdigest()[:CONTENT_HASH_PREFIX_LENGTH]
+    def _compute_backoff(
+        self,
+        attempt: int,
+        response: httpx.Response | None = None,
+    ) -> float:
+        """Calculate the delay before the next retry attempt.
 
-            return FastPathResult(
-                url=url,
-                status_code=response.status_code,
-                html=html[:MAX_STORAGE_HTML_LENGTH],  # Truncate for storage
-                title=title,
-                text_content=text_content,
-                content_hash=content_hash,
-                links_found=links,
-                is_spa_detected=is_spa,
-                fetch_time_ms=fetch_time,
-                content_type=content_type,
-                headers=dict(response.headers),
-                original_html_length=original_length,  # P1 Fix: Store original length
-            )
+        Respects the ``Retry-After`` header when present in the response.
+        Otherwise uses exponential backoff (``base * 2 ** attempt``) capped
+        at ``retry_backoff_max``, with optional jitter.
 
-        except httpx.TimeoutException:
-            fetch_time = int((time.monotonic() - start_time) * 1000)
-            self.logger.warning("Fetch timeout", url=url, timeout=self.config.timeout_seconds)
-            return self._create_error_result(
-                url=url,
-                status_code=504,
-                fetch_time_ms=fetch_time,
-                error_type="timeout",
-            )
+        Args:
+            attempt: Zero-based attempt index (0 = first attempt).
+            response: Optional HTTP response that triggered the retry.
 
-        except httpx.NetworkError as e:
-            fetch_time = int((time.monotonic() - start_time) * 1000)
-            self.logger.error("Network error", url=url, error=str(e))
-            return self._create_error_result(
-                url=url,
-                status_code=0,
-                fetch_time_ms=fetch_time,
-                error_type=f"network_error:{type(e).__name__}",
-            )
+        Returns:
+            Delay in seconds to wait before the next attempt.
+        """
+        # Honour Retry-After header (RFC 7231 §7.1.3)
+        if response is not None:
+            retry_after = response.headers.get("retry-after", "")
+            if retry_after:
+                try:
+                    return float(retry_after)
+                except ValueError:
+                    pass  # Not a numeric value; fall through to exponential backoff
 
-        except SSRFProtectionError as e:
-            fetch_time = int((time.monotonic() - start_time) * 1000)
-            self.logger.warning("Blocked crawler request", url=url, reason=str(e))
-            return self._create_error_result(
-                url=url,
-                status_code=400,
-                fetch_time_ms=fetch_time,
-                error_type="ssrf_blocked",
-            )
+        delay = min(
+            self.config.retry_backoff_base * math.pow(2, attempt),
+            self.config.retry_backoff_max,
+        )
 
-        except Exception as e:
-            fetch_time = int((time.monotonic() - start_time) * 1000)
-            self.logger.error("Fetch failed", url=url, error=str(e), exc_info=True)
-            return self._create_error_result(
-                url=url,
-                status_code=0,
-                fetch_time_ms=fetch_time,
-                error_type=f"exception:{type(e).__name__}",
-            )
+        if self.config.retry_jitter:
+            delay *= random.uniform(0.5, 1.5)
+
+        return delay
 
     async def fetch_batch(
         self,
@@ -486,6 +546,7 @@ class HttpxCrawler:
         fetch_time_ms: int,
         error_type: str,
         headers: dict[str, str] | None = None,
+        retry_count: int = 0,
     ) -> FastPathResult:
         """Create a FastPathResult for error cases."""
         return FastPathResult(
@@ -501,17 +562,19 @@ class HttpxCrawler:
             content_type=error_type,
             headers=headers or {},
             original_html_length=0,
+            retry_count=retry_count,
         )
 
     def get_stats(self) -> dict[str, Any]:
-        """Get crawler statistics (if implemented)."""
-        # Placeholder for future metrics implementation
+        """Get crawler statistics."""
         return HttpxCrawler_get_statsResult.model_validate({
             "config": {
                 "timeout_seconds": self.config.timeout_seconds,
                 "max_connections": self.config.max_connections,
                 "max_concurrent": self.config.max_concurrent_requests,
-            }
+                "max_retries": self.config.max_retries,
+            },
+            "total_retries": self._total_retries,
         })
 
 

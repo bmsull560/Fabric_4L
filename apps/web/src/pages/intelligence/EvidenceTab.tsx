@@ -1,279 +1,90 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { FileText, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
+import { FileText, CheckCircle2, AlertCircle, ChevronRight, Link2, XCircle } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { useLinkEvidence, useUnlinkEvidence } from "@/hooks/useEvidence";
-import {
-  useCanonicalCaseId,
-  useEvidenceDecisionMutation,
-  usePersistWorkspaceTab,
-  useValidateEvidenceClaim,
-  useWorkspaceTabQuery,
-} from "@/hooks/useWorkspaceCase";
+import { useAttachEvidenceToDriverMutation, useCanonicalCaseId, useEvidenceDecisionMutation, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 type VerificationState = "verified" | "partial" | "unverified";
-
-interface EvidenceItem {
-  id: string;
-  title: string;
-  type: string;
-  source: string;
-  matchScore: number;
-  verification: VerificationState;
-  linkedSignals: string[];
-  excerpt: string;
-  decision_status?: "accepted" | "rejected" | "attached_to_driver";
-  attached_driver_id?: string;
-  provenance_id?: string;
-  confidence?: number;
-  decision_note?: string;
-}
-
-interface DriverOption {
-  id: string;
-  name?: string;
-  hypothesis_text?: string;
-}
-
-interface EvidenceLink {
-  evidence_id: string;
-  evidence_title: string;
-  driver_id: string;
-  linked_at: string;
-}
-
-const VERIFICATION_CONFIG: Record<
-  VerificationState,
-  { icon: typeof CheckCircle2; color: string }
-> = {
-  verified: { icon: CheckCircle2, color: "text-green-600" },
-  partial: { icon: AlertCircle, color: "text-orange-600" },
-  unverified: { icon: AlertCircle, color: "text-muted-foreground" },
-};
+interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string }
+const VERIFICATION_CONFIG: Record<VerificationState, { icon: typeof CheckCircle2; color: string }> = { verified: { icon: CheckCircle2, color: "text-green-600" }, partial: { icon: AlertCircle, color: "text-orange-600" }, unverified: { icon: AlertCircle, color: "text-muted-foreground" } };
 
 function useEvidenceTabState() {
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading } = useAccount(accountId ?? null);
   const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-  const { data: driverData } = useWorkspaceTabQuery<{ drivers?: DriverOption[] }>(caseId ?? null, "drivers");
-  const { data: linkData } = useWorkspaceTabQuery<{ evidence_links?: EvidenceLink[] }>(caseId ?? null, "evidence-links");
-  const persistLinks = usePersistWorkspaceTab("evidence-links");
-
   const { data, isLoading, error } = useWorkspaceTabQuery<{ evidence: EvidenceItem[] }>(caseId ?? null, "evidence");
   const persistTab = usePersistWorkspaceTab("evidence");
   const validateClaim = useValidateEvidenceClaim();
-  const evidenceDecision = useEvidenceDecisionMutation();
-
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
-  const [selectedDriverId, setSelectedDriverId] = useState("");
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
-  const evidenceLinks = linkData?.evidence_links ?? [];
-  const driverOptions = driverData?.drivers ?? [];
+  const [pendingDecisions, setPendingDecisions] = useState<Record<string, "accepted" | "rejected">>({});
+  const [actionError, setActionError] = useState<string | null>(null);
+  const evidenceDecision = useEvidenceDecisionMutation();
+  const attachDriver = useAttachEvidenceToDriverMutation();
 
-  const linkMutation = useLinkEvidence();
-  const unlinkMutation = useUnlinkEvidence();
+  useEffect(() => { if (caseId && data) persistTab.mutate({ caseId, payload: data }); }, [caseId, data]);
 
-  const evidence = useMemo(() => data?.evidence ?? [], [data]);
-  const verified = useMemo(
-    () => evidence.filter((item) => item.verification === "verified").length,
-    [evidence],
-  );
-  const avgMatch = evidence.length
-    ? Math.round(evidence.reduce((sum, item) => sum + item.matchScore, 0) / evidence.length)
-    : 0;
+  const evidence = data?.evidence ?? [];
+  const verified = useMemo(() => evidence.filter((e) => e.verification === "verified").length, [evidence]);
+  const avgMatch = evidence.length ? Math.round(evidence.reduce((s, e) => s + e.matchScore, 0) / evidence.length) : 0;
 
-  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } =
-    useAgentEvents({
-      activeTab: "evidence",
-      accountName: account?.name ?? "Account",
-      accountId: accountId ?? undefined,
-      selectedEvidenceId: selectedEvidence?.id,
-      workspaceCaseId: caseId ?? undefined,
-      entityContext: { selectedEvidence: selectedEvidence ?? undefined },
-    });
-
-  const attachEvidence = () => {
-    if (!caseId || !selectedEvidence || !selectedDriverId) return;
-    const nextLinks = [
-      ...evidenceLinks.filter(
-        (link) => !(link.evidence_id === selectedEvidence.id && link.driver_id === selectedDriverId),
-      ),
-      {
-        evidence_id: selectedEvidence.id,
-        evidence_title: selectedEvidence.title,
-        driver_id: selectedDriverId,
-        linked_at: new Date().toISOString(),
-      },
-    ];
-    persistLinks.mutate({ caseId, payload: { evidence_links: nextLinks } });
-    linkMutation.mutate({ evidence_id: selectedEvidence.id, driver_id: selectedDriverId });
-  };
-
-  const unlinkEvidence = (link: EvidenceLink) => {
-    if (!caseId) return;
-    persistLinks.mutate({
-      caseId,
-      payload: {
-        evidence_links: evidenceLinks.filter(
-          (item) => !(item.evidence_id === link.evidence_id && item.driver_id === link.driver_id),
-        ),
-      },
-    });
-    unlinkMutation.mutate({ evidence_id: link.evidence_id, driver_id: link.driver_id });
-  };
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "evidence", accountName: account?.name ?? "Account", accountId: accountId ?? undefined });
 
   return {
-    account,
-    accountLoading,
-    caseId,
-    evidence,
-    isLoading,
-    error,
-    verified,
-    avgMatch,
-    selectedEvidence,
-    setSelectedEvidence,
-    selectedDriverId,
-    setSelectedDriverId,
-    driverOptions,
-    evidenceLinks,
-    attachEvidence,
-    unlinkEvidence,
-    isAttachingEvidence: persistLinks.isPending || linkMutation.isPending,
-    railMode,
-    setRailMode,
-    messages,
-    sendMessage,
-    suggestedActions,
-    steps,
-    isStreaming,
-    metadata,
-    validateClaim,
-    evidenceDecision,
-    persistTab,
-    data,
+    account, accountLoading, caseId, evidence, isLoading, error, verified, avgMatch,
+    selectedEvidence, setSelectedEvidence, railMode, setRailMode,
+    messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
+    validateClaim, pendingDecisions, setPendingDecisions, actionError, setActionError, evidenceDecision, attachDriver,
   };
 }
 
-type EvidenceTabState = ReturnType<typeof useEvidenceTabState>;
-
-export function EvidenceTabContent({ state: providedState }: { state?: EvidenceTabState } = {}) {
+export function EvidenceTabContent() {
   const { accountId } = useParams<{ accountId: string }>();
-  const ownedState = useEvidenceTabState();
   const {
-    evidence,
-    isLoading,
-    error,
-    caseId,
-    verified,
-    avgMatch,
-    selectedEvidence,
-    setSelectedEvidence,
-    selectedDriverId,
-    evidenceDecision,
-    persistTab,
-    data,
-  } = providedState ?? ownedState;
-
-  const [optimisticDecision, setOptimisticDecision] = useState<Record<string, EvidenceItem["decision_status"]>>({});
-  const [modifyNote, setModifyNote] = useState("");
-  const [lastFailedAction, setLastFailedAction] = useState<{
-    evidenceId: string;
-    decision: "accepted" | "rejected" | "attached_to_driver";
-    driverId?: string;
-    decisionNote?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    setModifyNote(selectedEvidence?.decision_note ?? "");
-  }, [selectedEvidence]);
+    evidence, isLoading, error, verified, avgMatch,
+    selectedEvidence, setSelectedEvidence, pendingDecisions, setPendingDecisions, actionError, setActionError, evidenceDecision, attachDriver, caseId,
+  } = useEvidenceTabState();
 
   if (!accountId) {
     return <AccountRequiredGuard accountId={accountId} />;
   }
 
-  const runDecision = async (
-    evidenceId: string,
-    decision: "accepted" | "rejected" | "attached_to_driver",
-    driverId?: string,
-    decisionNote?: string,
-  ) => {
-    if (!accountId || !caseId) return;
-    setOptimisticDecision((prev) => ({ ...prev, [evidenceId]: decision }));
-    setLastFailedAction(null);
-    try {
-      await evidenceDecision.mutateAsync({
-        evidenceId,
-        accountId,
-        caseId,
-        decision,
-        driverId,
-        decisionNote,
-      });
-    } catch {
-      setOptimisticDecision((prev) => ({ ...prev, [evidenceId]: undefined }));
-      setLastFailedAction({ evidenceId, decision, driverId, decisionNote });
-    }
-  };
-
   if (isLoading) return <CenteredLoader message="Loading evidence…" />;
-  if (error) {
-    return <div className="p-6 text-sm text-destructive">Evidence service error: unable to load workspace evidence.</div>;
-  }
+  if (error) return <div className="p-6 text-sm text-destructive">Failed to load evidence.</div>;
 
   return (
     <>
-      {persistTab.persistState !== "saved" && (
-        <div className="mb-4 flex items-center justify-between rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
-          <span>
-            {persistTab.persistState === "failed"
-              ? "Could not persist evidence tab."
-              : "Evidence tab has unsaved persistence state."}
-          </span>
-          {persistTab.persistState === "failed" && caseId && (
-            <Btn
-              variant="outline"
-              className="h-7"
-              onClick={() => persistTab.mutate({ caseId, payload: data ?? { evidence: [] } })}
-            >
-              Retry save
-            </Btn>
-          )}
-        </div>
-      )}
+      {actionError && <div className="mb-3 text-xs text-destructive">{actionError}</div>}
       {evidence.length === 0 ? (
         <SectionCard title="Evidence Library">
-          <div className="text-sm text-muted-foreground">
-            No evidence found for this account&apos;s industry. Try importing case studies or broadening filters.
-          </div>
+          <div className="text-sm text-muted-foreground">No evidence has been returned for this case.</div>
         </SectionCard>
       ) : (
         <>
-          <div className="mb-6 grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <MetricCard label="Evidence Items" value={String(evidence.length)} trend={`${verified} verified`} />
             <MetricCard label="Avg Match Score" value={`${avgMatch}%`} />
-            <MetricCard label="Source Types" value={String(new Set(evidence.map((item) => item.type)).size)} />
+            <MetricCard label="Source Types" value={String(new Set(evidence.map((e) => e.type)).size)} />
           </div>
           <SectionCard title="Evidence Library">
             <div className="space-y-1">
               {evidence.map((item) => {
-                const decision = optimisticDecision[item.id] ?? item.decision_status;
-                const verificationConfig = VERIFICATION_CONFIG[item.verification];
-                const Icon = verificationConfig.icon;
+                const vc = VERIFICATION_CONFIG[item.verification];
+                const Icon = vc.icon;
                 return (
                   <button
                     key={item.id}
                     onClick={() => setSelectedEvidence(item)}
                     className={cn(
-                      "flex w-full items-center gap-4 rounded-md px-3 py-3 text-left",
-                      selectedEvidence?.id === item.id ? "bg-primary/5" : "hover:bg-muted/50",
+                      "flex items-center gap-4 w-full px-3 py-3 rounded-md text-left",
+                      selectedEvidence?.id === item.id ? "bg-primary/5" : "hover:bg-muted/50"
                     )}
                   >
                     <FileText size={14} />
@@ -281,12 +92,8 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
                       <div className="text-xs font-medium">{item.title}</div>
                       <div className="text-[10px] text-muted-foreground">{item.linkedSignals.join(" · ")}</div>
                     </div>
-                    <span className={cn("flex items-center gap-1 text-[10px] font-semibold", verificationConfig.color)}>
-                      <Icon size={10} />
-                      {item.matchScore}%
-                    </span>
-                    <span className="text-[10px] capitalize text-muted-foreground">
-                      {decision?.replaceAll("_", " ") ?? "pending"}
+                    <span className={cn("flex items-center gap-1 text-[10px] font-semibold", vc.color)}>
+                      <Icon size={10} />{pendingDecisions[item.id] ? `${pendingDecisions[item.id]}` : `${item.matchScore}%`}
                     </span>
                     <ChevronRight size={12} />
                   </button>
@@ -296,117 +103,15 @@ export function EvidenceTabContent({ state: providedState }: { state?: EvidenceT
           </SectionCard>
         </>
       )}
-      {lastFailedAction && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-destructive">
-          Action failed.
-          <Btn
-            variant="outline"
-            className="h-7"
-            onClick={() =>
-              runDecision(
-                lastFailedAction.evidenceId,
-                lastFailedAction.decision,
-                lastFailedAction.driverId,
-                lastFailedAction.decisionNote,
-              )
-            }
-          >
-            Retry
-          </Btn>
-        </div>
-      )}
-      {selectedEvidence && (
-        <div className="mt-4 space-y-2">
-          <div className="rounded-md border border-border px-3 py-2 text-xs">
-            <div>
-              <span className="font-semibold">Source:</span> {selectedEvidence.source}
-            </div>
-            <div>
-              <span className="font-semibold">Provenance ID:</span> {selectedEvidence.provenance_id ?? "N/A"}
-            </div>
-            <div>
-              <span className="font-semibold">Confidence:</span>{" "}
-              {typeof selectedEvidence.confidence === "number"
-                ? `${Math.round(selectedEvidence.confidence * 100)}%`
-                : "N/A"}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Btn
-              variant="primary"
-              className="h-8"
-              onClick={() => runDecision(selectedEvidence.id, "accepted")}
-              disabled={evidenceDecision.isPending}
-            >
-              Accept
-            </Btn>
-            <Btn
-              variant="outline"
-              className="h-8"
-              onClick={() => runDecision(selectedEvidence.id, "rejected")}
-              disabled={evidenceDecision.isPending}
-            >
-              Reject
-            </Btn>
-            <Btn
-              variant="ghost"
-              className="h-8"
-              onClick={() =>
-                runDecision(
-                  selectedEvidence.id,
-                  "attached_to_driver",
-                  selectedDriverId || selectedEvidence.attached_driver_id,
-                  modifyNote.trim() || undefined,
-                )
-              }
-              disabled={evidenceDecision.isPending}
-            >
-              Modify
-            </Btn>
-          </div>
-          <input
-            value={modifyNote}
-            onChange={(event) => setModifyNote(event.target.value)}
-            className="w-full rounded-md border border-border px-2 py-1 text-xs"
-            placeholder="Optional modification or attachment note"
-          />
-        </div>
-      )}
     </>
   );
 }
 
 export default function EvidenceTab() {
   const {
-    account,
-    accountLoading,
-    evidence,
-    isLoading,
-    error,
-    caseId,
-    verified,
-    avgMatch,
-    selectedEvidence,
-    setSelectedEvidence,
-    railMode,
-    setRailMode,
-    selectedDriverId,
-    setSelectedDriverId,
-    driverOptions,
-    evidenceLinks,
-    attachEvidence,
-    unlinkEvidence,
-    isAttachingEvidence,
-    messages,
-    sendMessage,
-    suggestedActions,
-    steps,
-    isStreaming,
-    metadata,
-    validateClaim,
-    evidenceDecision,
-    persistTab,
-    data,
+    account, accountLoading, selectedEvidence, railMode, setRailMode,
+    messages, sendMessage, suggestedActions, steps, isStreaming, metadata,
+    caseId, setPendingDecisions, setActionError, evidenceDecision, attachDriver,
   } = useEvidenceTabState();
 
   const { accountId } = useParams<{ accountId: string }>();
@@ -437,42 +142,27 @@ export default function EvidenceTab() {
           activeTab="evidence"
           detailContent={
             selectedEvidence ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <h3 className="text-sm font-bold">{selectedEvidence.title}</h3>
                 <p className="text-xs text-muted-foreground">{selectedEvidence.excerpt}</p>
-                <div className="space-y-2 border-t pt-3">
-                  <label className="text-[11px] font-medium text-muted-foreground">Attach to driver or lever</label>
-                  <select
-                    className="h-8 w-full rounded-md border border-border bg-background px-2 text-[12px] text-foreground"
-                    value={selectedDriverId}
-                    onChange={(event) => setSelectedDriverId(event.target.value)}
-                  >
-                    <option value="">Select driver...</option>
-                    {driverOptions.map((driver) => (
-                      <option key={driver.id} value={driver.id}>
-                        {driver.name ?? driver.hypothesis_text ?? driver.id}
-                      </option>
-                    ))}
-                  </select>
-                  <Btn
-                    variant="primary"
-                    className="w-full"
-                    disabled={!selectedDriverId || isAttachingEvidence}
-                    onClick={attachEvidence}
-                  >
-                    {isAttachingEvidence ? "Attaching..." : "Attach Evidence"}
-                  </Btn>
-                  {evidenceLinks
-                    .filter((link) => link.evidence_id === selectedEvidence.id)
-                    .map((link) => (
-                      <button
-                        key={`${link.evidence_id}-${link.driver_id}`}
-                        className="block w-full text-left text-[10px] text-muted-foreground hover:text-destructive"
-                        onClick={() => unlinkEvidence(link)}
-                      >
-                        Linked to {link.driver_id} - click to unlink
-                      </button>
-                    ))}
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <Btn variant="primary" onClick={async () => {
+                    if (!accountId || !caseId) return;
+                    setActionError(null);
+                    setPendingDecisions((p) => ({ ...p, [selectedEvidence.id]: "accepted" }));
+                    try { await evidenceDecision.mutateAsync({ evidenceId: selectedEvidence.id, accountId, caseId, decision: "accepted" }); } catch { setActionError("Failed to accept evidence. Retry."); }
+                  }}><CheckCircle2 size={12} />Accept</Btn>
+                  <Btn variant="outline" onClick={async () => {
+                    if (!accountId || !caseId) return;
+                    setActionError(null);
+                    setPendingDecisions((p) => ({ ...p, [selectedEvidence.id]: "rejected" }));
+                    try { await evidenceDecision.mutateAsync({ evidenceId: selectedEvidence.id, accountId, caseId, decision: "rejected" }); } catch { setActionError("Failed to reject evidence. Retry."); }
+                  }}><XCircle size={12} />Reject</Btn>
+                  <Btn variant="ghost" onClick={async () => {
+                    if (!accountId || !caseId) return;
+                    setActionError(null);
+                    try { await attachDriver.mutateAsync({ evidenceId: selectedEvidence.id, driverId: selectedEvidence.linkedSignals[0] ?? "", accountId, caseId }); } catch { setActionError("Failed to attach evidence to driver. Retry."); }
+                  }}><Link2 size={12} />Attach</Btn>
                 </div>
               </div>
             ) : null
@@ -486,39 +176,7 @@ export default function EvidenceTab() {
         />
       }
     >
-      <EvidenceTabContent
-        state={{
-          account,
-          accountLoading,
-          evidence,
-          isLoading,
-          error,
-          caseId,
-          verified,
-          avgMatch,
-          selectedEvidence,
-          setSelectedEvidence,
-          selectedDriverId,
-          setSelectedDriverId,
-          driverOptions,
-          evidenceLinks,
-          attachEvidence,
-          unlinkEvidence,
-          isAttachingEvidence,
-          railMode,
-          setRailMode,
-          messages,
-          sendMessage,
-          suggestedActions,
-          steps,
-          isStreaming,
-          metadata,
-          validateClaim,
-          evidenceDecision,
-          persistTab,
-          data,
-        }}
-      />
+      <EvidenceTabContent />
     </IntelligenceShell>
   );
 }

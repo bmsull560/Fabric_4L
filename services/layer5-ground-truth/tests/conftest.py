@@ -29,10 +29,13 @@ from sqlalchemy.ext.asyncio import (
 
 def pytest_collection_modifyitems(config, items):
     """Skip tests marked requires_postgres when no PostgreSQL is available."""
-    skip_pg = pytest.mark.skip(reason="requires_postgres: no live PostgreSQL instance")
-    for item in items:
-        if item.get_closest_marker("requires_postgres"):
-            item.add_marker(skip_pg)
+    postgres_url = os.getenv("POSTGRES_TEST_URL") or os.getenv("DATABASE_URL", "")
+    run_postgres_tests = os.getenv("RUN_POSTGRES_TESTS", "").strip().lower() == "true"
+    if not run_postgres_tests or not postgres_url.lower().startswith("postgres"):
+        skip_pg = pytest.mark.skip(reason="requires_postgres: no live PostgreSQL instance")
+        for item in items:
+            if item.get_closest_marker("requires_postgres"):
+                item.add_marker(skip_pg)
 
 # Override DATABASE_URL before any application code imports the engine
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"

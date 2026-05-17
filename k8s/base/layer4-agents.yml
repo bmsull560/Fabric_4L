@@ -8,14 +8,14 @@ metadata:
     component: layer4
 spec:
   replicas: 2
+  selector:
+    matchLabels:
+      app: layer4-agents
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  selector:
-    matchLabels:
-      app: layer4-agents
   template:
     metadata:
       labels:
@@ -44,16 +44,9 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
-        # SECURITY: Mount JWT RSA keys for RS256 token signing
-        - name: jwt-keys
-          secret:
-            secretName: jwt-keys
-            defaultMode: 0400  # Read-only
       containers:
-        # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: services/layer4-agents:main
-          imagePullPolicy: Always
+          image: value-fabric/layer4-agents:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -65,66 +58,51 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
-            - secretRef:
-                name: layer4-db-credentials
-                optional: false
-            - secretRef:
-                name: layer4-secrets
-                optional: false
-            - secretRef:
-                name: layer4-auth
-                optional: false
-            # SECURITY: API key cache HMAC secret for secure key fingerprinting
-            - secretRef:
-                name: api-key-cache-secret
-                optional: false
           env:
-            # Dynamic database credentials (required)
-            - name: DATABASE_URL
+            - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: layer4-db-credentials
-                  key: DATABASE_URL
-            - name: CHECKPOINT_DATABASE_URL
+                  name: openai-secret
+                  key: api-key
+            - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: layer4-db-credentials
-                  key: DATABASE_URL
-            # Neo4j from ExternalSecret
+                  name: anthropic-secret
+                  key: api-key
+                  optional: true
+            - name: LLM_MODEL
+              value: "gpt-4o"
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
             - name: NEO4J_URI
-              valueFrom:
-                secretKeyRef:
-                  name: layer4-secrets
-                  key: NEO4J_URI
+              value: "bolt://neo4j:7687"
             - name: NEO4J_USER
-              valueFrom:
-                secretKeyRef:
-                  name: layer4-secrets
-                  key: NEO4J_USER
+              value: "neo4j"
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: layer4-secrets
-                  key: NEO4J_PASSWORD
+                  name: neo4j-secret
+                  key: auth
+            - name: LAYER1_API_URL
+              value: "http://layer1-ingestion:8000"
+            - name: LAYER2_API_URL
+              value: "http://layer2-extraction:8000"
+            - name: LAYER3_API_URL
+              value: "http://layer3-knowledge:8001"
+            - name: LAYER5_GROUND_TRUTH_URL
+              value: "http://layer5-ground-truth:8005"
+            - name: LAYER6_BENCHMARKS_URL
+              value: "http://layer6-benchmarks:8006"
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pinecone-secret
+                  key: api-key
+                  optional: true
+            - name: CHECKPOINT_DATABASE_URL
+              value: "postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth"
             - name: LOG_LEVEL
               value: "info"
-            # SECURITY: JWT RS256 key paths (asymmetric signing)
-            - name: JWT_PRIVATE_KEY_PATH
-              value: "/secrets/jwt-private.pem"
-            - name: JWT_PUBLIC_KEY_PATH
-              value: "/secrets/jwt-public.pem"
-            - name: JWT_ALGORITHM
-              value: "RS256"
-            # SECURITY: Production environment for auth bypass hard-block
-            - name: ENVIRONMENT
-              value: "production"
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-            # SECURITY: Mount JWT keys to /secrets/
-            - name: jwt-keys
-              mountPath: /secrets
-              readOnly: true
           resources:
             requests:
               memory: "256Mi"
@@ -148,14 +126,6 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          startupProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 30
 ---
 apiVersion: v1
 kind: Service
