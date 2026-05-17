@@ -1,69 +1,72 @@
-"""Layer 2 models package."""
+"""Models package for Value Fabric ontology."""
 
-from layer2_extraction.models.extraction_api import ExtractionRequest, ExtractionResult
-from layer2_extraction.models.extraction_cost import ExtractionCost, JobCostSummary
-from layer2_extraction.models.extraction_response import (
+from .extraction_cost import ExtractionCost, JobCostSummary
+from .extraction_response import (
     CapabilityExtractionResponse,
     FeatureExtractionResponse,
     PersonaExtractionResponse,
     RelationshipExtractionResponse,
-    UnifiedExtractionResponse,
     UseCaseExtractionResponse,
     ValueDriverExtractionResponse,
+    ValueMetricExtractionResponse,
 )
-from layer2_extraction.models.ontology import (
-    APQCProcess,
-    BenefitType,
+from .ontology import (
     Capability,
-    DriverType,
-    EnablementType,
+    ExtractionResult,
     Feature,
-    ImpactLevel,
+    MetricDirection,
     Persona,
     RoleType,
     SeniorityLevel,
     UseCase,
     ValueCategory,
     ValueDriver,
+    ValueMetric,
 )
-from layer2_extraction.models.operational_signal_extraction import (
+from .operational_signal_extraction import (
+    ExtractionMetadata,
     OperationalSignal,
-    SignalExtractionResult,
+    OperationalSignalExtractionResponse,
 )
-from layer2_extraction.models.relationships import (
+from .relationships import (
+    BenefitType,
+    DriverType,
+    EnablementType,
+    ImpactLevel,
     PredicateType,
     Relationship,
     RelationshipGraph,
 )
 
 __all__ = [
-    "APQCProcess",
-    "BenefitType",
     "Capability",
-    "CapabilityExtractionResponse",
-    "DriverType",
-    "EnablementType",
-    "ExtractionCost",
-    "ExtractionRequest",
-    "ExtractionResult",
-    "Feature",
-    "ImpactLevel",
-    "JobCostSummary",
-    "OperationalSignal",
+    "UseCase",
     "Persona",
-    "PredicateType",
-    "Relationship",
-    "RelationshipExtractionResponse",
-    "RelationshipGraph",
-    "UnifiedExtractionResponse",
-    "UseCaseExtractionResponse",
-    "ValueDriverExtractionResponse",
-    "FeatureExtractionResponse",
-    "PersonaExtractionResponse",
+    "ValueDriver",
+    "ValueMetric",
+    "MetricDirection",
+    "Feature",
     "RoleType",
     "SeniorityLevel",
-    "SignalExtractionResult",
-    "UseCase",
     "ValueCategory",
-    "ValueDriver",
+    "ExtractionResult",
+    "Relationship",
+    "RelationshipGraph",
+    "PredicateType",
+    "ImpactLevel",
+    "EnablementType",
+    "BenefitType",
+    "DriverType",
+    "ExtractionCost",
+    "JobCostSummary",
+    "CapabilityExtractionResponse",
+    "UseCaseExtractionResponse",
+    "PersonaExtractionResponse",
+    "ValueDriverExtractionResponse",
+    "ValueMetricExtractionResponse",
+    "FeatureExtractionResponse",
+    "RelationshipExtractionResponse",
+    "OperationalSignalExtractionResponse",
+    "OperationalSignal",
+    "ExtractionMetadata",
 ]

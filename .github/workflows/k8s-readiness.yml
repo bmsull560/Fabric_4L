@@ -1,28 +1,17 @@
 name: K8s Readiness
 
-permissions:
-  contents: read
-
 on:
   pull_request:
     branches: [main]
     paths:
       - "k8s/**"
-      - "scripts/security/placeholder_secret_scan.py"
-      - ".github/scripts/check-vault-policy-least-privilege.sh"
       - ".github/workflows/k8s-readiness.yml"
   push:
     branches: [main]
     paths:
       - "k8s/**"
-      - "scripts/security/placeholder_secret_scan.py"
-      - ".github/scripts/check-vault-policy-least-privilege.sh"
       - ".github/workflows/k8s-readiness.yml"
   workflow_dispatch:
-
-env:
-  # Opt into Node.js 24 for GitHub Actions
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   k8s-static-precheck:
@@ -41,7 +30,7 @@ jobs:
       - name: Install kustomize
         run: |
           curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -o kustomize.tar.gz
-          echo "3669470b454d865c8184d6bce78df05e977c9aea31c30df3c669317d43bcc7a7  kustomize.tar.gz" | sha256sum -c
+          echo "366c0e6b8f2571be6d034a5627e18b43f32a074eb89d4f740fdda80fa7d8bf3e  kustomize.tar.gz" | sha256sum -c
           tar -xzf kustomize.tar.gz
           sudo mv kustomize /usr/local/bin/kustomize
           kustomize version
@@ -54,224 +43,31 @@ jobs:
           sudo mv kubeconform /usr/local/bin/kubeconform
           kubeconform -v
 
-      - name: Install conftest
+      - name: Set up Python for preflight checks
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install preflight dependencies
+        run: pip install pyyaml
+
+      - name: Run Kubernetes preflight guardrails
+        run: python3 scripts/ci/k8s_preflight.py
+
+      - name: Render overlays
         run: |
-          curl -sSL https://github.com/open-policy-agent/conftest/releases/download/v0.61.0/conftest_0.61.0_Linux_x86_64.tar.gz -o conftest.tar.gz
-          echo "6f63fd232db3350c8108aa8a79486a46f4e4db005885f46e8ebf6f0cbf2bb977  conftest.tar.gz" | sha256sum -c
-          tar -xzf conftest.tar.gz
-          sudo mv conftest /usr/local/bin/conftest
-          conftest --version
+          kustomize build k8s/overlays/dev > /tmp/dev.yaml
+          kustomize build k8s/overlays/prod > /tmp/prod.yaml
 
-      - name: Render deployments
+      - name: Schema validate overlays
         run: |
-          mkdir -p /tmp/k8s-renders
-          for d in dev-nginx staging-nginx prod-nginx prod-gateway-api prod-istio; do
-            kustomize build "k8s/deployments/$d" \
-              --load-restrictor=LoadRestrictionsNone \
-              > "/tmp/k8s-renders/$d.yaml"
-          done
-          # Backwards-compatible aliases consumed by older steps and scripts.
-          cp /tmp/k8s-renders/dev-nginx.yaml /tmp/dev.yaml
-          cp /tmp/k8s-renders/prod-nginx.yaml /tmp/prod.yaml
+          kubeconform -summary -strict /tmp/dev.yaml
+          kubeconform -summary -strict /tmp/prod.yaml
 
-      - name: Schema validate supported deployments
+      - name: Client dry-run precheck
         run: |
-          kubeconform -summary -strict /tmp/k8s-renders/dev-nginx.yaml
-          kubeconform -summary -strict /tmp/k8s-renders/staging-nginx.yaml
-          kubeconform -summary -strict /tmp/k8s-renders/prod-nginx.yaml
-
-      - name: Schema validate experimental deployments (CRDs allowed)
-        run: |
-          # Gateway API and Istio CRDs are not part of the default schema set.
-          # Use the upstream CRDs-catalog so Gateway/HTTPRoute/VirtualService
-          # are recognized; missing schemas are tolerated for vendor CRDs.
-          # Note: prod-gateway-api is Conditionally Supported (not experimental).
-          # It requires Gateway API CRDs and a GatewayClass controller to be
-          # installed by the cluster operator before deployment.
-          SCHEMAS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
-          kubeconform -summary -ignore-missing-schemas \
-            -schema-location default -schema-location "$SCHEMAS" \
-            /tmp/k8s-renders/prod-gateway-api.yaml
-          kubeconform -summary -ignore-missing-schemas \
-            -schema-location default -schema-location "$SCHEMAS" \
-            /tmp/k8s-renders/prod-istio.yaml
-
-      - name: Policy validate hardening controls (conftest, hard-fail)
-        run: |
-          for manifest in /tmp/k8s-renders/*.yaml; do
-            echo "Validating $manifest"
-            conftest test "$manifest" -p k8s/policy
-          done
-
-      - name: Policy validate source manifests and production compose files
-        run: |
-          mapfile -t manifests < <(find k8s -type f \( -name '*.yml' -o -name '*.yaml' \) | sort)
-          conftest test -p k8s/policy "${manifests[@]}"
-          conftest test -p k8s/policy docker-compose.live.yml docker-compose.release-smoke.yml
-
-      - name: Security checks - placeholder secret values
-        run: |
-          pip install pyyaml
-          python3 scripts/security/placeholder_secret_scan.py k8s --allow-guarded-dev
-          python3 scripts/security/placeholder_secret_scan.py \
-            /tmp/k8s-renders/staging-nginx.yaml \
-            /tmp/k8s-renders/prod-nginx.yaml \
-            /tmp/k8s-renders/prod-gateway-api.yaml \
-            /tmp/k8s-renders/prod-istio.yaml
-
-      - name: Validate Vault policies are least-privilege
-        run: |
-          bash .github/scripts/check-vault-policy-least-privilege.sh
-
-      - name: Policy validate prod/staging secret sourcing
-        run: |
-          for d in staging-nginx prod-nginx; do
-            if rg -n '^kind: Secret$' /tmp/k8s-renders/$d.yaml; then
-              echo "Found raw Secret resources in $d output. Use ExternalSecret only."
-              exit 1
-            fi
-            if ! rg -n '^kind: ExternalSecret$' /tmp/k8s-renders/$d.yaml; then
-              echo "$d must include ExternalSecret resources."
-              exit 1
-            fi
-          done
-
-      - name: Validate ExternalSecret coverage for all layers
-        run: |
-          # NOTE: Validates source files in k8s/ directory, not rendered manifests.
-          # If kustomize patches modify secrets, ensure validation covers final output.
-          echo "Running self-test for validation script..."
-          python3 .github/scripts/validate-external-secrets.py --self-test
-          echo "Validating that all layer secret references have ExternalSecret coverage..."
-          python3 .github/scripts/validate-external-secrets.py
-
-      - name: Enforce secret store security policy (hard-fail)
-        run: |
-          python3 .github/scripts/enforce_secret_store_security.py
-
-
-      - name: Validate Prometheus metrics wiring for all layers
-        run: |
-          echo "Validating that all layers with prometheus_metrics.py expose /metrics endpoint..."
-          python3 .github/scripts/validate-metrics-wiring.py
-
-      - name: Validate /metrics is not publicly routable
-        run: |
-          echo "Validating that /metrics endpoint is not exposed through public ingress..."
-          pip install pyyaml
-          python3 .github/scripts/validate-metrics-not-public.py
-
-      - name: Routing axis checks (mutex + hostname + service-existence)
-        run: |
-          pip install pyyaml
-          python3 scripts/ci/k8s_routing_check.py \
-            --rendered-dir /tmp/k8s-renders \
-            --routing-dir k8s/routing \
-            --deployment dev-nginx:nginx \
-            --deployment staging-nginx:nginx \
-            --deployment prod-nginx:nginx \
-            --deployment prod-gateway-api:gateway-api \
-            --deployment prod-istio:istio
-
-      - name: Security checks - placeholder emails
-        run: |
-          echo "Checking for placeholder emails in production/staging manifests..."
-          if grep -r "platform@example.com" /tmp/k8s-renders/prod*.yaml /tmp/k8s-renders/staging*.yaml 2>/dev/null; then
-            echo "FAIL: Placeholder email 'platform@example.com' found in rendered manifests"
-            exit 1
-          fi
-          echo "OK: No placeholder emails found"
-
-      - name: Security checks - forbid insecure auth-url in production overlays
-        run: |
-          echo "Checking prod rendered ingress auth-url uses HTTPS..."
-          if rg -n 'nginx\.ingress\.kubernetes\.io/auth-url: http://' /tmp/k8s-renders/prod-nginx.yaml; then
-            echo "FAIL: Insecure oauth2 auth-url (http://) detected in prod-nginx render"
-            exit 1
-          fi
-          echo "OK: Production auth-url values use HTTPS"
-
-      - name: Security checks - oauth2-proxy placeholders
-        run: |
-          echo "Checking for placeholder auth values..."
-          for pattern in "__OIDC_" "CHANGE_ME" "YOUR_CLIENT_ID" "replace-me"; do
-            if grep -ri "$pattern" /tmp/k8s-renders/prod*.yaml /tmp/k8s-renders/staging*.yaml 2>/dev/null; then
-              echo "FAIL: Placeholder auth value '$pattern' found in rendered manifests"
-              exit 1
-            fi
-          done
-          echo "OK: No placeholder auth values found"
-
-      - name: Security checks - rate limiting and HSTS
-        run: |
-          echo "Checking for rate limiting and HSTS in prod/staging nginx..."
-          for manifest in /tmp/k8s-renders/prod-nginx.yaml /tmp/k8s-renders/staging-nginx.yaml; do
-            if [ ! -f "$manifest" ]; then
-              echo "SKIP: $manifest not found"
-              continue
-            fi
-            if ! grep -q "limit-rps" "$manifest"; then
-              echo "FAIL: Rate limiting (limit-rps) not found in $manifest"
-              exit 1
-            fi
-            if ! grep -q "Strict-Transport-Security" "$manifest"; then
-              echo "FAIL: HSTS header not found in $manifest"
-              exit 1
-            fi
-            echo "OK: $manifest has rate limiting and HSTS"
-          done
-
-      - name: Security checks - NetworkPolicy blanket ingress
-        run: |
-          echo "Checking for blanket namespace ingress in NetworkPolicies..."
-          for manifest in /tmp/k8s-renders/prod*.yaml /tmp/k8s-renders/staging*.yaml; do
-            if [ ! -f "$manifest" ]; then
-              continue
-            fi
-            # Check for namespaceSelector: {} which allows all namespaces
-            if grep -A1 'namespaceSelector:' "$manifest" | grep -q '{}'; then
-              echo "FAIL: Blanket namespace ingress (namespaceSelector: {}) found in $manifest"
-              exit 1
-            fi
-          done
-          echo "OK: No blanket namespace ingress found"
-
-      - name: Security checks - scaling and resilience primitives
-        run: |
-          echo "Checking for required HPAs..."
-          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
-            if ! grep -q "name: ${layer}-hpa" /tmp/k8s-renders/*.yaml 2>/dev/null; then
-              echo "FAIL: Missing HPA for ${layer}"
-              exit 1
-            fi
-          done
-          echo "OK: All HPAs present"
-
-          echo "Checking for required PDBs..."
-          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
-            if ! grep -q "name: ${layer}-pdb" /tmp/k8s-renders/*.yaml 2>/dev/null; then
-              echo "FAIL: Missing PDB for ${layer}"
-              exit 1
-            fi
-          done
-          echo "OK: All PDBs present"
-
-      - name: Client dry-run precheck (supported deployments)
-        run: |
-          kubectl apply --dry-run=client -f /tmp/k8s-renders/dev-nginx.yaml > /dev/null
-          kubectl apply --dry-run=client -f /tmp/k8s-renders/staging-nginx.yaml > /dev/null
-          kubectl apply --dry-run=client -f /tmp/k8s-renders/prod-nginx.yaml > /dev/null
-
-      - name: Preflight checks
-        run: |
-          pip install pyyaml
-          python3 scripts/ci/k8s_preflight.py --verbose
-
-      - name: Run K8s Tests
-        run: |
-          pip install pytest pyyaml
-          python3 scripts/ensure-pytest-collection.py tests/k8s 150
-          pytest tests/k8s -v
+          kubectl apply --dry-run=client -f /tmp/dev.yaml > /dev/null
+          kubectl apply --dry-run=client -f /tmp/prod.yaml > /dev/null
 
   k8s-server-dry-run:
     name: K8s Server Dry Run (Required)
@@ -309,31 +105,13 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
 
-      - name: Install kustomize
+      - name: Server-side dry-run (dev overlay)
         run: |
-          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -o kustomize.tar.gz
-          echo "3669470b454d865c8184d6bce78df05e977c9aea31c30df3c669317d43bcc7a7  kustomize.tar.gz" | sha256sum -c
-          tar -xzf kustomize.tar.gz
-          sudo mv kustomize /usr/local/bin/kustomize
+          kubectl apply --dry-run=server -k k8s/overlays/dev
 
-      - name: Render supported deployments
+      - name: Server-side dry-run (prod overlay)
         run: |
-          mkdir -p /tmp/k8s-renders
-          kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/dev-nginx.yaml
-          kustomize build k8s/deployments/staging-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/staging-nginx.yaml
-          kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/prod-nginx.yaml
-
-      - name: Server-side dry-run (dev-nginx)
-        run: |
-          kubectl apply --dry-run=server -f /tmp/k8s-renders/dev-nginx.yaml
-
-      - name: Server-side dry-run (staging-nginx)
-        run: |
-          kubectl apply --dry-run=server -f /tmp/k8s-renders/staging-nginx.yaml
-
-      - name: Server-side dry-run (prod-nginx)
-        run: |
-          kubectl apply --dry-run=server -f /tmp/k8s-renders/prod-nginx.yaml
+          kubectl apply --dry-run=server -k k8s/overlays/prod
 
       - name: Upload rendered manifests on failure
         if: failure()

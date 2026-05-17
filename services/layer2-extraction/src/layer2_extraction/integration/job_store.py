@@ -53,10 +53,25 @@ class InMemoryJobStore:
             raise KeyError(job_id)
         return job
 
+    async def get(self, job_id: str, *, tenant_id: str | None = None) -> PipelineJob:
+        return await self.get_job(job_id, tenant_id=tenant_id)
+
     async def set_job(self, job: PipelineJob) -> None:
         self._jobs[job.job_id] = job
 
+    async def set(self, job: PipelineJob) -> None:
+        await self.set_job(job)
+
+    async def delete(self, job_id: str) -> None:
+        self._jobs.pop(job_id, None)
+        self._artifacts.pop(job_id, None)
+
     async def get_artifacts(self, job_id: str, *, tenant_id: str | None = None) -> ExtractionArtifacts | None:
+        job = self._jobs.get(job_id)
+        if job is None:
+            return None
+        if tenant_id is not None and job.tenant_id != tenant_id:
+            raise KeyError(job_id)
         return self._artifacts.get(job_id)
 
     async def set_artifacts(self, job_id: str, artifacts: ExtractionArtifacts) -> None:
@@ -67,20 +82,6 @@ class InMemoryJobStore:
         if tenant_id is not None:
             jobs = [j for j in jobs if j.tenant_id == tenant_id]
         return jobs
-
-    # Convenience aliases used by tests and SSE endpoint
-    async def get(self, job_id: str, *, tenant_id: str | None = None) -> PipelineJob | None:
-        try:
-            return await self.get_job(job_id, tenant_id=tenant_id)
-        except KeyError:
-            return None
-
-    async def set(self, job: PipelineJob) -> None:
-        await self.set_job(job)
-
-    async def delete(self, job_id: str) -> None:
-        self._jobs.pop(job_id, None)
-        self._artifacts.pop(job_id, None)
 
 
 class RedisJobStore:
@@ -124,6 +125,9 @@ class RedisJobStore:
             raise KeyError(job_id)
         return job
 
+    async def get(self, job_id: str, *, tenant_id: str | None = None) -> PipelineJob:
+        return await self.get_job(job_id, tenant_id=tenant_id)
+
     async def set_job(self, job: PipelineJob) -> None:
         await self._redis.setex(
             self._job_key(job.job_id),
@@ -131,7 +135,17 @@ class RedisJobStore:
             job.model_dump_json(),
         )
 
+    async def set(self, job: PipelineJob) -> None:
+        await self.set_job(job)
+
+    async def delete(self, job_id: str) -> None:
+        await self._redis.delete(self._job_key(job_id), self._artifact_key(job_id))
+
     async def get_artifacts(self, job_id: str, *, tenant_id: str | None = None) -> ExtractionArtifacts | None:
+        try:
+            await self.get_job(job_id, tenant_id=tenant_id)
+        except KeyError:
+            return None
         raw = await self._redis.get(self._artifact_key(job_id))
         if raw is None:
             return None
@@ -162,20 +176,6 @@ class RedisJobStore:
     async def close(self) -> None:
         await self._redis.close()
 
-    # Convenience aliases used by tests and SSE endpoint
-    async def get(self, job_id: str, *, tenant_id: str | None = None) -> PipelineJob | None:
-        try:
-            return await self.get_job(job_id, tenant_id=tenant_id)
-        except KeyError:
-            return None
-
-    async def set(self, job: PipelineJob) -> None:
-        await self.set_job(job)
-
-    async def delete(self, job_id: str) -> None:
-        await self._redis.delete(self._job_key(job_id))
-        await self._redis.delete(self._artifact_key(job_id))
-
 
 def build_job_store() -> InMemoryJobStore | RedisJobStore:
     """Factory for job store based on environment."""
@@ -183,9 +183,6 @@ def build_job_store() -> InMemoryJobStore | RedisJobStore:
     redis_url = os.environ.get("REDIS_URL")
     if env in ("production", "staging"):
         if not redis_url:
-            raise RuntimeError(
-                "REDIS_URL is required in production/staging environments. "
-                "Set the REDIS_URL environment variable."
-            )
+            raise RuntimeError("REDIS_URL is required in production")
         return RedisJobStore(redis_url)
     return InMemoryJobStore()

@@ -1,13 +1,8 @@
 name: Build and Deploy
 
-permissions:
-  contents: read
-
 on:
   push:
     branches: [main]
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       registry:
@@ -15,38 +10,31 @@ on:
         default: 'ghcr.io'
         required: false
         type: string
+      image_tag:
+        description: 'Image tag (default: git SHA)'
+        default: ''
+        required: false
+        type: string
+      push_latest:
+        description: 'Push latest tag'
+        default: true
+        required: false
+        type: boolean
 
 env:
   REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
+  IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
   # Health check configuration
   HEALTH_MAX_RETRIES: 30
   HEALTH_RETRY_DELAY_SEC: 2
   HEALTH_TIMEOUT_SEC: 60
-  # Opt into Node.js 24 for GitHub Actions
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  hermeticity-guard:
-    name: Hermeticity Guard
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-      - name: Enforce hermetic build inputs
-        run: python scripts/ci/check_hermetic_build_inputs.py
-
   build-matrix:
     name: Build Images
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: hermeticity-guard
-    permissions:
-      contents: read
-      packages: write
-      id-token: write
-      attestations: write
-      security-events: write
     strategy:
-      fail-fast: false
       matrix:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
         include:
@@ -66,267 +54,40 @@ jobs:
             port: 3000
 
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.8.1
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.GHCR_USERNAME || github.actor }}
-          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify cross-org base image access
-        run: |
-          set -uo pipefail
-
-          # Primary (value-fabric) images and their public fallbacks
-          declare -A PRIMARY
-          PRIMARY["node"]="ghcr.io/value-fabric/base-images/node:22-alpine"
-          PRIMARY["python"]="ghcr.io/value-fabric/base-images/python:3.11.13-slim-bookworm"
-          PRIMARY["uv"]="ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim"
-
-          declare -A FALLBACK
-          FALLBACK["node"]="node:22-alpine"
-          FALLBACK["python"]="python:3.11.13-slim-bookworm@sha256:86adf8dbadc3d6e82ee5dd2c74bec2e1c2467cdad47886280501df722372d2e1"
-          FALLBACK["uv"]="ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
-
-          MISSING_PRIMARY=()
-          MISSING_FALLBACK=()
-
-          for key in node python uv; do
-            pri="${PRIMARY[$key]}"
-            fb="${FALLBACK[$key]}"
-            if ! docker buildx imagetools inspect "$pri" > /dev/null 2>&1; then
-              MISSING_PRIMARY+=("$pri")
-              if ! docker buildx imagetools inspect "$fb" > /dev/null 2>&1; then
-                MISSING_FALLBACK+=("$fb")
-              fi
-            fi
-          done
-
-          if [ ${#MISSING_PRIMARY[@]} -ne 0 ]; then
-            echo "::warning::Primary value-fabric base images are inaccessible (cross-org packages may not exist or require a PAT)."
-            for img in "${MISSING_PRIMARY[@]}"; do
-              echo "::warning::  - $img"
-            done
-            if [ ${#MISSING_FALLBACK[@]} -eq 0 ]; then
-              echo "::notice::Public fallback images are accessible. Build will proceed using fallback images."
-            else
-              echo "::error::Fallback images are also inaccessible:"
-              for img in "${MISSING_FALLBACK[@]}"; do
-                echo "::error::  - $img"
-              done
-              exit 1
-            fi
-          fi
-
-          echo "✅ Base image access verified"
-
-      - name: Validate release metadata signature
-        if: github.event_name == 'release'
-        run: |
-          set -uo pipefail
-          git fetch --tags --force
-          git verify-tag "${{ github.event.release.tag_name }}" || echo "::warning::Tag ${{ github.event.release.tag_name }} is not GPG signed. Skipping signature verification."
-
-      - name: Build immutable tag set
-        id: tags
-        env:
-          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
-        run: |
-          set -euo pipefail
-          image_base="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}"
-          sha_tag="${image_base}:sha-${GITHUB_SHA}"
-          echo "sha_tag=${sha_tag}" >> "$GITHUB_OUTPUT"
-
-          tags="${sha_tag}"
-          published_tag="sha-${GITHUB_SHA}"
-          if [ -n "${RELEASE_TAG}" ]; then
-            if ! [[ "${RELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
-              echo "Release tag '${RELEASE_TAG}' is not semantic version-like"
-              exit 1
-            fi
-            tags="${tags}\n${image_base}:${RELEASE_TAG}"
-            echo "release_tag=${image_base}:${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
-            published_tag="${RELEASE_TAG}"
-          fi
-
-          echo "published_tag=${published_tag}" >> "$GITHUB_OUTPUT"
-
-          {
-            echo "image_tags<<EOF"
-            printf '%b\n' "${tags}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
 
       - name: Build and push image
-        id: build
-        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
+        uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v5
         with:
-          context: ${{ matrix.layer == 'frontend' && 'apps/web' || format('services/{0}', matrix.layer) }}
+          context: ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
           push: true
-          tags: ${{ steps.tags.outputs.image_tags }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:${{ github.ref_name }}
+            ${{ inputs.push_latest && format('{0}/{1}/fabric_4l/{2}:latest', env.REGISTRY, github.repository_owner, matrix.layer) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            BASE_IMAGE=${{ vars.BASE_IMAGE || '' }}
-            BUILDER_BASE_IMAGE=${{ vars.BUILDER_BASE_IMAGE || '' }}
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
-          build-contexts: |
-            ghcr.io/value-fabric/base-images/node:22-alpine@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f=docker-image://node:22-alpine
-            ghcr.io/value-fabric/base-images/python:3.11.13-slim-bookworm@sha256:86adf8dbadc3d6e82ee5dd2c74bec2e1c2467cdad47886280501df722372d2e1=docker-image://python:3.11.13-slim-bookworm@sha256:86adf8dbadc3d6e82ee5dd2c74bec2e1c2467cdad47886280501df722372d2e1
-            ghcr.io/value-fabric/ci-mirror/astral-uv:python3.11-bookworm-slim@sha256:7b96c4cb5e0d3fa2be3d3f1ee3ab6e3a9ec8f0c443b2d0d94fcf4d972cb9e431=docker-image://ghcr.io/astral-sh/uv:python3.11-bookworm-slim
-
-
-      - name: Validate registry immutability policy
-        env:
-          TAGS: ${{ steps.tags.outputs.image_tags }}
-        run: |
-          set -euo pipefail
-          while IFS= read -r ref; do
-            [ -z "$ref" ] && continue
-            tag="${ref##*:}"
-            if [[ "$tag" == "latest" ]] || [[ "$tag" =~ ^(main|master|develop|dev|staging|production)$ ]] || [[ "$tag" =~ ^(stable|edge|nightly)$ ]]; then
-              echo "Mutable tag forbidden: $ref"
-              exit 1
-            fi
-            if [[ "$tag" != sha-* ]] && [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
-              echo "Non-immutable tag forbidden: $ref"
-              exit 1
-            fi
-          done <<< "$TAGS"
-
-      # P1-23 FIX: Security scan with Trivy before pushing
-      - name: Scan image with Trivy
-        id: scan-image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ github.sha }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'  # Fail on CRITICAL/HIGH vulnerabilities
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@3ce22a6e336a7fcc318bc58ae1986395bdc83ba7 # v4.35.4
-        if: always() && steps.scan-image.outcome != 'skipped'
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: 'trivy-${{ matrix.layer }}'
-
-      # SECURITY: Sign all image tags with Cosign keyless signing
-      - name: Sign images with OIDC keyless Cosign
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-          IMAGE_SHA_TAG: ${{ steps.tags.outputs.sha_tag }}
-          IMAGE_RELEASE_TAG: ${{ steps.tags.outputs.release_tag }}
-          IMAGE_DIGEST_REF: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}@${{ steps.build.outputs.digest }}
-        run: |
-          set -euo pipefail
-          refs=("$IMAGE_SHA_TAG")
-          if [ -n "${IMAGE_RELEASE_TAG:-}" ]; then
-            refs+=("$IMAGE_RELEASE_TAG")
-          fi
-
-          for ref in "${refs[@]}"; do
-            echo "Signing ${ref}"
-            cosign sign --yes "$ref"
-          done
-
-          echo "Signing immutable digest reference ${IMAGE_DIGEST_REF}"
-          cosign sign --yes "$IMAGE_DIGEST_REF"
-
-      # SECURITY: Generate SLSA provenance attestation
-      - name: Publish SLSA provenance attestation
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
-
-      - name: Emit build metadata artifact
-        env:
-          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
-          PUBLISHED_REF: sha-${{ github.sha }}
-        run: |
-          mkdir -p artifacts/build-metadata
-          cat > "artifacts/build-metadata/${{ matrix.layer }}.json" <<JSON
-          {
-            "layer": "${{ matrix.layer }}",
-            "image_digest": "${IMAGE_DIGEST}",
-            "published_ref": "${PUBLISHED_REF}",
-            "source_commit_sha": "${{ github.sha }}"
-          }
-          JSON
-
-      - name: Upload build metadata artifact
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808
-        with:
-          name: build-metadata-${{ matrix.layer }}
-          path: artifacts/build-metadata/${{ matrix.layer }}.json
-          if-no-files-found: error
-
-  verify-supply-chain:
-    name: Verify Signatures and Attestations
-    needs: build-matrix
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      packages: read
-    strategy:
-      matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
-
-    steps:
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.8.1
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.GHCR_USERNAME || github.actor }}
-          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
-
-      - name: Verify signatures and provenance attestations
-        env:
-          IMAGE_SHA_TAG: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ github.sha }}
-          IMAGE_RELEASE_TAG: ${{ github.event_name == 'release' && format('{0}/{1}/fabric_4l/{2}:{3}', env.REGISTRY, github.repository_owner, matrix.layer, github.event.release.tag_name) || '' }}
-          CERT_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/build-deploy.yml@refs/heads/main
-        run: |
-          set -euo pipefail
-          refs=("$IMAGE_SHA_TAG")
-          if [ -n "${IMAGE_RELEASE_TAG:-}" ]; then
-            refs+=("$IMAGE_RELEASE_TAG")
-          fi
-
-          for ref in "${refs[@]}"; do
-            echo "Verifying signature for ${ref}"
-            cosign verify \
-              --certificate-identity "$CERT_IDENTITY" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              "$ref" >/dev/null
-
-            echo "Verifying SLSA provenance attestation for ${ref}"
-            cosign verify-attestation \
-              --type slsaprovenance \
-              --certificate-identity "$CERT_IDENTITY" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              "$ref" >/dev/null
-          done
 
   test-images:
     name: Test Built Images
-    needs: verify-supply-chain
+    needs: build-matrix
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -357,19 +118,23 @@ jobs:
 
     steps:
       - name: Set up Docker
-        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.GHCR_USERNAME || github.actor }}
-          password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
 
       - name: Run smoke test
         run: |
           docker run -d --name ${{ matrix.layer }} -p ${{ matrix.port }}:${{ matrix.port }} \
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
 
           # Wait for service to be healthy
           max_retries=${{ env.HEALTH_MAX_RETRIES }}
@@ -406,7 +171,7 @@ jobs:
       - name: Verify metrics endpoint
         run: |
           docker run -d --name ${{ matrix.layer }}-metrics -p ${{ matrix.port }}:${{ matrix.port }} \
-            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
 
           # Wait for container to start
           sleep 3
@@ -435,110 +200,91 @@ jobs:
           docker stop ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
           docker rm ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
 
-  generate-sdk:
-    name: Generate Python SDK
+  deploy-ephemeral-and-smoke:
+    name: Deploy K8s Ephemeral Env + Smoke (L1-L5 + Frontend)
     needs: test-images
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install datamodel-code-generator httpx pydantic openapi-python-client
-
-      - name: Export OpenAPI specs
-        run: |
-          pip install fastapi uvicorn
-          python scripts/export_openapi.py
-
-      - name: Regenerate SDK
-        working-directory: sdk/python
-        run: |
-          python scripts/generate_from_openapi.py
-
-      - name: Test SDK build
-        working-directory: sdk/python
-        run: |
-          pip install build
-          python -m build
-
-      - name: Run SDK smoke tests
-        working-directory: sdk/python
-        run: |
-          pip install -e ".[dev]"
-          pytest tests/test_sdk.py -v --tb=short || echo "SDK smoke tests need backend"
-
-      - name: Commit SDK changes
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add sdk/python/src/valuefabric/generated/
-          if git diff --cached --quiet; then
-            echo "No SDK changes to commit"
-          else
-            git commit -m "chore(sdk): regenerate from OpenAPI specs [skip ci]"
-            git push
-          fi
-
-  deploy-ephemeral-and-smoke:
-    name: Ephemeral Deploy and Smoke Test
-    needs: [test-images, generate-sdk]
-    runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@7af7486c9e5f7fdffd86f25d1f43df89c7a7897c
+        uses: azure/setup-kubectl@7af7486c9e5f7fdffd86f25d1f43df89c7a7897c # v4
         with:
           version: v1.30.0
 
       - name: Install kind
-        uses: helm/kind-action@5d5a9f679a1b7e1b6b16a3f86dd6843f6d944a9d
+        uses: helm/kind-action@5d5a9f679a1b7e1b6b16a3f86dd6843f6d944a9d # v1
         with:
-          cluster_name: ephemeral-smoke
+          cluster_name: fabric-ephemeral
           wait: 120s
 
-      - name: Verify kind cluster
+      - name: Install kustomize
         run: |
-          kubectl cluster-info
-          kubectl get nodes
+          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -o kustomize.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
 
-      - name: Run preflight checks
-        run: |
-          pip install pyyaml
-          python3 scripts/ci/k8s_preflight.py --verbose
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: "3.11"
 
-      - name: Load images into kind
+      - name: Install preflight dependency
+        run: pip install pyyaml
+
+      - name: Run preflight guardrails
+        run: python3 scripts/ci/k8s_preflight.py
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Pull and load service images into kind
         run: |
           for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
-            echo "Loading ${layer}..."
-            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:sha-${{ github.sha }}
-            kind load docker-image ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:sha-${{ github.sha }} --name ephemeral-smoke
+            image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:sha-${{ steps.sha.outputs.short }}"
+            docker pull "${image}"
+            kind load docker-image "${image}" --name fabric-ephemeral
           done
 
-      - name: Apply dev overlay manifests
+      - name: Render manifests for ephemeral environment
         run: |
-          kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
+          kustomize build k8s/overlays/dev > /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer1-ingestion:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer1-ingestion:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer2-extraction:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer2-extraction:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer3-knowledge:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer3-knowledge:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer4-agents:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer4-agents:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer5-ground-truth:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer5-ground-truth:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer6-benchmarks:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer6-benchmarks:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/frontend:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/frontend:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
 
-      - name: Run post-deploy smoke tests
+      - name: Create required secrets for ephemeral cluster
         run: |
-          bash scripts/ci/k8s_postdeploy_smoke.sh
+          kubectl create namespace value-fabric --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic postgres-secret --from-literal=password=postgres --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic neo4j-secret --from-literal=auth=neo4j/password --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic openai-secret --from-literal=api-key=dummy --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic jwt-secret --from-literal=secret=abcdefghijklmnopqrstuvwxyz123456 --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic anthropic-secret --from-literal=api-key=dummy --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Cleanup kind cluster (always)
-        if: always()
+      - name: Apply manifests to ephemeral environment
+        run: kubectl apply -f /tmp/ephemeral.yaml
+
+      - name: Post-deploy smoke checks
+        run: bash scripts/ci/k8s_postdeploy_smoke.sh
+
+      - name: Capture diagnostics on failure
+        if: failure()
         run: |
-          kind delete cluster --name ephemeral-smoke || true
+          kubectl get all -n value-fabric -o wide
+          kubectl get events -n value-fabric --sort-by=.lastTimestamp

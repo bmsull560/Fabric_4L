@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, RootModel
 
 
 class RateLimitPerMinute(RootModel[int]):
@@ -38,18 +38,235 @@ class ActivityItemSchema(BaseModel):
     outcome: str | None = Field(None, title='Outcome')
 
 
+class ActorSummary(BaseModel):
+    user_id: str | None = Field(..., title='User Id')
+    roles: list[str] = Field(..., title='Roles')
+    permissions: list[str] = Field(..., title='Permissions')
+    api_key_id: str | None = Field(..., title='Api Key Id')
+    service_account_id: str | None = Field(..., title='Service Account Id')
+
+
+class AgentGovernanceMetadata(BaseModel):
+    """
+    Governance metadata surfaced to RightRail and trace/audit views.
+    """
+
+    trace_id: str = Field(..., title='Trace Id')
+    workflow_id: str = Field(..., title='Workflow Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    tool_name: str = Field(..., title='Tool Name')
+    audit_event_id: str = Field(..., title='Audit Event Id')
+    emitted_at: str = Field(..., title='Emitted At')
+    intent: str | None = Field(None, title='Intent')
+    confidence: float | None = Field(None, title='Confidence')
+    workflow_triggered: bool | None = Field(None, title='Workflow Triggered')
+
+
+class AgentStreamAccountContext(BaseModel):
+    """
+    Account/workspace context from frontend.
+    """
+
+    account_name: str | None = Field(
+        None,
+        alias='accountName',
+        description='Selected account display name',
+        title='Accountname',
+    )
+    account_id: str | None = Field(
+        None,
+        alias='accountId',
+        description='Selected account identifier',
+        title='Accountid',
+    )
+    account_tier: str | None = Field(
+        None,
+        alias='accountTier',
+        description='Optional account segment/tier',
+        title='Accounttier',
+    )
+
+
+class AgentStreamMessage(BaseModel):
+    """
+    Single chat message compatible with frontend request shape.
+    """
+
+    role: str = Field(
+        ..., description='Message role (system|user|assistant)', title='Role'
+    )
+    content: str = Field(..., description='Message text', min_length=1, title='Content')
+
+
+class AgentStreamRequest(BaseModel):
+    """
+    Request payload expected by RightRail frontend.
+    """
+
+    messages: list[AgentStreamMessage] = Field(..., min_length=1, title='Messages')
+    active_tab: str = Field(
+        ...,
+        alias='activeTab',
+        description='Active UI tab key',
+        min_length=1,
+        title='Activetab',
+    )
+    account: AgentStreamAccountContext | None = None
+    context_envelope: dict[str, Any] | None = Field(
+        None, alias='contextEnvelope', title='Contextenvelope'
+    )
+    entity_context: dict[str, Any] | None = Field(
+        None, alias='entityContext', title='Entitycontext'
+    )
+    selected_signal_id: str | None = Field(
+        None, alias='selectedSignalId', title='Selectedsignalid'
+    )
+    selected_value_path: str | None = Field(
+        None, alias='selectedValuePath', title='Selectedvaluepath'
+    )
+    selected_driver_tree_id: str | None = Field(
+        None, alias='selectedDriverTreeId', title='Selecteddrivertreeid'
+    )
+    selected_scenario_id: str | None = Field(
+        None, alias='selectedScenarioId', title='Selectedscenarioid'
+    )
+    selected_business_case_id: str | None = Field(
+        None, alias='selectedBusinessCaseId', title='Selectedbusinesscaseid'
+    )
+
+
+class AgentStreamResponse(BaseModel):
+    """
+    Assistant response payload for RightRail.
+    """
+
+    content: str = Field(..., title='Content')
+    metadata: AgentGovernanceMetadata
+
+
+class Decision(Enum):
+    approved = 'approved'
+    changes_requested = 'changes_requested'
+    rejected = 'rejected'
+
+
+class ArchiveWorkflowResponse(BaseModel):
+    """
+    Archive workflow response.
+    """
+
+    workflow_id: Any = Field(..., title='Workflow Id')
+    status: str = Field(..., title='Status')
+    archived_at: str = Field(..., title='Archived At')
+
+
+class AuditEventInfo(BaseModel):
+    """
+    Audit event information.
+    """
+
+    id: str = Field(..., title='Id')
+    action: str = Field(..., title='Action')
+    timestamp: str = Field(..., title='Timestamp')
+    actor_id: str | None = Field(..., title='Actor Id')
+    details: dict[str, Any] | None = Field(..., title='Details')
+
+
+class AuditExportCreateRequest(BaseModel):
+    review_id: str = Field(..., title='Review Id')
+    correlation_id: str = Field(..., title='Correlation Id')
+    trace_id: str | None = Field(None, title='Trace Id')
+
+
+class Status(Enum):
+    pending = 'pending'
+    ready = 'ready'
+    failed = 'failed'
+    blocked = 'blocked'
+
+
+class Source(Enum):
+    provenance = 'provenance'
+    access_log = 'access_log'
+
+
+class AuditLogEntry(BaseModel):
+    """
+    Single audit log entry.
+    """
+
+    id: str = Field(..., title='Id')
+    timestamp: str = Field(..., title='Timestamp')
+    source: Source = Field(..., title='Source')
+    event_type: str = Field(..., title='Event Type')
+    entity_id: str | None = Field(None, title='Entity Id')
+    entity_type: str | None = Field(None, title='Entity Type')
+    action: str = Field(..., title='Action')
+    agent: str = Field(..., title='Agent')
+    details: dict[str, Any] = Field(..., title='Details')
+
+
+class AuthSessionResponse(BaseModel):
+    """
+    Minimal authenticated session profile for compatibility smoke checks.
+    """
+
+    authenticated: bool = Field(..., title='Authenticated')
+    user_id: str = Field(..., title='User Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    roles: list[str] = Field(..., title='Roles')
+    permissions: list[str] = Field(..., title='Permissions')
+
+
+class AuthorityWeight(Enum):
+    """
+    How authoritative this source is considered.
+    """
+
+    high = 'high'
+    medium = 'medium'
+    low = 'low'
+
+
+class BatchEnrichRequest(BaseModel):
+    limit: int | None = Field(
+        50, description='Max accounts to enrich', ge=1, le=500, title='Limit'
+    )
+    force: bool | None = Field(
+        False, description='Re-enrich already enriched accounts', title='Force'
+    )
+
+
+class BusinessCaseLifecycleSeedRequest(BaseModel):
+    """
+    Non-production deterministic lifecycle seed payload for backend E2E validation.
+    """
+
+    account_id: UUID = Field(..., title='Account Id')
+    draft_case_id: str | None = Field('case-draft-001', title='Draft Case Id')
+    approved_case_id: str | None = Field(
+        'case-e2e-approved-001', title='Approved Case Id'
+    )
+    approved_case_aliases: list[str] | None = Field(None, title='Approved Case Aliases')
+
+
 class BusinessCaseRequest(BaseModel):
     """
     Business case generation request.
     """
 
-    prospect_id: str = Field(
-        ..., description='Prospect identifier', title='Prospect Id'
+    account_id: UUID = Field(
+        ..., description='Account UUID identifier', title='Account Id'
     )
     opportunity_id: str | None = Field(None, title='Opportunity Id')
     sections: list[str] | None = Field(None, title='Sections')
     output_format: str | None = Field(
         'pdf', description='Output format (pdf, docx, html)', title='Output Format'
+    )
+    custom_inputs: dict[str, Any] | None = Field(
+        None,
+        description='Optional custom inputs, including truth_requirements and organization_id',
+        title='Custom Inputs',
     )
 
 
@@ -72,6 +289,28 @@ class BusinessCaseResponse(BaseModel):
     document_url: str | None = Field(None, title='Document Url')
     page_count: int | None = Field(0, title='Page Count')
     file_size_bytes: int | None = Field(0, title='File Size Bytes')
+    truth_references: list[dict[str, Any]] | None = Field(
+        None, title='Truth References'
+    )
+    remediation_items: list[dict[str, Any]] | None = Field(
+        None, title='Remediation Items'
+    )
+    sdes: dict[str, Any] | None = Field(None, title='Sdes')
+    case_metadata: dict[str, Any] | None = Field(None, title='Case Metadata')
+    revision_history: list[dict[str, Any]] | None = Field(
+        None, title='Revision History'
+    )
+    diff_summary: dict[str, Any] | None = Field(None, title='Diff Summary')
+
+
+class BuyerRoleInferenceStatus(Enum):
+    """
+    Status of buyer role inference.
+    """
+
+    complete = 'complete'
+    pending = 'pending'
+    unavailable = 'unavailable'
 
 
 class C1Message(BaseModel):
@@ -102,6 +341,46 @@ class CRMProvider(Enum):
 
     salesforce = 'salesforce'
     hubspot = 'hubspot'
+    manual = 'manual'
+
+
+class CRMSyncJobResponse(BaseModel):
+    id: str = Field(..., title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    provider: str = Field(..., title='Provider')
+    status: str = Field(..., title='Status')
+    requested_by: str | None = Field(None, title='Requested By')
+    queued_at: str | None = Field(None, title='Queued At')
+    started_at: str | None = Field(None, title='Started At')
+    finished_at: str | None = Field(None, title='Finished At')
+    records_synced: int | None = Field(0, title='Records Synced')
+    records_updated: int | None = Field(0, title='Records Updated')
+    records_failed: int | None = Field(0, title='Records Failed')
+    error_summary: str | None = Field(None, title='Error Summary')
+    created_at: str | None = Field(None, title='Created At')
+    updated_at: str | None = Field(None, title='Updated At')
+
+
+class CaseListItem(BaseModel):
+    """
+    Case list response item.
+    """
+
+    case_id: str = Field(..., title='Case Id')
+    account_id: str | None = Field(None, title='Account Id')
+    title: str | None = Field(None, title='Title')
+    status: str | None = Field('unknown', title='Status')
+    created_at: str | None = Field(None, title='Created At')
+    updated_at: str | None = Field(None, title='Updated At')
+
+
+class CaseListResponse(BaseModel):
+    """
+    List of cases for an account.
+    """
+
+    items: list[CaseListItem] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
 
 
 class CheckpointInfo(BaseModel):
@@ -136,6 +415,56 @@ class CheckpointListResponse(BaseModel):
     current_checkpoint_id: str | None = Field(
         None, description='Most recent checkpoint ID', title='Current Checkpoint Id'
     )
+
+
+class CommentRecord(BaseModel):
+    id: str = Field(..., title='Id')
+    account_id: str | None = Field(None, title='Account Id')
+    subject_type: str = Field(..., title='Subject Type')
+    subject_id: str = Field(..., title='Subject Id')
+    body: str = Field(..., title='Body')
+    author: str = Field(..., title='Author')
+    created_at: str = Field(..., title='Created At')
+    updated_at: str = Field(..., title='Updated At')
+
+
+class Website(RootModel[str]):
+    root: str = Field(..., max_length=255, title='Website')
+
+
+class CompanyKnowledgeProfileCreateRequest(BaseModel):
+    """
+    Request to create a draft company knowledge profile.
+    """
+
+    company_name: str = Field(..., max_length=255, min_length=1, title='Company Name')
+    website: Website | None = Field(None, title='Website')
+
+
+class ConfidenceScore(RootModel[float]):
+    root: float = Field(..., ge=0.0, le=1.0, title='Confidence Score')
+
+
+class CompanyName(RootModel[str]):
+    root: str = Field(..., max_length=255, min_length=1, title='Company Name')
+
+
+class CompanyKnowledgeProfileUpdateRequest(BaseModel):
+    """
+    Request to update profile sections.
+    """
+
+    company_name: CompanyName | None = Field(None, title='Company Name')
+    website: Website | None = Field(None, title='Website')
+    identity: dict[str, Any] | None = Field(None, title='Identity')
+    product_catalog: dict[str, Any] | None = Field(None, title='Product Catalog')
+    target_customer: dict[str, Any] | None = Field(None, title='Target Customer')
+    personas: dict[str, Any] | None = Field(None, title='Personas')
+    use_cases: dict[str, Any] | None = Field(None, title='Use Cases')
+    value_drivers: dict[str, Any] | None = Field(None, title='Value Drivers')
+    proof_points: dict[str, Any] | None = Field(None, title='Proof Points')
+    trust_commercial: dict[str, Any] | None = Field(None, title='Trust Commercial')
+    review_status: dict[str, Any] | None = Field(None, title='Review Status')
 
 
 class ComponentHealthInfo(BaseModel):
@@ -194,6 +523,205 @@ class ContactSchema(BaseModel):
     last_synced_at: AwareDatetime = Field(..., title='Last Synced At')
 
 
+class ContextField(BaseModel):
+    """
+    Single context field with provenance metadata.
+    """
+
+    value: Any | None = Field(None, title='Value')
+    inferred: bool | None = Field(False, title='Inferred')
+    needs_confirmation: bool | None = Field(False, title='Needs Confirmation')
+    source: str = Field(..., title='Source')
+
+
+class CrawlStatus(Enum):
+    """
+    Progress of a website crawl job.
+    """
+
+    pending = 'pending'
+    in_progress = 'in_progress'
+    complete = 'complete'
+    failed = 'failed'
+
+
+class ProviderRecordId(RootModel[str]):
+    root: str = Field(
+        ...,
+        description='Original CRM record ID. Auto-generated for manual accounts.',
+        max_length=100,
+        min_length=1,
+        title='Provider Record Id',
+    )
+
+
+class Domain(RootModel[str]):
+    root: str = Field(..., max_length=255, title='Domain')
+
+
+class Industry(RootModel[str]):
+    root: str = Field(..., max_length=100, title='Industry')
+
+
+class Region(RootModel[str]):
+    root: str = Field(..., max_length=100, title='Region')
+
+
+class CompanySize(RootModel[int]):
+    root: int = Field(..., ge=0, title='Company Size')
+
+
+class AnnualRevenue(RootModel[float]):
+    root: float = Field(
+        ..., description='Annual revenue in USD', ge=0.0, title='Annual Revenue'
+    )
+
+
+class Headquarters(RootModel[str]):
+    root: str = Field(..., max_length=255, title='Headquarters')
+
+
+class OwnerId(RootModel[str]):
+    root: str = Field(..., max_length=100, title='Owner Id')
+
+
+class OwnerName(RootModel[str]):
+    root: str = Field(..., max_length=255, title='Owner Name')
+
+
+class OwnerEmail(RootModel[str]):
+    root: str = Field(..., max_length=255, title='Owner Email')
+
+
+class Stage(RootModel[str]):
+    root: str = Field(..., max_length=50, title='Stage')
+
+
+class Segment(RootModel[str]):
+    root: str = Field(..., max_length=100, title='Segment')
+
+
+class CreateAccountRequest(BaseModel):
+    """
+    Account creation request.
+
+    Supports both CRM-imported accounts (provider=salesforce|hubspot)
+    and manually created accounts (provider=manual).
+    For manual accounts, provider_record_id is auto-generated if omitted.
+    """
+
+    id: UUID | None = Field(
+        None,
+        description='Optional deterministic account UUID for validation seeding',
+        title='Id',
+    )
+    provider: CRMProvider
+    provider_record_id: ProviderRecordId | None = Field(
+        None,
+        description='Original CRM record ID. Auto-generated for manual accounts.',
+        title='Provider Record Id',
+    )
+    name: str = Field(..., max_length=255, min_length=1, title='Name')
+    domain: Domain | None = Field(None, title='Domain')
+    industry: Industry | None = Field(None, title='Industry')
+    region: Region | None = Field(None, title='Region')
+    company_size: CompanySize | None = Field(None, title='Company Size')
+    annual_revenue: AnnualRevenue | None = Field(
+        None, description='Annual revenue in USD', title='Annual Revenue'
+    )
+    headquarters: Headquarters | None = Field(None, title='Headquarters')
+    website: Website | None = Field(None, title='Website')
+    owner_id: OwnerId | None = Field(None, title='Owner Id')
+    owner_name: OwnerName | None = Field(None, title='Owner Name')
+    owner_email: OwnerEmail | None = Field(None, title='Owner Email')
+    stage: Stage | None = Field(None, title='Stage')
+    segment: Segment | None = Field(None, title='Segment')
+
+
+class CreateCaseRequest(BaseModel):
+    """
+    Create a new case for an account.
+    """
+
+    account_id: str = Field(..., description='Account identifier', title='Account Id')
+    title: str | None = Field(None, description='Case title', title='Title')
+
+
+class CreateCaseResponse(BaseModel):
+    """
+    Created case response.
+    """
+
+    case_id: str = Field(..., title='Case Id')
+    account_id: str = Field(..., title='Account Id')
+    title: str | None = Field(None, title='Title')
+    status: str | None = Field('created', title='Status')
+    created_at: str = Field(..., title='Created At')
+
+
+class CreateCommentRequest(BaseModel):
+    account_id: str | None = Field(None, title='Account Id')
+    subject_type: str = Field(..., max_length=80, min_length=1, title='Subject Type')
+    subject_id: str = Field(..., max_length=160, min_length=1, title='Subject Id')
+    body: str = Field(..., max_length=4000, min_length=1, title='Body')
+
+
+class CreateNotificationRequest(BaseModel):
+    account_id: str | None = Field(None, title='Account Id')
+    subject_id: str | None = Field(None, title='Subject Id')
+    subject_type: str | None = Field(None, title='Subject Type')
+    type: str = Field(..., max_length=80, min_length=1, title='Type')
+    title: str = Field(..., max_length=240, min_length=1, title='Title')
+    message: str = Field(..., max_length=1000, min_length=1, title='Message')
+
+
+class Assignee(RootModel[str]):
+    root: str = Field(..., max_length=160, title='Assignee')
+
+
+class Stage1(RootModel[str]):
+    root: str = Field(..., max_length=80, title='Stage')
+
+
+class CreateTaskRequest(BaseModel):
+    title: str = Field(..., max_length=240, min_length=1, title='Title')
+    account_id: str | None = Field(None, title='Account Id')
+    assignee: Assignee | None = Field(None, title='Assignee')
+    due_date: str | None = Field(None, title='Due Date')
+    stage: Stage1 | None = Field(None, title='Stage')
+
+
+class CrmMatchStatus(Enum):
+    """
+    Status of CRM opportunity matching.
+    """
+
+    matched = 'matched'
+    not_found = 'not_found'
+    unavailable = 'unavailable'
+
+
+class CurrentTenantSettingsResponse(BaseModel):
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    slug: str = Field(..., title='Slug')
+    status: str = Field(..., title='Status')
+    tier_id: str = Field(..., title='Tier Id')
+    settings: dict[str, Any] = Field(..., title='Settings')
+    created_at: str = Field(..., title='Created At')
+
+
+class CurrentTenantSettingsUpdate(BaseModel):
+    settings: dict[str, Any] | None = Field(None, title='Settings')
+
+
+class CurrentTenantSettingsUpdateResponse(BaseModel):
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    settings: dict[str, Any] = Field(..., title='Settings')
+    updated_at: str = Field(..., title='Updated At')
+
+
 class DismissBadgeRequest(BaseModel):
     """
     Request to dismiss a health badge.
@@ -237,11 +765,48 @@ class DocumentExportResponse(BaseModel):
     """
 
     success: bool = Field(..., title='Success')
+    export_id: str | None = Field(None, title='Export Id')
     download_url: str | None = Field(None, title='Download Url')
+    manifest_url: str | None = Field(None, title='Manifest Url')
     filename: str | None = Field(None, title='Filename')
+    manifest_filename: str | None = Field(None, title='Manifest Filename')
     file_size_bytes: int | None = Field(None, title='File Size Bytes')
+    url_expires_at: str | None = Field(None, title='Url Expires At')
     format: str | None = Field('pdf', title='Format')
     error: str | None = Field(None, title='Error')
+
+
+class EnrichAccountRequest(BaseModel):
+    sources: list[str] | None = Field(
+        None,
+        description='Specific sources to use: sec_edgar, web_crawl, domain_lookup, news_scan',
+        title='Sources',
+    )
+    force: bool | None = Field(
+        False, description='Re-enrich even if already enriched', title='Force'
+    )
+
+
+class EnrichmentStatus(Enum):
+    """
+    Status of enrichment data availability.
+    """
+
+    queued = 'queued'
+    complete = 'complete'
+    unavailable = 'unavailable'
+    pending = 'pending'
+    degraded = 'degraded'
+
+
+class EnrichmentStatusResponse(BaseModel):
+    total_accounts: int = Field(..., title='Total Accounts')
+    enriched: int = Field(..., title='Enriched')
+    pending: int = Field(..., title='Pending')
+    in_progress: int = Field(..., title='In Progress')
+    failed: int = Field(..., title='Failed')
+    stale: int = Field(..., title='Stale')
+    coverage_pct: float = Field(..., title='Coverage Pct')
 
 
 class ErrorAnalysisResponse(BaseModel):
@@ -285,6 +850,45 @@ class EvalRunRequest(BaseModel):
     )
 
 
+class EvidenceDecisionRequest(BaseModel):
+    account_id: str = Field(..., title='Account Id')
+    case_id: str = Field(..., title='Case Id')
+    decision: str = Field(
+        ..., description='accepted|rejected|attached_to_driver', title='Decision'
+    )
+    driver_id: str | None = Field(None, title='Driver Id')
+    decision_note: str | None = Field(None, title='Decision Note')
+
+
+class EvidenceDecisionResponse(BaseModel):
+    evidence_id: str = Field(..., title='Evidence Id')
+    account_id: str = Field(..., title='Account Id')
+    case_id: str = Field(..., title='Case Id')
+    decision: str = Field(..., title='Decision')
+    driver_id: str | None = Field(None, title='Driver Id')
+    reviewed_by: str | None = Field(None, title='Reviewed By')
+    reviewed_at: str = Field(..., title='Reviewed At')
+    provenance: dict[str, Any] | None = Field(None, title='Provenance')
+    confidence: float | None = Field(0.0, title='Confidence')
+
+
+class ExportAuditRecord(BaseModel):
+    """
+    Audit record for export governance endpoints.
+    """
+
+    event_id: str = Field(..., title='Event Id')
+    action: str = Field(..., title='Action')
+    case_id: str | None = Field(None, title='Case Id')
+    workflow_id: str | None = Field(None, title='Workflow Id')
+    export_id: str | None = Field(None, title='Export Id')
+    actor_id: str | None = Field(None, title='Actor Id')
+    tenant_id: str | None = Field(None, title='Tenant Id')
+    timestamp: str = Field(..., title='Timestamp')
+    outcome: str = Field(..., title='Outcome')
+    details: dict[str, Any] = Field(..., title='Details')
+
+
 class FeatureFlagResponse(BaseModel):
     """
     Feature flag read model.
@@ -326,6 +930,37 @@ class FieldInfo(BaseModel):
     description: str | None = Field(None, title='Description')
 
 
+class GenerateHypothesesRequest(BaseModel):
+    """
+    Request to generate value hypotheses for an account.
+    """
+
+    account_id: str = Field(
+        ..., description='Account ID to generate hypotheses for', title='Account Id'
+    )
+    min_confidence: float | None = Field(0.3, ge=0.0, le=1.0, title='Min Confidence')
+    max_hypotheses: int | None = Field(20, ge=1, le=100, title='Max Hypotheses')
+    include_evidence: bool | None = Field(True, title='Include Evidence')
+
+
+class HTTPValidationError(BaseModel):
+    """
+    Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    message: str = Field(..., description='Human-readable error message')
+    code: str = Field(..., description='Machine-readable error code', min_length=1)
+    trace_id: str = Field(
+        ..., description='Request trace ID for support correlation', min_length=1
+    )
+    details: dict[str, Any] | None = Field(
+        None, description='Optional sanitized error details'
+    )
+
+
 class HealthBadgeInfo(BaseModel):
     """
     Health badge for UI display.
@@ -355,15 +990,36 @@ class HealthStatusResponse(BaseModel):
     healthy_components: list[str] = Field(..., title='Healthy Components')
 
 
+class Confidence(RootModel[float]):
+    root: float = Field(..., ge=0.0, le=1.0, title='Confidence')
+
+
+class ICPSourceType(Enum):
+    """
+    How the ICP was provided.
+    """
+
+    upload = 'upload'
+    paste = 'paste'
+    generated_from_website = 'generated_from_website'
+    manual = 'manual'
+
+
 class IntegrationCreateRequest(BaseModel):
     """
     Request to create/update an integration.
+
+    SECURITY: Never accept access_token, refresh_token, or auth_code
+    from frontend requests. Tokens are obtained via OAuth callback
+    or internal service mechanisms only.
     """
 
     enabled: bool | None = Field(
         False, description='Whether to enable the integration', title='Enabled'
     )
-    api_key: str = Field(..., description='API key/token for the CRM', title='Api Key')
+    api_key: str | None = Field(
+        None, description='API key/token for the CRM', title='Api Key'
+    )
     api_secret: str | None = Field(
         None, description='API secret (if required)', title='Api Secret'
     )
@@ -372,6 +1028,9 @@ class IntegrationCreateRequest(BaseModel):
     )
     sync_interval_minutes: int | None = Field(60, title='Sync Interval Minutes')
     sync_batch_size: int | None = Field(100, title='Sync Batch Size')
+    salesforce_org_id: str | None = Field(
+        None, description='Salesforce organization ID', title='Salesforce Org Id'
+    )
 
 
 class IntegrationStatusResponse(BaseModel):
@@ -401,8 +1060,25 @@ class IntegrationStatusResponse(BaseModel):
     records_failed: int | None = Field(0, title='Records Failed')
     status: str | None = Field('idle', title='Status')
     last_error_message: str | None = Field(None, title='Last Error Message')
+    has_refresh_token: bool | None = Field(False, title='Has Refresh Token')
+    webhook_url: str | None = Field(
+        None,
+        description='Webhook URL with token (shown once on create/update)',
+        title='Webhook Url',
+    )
     created_at: str = Field(..., title='Created At')
     updated_at: str = Field(..., title='Updated At')
+
+
+class LineageRef(BaseModel):
+    """
+    Shared immutable lineage carried by L4/L5 governance objects.
+    """
+
+    business_case_id: str | None = Field(None, title='Business Case Id')
+    value_model_id: str | None = Field(None, title='Value Model Id')
+    correlation_id: str = Field(..., title='Correlation Id')
+    trace_id: str | None = Field(None, title='Trace Id')
 
 
 class Reason(RootModel[str]):
@@ -462,6 +1138,86 @@ class ModelVersionResponse(BaseModel):
     created_at: str = Field(..., title='Created At')
 
 
+class NarrativeGenerateRequest(BaseModel):
+    """
+    Request to generate a narrative.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    account_id: str = Field(
+        ..., description='Account to generate narrative for', title='Account Id'
+    )
+    title: str | None = Field(
+        'Account Intelligence Narrative', max_length=500, title='Title'
+    )
+    tone: str | None = Field(
+        'executive',
+        description='Tone: executive, technical, financial, consultative',
+        title='Tone',
+    )
+    audience: str | None = Field(
+        'c_suite',
+        description='Audience: c_suite, vp_director, technical_buyer, champion, evaluation_committee',
+        title='Audience',
+    )
+    include_sections: list[str] | None = Field(
+        [
+            'executive_summary',
+            'pain_points',
+            'value_hypotheses',
+            'competitive_positioning',
+            'roi_projection',
+            'evidence',
+            'next_steps',
+        ],
+        description='Sections to include in the narrative',
+        title='Include Sections',
+    )
+    ranking_strategy: str | None = Field(
+        'balanced', description='Hypothesis ranking strategy', title='Ranking Strategy'
+    )
+    roi_scenario: str | None = Field(
+        'moderate', description='ROI scenario for projections', title='Roi Scenario'
+    )
+    roi_time_horizon_months: int | None = Field(
+        36, ge=1, le=120, title='Roi Time Horizon Months'
+    )
+    top_n_hypotheses: int | None = Field(5, ge=1, le=20, title='Top N Hypotheses')
+    custom_next_steps: list[str] | None = Field(None, title='Custom Next Steps')
+    account_data: dict[str, Any] | None = Field(
+        None,
+        description='Pre-fetched account data (flagged as unverified)',
+        title='Account Data',
+    )
+    signals_data: list[dict[str, Any]] | None = Field(
+        None,
+        description='Pre-fetched signals (flagged as unverified)',
+        title='Signals Data',
+    )
+    hypotheses_data: list[dict[str, Any]] | None = Field(
+        None,
+        description='Pre-fetched hypotheses (flagged as unverified)',
+        title='Hypotheses Data',
+    )
+    competitive_data: dict[str, Any] | None = Field(
+        None,
+        description='Pre-fetched competitive landscape (flagged as unverified)',
+        title='Competitive Data',
+    )
+    roi_data: dict[str, Any] | None = Field(
+        None,
+        description='Pre-fetched ROI results (flagged as unverified)',
+        title='Roi Data',
+    )
+    evidence_data: list[dict[str, Any]] | None = Field(
+        None,
+        description='Pre-fetched evidence (flagged as unverified)',
+        title='Evidence Data',
+    )
+
+
 class NodeMetrics(BaseModel):
     """
     Metrics for a single node execution.
@@ -476,6 +1232,23 @@ class NodeMetrics(BaseModel):
     success_count: int = Field(..., title='Success Count')
     error_count: int = Field(..., title='Error Count')
     success_rate: float = Field(..., title='Success Rate')
+
+
+class NotificationRecord(BaseModel):
+    id: str = Field(..., title='Id')
+    account_id: str | None = Field(None, title='Account Id')
+    subject_id: str | None = Field(None, title='Subject Id')
+    subject_type: str | None = Field(None, title='Subject Type')
+    type: str = Field(..., title='Type')
+    title: str = Field(..., title='Title')
+    message: str = Field(..., title='Message')
+    read: bool | None = Field(False, title='Read')
+    created_at: str = Field(..., title='Created At')
+    updated_at: str = Field(..., title='Updated At')
+
+
+class AverageConfidence(RootModel[float]):
+    root: float = Field(..., ge=0.0, le=1.0, title='Average Confidence')
 
 
 class Value(RootModel[str]):
@@ -512,6 +1285,21 @@ class OutputDataInspectorResponse(BaseModel):
     nested_depth: dict[str, int] = Field(..., title='Nested Depth')
     has_large_data: bool = Field(..., title='Has Large Data')
     large_data_keys: list[str] = Field(..., title='Large Data Keys')
+
+
+class PageType(Enum):
+    """
+    Classification of a crawled / extracted page.
+    """
+
+    product = 'product'
+    use_case = 'use_case'
+    case_study = 'case_study'
+    pricing = 'pricing'
+    trust = 'trust'
+    blog = 'blog'
+    homepage = 'homepage'
+    other = 'other'
 
 
 class PerformanceMetricsResponse(BaseModel):
@@ -554,6 +1342,69 @@ class Permission(Enum):
     admin_system = 'admin:system'
 
 
+class ProcessingMetadata(BaseModel):
+    """
+    Metadata about signal processing.
+    """
+
+    extraction_duration_ms: int | None = Field(0, title='Extraction Duration Ms')
+    enrichment_duration_ms: int | None = Field(0, title='Enrichment Duration Ms')
+    persistence_duration_ms: int | None = Field(0, title='Persistence Duration Ms')
+    signals_found: int | None = Field(0, title='Signals Found')
+    signals_with_evidence: int | None = Field(0, title='Signals With Evidence')
+    signals_quantified: int | None = Field(0, title='Signals Quantified')
+    trace_id: str | None = Field('', title='Trace Id')
+
+
+class ProfileApproveRequest(BaseModel):
+    """
+    Request to approve a draft profile.
+    """
+
+    approved_by: UUID = Field(..., title='Approved By')
+
+
+class ProfileStatus(Enum):
+    """
+    Lifecycle status of a company knowledge profile.
+    """
+
+    draft = 'draft'
+    needs_review = 'needs_review'
+    approved = 'approved'
+    archived = 'archived'
+
+
+class PromoteSignalRequest(BaseModel):
+    """
+    Request to promote a pain signal to a value hypothesis.
+    """
+
+    account_id: str = Field(
+        ..., description='Account ID the signal belongs to', title='Account Id'
+    )
+    signal_id: str = Field(
+        ..., description='Pain signal ID to promote', title='Signal Id'
+    )
+    value_path_category: str | None = Field(
+        None,
+        description='Value path classification: revenue_uplift, cost_savings, risk_reduction, blended',
+        title='Value Path Category',
+    )
+    product_id: str | None = Field(None, title='Product Id')
+    product_name: str | None = Field(None, title='Product Name')
+    capability_id: str | None = Field(None, title='Capability Id')
+    capability_name: str | None = Field(None, title='Capability Name')
+
+
+class PromoteSignalResponse(BaseModel):
+    status: str = Field(..., title='Status')
+    hypothesis_id: str = Field(..., title='Hypothesis Id')
+    signal_id: str = Field(..., title='Signal Id')
+    account_id: str = Field(..., title='Account Id')
+    value_path_category: str | None = Field(..., title='Value Path Category')
+
+
 class PromotionLogResponse(BaseModel):
     """
     Read-only promotion log entry.
@@ -570,22 +1421,171 @@ class PromotionLogResponse(BaseModel):
     created_at: str = Field(..., title='Created At')
 
 
+class ProspectContextResponse(BaseModel):
+    """
+    Composite prospect context (legacy endpoint, kept for compatibility).
+    """
+
+    prospect_id: str = Field(..., title='Prospect Id')
+    company_profile: ContextField
+    contact_role: ContextField
+    crm_match: ContextField
+    confidence_flags: list[dict[str, Any]] | None = Field(
+        None, title='Confidence Flags'
+    )
+    suggested_actions: list[str] | None = Field(None, title='Suggested Actions')
+
+
+class ProspectData(BaseModel):
+    """
+    Prospect setup input data.
+    """
+
+    account_id: str = Field(..., description='Account identifier', title='Account Id')
+    company_name: str = Field(..., description='Company name', title='Company Name')
+    industry: str | None = Field(
+        None, description='Industry vertical', title='Industry'
+    )
+    business_pains: list[str] | None = Field(
+        None, description='Reported business pains', title='Business Pains'
+    )
+    friction_points: list[str] | None = Field(
+        None, description='Current friction points', title='Friction Points'
+    )
+    desired_outcomes: list[str] | None = Field(
+        None, description='Desired outcomes', title='Desired Outcomes'
+    )
+    prompt_text: str = Field(
+        ..., description='Freeform prompt text', title='Prompt Text'
+    )
+    prompt_id: str | None = Field(
+        None, description='Optional prompt identifier', title='Prompt Id'
+    )
+    attachments: list[dict[str, Any]] | None = Field(
+        None, description='Attached documents', title='Attachments'
+    )
+
+
+class ContactTitle(RootModel[str]):
+    root: str = Field(
+        ..., description='Contact job title', max_length=255, title='Contact Title'
+    )
+
+
+class ProspectSetupData(BaseModel):
+    """
+    Prospect setup data from frontend form.
+
+    Mirrors the fields collected in ProspectSetup.tsx.
+    """
+
+    company_name: str = Field(
+        ...,
+        description='Company name',
+        max_length=255,
+        min_length=1,
+        title='Company Name',
+    )
+    contact_name: str = Field(
+        ...,
+        description='Primary contact name',
+        max_length=255,
+        min_length=1,
+        title='Contact Name',
+    )
+    contact_title: ContactTitle | None = Field(
+        None, description='Contact job title', title='Contact Title'
+    )
+    primary_objective: str | None = Field(
+        None,
+        description='Primary business objective',
+        examples=[
+            'reduce_costs',
+            'increase_revenue',
+            'improve_efficiency',
+            'mitigate_risk',
+        ],
+        title='Primary Objective',
+    )
+    buyer_role_confirmed: bool | None = Field(
+        False,
+        description='Whether buyer role is confirmed',
+        title='Buyer Role Confirmed',
+    )
+    company_confirmed: bool | None = Field(
+        False,
+        description='Whether company profile is confirmed',
+        title='Company Confirmed',
+    )
+    crm_reviewed: bool | None = Field(
+        False, description='Whether CRM match is reviewed', title='Crm Reviewed'
+    )
+
+
+class ProspectSetupRequest(BaseModel):
+    """
+    Request to set up a prospect and detect signals.
+    """
+
+    prospect_data: ProspectData = Field(..., description='Prospect information')
+    options: dict[str, Any] | None = Field(
+        None,
+        description='Detection options (include_evidence, quantify_impact)',
+        title='Options',
+    )
+
+
+class ProspectSetupResponse(BaseModel):
+    """
+    Response from prospect setup with detected signals.
+    """
+
+    success: bool = Field(
+        ..., description='Whether detection succeeded', title='Success'
+    )
+    signals: list[dict[str, Any]] | None = Field(
+        None, description='Detected signals', title='Signals'
+    )
+    processing_metadata: ProcessingMetadata | None = None
+    message: str | None = Field(None, description='Status message', title='Message')
+
+
+class ProvisioningStatusResponse(BaseModel):
+    """
+    Response for provisioning status query.
+    """
+
+    tenant_id: str = Field(..., title='Tenant Id')
+    status: str = Field(..., title='Status')
+    current_step: str | None = Field(..., title='Current Step')
+    completed_steps: list[str] = Field(..., title='Completed Steps')
+    error: str | None = Field(..., title='Error')
+    retryable: bool = Field(..., title='Retryable')
+    started_at: str | None = Field(..., title='Started At')
+    completed_at: str | None = Field(..., title='Completed At')
+    retry_count: int = Field(..., title='Retry Count')
+    max_retries: int = Field(..., title='Max Retries')
+
+
 class ROIAnalysisRequest(BaseModel):
     """
     Quick ROI analysis request.
     """
 
-    prospect_id: str = Field(
-        ..., description='Prospect identifier', title='Prospect Id'
+    prospect_id: str | None = Field(
+        None, description='Prospect identifier', title='Prospect Id'
     )
-    value_driver_ids: list[str] = Field(
-        ..., description='Value drivers to calculate', title='Value Driver Ids'
+    value_driver_ids: list[str] | None = Field(
+        None, description='Value drivers to calculate', title='Value Driver Ids'
     )
     prospect_data: dict[str, float] | None = Field(
         None, description='Prospect-specific variables', title='Prospect Data'
     )
     industry_vertical: str | None = Field(None, title='Industry Vertical')
     company_size: str | None = Field(None, title='Company Size')
+    account_id: str | None = Field(None, title='Account Id')
+    variables: dict[str, float] | None = Field(None, title='Variables')
+    formula_id: str | None = Field(None, title='Formula Id')
 
 
 class ROIAnalysisResponse(BaseModel):
@@ -601,15 +1601,110 @@ class ROIAnalysisResponse(BaseModel):
     )
 
 
+class RankHypothesesRequest(BaseModel):
+    """
+    Request to re-rank hypotheses.
+    """
+
+    hypothesis_ids: list[str] = Field(
+        ..., max_length=200, min_length=1, title='Hypothesis Ids'
+    )
+    strategy: str | None = Field(
+        'balanced', description='Ranking strategy', title='Strategy'
+    )
+
+
+class RegenerateBusinessCaseRequest(BaseModel):
+    """
+    Regenerate request with lineage to an existing case.
+    """
+
+    account_id: UUID = Field(
+        ..., description='Account UUID identifier', title='Account Id'
+    )
+    opportunity_id: str | None = Field(None, title='Opportunity Id')
+    sections: list[str] | None = Field(None, title='Sections')
+    output_format: str | None = Field(
+        'pdf', description='Output format (pdf, docx, html)', title='Output Format'
+    )
+    custom_inputs: dict[str, Any] | None = Field(
+        None,
+        description='Optional custom inputs, including truth_requirements and organization_id',
+        title='Custom Inputs',
+    )
+    previous_case_id: str = Field(
+        ..., description='Existing case id being regenerated', title='Previous Case Id'
+    )
+
+
+class RegisterTenantResponse(BaseModel):
+    """
+    Response from tenant registration.
+    """
+
+    message: str = Field(..., title='Message')
+    tenant_id: str = Field(..., title='Tenant Id')
+    verification_required: bool = Field(..., title='Verification Required')
+
+
+class Permissions1(RootModel[list[Permission | str]]):
+    root: list[Permission | str] = Field(..., title='Permissions')
+
+
+class RequestContext(BaseModel):
+    """
+    Identity context carried by a single request.
+
+    ``RequestContext`` is deliberately shared by L1-L5 governance code.  It
+    preserves tenant scoping and trace propagation while supporting legacy
+    callers that still pass ``source`` and newer middleware that passes the
+    explicit ``auth_source`` field.
+    """
+
+    tenant_id: UUID | str | None = Field(None, title='Tenant Id')
+    user_id: Any = Field(None, title='User Id')
+    roles: list[str] | None = Field(None, title='Roles')
+    api_key_id: str | None = Field(None, title='Api Key Id')
+    permissions: Permissions1 | list[Permission | str] | None = Field(
+        None, title='Permissions'
+    )
+    source: str | None = Field('jwt_claim', title='Source')
+    raw: dict[str, Any] | None = Field(None, title='Raw')
+    auth_source: str | None = Field(None, title='Auth Source')
+    request_id: str | None = Field(None, title='Request Id')
+    org_id: Any = Field(None, title='Org Id')
+    workspace_id: Any = Field(None, title='Workspace Id')
+    tenant_role: str | None = Field(None, title='Tenant Role')
+    isolation_tier: str | None = Field('shared', title='Isolation Tier')
+    service_account_id: str | None = Field(None, title='Service Account Id')
+    service_account_scopes: list[str] | None = Field(
+        None, title='Service Account Scopes'
+    )
+    accessed_tenant_ids: list[str] | None = Field(None, title='Accessed Tenant Ids')
+    privileged_session_start: float | None = Field(
+        None, title='Privileged Session Start'
+    )
+    impersonator_id: str | None = Field(None, title='Impersonator Id')
+    field_locked: bool | None = Field(False, alias='_locked', title='Locked')
+
+
+class RequestSummary(BaseModel):
+    request_id: str | None = Field(..., title='Request Id')
+    auth_source: str = Field(..., title='Auth Source')
+    isolation_tier: str = Field(..., title='Isolation Tier')
+
+
 class ResumeFromCheckpointRequest(BaseModel):
     """
     Request to resume from a specific checkpoint.
     """
 
+    model_config = ConfigDict(
+        extra='forbid',
+    )
     checkpoint_id: str = Field(
         ..., description='Checkpoint to resume from', title='Checkpoint Id'
     )
-    user_id: str = Field(..., description='User initiating resume', title='User Id')
     resume_data: dict[str, Any] | None = Field(
         None,
         description='Optional modifications to state before resume',
@@ -634,6 +1729,49 @@ class ResumeFromCheckpointResponse(BaseModel):
     message: str = Field(..., title='Message')
 
 
+class RetryProvisioningResponse(BaseModel):
+    """
+    Response from retry provisioning request.
+    """
+
+    message: str = Field(..., title='Message')
+    tenant_id: str = Field(..., title='Tenant Id')
+    status: str = Field(..., title='Status')
+
+
+class Status1(Enum):
+    submitted = 'submitted'
+    in_review = 'in_review'
+    approved = 'approved'
+    changes_requested = 'changes_requested'
+    rejected = 'rejected'
+
+
+class SubjectType(Enum):
+    business_case = 'business_case'
+    value_model = 'value_model'
+
+
+class ReviewRequest(BaseModel):
+    review_id: str = Field(..., title='Review Id')
+    status: Status1 = Field(..., title='Status')
+    subject_type: SubjectType = Field(..., title='Subject Type')
+    submitted_at: AwareDatetime = Field(..., title='Submitted At')
+    lineage: LineageRef
+    immutable_audit_hash: str | None = Field(None, title='Immutable Audit Hash')
+
+
+class ReviewStatus(Enum):
+    """
+    Human review state of an extraction record.
+    """
+
+    pending = 'pending'
+    accepted = 'accepted'
+    rejected = 'rejected'
+    modified = 'modified'
+
+
 class Role(Enum):
     """
     Business roles used across all layers.
@@ -650,6 +1788,139 @@ class Role(Enum):
     analyst = 'analyst'
     read_only = 'read_only'
     system = 'system'
+
+
+class SalesforceOAuthAuthorizeRequest(BaseModel):
+    """
+    Request to start Salesforce OAuth.
+    """
+
+    return_to: str | None = Field(
+        '/context/integrations?provider=salesforce',
+        description='Relative frontend path to return to after OAuth completes',
+        title='Return To',
+    )
+
+
+class SalesforceOAuthAuthorizeResponse(BaseModel):
+    authorization_url: str = Field(..., title='Authorization Url')
+    authorize_url: str | None = Field(
+        None, description='Deprecated compatibility alias', title='Authorize Url'
+    )
+    state_expires_at: str = Field(..., title='State Expires At')
+
+
+class SaveScenarioRequest(BaseModel):
+    """
+    Persist a business-case what-if scenario.
+    """
+
+    name: str = Field(..., max_length=120, min_length=1, title='Name')
+    adjustments: list[dict[str, Any]] | None = Field(
+        None, max_length=100, title='Adjustments'
+    )
+
+
+class SavedScenarioDetail(BaseModel):
+    """
+    Full server-side scenario payload.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    created_at: str = Field(..., title='Created At')
+    adjustments: list[dict[str, Any]] = Field(..., title='Adjustments')
+
+
+class SavedScenarioSummary(BaseModel):
+    """
+    Safe scenario metadata returned to the frontend.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    created_at: str = Field(..., title='Created At')
+
+
+class SignalListResponse(BaseModel):
+    """
+    Response with list of signals for an account.
+    """
+
+    account_id: str = Field(..., description='Account identifier', title='Account Id')
+    signals: list[dict[str, Any]] | None = Field(
+        None, description='Signals', title='Signals'
+    )
+    total_count: int = Field(
+        ..., description='Total number of signals', title='Total Count'
+    )
+    category_filter: str | None = Field(
+        None, description='Applied category filter', title='Category Filter'
+    )
+
+
+class SignalReviewRequest(BaseModel):
+    """
+    Request payload for reviewing a signal.
+    """
+
+    account_id: str = Field(
+        ..., description='Account identifier for scope validation', title='Account Id'
+    )
+    review_status: str = Field(
+        ...,
+        description='Review decision status: approved|rejected',
+        title='Review Status',
+    )
+    decision_note: str | None = Field(
+        None, description='Optional reviewer rationale', title='Decision Note'
+    )
+
+
+class SignalReviewResponse(BaseModel):
+    """
+    Response payload for signal review mutations.
+    """
+
+    signal_id: str = Field(..., title='Signal Id')
+    account_id: str = Field(..., title='Account Id')
+    review_status: str = Field(..., title='Review Status')
+    reviewed_by: str = Field(..., title='Reviewed By')
+    reviewed_at: str = Field(..., title='Reviewed At')
+    decision_note: str | None = Field(None, title='Decision Note')
+
+
+class SourceType(Enum):
+    """
+    Origin of a knowledge source.
+    """
+
+    website = 'website'
+    icp = 'icp'
+    upload = 'upload'
+    manual = 'manual'
+
+
+class StartAnalysisRequest(BaseModel):
+    """
+    Request to start prospect analysis workflow.
+
+    Creates or updates prospect record and triggers intelligence workflow.
+    """
+
+    prospect_id: str | None = Field(
+        None, description='Existing prospect ID (if updating)', title='Prospect Id'
+    )
+    setup_data: ProspectSetupData = Field(..., description='Prospect setup form data')
+    workflow_type: str | None = Field(
+        'prospect_analysis',
+        description='Type of workflow to trigger',
+        examples=['prospect_analysis', 'whitespace_analysis', 'business_case'],
+        title='Workflow Type',
+    )
+    priority: str | None = Field(
+        'NORMAL', description='Workflow priority', title='Priority'
+    )
 
 
 class StateDiffRequest(BaseModel):
@@ -766,6 +2037,33 @@ class StateValueResponse(BaseModel):
     )
 
 
+class StatusChangeRequest(BaseModel):
+    """
+    Request body for tenant status change endpoints.
+    """
+
+    reason: str | None = Field(
+        None, description='Human-readable reason for the status change', title='Reason'
+    )
+    changed_by: str | None = Field(
+        None,
+        description='User ID or service name initiating the change',
+        title='Changed By',
+    )
+
+
+class StatusUpdateRequest(BaseModel):
+    """
+    Request to update narrative status.
+    """
+
+    status: str = Field(
+        ...,
+        description='New status: draft, review, approved, delivered',
+        title='Status',
+    )
+
+
 class SyncAccountsRequest(BaseModel):
     """
     Manual sync trigger request.
@@ -833,8 +2131,16 @@ class SyncTriggerResponse(BaseModel):
     """
 
     sync_id: str = Field(..., title='Sync Id')
+    job_id: str = Field(..., title='Job Id')
     status: str = Field(..., title='Status')
     provider: str = Field(..., title='Provider')
+    queued_at: str | None = Field(None, title='Queued At')
+
+
+class TaskStatus(Enum):
+    open = 'open'
+    in_progress = 'in_progress'
+    completed = 'completed'
 
 
 class TenantCreateRequest(BaseModel):
@@ -853,6 +2159,17 @@ class TenantCreateRequest(BaseModel):
     settings: dict[str, Any] | None = Field(None, title='Settings')
 
 
+class TenantSettingsUpdateResponse(BaseModel):
+    """
+    Tenant settings update response.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    settings: dict[str, Any] = Field(..., title='Settings')
+    updated_at: str = Field(..., title='Updated At')
+
+
 class TenantStatus(Enum):
     """
     Lifecycle status of a tenant.
@@ -861,6 +2178,15 @@ class TenantStatus(Enum):
     active = 'active'
     suspended = 'suspended'
     deleted = 'deleted'
+
+
+class TenantSummary(BaseModel):
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    slug: str = Field(..., title='Slug')
+    status: str = Field(..., title='Status')
+    tier_id: str = Field(..., title='Tier Id')
+    settings: dict[str, Any] = Field(..., title='Settings')
 
 
 class Name(RootModel[str]):
@@ -875,6 +2201,52 @@ class TenantUpdateRequest(BaseModel):
     name: Name | None = Field(None, title='Name')
     status: TenantStatus | None = None
     settings: dict[str, Any] | None = Field(None, title='Settings')
+
+
+class TenantUserInfo(BaseModel):
+    """
+    User information for tenant listing.
+    """
+
+    id: str = Field(..., title='Id')
+    email: str = Field(..., title='Email')
+    role: str = Field(..., title='Role')
+    created_at: str = Field(..., title='Created At')
+    last_login: str | None = Field(..., title='Last Login')
+
+
+class TierInfo(BaseModel):
+    """
+    Tier information for public listing.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    description: str = Field(..., title='Description')
+    limits: dict[str, Any] = Field(..., title='Limits')
+    features: dict[str, Any] = Field(..., title='Features')
+
+
+class ToolCategory(Enum):
+    """
+    Categories of tools.
+    """
+
+    knowledge = 'knowledge'
+    calculation = 'calculation'
+    crm = 'crm'
+    generation = 'generation'
+    integration = 'integration'
+    utility = 'utility'
+
+
+class ToolCategoryItem(BaseModel):
+    """
+    Single tool category metadata item.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
 
 
 class ToolInvokeRequest(BaseModel):
@@ -911,6 +2283,49 @@ class ToolListResponse(BaseModel):
     requires_auth: bool = Field(..., title='Requires Auth')
 
 
+class ToolSchemaExample(BaseModel):
+    """
+    Single tool example preserving arbitrary JSON-shaped payloads.
+    """
+
+    input: dict[str, Any] | None = Field(None, title='Input')
+    output: dict[str, Any] | None = Field(None, title='Output')
+
+
+class ToolSchemaResponse(BaseModel):
+    """
+    Typed response model for a single tool schema.
+    """
+
+    name: str = Field(..., title='Name')
+    category: ToolCategory
+    description: str = Field(..., title='Description')
+    input_schema: dict[str, Any] | None = Field(None, title='Input Schema')
+    output_schema: dict[str, Any] | None = Field(None, title='Output Schema')
+    examples: list[ToolSchemaExample] | None = Field(None, title='Examples')
+    timeout_seconds: int = Field(..., title='Timeout Seconds')
+    requires_auth: bool = Field(..., title='Requires Auth')
+
+
+class UpdateTaskRequest(BaseModel):
+    status: TaskStatus | None = None
+    assignee: Assignee | None = Field(None, title='Assignee')
+    due_date: str | None = Field(None, title='Due Date')
+    stage: Stage1 | None = Field(None, title='Stage')
+
+
+class UsageMetricsResponse(BaseModel):
+    """
+    Usage metrics response.
+    """
+
+    tenant_id: str = Field(..., title='Tenant Id')
+    period: dict[str, Any] = Field(..., title='Period')
+    api_calls: dict[str, Any] = Field(..., title='Api Calls')
+    agent_executions: dict[str, Any] = Field(..., title='Agent Executions')
+    llm_usage: dict[str, Any] = Field(..., title='Llm Usage')
+
+
 class UserInviteRequest(BaseModel):
     """
     Invite a new user to the tenant (tenant_admin only).
@@ -941,12 +2356,167 @@ class UserUpdateRequest(BaseModel):
     status: UserStatus | None = None
 
 
+class ValidateHypothesisRequest(BaseModel):
+    """
+    Request to validate or reject a hypothesis.
+    """
+
+    feedback: str = Field(..., max_length=2000, min_length=1, title='Feedback')
+    new_status: str | None = Field(
+        None,
+        description='New status: validated, rejected, or converted',
+        title='New Status',
+    )
+    confidence_adjustment: float | None = Field(
+        0.0,
+        description='Additive confidence adjustment',
+        ge=-1.0,
+        le=1.0,
+        title='Confidence Adjustment',
+    )
+
+
+class ValidateSlugResponse(BaseModel):
+    """
+    Response for slug validation.
+    """
+
+    slug: str = Field(..., title='Slug')
+    available: bool = Field(..., title='Available')
+
+
+class ValidateTruthRequest(BaseModel):
+    action: str = Field(..., title='Action')
+    actor: str = Field(..., title='Actor')
+    actor_type: str | None = Field('user', title='Actor Type')
+    notes: str | None = Field(None, title='Notes')
+
+
 class ValidationError(BaseModel):
     loc: list[str | int] = Field(..., title='Location')
     msg: str = Field(..., title='Message')
     type: str = Field(..., title='Error Type')
     input: Any | None = Field(None, title='Input')
     ctx: dict[str, Any] | None = Field(None, title='Context')
+
+
+class ValidationSeededApiKey(BaseModel):
+    """
+    Pre-hashed API key metadata for deterministic non-production validation.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    key_id: str = Field(..., max_length=64, min_length=3, title='Key Id')
+    name: str | None = Field(
+        'E2E backend-integrated validation service key',
+        max_length=100,
+        min_length=1,
+        title='Name',
+    )
+    key_hash: str = Field(..., pattern='^[a-f0-9]{64}$', title='Key Hash')
+    prefix: str = Field(..., max_length=16, min_length=4, title='Prefix')
+    role: str | None = Field('system', max_length=30, min_length=1, title='Role')
+    permissions: list[str] | None = Field(None, title='Permissions')
+    metadata: dict[str, Any] | None = Field(None, title='Metadata')
+
+
+class ValidationSessionRequest(BaseModel):
+    """
+    Non-production browser session payload for backend-integrated Playwright validation.
+    """
+
+    user_id: str | None = Field('e2e-admin-user', min_length=1, title='User Id')
+    email: str | None = Field('e2e@valuefabric.test', min_length=3, title='Email')
+    role: str | None = Field('admin', min_length=1, title='Role')
+    tenant_slug: str | None = Field('e2e-test', min_length=1, title='Tenant Slug')
+    expires_in_seconds: int | None = Field(
+        3600, ge=60, le=86400, title='Expires In Seconds'
+    )
+
+
+class ValueExtractionRecordResponse(BaseModel):
+    """
+    Extraction record in API responses.
+    """
+
+    id: UUID = Field(..., title='Id')
+    source_id: UUID = Field(..., title='Source Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    profile_id: UUID = Field(..., title='Profile Id')
+    page_type: PageType | None = None
+    extracted: dict[str, Any] = Field(..., title='Extracted')
+    confidence: Confidence | None = Field(None, title='Confidence')
+    requires_review: bool = Field(..., title='Requires Review')
+    review_status: ReviewStatus
+    reviewed_by: UUID | None = Field(None, title='Reviewed By')
+    reviewed_at: AwareDatetime | None = Field(None, title='Reviewed At')
+    extraction_version: str | None = Field(None, title='Extraction Version')
+    llm_model: str | None = Field(None, title='Llm Model')
+    trace_span_id: str | None = Field(None, title='Trace Span Id')
+    created_at: AwareDatetime = Field(..., title='Created At')
+    updated_at: AwareDatetime = Field(..., title='Updated At')
+
+
+class ValueExtractionReviewRequest(BaseModel):
+    """
+    Request to review an extraction record.
+    """
+
+    action: ReviewStatus = Field(..., description='accepted | rejected | modified')
+    user_edits: dict[str, Any] | None = Field(
+        None,
+        description='Modified extracted fields when action=modified',
+        title='User Edits',
+    )
+    notes: str | None = Field(None, title='Notes')
+
+
+class VerifyEmailRequest(BaseModel):
+    """
+    Request to verify email address.
+    """
+
+    token: str = Field(..., title='Token')
+
+
+class VerifyEmailResponse(BaseModel):
+    """
+    Response from email verification.
+    """
+
+    message: str = Field(..., title='Message')
+    tenant_id: str = Field(..., title='Tenant Id')
+    status: str = Field(..., title='Status')
+
+
+class VersionDiff(BaseModel):
+    version_id: str = Field(..., title='Version Id')
+    compare_to_version_id: str = Field(..., title='Compare To Version Id')
+    changed_fields: list[str] = Field(..., title='Changed Fields')
+    change_count: int = Field(..., title='Change Count')
+    lineage: LineageRef
+
+
+class VersionStatus(Enum):
+    active = 'active'
+    superseded = 'superseded'
+
+
+class ObjectType(Enum):
+    business_case = 'business_case'
+    value_model = 'value_model'
+
+
+class VersionRecord(BaseModel):
+    version_id: str = Field(..., title='Version Id')
+    version_status: VersionStatus = Field(..., title='Version Status')
+    lineage: LineageRef
+    created_at: AwareDatetime = Field(..., title='Created At')
+    object_type: ObjectType | None = Field('business_case', title='Object Type')
+    snapshot: dict[str, Any] | None = Field(None, title='Snapshot')
+    immutable_audit_hash: str | None = Field(None, title='Immutable Audit Hash')
 
 
 class WebSocketStatusResponse(BaseModel):
@@ -968,6 +2538,17 @@ class WebSocketStatusResponse(BaseModel):
     connection_quality: str = Field(
         ..., description='excellent, good, fair, or poor', title='Connection Quality'
     )
+
+
+class WebhookProvisioningResponse(BaseModel):
+    """
+    Response from webhook provisioning request.
+    """
+
+    message: str = Field(..., title='Message')
+    tenant_id: str = Field(..., title='Tenant Id')
+    status: str = Field(..., title='Status')
+    webhook_id: str | None = Field(None, title='Webhook Id')
 
 
 class WhitespaceAnalysisRequest(BaseModel):
@@ -1008,9 +2589,10 @@ class WorkflowType(Enum):
     Type of workflow to run
     """
 
+    business_case_generation = 'business_case_generation'
+    business_case = 'business_case'
     roi_calculator = 'roi_calculator'
     whitespace_analysis = 'whitespace_analysis'
-    business_case = 'business_case'
     orchestrator = 'orchestrator'
 
 
@@ -1043,6 +2625,34 @@ class WorkflowInputs(BaseModel):
     custom_data: dict[str, Any] | None = Field(None, title='Custom Data')
 
 
+class Status2(Enum):
+    pending = 'pending'
+    running = 'running'
+    paused = 'paused'
+    interrupted = 'interrupted'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
+
+
+class WorkflowListItem(BaseModel):
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    workflow_type: str = Field(..., title='Workflow Type')
+    status: Status2 = Field(..., title='Status')
+    progress: float | None = Field(0.0, ge=0.0, le=100.0, title='Progress')
+    created_at: str | None = Field(None, title='Created At')
+    updated_at: str | None = Field(None, title='Updated At')
+
+
+class WorkflowListResponse(BaseModel):
+    items: list[WorkflowListItem] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
+    limit: int = Field(..., title='Limit')
+    offset: int = Field(..., title='Offset')
+    has_more: bool = Field(..., title='Has More')
+
+
 class WorkflowPauseRequest(BaseModel):
     """
     Request to pause a running workflow.
@@ -1067,6 +2677,43 @@ class WorkflowPauseResponse(BaseModel):
         None, description='Current node when paused', title='Current Node'
     )
     message: str = Field(..., title='Message')
+
+
+class WorkflowProgressActionableState(BaseModel):
+    """
+    Actionable next state for UI guidance.
+    """
+
+    can_retry: bool | None = Field(False, title='Can Retry')
+    can_resume: bool | None = Field(False, title='Can Resume')
+    can_cancel: bool | None = Field(False, title='Can Cancel')
+    requires_user_action: bool | None = Field(False, title='Requires User Action')
+    next_action: str | None = Field(None, title='Next Action')
+
+
+class Status3(Enum):
+    pending = 'pending'
+    running = 'running'
+    paused = 'paused'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
+    unknown = 'unknown'
+
+
+class WorkflowProgressSchema(BaseModel):
+    """
+    Frontend-facing normalized progress model shared by polling/streaming.
+    """
+
+    step_id: str | None = Field(None, title='Step Id')
+    status: Status3 = Field(..., title='Status')
+    percent: float | None = Field(0.0, ge=0.0, le=100.0, title='Percent')
+    message: str = Field(..., title='Message')
+    started_at: str | None = Field(None, title='Started At')
+    updated_at: str = Field(..., title='Updated At')
+    completed_at: str | None = Field(None, title='Completed At')
+    actionable_next_state: WorkflowProgressActionableState
 
 
 class WorkflowResumeRequest(BaseModel):
@@ -1102,6 +2749,27 @@ class WorkflowResumeResponse(BaseModel):
     )
 
 
+class WorkflowStartStatus(Enum):
+    """
+    Status of workflow start operation.
+    """
+
+    started = 'started'
+    pending = 'pending'
+    degraded = 'degraded'
+    failed = 'failed'
+
+
+class Status4(Enum):
+    pending = 'pending'
+    running = 'running'
+    paused = 'paused'
+    interrupted = 'interrupted'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
+
+
 class WorkflowStatusResponse(BaseModel):
     """
     Workflow status response - OpenAPI spec compliant.
@@ -1117,14 +2785,12 @@ class WorkflowStatusResponse(BaseModel):
     - results: object
     """
 
-    workflow_instance_id: str = Field(..., title='Workflow Instance Id')
+    id: str = Field(..., title='Id')
     workflow_type: str = Field(..., title='Workflow Type')
-    status: str = Field(..., title='Status')
+    status: Status4 = Field(..., title='Status')
     current_state: str | None = Field(None, title='Current State')
     current_node: str | None = Field(None, title='Current Node')
-    progress_percentage: float | None = Field(
-        0.0, ge=0.0, le=100.0, title='Progress Percentage'
-    )
+    progress: float | None = Field(0.0, ge=0.0, le=100.0, title='Progress')
     started_at: str | None = Field(None, title='Started At')
     completed_at: str | None = Field(None, title='Completed At')
     error_count: int | None = Field(0, title='Error Count')
@@ -1134,6 +2800,150 @@ class WorkflowStatusResponse(BaseModel):
     user_id: str | None = Field(None, title='User Id')
     priority: int | None = Field(None, title='Priority')
     scheduler_status: str | None = Field(None, title='Scheduler Status')
+    progress_meta: WorkflowProgressSchema | None = None
+
+
+class WorkspaceEvidenceItem(BaseModel):
+    id: str = Field(..., title='Id')
+    title: str = Field(..., title='Title')
+    type: str | None = Field('evidence', title='Type')
+    source: str | None = Field('Unknown', title='Source')
+    match_score: int | None = Field(0, alias='matchScore', title='Matchscore')
+    verification: str | None = Field('unverified', title='Verification')
+    linked_signals: list[str] | None = Field(
+        None, alias='linkedSignals', title='Linkedsignals'
+    )
+    excerpt: str | None = Field('', title='Excerpt')
+    decision_status: str | None = Field(None, title='Decision Status')
+    attached_driver_id: str | None = Field(None, title='Attached Driver Id')
+    provenance_id: str | None = Field(None, title='Provenance Id')
+    confidence: float | None = Field(None, title='Confidence')
+    decision_note: str | None = Field(None, title='Decision Note')
+
+
+class WorkspaceEvidenceResponse(BaseModel):
+    evidence: list[WorkspaceEvidenceItem] | None = Field(None, title='Evidence')
+
+
+class ConvertHypothesisResult(BaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    hypothesis_id: str = Field(..., title='Hypothesis Id')
+    account_id: str = Field(..., title='Account Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    evidence_ids: list[str] = Field(..., title='Evidence Ids')
+    value_model_id: str | None = Field(None, title='Value Model Id')
+    tree_id: str | None = Field(None, title='Tree Id')
+    status: str = Field(..., title='Status')
+
+
+class Layer4AgentsApiRoutesAuditAuditLogResponse(BaseModel):
+    """
+    Audit log query response.
+    """
+
+    entries: list[AuditLogEntry] = Field(..., title='Entries')
+    total: int = Field(..., title='Total')
+    page: int = Field(..., title='Page')
+    per_page: int = Field(..., title='Per Page')
+
+
+class Layer4AgentsApiRoutesFrontendCompatRegisterTenantRequest(BaseModel):
+    """
+    Request to register a new tenant.
+    """
+
+    name: str = Field(..., title='Name')
+    slug: str = Field(..., title='Slug')
+    admin_email: str = Field(..., title='Admin Email')
+    tier_id: str | None = Field('free', title='Tier Id')
+    organization_name: str | None = Field(None, title='Organization Name')
+    phone: str | None = Field(None, title='Phone')
+
+
+class Layer4AgentsApiRoutesFrontendCompatTenantSettingsResponse(BaseModel):
+    """
+    Tenant settings response.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    slug: str = Field(..., title='Slug')
+    status: str = Field(..., title='Status')
+    tier_id: str = Field(..., title='Tier Id')
+    settings: dict[str, Any] = Field(..., title='Settings')
+    created_at: str = Field(..., title='Created At')
+
+
+class Layer4AgentsApiRoutesFrontendCompatTenantSettingsUpdate(BaseModel):
+    """
+    Update tenant settings.
+    """
+
+    settings: dict[str, Any] | None = Field(None, title='Settings')
+
+
+class Layer4AgentsTenantsApiRoutesAdminAuditLogResponse(BaseModel):
+    """
+    Audit log response.
+    """
+
+    events: list[AuditEventInfo] = Field(..., title='Events')
+    total: int = Field(..., title='Total')
+    limit: int = Field(..., title='Limit')
+    offset: int = Field(..., title='Offset')
+
+
+class Layer4AgentsTenantsApiRoutesAdminTenantSettingsResponse(BaseModel):
+    """
+    Tenant settings response.
+    """
+
+    id: str = Field(..., title='Id')
+    name: str = Field(..., title='Name')
+    slug: str = Field(..., title='Slug')
+    status: str = Field(..., title='Status')
+    tier_id: str = Field(..., title='Tier Id')
+    settings: dict[str, Any] = Field(..., title='Settings')
+    created_at: str = Field(..., title='Created At')
+    updated_at: str = Field(..., title='Updated At')
+
+
+class Layer4AgentsTenantsApiRoutesAdminTenantSettingsUpdate(BaseModel):
+    """
+    Update tenant settings.
+    """
+
+    name: str | None = Field(None, title='Name')
+    settings: dict[str, Any] | None = Field(None, title='Settings')
+
+
+class Layer4AgentsTenantsApiRoutesRegistrationRegisterTenantRequest(BaseModel):
+    """
+    Request to register a new tenant.
+    """
+
+    name: str = Field(..., max_length=200, min_length=2, title='Name')
+    slug: str = Field(..., max_length=63, min_length=2, title='Slug')
+    admin_email: EmailStr = Field(..., title='Admin Email')
+    tier_id: str | None = Field('free', title='Tier Id')
+    organization_name: str | None = Field(None, title='Organization Name')
+    phone: str | None = Field(None, title='Phone')
+
+
+class ErrorResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    message: str = Field(..., description='Human-readable error message')
+    code: str = Field(..., description='Machine-readable error code', min_length=1)
+    trace_id: str = Field(
+        ..., description='Request trace ID for support correlation', min_length=1
+    )
+    details: dict[str, Any] | None = Field(
+        None, description='Optional sanitized error details'
+    )
 
 
 class Permissions(RootModel[list[Permission]]):
@@ -1333,8 +3143,233 @@ class AccountSearchRequest(BaseModel):
     sort_order: str | None = Field('desc', pattern='^(asc|desc)$', title='Sort Order')
 
 
-class HTTPValidationError(BaseModel):
-    detail: list[ValidationError] | None = Field(None, title='Detail')
+class ApprovalDecision(BaseModel):
+    decision_id: str = Field(..., title='Decision Id')
+    review_id: str = Field(..., title='Review Id')
+    decision: Decision = Field(..., title='Decision')
+    immutable_audit_hash: str = Field(..., title='Immutable Audit Hash')
+    decided_at: AwareDatetime = Field(..., title='Decided At')
+    lineage: LineageRef
+
+
+class AuditExportJob(BaseModel):
+    audit_export_id: str = Field(..., title='Audit Export Id')
+    review_id: str = Field(..., title='Review Id')
+    status: Status = Field(..., title='Status')
+    reason: str | None = Field(None, title='Reason')
+    lineage: LineageRef
+    created_at: AwareDatetime = Field(..., title='Created At')
+    immutable_audit_hash: str = Field(..., title='Immutable Audit Hash')
+
+
+class BodyApiActivateTenantV1TenantsTenantIdActivatePost(BaseModel):
+    body: StatusChangeRequest | None = None
+    context: RequestContext | None = None
+
+
+class BodyApiChangeTenantStatusV1TenantsTenantIdStatusPost(BaseModel):
+    body: StatusChangeRequest | None = None
+    context: RequestContext | None = None
+
+
+class BodyApiCreateKeyV1ApiKeysPost(BaseModel):
+    request: APIKeyCreateRequest
+    context: RequestContext | None = None
+
+
+class BodyApiCreateTenantV1TenantsPost(BaseModel):
+    request: TenantCreateRequest
+    context: RequestContext | None = None
+
+
+class BodyApiInviteUserV1UsersInvitePost(BaseModel):
+    request: UserInviteRequest
+    context: RequestContext | None = None
+
+
+class BodyApiPromoteModelV1ModelsModelIdPromotePost(BaseModel):
+    request: ModelPromoteRequest
+    context: RequestContext | None = None
+
+
+class BodyApiRecordEvalRunV1ModelsEvalRunPost(BaseModel):
+    request: EvalRunRequest
+    context: RequestContext | None = None
+
+
+class BodyApiRegisterModelV1ModelsPost(BaseModel):
+    request: ModelRegisterRequest
+    context: RequestContext | None = None
+
+
+class BodyApiSuspendTenantV1TenantsTenantIdSuspendPost(BaseModel):
+    body: StatusChangeRequest | None = None
+    context: RequestContext | None = None
+
+
+class BodyApiUpdateTenantV1TenantsTenantIdPatch(BaseModel):
+    request: TenantUpdateRequest
+    context: RequestContext | None = None
+
+
+class BodyApiUpdateUserV1UsersUserIdPatch(BaseModel):
+    request: UserUpdateRequest
+    context: RequestContext | None = None
+
+
+class BodyUpdateTenantSettingsV1TenantsTenantIdSettingsPatch(BaseModel):
+    update: Layer4AgentsTenantsApiRoutesAdminTenantSettingsUpdate
+    context: RequestContext | None = None
+
+
+class BodyUpsertFeatureFlagV1FeatureFlagsFlagKeyPut(BaseModel):
+    request: FeatureFlagUpsertRequest
+    context: RequestContext | None = None
+
+
+class BuyerRoleInferenceResult(BaseModel):
+    """
+    Result of buyer role inference (never fabricated).
+    """
+
+    status: BuyerRoleInferenceStatus
+    role: str | None = Field(None, title='Role')
+    confidence: float | None = Field(None, title='Confidence')
+    source: str | None = Field(None, title='Source')
+
+
+class CRMSyncJobListResponse(BaseModel):
+    jobs: list[CRMSyncJobResponse] = Field(..., title='Jobs')
+
+
+class CommentListResponse(BaseModel):
+    items: list[CommentRecord] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
+
+
+class CompanyKnowledgeProfileResponse(BaseModel):
+    """
+    Full company knowledge profile response.
+    """
+
+    id: UUID = Field(..., title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    company_name: str = Field(..., title='Company Name')
+    website: str | None = Field(None, title='Website')
+    status: ProfileStatus
+    version: int = Field(..., title='Version')
+    confidence_score: ConfidenceScore | None = Field(None, title='Confidence Score')
+    identity: dict[str, Any] | None = Field(None, title='Identity')
+    product_catalog: dict[str, Any] | None = Field(None, title='Product Catalog')
+    target_customer: dict[str, Any] | None = Field(None, title='Target Customer')
+    personas: dict[str, Any] | None = Field(None, title='Personas')
+    use_cases: dict[str, Any] | None = Field(None, title='Use Cases')
+    value_drivers: dict[str, Any] | None = Field(None, title='Value Drivers')
+    proof_points: dict[str, Any] | None = Field(None, title='Proof Points')
+    trust_commercial: dict[str, Any] | None = Field(None, title='Trust Commercial')
+    active_source_ids: list[str] = Field(..., title='Active Source Ids')
+    review_status: dict[str, Any] | None = Field(None, title='Review Status')
+    created_at: AwareDatetime = Field(..., title='Created At')
+    updated_at: AwareDatetime = Field(..., title='Updated At')
+    approved_at: AwareDatetime | None = Field(None, title='Approved At')
+    approved_by: UUID | None = Field(None, title='Approved By')
+
+
+class CrmMatchResult(BaseModel):
+    """
+    Result of CRM opportunity matching (never fabricated).
+    """
+
+    status: CrmMatchStatus
+    opportunity_id: str | None = Field(None, title='Opportunity Id')
+    confidence: float | None = Field(None, title='Confidence')
+    source: str | None = Field(None, title='Source')
+
+
+class ICPProfileCreateRequest(BaseModel):
+    """
+    Request to create an ICP profile.
+    """
+
+    profile_id: UUID = Field(..., title='Profile Id')
+    industries: list[str] | None = Field(None, title='Industries')
+    company_size: list[str] | None = Field(None, title='Company Size')
+    buyer_personas: list[dict[str, Any]] | None = Field(None, title='Buyer Personas')
+    user_personas: list[dict[str, Any]] | None = Field(None, title='User Personas')
+    pain_points: list[str] | None = Field(None, title='Pain Points')
+    trigger_events: list[str] | None = Field(None, title='Trigger Events')
+    qualification_criteria: list[str] | None = Field(
+        None, title='Qualification Criteria'
+    )
+    disqualification_criteria: list[str] | None = Field(
+        None, title='Disqualification Criteria'
+    )
+    competitive_context: dict[str, Any] | None = Field(
+        None, title='Competitive Context'
+    )
+    buying_committee_structure: dict[str, Any] | None = Field(
+        None, title='Buying Committee Structure'
+    )
+    typical_sales_motion: str | None = Field(None, title='Typical Sales Motion')
+    confidence: Confidence | None = Field(None, title='Confidence')
+    source_type: ICPSourceType | None = 'manual'
+
+
+class ICPProfileResponse(BaseModel):
+    """
+    ICP profile in API responses.
+    """
+
+    id: UUID = Field(..., title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    profile_id: UUID = Field(..., title='Profile Id')
+    industries: list[str] = Field(..., title='Industries')
+    company_size: list[str] = Field(..., title='Company Size')
+    buyer_personas: list[dict[str, Any]] = Field(..., title='Buyer Personas')
+    user_personas: list[dict[str, Any]] = Field(..., title='User Personas')
+    pain_points: list[str] = Field(..., title='Pain Points')
+    trigger_events: list[str] = Field(..., title='Trigger Events')
+    qualification_criteria: list[str] = Field(..., title='Qualification Criteria')
+    disqualification_criteria: list[str] = Field(..., title='Disqualification Criteria')
+    competitive_context: dict[str, Any] | None = Field(
+        None, title='Competitive Context'
+    )
+    buying_committee_structure: dict[str, Any] | None = Field(
+        None, title='Buying Committee Structure'
+    )
+    typical_sales_motion: str | None = Field(None, title='Typical Sales Motion')
+    confidence: Confidence | None = Field(None, title='Confidence')
+    source_type: ICPSourceType
+    created_at: AwareDatetime = Field(..., title='Created At')
+    updated_at: AwareDatetime = Field(..., title='Updated At')
+
+
+class ICPProfileUpdateRequest(BaseModel):
+    """
+    Request to update an ICP profile.
+    """
+
+    industries: list[str] | None = Field(None, title='Industries')
+    company_size: list[str] | None = Field(None, title='Company Size')
+    buyer_personas: list[dict[str, Any]] | None = Field(None, title='Buyer Personas')
+    user_personas: list[dict[str, Any]] | None = Field(None, title='User Personas')
+    pain_points: list[str] | None = Field(None, title='Pain Points')
+    trigger_events: list[str] | None = Field(None, title='Trigger Events')
+    qualification_criteria: list[str] | None = Field(
+        None, title='Qualification Criteria'
+    )
+    disqualification_criteria: list[str] | None = Field(
+        None, title='Disqualification Criteria'
+    )
+    competitive_context: dict[str, Any] | None = Field(
+        None, title='Competitive Context'
+    )
+    buying_committee_structure: dict[str, Any] | None = Field(
+        None, title='Buying Committee Structure'
+    )
+    typical_sales_motion: str | None = Field(None, title='Typical Sales Motion')
+    confidence: Confidence | None = Field(None, title='Confidence')
+    source_type: ICPSourceType | None = None
 
 
 class IntegrationListResponse(BaseModel):
@@ -1345,6 +3380,119 @@ class IntegrationListResponse(BaseModel):
     integrations: list[IntegrationStatusResponse] = Field(..., title='Integrations')
 
 
+class KnowledgeSourceCreateRequest(BaseModel):
+    """
+    Request to add a new knowledge source.
+    """
+
+    profile_id: UUID = Field(..., title='Profile Id')
+    source_type: SourceType
+    source_url: str | None = Field(None, title='Source Url')
+    document_name: str | None = Field(None, title='Document Name')
+    content_hash: str | None = Field(None, title='Content Hash')
+    raw_storage_path: str | None = Field(None, title='Raw Storage Path')
+    authority_weight: AuthorityWeight | None = 'medium'
+    page_type: PageType | None = None
+    extra_metadata: dict[str, Any] | None = Field(None, title='Extra Metadata')
+
+
+class KnowledgeSourceResponse(BaseModel):
+    """
+    Knowledge source item in API responses.
+    """
+
+    id: UUID = Field(..., title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    profile_id: UUID = Field(..., title='Profile Id')
+    source_type: SourceType
+    source_url: str | None = Field(None, title='Source Url')
+    document_name: str | None = Field(None, title='Document Name')
+    content_hash: str | None = Field(None, title='Content Hash')
+    raw_storage_path: str | None = Field(None, title='Raw Storage Path')
+    crawl_status: CrawlStatus
+    authority_weight: AuthorityWeight
+    page_type: PageType | None = None
+    extra_metadata: dict[str, Any] = Field(..., title='Extra Metadata')
+    created_at: AwareDatetime = Field(..., title='Created At')
+    updated_at: AwareDatetime = Field(..., title='Updated At')
+
+
+class LineageResponse(BaseModel):
+    reviews: list[ReviewRequest] = Field(..., title='Reviews')
+    decisions: list[ApprovalDecision] = Field(..., title='Decisions')
+    versions: list[VersionRecord] = Field(..., title='Versions')
+    exports: list[AuditExportJob] = Field(..., title='Exports')
+
+
+class NotificationListResponse(BaseModel):
+    items: list[NotificationRecord] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
+    unread_count: int = Field(..., title='Unread Count')
+
+
+class OnboardingStatusResponse(BaseModel):
+    """
+    Aggregated onboarding progress for a tenant.
+    """
+
+    tenant_id: str = Field(..., title='Tenant Id')
+    profile_id: UUID | None = Field(None, title='Profile Id')
+    profile_status: ProfileStatus | None = None
+    company_name: str | None = Field(None, title='Company Name')
+    website: str | None = Field(None, title='Website')
+    sources_count: int = Field(..., title='Sources Count')
+    extractions_count: int = Field(..., title='Extractions Count')
+    extractions_pending_review: int = Field(..., title='Extractions Pending Review')
+    extractions_accepted: int = Field(..., title='Extractions Accepted')
+    extractions_rejected: int = Field(..., title='Extractions Rejected')
+    average_confidence: AverageConfidence | None = Field(
+        None, title='Average Confidence'
+    )
+    icp_present: bool = Field(..., title='Icp Present')
+    has_approved_profile: bool = Field(..., title='Has Approved Profile')
+    next_step: str = Field(
+        ...,
+        description='Human-readable next action for the onboarding flow',
+        title='Next Step',
+    )
+
+
+class StartAnalysisResponse(BaseModel):
+    """
+    Response from starting prospect analysis.
+
+    Never returns hardcoded demo data. All enrichment/matching data
+    explicitly reports its availability status.
+    """
+
+    prospect_id: str = Field(
+        ..., description='Canonical prospect/account ID', title='Prospect Id'
+    )
+    workflow_id: str | None = Field(
+        None, description='Created workflow instance ID', title='Workflow Id'
+    )
+    status: WorkflowStartStatus = Field(
+        ..., description='Overall start operation status'
+    )
+    enrichment_status: EnrichmentStatus | None = Field(
+        'unavailable', description='Company enrichment data availability'
+    )
+    buyer_role_inference: BuyerRoleInferenceResult | None = Field(
+        None, description='Buyer role inference result (never fabricated)'
+    )
+    crm_match: CrmMatchResult | None = Field(
+        None, description='CRM opportunity match result (never fabricated)'
+    )
+    next_route_state: str | None = Field(
+        'workflow-intelligence',
+        description='Recommended frontend route state',
+        title='Next Route State',
+    )
+    message: str | None = Field(
+        None, description='Human-readable status message', title='Message'
+    )
+
+
 class SyncStatusListResponse(BaseModel):
     """
     All providers sync status response.
@@ -1352,6 +3500,24 @@ class SyncStatusListResponse(BaseModel):
 
     providers: list[SyncStatusSchema] = Field(..., title='Providers')
     overall_status: str = Field(..., title='Overall Status')
+
+
+class TaskRecord(BaseModel):
+    id: str = Field(..., title='Id')
+    title: str = Field(..., title='Title')
+    account_id: str | None = Field(None, title='Account Id')
+    assignee: str | None = Field(None, title='Assignee')
+    due_date: str | None = Field(None, title='Due Date')
+    stage: str | None = Field(None, title='Stage')
+    status: TaskStatus | None = 'open'
+    created_at: str = Field(..., title='Created At')
+    updated_at: str = Field(..., title='Updated At')
+
+
+class TenantContextResponse(BaseModel):
+    tenant: TenantSummary
+    actor: ActorSummary
+    request: RequestSummary
 
 
 class TenantModel(BaseModel):
@@ -1379,6 +3545,14 @@ class TenantModel(BaseModel):
     updated_at: AwareDatetime | None = Field(None, title='Updated At')
 
 
+class ToolCategoriesResponse(BaseModel):
+    """
+    Typed response model for categories listing.
+    """
+
+    categories: list[ToolCategoryItem] = Field(..., title='Categories')
+
+
 class UserModel(BaseModel):
     """
     Read-only representation of a user (returned by API — no password).
@@ -1398,22 +3572,60 @@ class UserModel(BaseModel):
     updated_at: AwareDatetime | None = Field(None, title='Updated At')
 
 
+class ValidationAuthContextSeedRequest(BaseModel):
+    """
+    Non-production deterministic auth-context seed payload.
+
+    The payload intentionally accepts only non-secret metadata and optional
+    pre-hashed API key material. Raw secrets are rejected by ``extra=forbid``.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    tenant_id: UUID | None = Field(None, title='Tenant Id')
+    tenant_slug: str | None = Field(
+        'tenant-e2e-001', max_length=63, min_length=1, title='Tenant Slug'
+    )
+    tenant_name: str | None = Field(
+        'E2E Validation Tenant', max_length=200, min_length=1, title='Tenant Name'
+    )
+    service_account_id: str | None = Field(
+        'svc-playwright-backend-validation',
+        max_length=128,
+        min_length=1,
+        title='Service Account Id',
+    )
+    api_key: ValidationSeededApiKey | None = None
+    account_mappings: list[dict[str, str]] | None = Field(
+        None, title='Account Mappings'
+    )
+
+
+class ValueExtractionRecordListResponse(BaseModel):
+    """
+    Paginated extraction records.
+    """
+
+    total: int = Field(..., title='Total')
+    page: int = Field(..., title='Page')
+    page_size: int = Field(..., title='Page Size')
+    has_more: bool = Field(..., title='Has More')
+    items: list[ValueExtractionRecordResponse] = Field(..., title='Items')
+
+
 class WorkflowCreateRequest(BaseModel):
     """
     Request to submit a new workflow - OpenAPI spec compliant.
 
     Spec requires:
     - workflow_type: enum [whitespace_analysis, business_case_generation]
-    - tenant_id: string
-    - user_id: string
     - inputs: object
     """
 
     workflow_type: WorkflowType = Field(
         ..., description='Type of workflow to run', title='Workflow Type'
     )
-    tenant_id: str = Field(..., description='Tenant identifier', title='Tenant Id')
-    user_id: str = Field(..., description='User identifier', title='User Id')
     inputs: WorkflowInputs | None = Field(None, description='Workflow inputs')
     priority: str | None = Field(
         'NORMAL', description='Execution priority', title='Priority'
@@ -1421,3 +3633,20 @@ class WorkflowCreateRequest(BaseModel):
     workflow_id: str | None = Field(
         None, description='Optional workflow ID', title='Workflow Id'
     )
+
+
+class KnowledgeSourceListResponse(BaseModel):
+    """
+    Paginated knowledge sources.
+    """
+
+    total: int = Field(..., title='Total')
+    page: int = Field(..., title='Page')
+    page_size: int = Field(..., title='Page Size')
+    has_more: bool = Field(..., title='Has More')
+    items: list[KnowledgeSourceResponse] = Field(..., title='Items')
+
+
+class TaskListResponse(BaseModel):
+    items: list[TaskRecord] = Field(..., title='Items')
+    total: int = Field(..., title='Total')

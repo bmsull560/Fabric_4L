@@ -404,3 +404,220 @@ class TestAPIKeyPermissionOverrides:
         )
         # Should be blocked - key only valid for tenant-a
         assert response.status_code in [401, 403], "API key should respect tenant scoping"
+
+
+# ---------------------------------------------------------------------------
+# P0 expansion: permission scope checks (all-permissions and OR-logic bypass)
+# ---------------------------------------------------------------------------
+
+class TestPermissionScopeChecks:
+    """P0: Verify all-permissions scope and OR-logic cannot be abused.
+
+    These tests operate at the permission-model layer (no HTTP required) and
+    cover the two specific bypass vectors called out in the P0 gap audit:
+      - 'all-permissions' wildcard claim granting unrestricted access
+      - require_any_permission OR-logic returning True with zero matches
+    """
+
+    def test_all_permissions_scope_not_grantable_via_jwt_claim(self, jwt_encoder):
+        """P0: A JWT with permissions=['*'] must not grant all-permissions scope.
+
+        An attacker who can forge or inject a JWT with a wildcard permissions
+        claim must not receive elevated access. This test exercises the actual
+        middleware decode path (extract_context_from_jwt) so that the wildcard
+        string passes through the same code that runs in production.
+        """
+        try:
+            from value_fabric.shared.identity.middleware import extract_context_from_jwt
+            from value_fabric.shared.identity.permissions import Permission
+        except ImportError:
+            pytest.skip("Identity middleware not available")
+
+        # Build a JWT payload that includes a wildcard permissions claim,
+        # as an attacker would craft it.
+        token = jwt_encoder({
+            "sub": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "tenant_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "role": "standard",
+            "permissions": ["*"],
+        })
+
+        import jwt as _jwt
+        from tests.security.conftest import TEST_JWT_SECRET
+        try:
+            payload = _jwt.decode(
+                token,
+                TEST_JWT_SECRET,
+                algorithms=["HS256"],
+                options={"verify_exp": False, "verify_aud": False, "verify_iss": False},
+            )
+        except Exception:
+            pytest.skip("Could not decode test token")
+
+        ctx = extract_context_from_jwt(payload)
+
+        # Wildcard strings must be discarded by extract_context_from_jwt —
+        # only known Permission enum values are stored in the frozenset.
+        assert not ctx.has_permission("*"), (
+            "has_permission('*') returned True. P0: Wildcard string bypass."
+        )
+        assert not ctx.has_permission(Permission.ADMIN_SYSTEM), (
+            "Context built from JWT with permissions=['*'] grants ADMIN_SYSTEM. "
+            "P0: Wildcard claim bypasses permission checks."
+        )
+        assert not ctx.has_permission(Permission.ADMIN_USERS), (
+            "Context built from JWT with permissions=['*'] grants ADMIN_USERS. "
+            "P0: Wildcard claim bypasses permission checks."
+        )
+
+    def test_require_any_permission_or_logic_does_not_grant_on_empty_set(self):
+        """P0: require_any_permission with an empty held-permissions set must deny.
+
+        If has_any_permission() returns True when the context has no permissions,
+        every OR-gated endpoint becomes publicly accessible.
+        """
+        try:
+            from value_fabric.shared.identity.context import RequestContext
+            from value_fabric.shared.identity.permissions import Permission
+        except ImportError:
+            pytest.skip("Identity modules not available")
+
+        ctx = RequestContext(
+            tenant_id="tenant-a",
+            user_id="user-1",
+            roles=[],
+            permissions=frozenset(),
+            source="jwt_claim",
+        )
+
+        # OR-check against multiple permissions — none held
+        result = ctx.has_any_permission(
+            Permission.READ_HEALTH,
+            Permission.WRITE_INGESTION,
+            Permission.ADMIN_SYSTEM,
+        )
+        assert not result, (
+            "has_any_permission returned True with empty permission set. "
+            "P0: OR-logic bypass — unauthenticated access to permission-gated endpoints."
+        )
+
+    def test_require_any_permission_or_logic_does_not_short_circuit_on_first_miss(self):
+        """P0: OR-logic must check all permissions, not short-circuit on first miss.
+
+        A buggy implementation might return True after failing the first check
+        if the short-circuit logic is inverted.
+        """
+        try:
+            from value_fabric.shared.identity.context import RequestContext
+            from value_fabric.shared.identity.permissions import Permission
+        except ImportError:
+            pytest.skip("Identity modules not available")
+
+        # Context holds only READ_HEALTH
+        ctx = RequestContext(
+            tenant_id="tenant-a",
+            user_id="user-1",
+            roles=[],
+            permissions=frozenset({Permission.READ_HEALTH}),
+            source="jwt_claim",
+        )
+
+        # Check for two permissions the context does NOT hold
+        result = ctx.has_any_permission(
+            Permission.ADMIN_SYSTEM,
+            Permission.WRITE_INGESTION,
+        )
+        assert not result, (
+            "has_any_permission returned True when none of the checked permissions "
+            "are held. P0: OR-logic short-circuit bypass."
+        )
+
+    def test_all_permissions_scope_requires_every_permission(self):
+        """P0: has_all_permissions must require every listed permission, not just one.
+
+        A buggy AND-check that returns True when any single permission matches
+        would allow partial-permission holders to pass all-permission gates.
+        """
+        try:
+            from value_fabric.shared.identity.context import RequestContext
+            from value_fabric.shared.identity.permissions import Permission
+        except ImportError:
+            pytest.skip("Identity modules not available")
+
+        # Context holds only READ_HEALTH — not the full set
+        ctx = RequestContext(
+            tenant_id="tenant-a",
+            user_id="user-1",
+            roles=[],
+            permissions=frozenset({Permission.READ_HEALTH}),
+            source="jwt_claim",
+        )
+
+        result = ctx.has_all_permissions(
+            Permission.READ_HEALTH,      # held
+            Permission.ADMIN_SYSTEM,     # NOT held
+            Permission.WRITE_INGESTION,  # NOT held
+        )
+        assert not result, (
+            "has_all_permissions returned True when only one of three required "
+            "permissions is held. P0: AND-logic bypass — partial permission set "
+            "passes all-permissions gate."
+        )
+
+    @pytest.mark.asyncio
+    async def test_require_any_permission_dependency_raises_403_with_no_match(self):
+        """P0: require_any_permission FastAPI dependency raises 403 when no match."""
+        try:
+            from fastapi import HTTPException
+            from value_fabric.shared.identity.context import RequestContext
+            from value_fabric.shared.identity.dependencies import require_any_permission
+            from value_fabric.shared.identity.permissions import Permission
+        except ImportError:
+            pytest.skip("Identity modules not available")
+
+        ctx = RequestContext(
+            tenant_id="tenant-a",
+            user_id="user-1",
+            roles=[],
+            permissions=frozenset({Permission.READ_HEALTH}),
+            source="jwt_claim",
+        )
+
+        dep = require_any_permission(Permission.ADMIN_SYSTEM, Permission.ADMIN_USERS)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(context=ctx)
+
+        assert exc_info.value.status_code == 403, (
+            f"Expected 403, got {exc_info.value.status_code}. "
+            "P0: require_any_permission OR-logic bypass."
+        )
+
+    @pytest.mark.asyncio
+    async def test_require_all_permissions_dependency_raises_403_on_partial_match(self):
+        """P0: require_all_permissions FastAPI dependency raises 403 on partial match."""
+        try:
+            from fastapi import HTTPException
+            from value_fabric.shared.identity.context import RequestContext
+            from value_fabric.shared.identity.dependencies import require_all_permissions
+            from value_fabric.shared.identity.permissions import Permission
+        except ImportError:
+            pytest.skip("Identity modules not available")
+
+        ctx = RequestContext(
+            tenant_id="tenant-a",
+            user_id="user-1",
+            roles=[],
+            permissions=frozenset({Permission.READ_HEALTH}),
+            source="jwt_claim",
+        )
+
+        dep = require_all_permissions(Permission.READ_HEALTH, Permission.ADMIN_SYSTEM)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(context=ctx)
+
+        assert exc_info.value.status_code == 403, (
+            f"Expected 403, got {exc_info.value.status_code}. "
+            "P0: require_all_permissions AND-logic bypass."
+        )

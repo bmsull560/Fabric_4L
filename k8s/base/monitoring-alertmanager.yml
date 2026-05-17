@@ -7,172 +7,37 @@ data:
   alertmanager.yml: |
     global:
       resolve_timeout: 5m
-      # Slack webhook URL from mounted secret
-      slack_api_url_file: '/etc/alertmanager/secrets/slack_webhook_url'
+      # smtp_smarthost: 'localhost:587'  # Configure for email alerts
+      # slack_api_url: ''  # Configure for Slack notifications
 
-    # Templates for Slack message formatting
-    templates:
-      - '/etc/alertmanager/templates/*.tmpl'
-
-    # Routing tree: critical -> PagerDuty + Slack; warning -> Slack; formula -> dedicated channel
     route:
-      receiver: 'slack-default'
-      group_by: ['alertname', 'severity', 'namespace']
-      group_wait: 30s
-      group_interval: 5m
+      receiver: default
+      group_by: ['alertname', 'severity']
+      group_wait: 10s
+      group_interval: 30s
       repeat_interval: 4h
       routes:
-        # LLM cost warning: FinOps visibility + warning channel
-        - match:
-            alertname: HighLLMCostRate
-          receiver: 'slack-finops'
-          continue: true
-          repeat_interval: 1h
-
-        # LLM cost critical: immediate escalation
-        - match:
-            alertname: HighLLMCostCritical
-          receiver: 'pagerduty-critical'
-          continue: true
-          repeat_interval: 10m
-
-        # Critical alerts: PagerDuty + Slack (escalation)
-        - match:
+        - receiver: critical
+          match:
             severity: critical
-          receiver: 'pagerduty-critical'
           continue: true
-          repeat_interval: 15m
-        - match:
-            severity: critical
-          receiver: 'slack-critical'
-          repeat_interval: 15m
 
-
-        # Warning alerts: Slack only
-        - match:
-            severity: warning
-          receiver: 'slack-warning'
-          repeat_interval: 2h
-
-        # Info alerts: Slack with low priority channel
-        - match:
-            severity: info
-          receiver: 'slack-info'
-          repeat_interval: 24h
-
-        # Formula approvals: dedicated channel
-        - match:
-            alertname: FormulaApprovalRequired
-          receiver: 'slack-formula-approval'
-          repeat_interval: 30m
-
-        # Service down alerts: immediate PagerDuty
-        - match:
-            alertname: ServiceDown
-          receiver: 'pagerduty-critical'
-          repeat_interval: 5m
-
-        # High error rate: PagerDuty if sustained
-        - match:
-            alertname: HighErrorRate
-          receiver: 'pagerduty-critical'
-          repeat_interval: 10m
-
-        # Audit write failures: immediate PagerDuty (compliance risk)
-        - match:
-            alertname: AuditWriteFailure
-          receiver: 'pagerduty-critical'
-          repeat_interval: 5m
-
-    # Receivers configuration
     receivers:
-      # Default null receiver (drops alerts that don't match any route)
-      - name: 'default-null'
-
-      # PagerDuty for critical alerts
-      - name: 'pagerduty-critical'
-        pagerduty_configs:
-          - service_key_file: '/etc/alertmanager/secrets/pagerduty_integration_key'
-            description: '{{ .CommonAnnotations.summary }}'
-            severity: '{{ .GroupLabels.severity }}'
-            group: '{{ .GroupLabels.alertname }}'
-            client_url: '{{ .CommonAnnotations.runbook_url | default "https://github.com/bmsull560/Fabric_4L/tree/main/docs/troubleshooting/runbooks" }}'
-            client: 'Value Fabric Alertmanager'
-
-      # Slack for critical alerts (escalation notification)
-      - name: 'slack-critical'
-        slack_configs:
-          - channel: '#vf-alerts-critical'
-            send_resolved: true
-            title: ':rotating_light: CRITICAL: {{ .CommonAnnotations.summary }}'
-            text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}\nRunbook: {{ .CommonAnnotations.runbook_url }}'
-
-      # Slack for warning alerts
-      - name: 'slack-warning'
-        slack_configs:
-          - channel: '#vf-alerts-warning'
-            send_resolved: true
-            title: ':warning: WARNING: {{ .CommonAnnotations.summary }}'
-            text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}\nRunbook: {{ .CommonAnnotations.runbook_url }}'
-
-      # Slack for FinOps cost alerts
-      - name: 'slack-finops'
-        slack_configs:
-          - channel: '#vf-finops-alerts'
-            send_resolved: true
-            title: ':money_with_wings: LLM COST: {{ .CommonAnnotations.summary }}'
-            text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}\nRunbook: {{ .CommonAnnotations.runbook_url }}'
-
-      # Slack for info alerts
-      - name: 'slack-info'
-        slack_configs:
-          - channel: '#vf-alerts-info'
-            send_resolved: true
-            title: ':information_source: {{ .CommonAnnotations.summary }}'
-            text: 'Alert: {{ .CommonAnnotations.summary }}\nDescription: {{ .CommonAnnotations.description }}'
-
-      # Slack for formula approvals (business workflow)
-      - name: 'slack-formula-approval'
-        slack_configs:
-          - channel: '#vf-formula-approvals'
-            send_resolved: true
-            title: ':clipboard: Formula Approval Required'
-            text: 'Formula requires approval. Check the app for pending approvals.'
-
-
-      # Webhook fallback compatibility receivers
-      - name: 'default'
+      - name: default
         webhook_configs:
-          - url_file: '/etc/alertmanager/secrets/default_webhook_url'
+          - url: 'http://localhost:5001/webhook'  # TODO: Replace with actual webhook endpoint
             send_resolved: true
-
-      - name: 'critical'
+      - name: critical
         webhook_configs:
-          - url_file: '/etc/alertmanager/secrets/critical_webhook_url'
+          - url: 'http://localhost:5001/webhook'  # TODO: Replace with critical alerting endpoint
             send_resolved: true
 
-    # Inhibition rules: prevent notification storms
     inhibit_rules:
-      # Critical alerts silence warnings of the same type
-      - source_match:
-          severity: 'critical'
-        target_match:
-          severity: 'warning'
-        equal: ['alertname', 'namespace']
-
-      # Service down silences dependent component alerts
-      - source_match:
-          alertname: 'ServiceDown'
-        target_match_re:
-          alertname: '.+'
-        equal: ['namespace']
-
-      # High error rate silences individual error alerts
-      - source_match:
-          alertname: 'HighErrorRate'
-        target_match_re:
-          alertname: '.*Error.*'
-        equal: ['namespace']
+      - source_matchers:
+          - severity="critical"
+        target_matchers:
+          - severity="warning"
+        equal: ['alertname']
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -196,35 +61,23 @@ metadata:
     component: monitoring
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  selector:
-    matchLabels:
-      app: alertmanager
   template:
     metadata:
       labels:
         app: alertmanager
         component: monitoring
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
       containers:
         - name: alertmanager
           image: prom/alertmanager:v0.28.1
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
           args:
             - --config.file=/etc/alertmanager/alertmanager.yml
             - --storage.path=/alertmanager
@@ -235,9 +88,6 @@ spec:
             - name: config
               mountPath: /etc/alertmanager/alertmanager.yml
               subPath: alertmanager.yml
-            - name: alerting-secrets
-              mountPath: /etc/alertmanager/secrets
-              readOnly: true
             - name: data
               mountPath: /alertmanager
           resources:
@@ -265,18 +115,6 @@ spec:
         - name: config
           configMap:
             name: alertmanager-config
-        - name: alerting-secrets
-          secret:
-            secretName: alertmanager-secrets
-            items:
-              - key: slack_webhook_url
-                path: slack_webhook_url
-              - key: pagerduty_integration_key
-                path: pagerduty_integration_key
-              - key: default_webhook_url
-                path: default_webhook_url
-              - key: critical_webhook_url
-                path: critical_webhook_url
         - name: data
           persistentVolumeClaim:
             claimName: alertmanager-data

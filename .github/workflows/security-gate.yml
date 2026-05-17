@@ -34,7 +34,7 @@ jobs:
 
       - name: Run security regression tests
         run: |
-          python3 scripts/ensure-pytest-collection.py tests/security 600
+          python3 scripts/ensure-pytest-collection.py --dir tests/security --min-tests 600
           pytest tests/security/ -v --tb=short
 
       - name: Check for secret fallbacks in workflows

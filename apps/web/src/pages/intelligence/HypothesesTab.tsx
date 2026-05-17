@@ -9,8 +9,7 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 import {
   Lightbulb,
@@ -37,9 +36,7 @@ import {
   useValidateHypothesis,
   useConvertHypothesisToTree,
   type ValueHypothesis,
-  type ValidateHypothesisResponse,
 } from "@/hooks/useHypotheses";
-import { fetchWorkspaceTab, useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,10 +64,6 @@ function confidenceBar(score: number) {
       <span className="text-[10px] font-semibold">{pct}%</span>
     </div>
   );
-}
-
-function hypothesisTitle(hypothesis: ValueHypothesis): string {
-  return hypothesis.value_path_category ?? hypothesis.capability_name ?? "Value hypothesis";
 }
 
 // ── Hypothesis Card ──────────────────────────────────────────────────────────
@@ -106,7 +99,7 @@ function HypothesisCard({
       <div className="flex items-start gap-3 w-full">
         <Icon size={14} className={cn("mt-0.5 shrink-0", cfg.color)} />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold">{hypothesisTitle(hypothesis)}</div>
+          <div className="text-xs font-semibold">{hypothesis.capability_name ?? "Value Hypothesis"}</div>
           <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
             {hypothesis.hypothesis_text}
           </div>
@@ -164,7 +157,7 @@ function HypothesisCard({
 
 export default function HypothesesTab() {
   const queryClient = useQueryClient();
-  const { navigate, navigateTo } = useNavigation();
+  const navigate = useNavigate();
   const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
@@ -176,14 +169,11 @@ export default function HypothesesTab() {
   } = useAccountHypotheses(accountId ?? null);
   const generateHypotheses = useGenerateHypotheses();
   const validateHypothesis = useValidateHypothesis();
-  const { data: caseId } = useCanonicalCaseId(accountId ?? null);
-  const persistDrivers = usePersistWorkspaceTab("drivers");
   const convertHypothesisToTree = useConvertHypothesisToTree();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
-  const [validationWarning, setValidationWarning] = useState<string | null>(null);
 
   const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ accountId: accountId ?? undefined,
     activeTab: "hypotheses",
@@ -235,7 +225,7 @@ export default function HypothesesTab() {
           detailContent={
             selected ? (
               <div className="space-y-3">
-                <h3 className="text-sm font-bold">{hypothesisTitle(selected)}</h3>
+                <h3 className="text-sm font-bold">{selected.capability_name ?? "Value Hypothesis"}</h3>
                 <p className="text-xs text-muted-foreground">{selected.hypothesis_text}</p>
                 <div className="space-y-2 text-[10px]">
                   <div className="flex justify-between">
@@ -277,27 +267,6 @@ export default function HypothesesTab() {
         />
       }
     >
-      <section className="mb-6 rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">Hypothesis Review and Approval</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Review expected value hypotheses, edit assumptions, and approve validated opportunities before converting them into driver trees.
-        </p>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div className="rounded-md border border-border/70 p-3">
-            <h3 className="text-xs font-semibold text-foreground">Expected Value</h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">Estimated impact and confidence are tracked before approval.</p>
-          </div>
-          <div className="rounded-md border border-border/70 p-3">
-            <h3 className="text-xs font-semibold text-foreground">Edit Assumptions</h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">Reviewers can refine signal fit, value path, and evidence context.</p>
-          </div>
-          <div className="rounded-md border border-border/70 p-3">
-            <h3 className="text-xs font-semibold text-foreground">Approve for Driver Tree</h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">Approved hypotheses become the bridge into value drivers and calculation.</p>
-          </div>
-        </div>
-      </section>
-
       {/* Header metrics */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <MetricCard label="Total Hypotheses" value={String(hypotheses.length)} />
@@ -432,11 +401,6 @@ export default function HypothesesTab() {
         </SectionCard>
       ) : (
         <SectionCard title={`Value Hypotheses (${filtered.length})`}>
-          {validationWarning && (
-            <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {validationWarning}
-            </div>
-          )}
           <div className="space-y-1">
             {filtered.map((h) => (
               <HypothesisCard
@@ -445,105 +409,36 @@ export default function HypothesesTab() {
                 isSelected={selectedId === h.id}
                 onSelect={() => setSelectedId(h.id)}
                 onStatusChange={(status) => {
-                  validateHypothesis.mutate(
-                    {
-                      hypothesisId: h.id,
-                      data: {
-                        new_status: status,
-                        feedback: status === "validated" ? "Approved for driver tree promotion" : "Rejected in hypothesis review",
-                      },
-                    },
-                    {
-                      onSuccess: (result: ValidateHypothesisResponse) => {
-                        setValidationWarning(null);
-                        const promotedDrivers = result.promoted_artifacts?.drivers ?? [];
-                        const promotedDriver = promotedDrivers[0] as { id?: string } | undefined;
-                        const promotedLinkage = result.promoted_artifacts?.linkages?.[0];
-                        if (caseId && promotedDrivers.length > 0) {
-                          persistDrivers.mutate({
-                            caseId,
-                            payload: {
-                              drivers: promotedDrivers.map((driver) => ({
-                                ...driver,
-                                id: String(driver.id ?? h.id),
-                                hypothesis_id: h.id,
-                                hypothesis_text: h.hypothesis_text,
-                              })),
-                            },
-                          });
-                        }
-                        if (status === "validated" && promotedDrivers.length === 0) {
-                          setValidationWarning("Hypothesis status was updated, but driver generation did not complete. Retry validation to regenerate the driver subtree.");
-                          return;
-                        }
-                        if (status === "validated" && result.hypothesis?.account_id && promotedDriver?.id) {
-                          navigateTo(
-                            'drivers-evidence',
-                            { accountId: result.hypothesis.account_id },
-                            {
-                              query: {
-                                driver_id: String(promotedDriver.id),
-                                ...(promotedLinkage?.linkage_id ? { linkage_id: promotedLinkage.linkage_id } : {}),
-                              },
-                              state: {
-                                hypothesisId: h.id,
-                                driverId: String(promotedDriver.id),
-                                linkageId: promotedLinkage?.linkage_id ?? null,
-                                source: "hypothesis_validation",
-                              },
-                            },
-                          );
-                        }
-                      },
-                    },
-                  );
+                  validateHypothesis.mutate({ hypothesisId: h.id, data: { new_status: status, feedback: `Marked as ${status}` } });
                 }}
                 onConvert={() => {
                   convertHypothesisToTree.mutate(
                     { hypothesisId: h.id },
                     {
-                      onSuccess: async (result) => {
+                      onSuccess: (result) => {
                         const createdId = result.value_model_id ?? result.tree_id;
                         setSelection(result.account_id, {
                           valueModelId: result.value_model_id ?? null,
                           treeId: result.tree_id ?? null,
                         });
-                        if (caseId) {
-                          await Promise.all([
-                            queryClient.prefetchQuery({
-                              queryKey: ["workspace", "tab", caseId, "drivers"],
-                              queryFn: () => fetchWorkspaceTab(caseId, "drivers"),
-                            }),
-                            queryClient.prefetchQuery({
-                              queryKey: ["workspace", "tab", caseId, "evidence-links"],
-                              queryFn: () => fetchWorkspaceTab(caseId, "evidence-links"),
-                            }),
-                            queryClient.prefetchQuery({
-                              queryKey: ["workspace", "tab", caseId, "evidence"],
-                              queryFn: () => fetchWorkspaceTab(caseId, "evidence"),
-                            }),
-                          ]);
-                        }
-                        navigateTo(
-                          'drivers-evidence',
-                          { accountId: result.account_id },
-                          {
-                            query: {
-                              ...(result.tree_id ? { tree_id: result.tree_id } : {}),
-                              ...(result.value_model_id ? { value_model_id: result.value_model_id } : {}),
-                            },
-                            state: {
-                              hypothesisId: result.hypothesis_id,
-                              accountId: result.account_id,
-                              tenantId: result.tenant_id,
-                              evidenceIds: result.evidence_ids,
-                              valueModelId: result.value_model_id ?? null,
-                              treeId: result.tree_id ?? null,
-                              createdId: createdId ?? null,
-                              conversionStatus: result.status,
-                            },
+                        const query = new URLSearchParams();
+                        if (result.tree_id) query.set("tree_id", result.tree_id);
+                        if (result.value_model_id) query.set("value_model_id", result.value_model_id);
+                        navigate({
+                          pathname: `/drivers/${result.account_id}/evidence`,
+                          search: query.toString() ? `?${query.toString()}` : "",
+                        }, {
+                          state: {
+                            hypothesisId: result.hypothesis_id,
+                            accountId: result.account_id,
+                            tenantId: result.tenant_id,
+                            evidenceIds: result.evidence_ids,
+                            valueModelId: result.value_model_id ?? null,
+                            treeId: result.tree_id ?? null,
+                            createdId: createdId ?? null,
+                            conversionStatus: result.status,
                           },
-                        );
+                        });
                       },
                     }
                   );

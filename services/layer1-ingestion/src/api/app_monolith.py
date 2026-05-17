@@ -12,7 +12,6 @@ Provides endpoints for:
 
 import json
 import os
-import hmac
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,40 +21,32 @@ from uuid import UUID, uuid4
 from zoneinfo import available_timezones
 
 import structlog
-from enum import Enum as PyEnum
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from ..crawler.decision_store import CrawlDecisionRepository
 from value_fabric.shared.error_handling.handlers import (
     get_request_trace_id,
     global_exception_handler as shared_global_exception_handler,
     validation_exception_handler as shared_validation_exception_handler,
 )
 from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
-from value_fabric.shared.identity.fallback_telemetry import (
-    enforce_fallback_enabled,
-    record_fallback_usage,
-)
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from value_fabric.shared.identity import RequestContext, Role, require_authenticated, require_role
 from value_fabric.shared.fastapi_framework import (
-    add_request_id_middleware,
     add_governance_middleware,
     add_security_validation_middleware,
 )
 from value_fabric.shared.security import validate_production_safety
-from value_fabric.shared.observability import configure_observability
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import is_production_like_environment, settings
-from ..shared.database import get_db_from_context_sync, get_db_session
+from ..shared.database import get_db_from_context_sync
 from ..shared.models import (
     AuthenticationType,
     BrowserEngine,
@@ -83,8 +74,6 @@ from ..shared.models import (
     create_scraping_job,
     create_scraping_target,
 )
-
-E2E_SEED_PRIVILEGED_REASON = "playwright-backend-validation-seed"
 
 try:
     from ..shared.tasks import cleanup_old_content, process_scraping_job
@@ -230,7 +219,7 @@ def _add_deprecation_headers(response: Response, endpoint_path: str) -> None:
 metrics = initialize_metrics()
 
 # Vault health check error message
-_VAULT_UNREACHABLE_ERROR = "Vault unreachable â€” cannot start in production without secrets backend"
+_VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
 
 
 @asynccontextmanager
@@ -257,7 +246,6 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
-configure_observability(app, service_name="layer1-ingestion", readiness_check=lambda: True)
 
 
 @app.exception_handler(HTTPException)
@@ -327,15 +315,13 @@ async def layer1_global_exception_handler(request: Request, exc: Exception) -> J
     return await shared_global_exception_handler(request, exc)
 
 
-# CORS middleware with production validation (P0-20) â€” OUTERMOST.
+# CORS middleware with production validation (P0-20) — OUTERMOST.
 # The policy comes from Settings so production-like environments fail before
 # middleware installation, and credentials are never combined with wildcard
 # origins or broad method/header exposure.
 app.add_middleware(CORSMiddleware, **settings.cors_policy)
 
-add_request_id_middleware(app)
-
-# SecurityMiddleware â€” input validation and security headers (mandatory)
+# SecurityMiddleware — input validation and security headers (mandatory)
 _security_config_l1 = add_security_validation_middleware(
     app,
     # P1-14 FIX: Removed /v1/ingest paths from skip list
@@ -347,7 +333,7 @@ _security_config_l1 = add_security_validation_middleware(
     strict_mode=True,
 )
 
-# GovernanceMiddleware â€” verifies JWTs and resolves tenant/user context (mandatory)
+# GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
 redis_rate_limiter = None
 RATE_LIMITING_AVAILABLE = False
 try:
@@ -446,7 +432,7 @@ class BatchOperationResponse(BaseModel):
 
 add_governance_middleware(app, rate_limiter=redis_rate_limiter)
 
-# Add metrics middleware if available â€” INNERMOST
+# Add metrics middleware if available — INNERMOST
 if metrics:
     metrics_middleware = MetricsMiddleware(metrics)
     app.middleware("http")(metrics_middleware)
@@ -462,43 +448,6 @@ app.include_router(compatibility_routes.router)
 router = APIRouter(prefix="/api/v1/ingestion")
 
 
-class ValidationIngestionJobSeedRequest(BaseModel):
-    """Non-production deterministic ingestion evidence for backend-integrated Playwright."""
-
-    domain: str = Field(default="meridian-auto.com", min_length=3)
-    url: str | None = None
-    status: JobStatus = JobStatus.COMPLETED
-
-
-def _require_validation_seed_allowed(request: Request) -> tuple[UUID, UUID]:
-    """Require service-authenticated, non-production validation seeding."""
-
-    if is_production_like_environment(settings.environment):
-        raise HTTPException(status_code=403, detail="Validation seeding is disabled in production-like environments")
-
-    expected_secret = os.getenv("SERVICE_AUTH_SECRET", "").strip()
-    provided_secret = request.headers.get("X-Service-Auth", "").strip()
-    if not expected_secret or not hmac.compare_digest(provided_secret, expected_secret):
-        raise HTTPException(status_code=403, detail="Validation seeding requires service authentication")
-
-    reason = request.headers.get("X-Privileged-Reason", "").strip()
-    if reason != E2E_SEED_PRIVILEGED_REASON:
-        raise HTTPException(status_code=403, detail="Validation seeding requires privileged reason")
-
-    tenant_header = request.headers.get("X-Tenant-ID", "").strip()
-    if not tenant_header:
-        raise HTTPException(status_code=403, detail="Validation seeding requires tenant context")
-    try:
-        tenant_id = UUID(tenant_header)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Invalid X-Tenant-ID header format") from exc
-
-    # Layer 1 persistence requires UUID users. This seed identity is local-only
-    # and never grants browser access by itself; browser auth still uses vf_session.
-    user_id = UUID("00000000-0000-4000-e2e0-0000000000a1")
-    return tenant_id, user_id
-
-
 # =============================================================================
 # DEPENDENCY: ORGANIZATION ID (Multi-tenancy)
 # =============================================================================
@@ -506,21 +455,23 @@ def _require_validation_seed_allowed(request: Request) -> tuple[UUID, UUID]:
 
 def get_tenant_id(request: Request) -> UUID:
     """Extract organization (tenant) ID from the GovernanceMiddleware context.
+
+    Falls back to the X-Organization-ID header for backward compatibility
+    with existing integration tests.
     """
     ctx = getattr(request.state, "governance_context", None)
-    header_value = request.headers.get("X-Organization-ID")
     if ctx is not None:
-        if header_value and str(header_value) != str(ctx.tenant_id):
-            raise HTTPException(status_code=403, detail="X-Organization-ID does not match authenticated tenant")
         return ctx.tenant_id
 
+    # Legacy header fallback (integration tests / dev only)
+    header_value = request.headers.get("X-Organization-ID")
     if header_value:
         try:
-            UUID(header_value)
+            return UUID(header_value)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid X-Organization-ID header format")
 
-    # P0-3 FIX: Never fall back to a hardcoded tenant â€” require authentication
+    # P0-3 FIX: Never fall back to a hardcoded tenant — require authentication
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
@@ -541,7 +492,7 @@ def get_current_user_id(request: Request) -> UUID:
             if metrics:
                 metrics.increment_errors(error_type="invalid_uuid", component="auth")
             raise HTTPException(status_code=401, detail="Invalid user ID format")
-    # P0 FIX: Never fall back to a hardcoded user â€” require authentication
+    # P0 FIX: Never fall back to a hardcoded user — require authentication
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
@@ -580,7 +531,7 @@ def _validate_cron_expression(expr: str) -> str:
     """Parse and validate a 5-field cron expression using croniter.
 
     Raises ValueError with a human-readable message on any of:
-    - Non-standard macros (@reboot, @yearly, etc.) â€” not schedulable by Celery Beat
+    - Non-standard macros (@reboot, @yearly, etc.) — not schedulable by Celery Beat
     - Wrong field count (must be exactly 5: minute hour dom month dow)
     - Out-of-range or syntactically invalid field values
     """
@@ -588,7 +539,7 @@ def _validate_cron_expression(expr: str) -> str:
 
     expr = expr.strip()
 
-    # Reject @-macros â€” Celery Beat requires explicit 5-field expressions
+    # Reject @-macros — Celery Beat requires explicit 5-field expressions
     if expr.startswith("@"):
         raise ValueError(
             f"Cron macro '{expr}' is not supported; use an explicit 5-field expression "
@@ -732,7 +683,6 @@ class ScrapingTargetSummary(BaseModel):
     error_count: int
     average_execution_time_ms: int
     tags: list[str]
-    schedule: dict[str, Any] | None = None
 
 
 class ScrapingTargetDetail(ScrapingTargetSummary):
@@ -836,7 +786,6 @@ class JobSummary(BaseModel):
 
     id: UUID
     target_id: UUID
-    configuration: dict[str, Any]
     status: str
     priority: int
     progress_percent_complete: int
@@ -1116,112 +1065,6 @@ class ProxyPoolResponse(BaseModel):
 # =============================================================================
 
 
-@router.post("/validation/seed/job")
-async def seed_validation_ingestion_job(
-    payload: ValidationIngestionJobSeedRequest,
-    request: Request,
-) -> dict[str, Any]:
-    """Seed deterministic Layer 1 job evidence for backend-integrated validation.
-
-    This endpoint is non-production only, service-auth gated, and writes
-    tenant-scoped Layer 1 records through the canonical persistence models.
-    It exists to prove the live frontend can read real Layer 1 job state
-    without requiring external crawling or mocks during Playwright validation.
-    """
-
-    tenant_id, user_id = _require_validation_seed_allowed(request)
-    domain = payload.domain.strip().lower()
-    url = payload.url or f"https://{domain}"
-    now = datetime.now(UTC)
-
-    with get_db_session(tenant_id=tenant_id, require_tenant=True) as db:
-        target = (
-            db.query(ScrapingTarget)
-            .filter(ScrapingTarget.organization_id == tenant_id, ScrapingTarget.url == url)
-            .first()
-        )
-        if target is None:
-            target = create_scraping_target(
-                tenant_id=tenant_id,
-                name=domain,
-                url=url,
-                target_type=TargetType.SINGLE_PAGE,
-                source_category=SourceCategory.API,
-                created_by=user_id,
-                extraction_config={"crawl_path": CrawlPath.FAST.value, "seed_source": E2E_SEED_PRIVILEGED_REASON},
-                compliance={"robots_txt": "validated", "seeded": True},
-                tags=["backend-integrated", "j1", "seeded"],
-            )
-            target.last_success_at = now
-            target.success_count = 1
-            db.add(target)
-            db.flush()
-
-        job = (
-            db.query(ScrapingJob)
-            .filter(
-                ScrapingJob.organization_id == tenant_id,
-                ScrapingJob.target_id == target.id,
-                ScrapingJob.configuration["url"].astext == url,
-            )
-            .order_by(ScrapingJob.created_at.desc())
-            .first()
-        )
-        if job is None:
-            job = create_scraping_job(
-                tenant_id=tenant_id,
-                target_id=target.id,
-                created_by=user_id,
-                configuration={
-                    "url": url,
-                    "domain": domain,
-                    "crawl_path": CrawlPath.FAST.value,
-                    "seed_source": E2E_SEED_PRIVILEGED_REASON,
-                },
-                triggered_by=TriggeredBy.API,
-                correlation_id="j1-backend-integrated-seed",
-            )
-            db.add(job)
-            db.flush()
-
-        job.status = payload.status.value
-        # Reseeding should make the deterministic validation job the latest
-        # visible Meridian job in the UI, even when previous live attempts left
-        # queued jobs behind.
-        job.created_at = now
-        job.started_at = job.started_at or now
-        job.completed_at = now if payload.status == JobStatus.COMPLETED else job.completed_at
-        job.progress_total_pages = 7
-        job.progress_processed_pages = 7 if payload.status == JobStatus.COMPLETED else 1
-        job.progress_failed_pages = 0
-        job.progress_current_url = url
-        job.progress_stage = PipelineStage.NOTIFICATION.value if payload.status == JobStatus.COMPLETED else PipelineStage.INIT.value
-        job.progress_percent_complete = 100 if payload.status == JobStatus.COMPLETED else 10
-        job.results_raw_content_count = 7 if payload.status == JobStatus.COMPLETED else 0
-        job.results_extracted_record_count = 5 if payload.status == JobStatus.COMPLETED else 0
-        job.results_storage_bytes_used = 8192 if payload.status == JobStatus.COMPLETED else 0
-        job.results_output_location = f"s3://layer1-raw-html/{tenant_id}/{domain}/seeded.json"
-        job.resources_compute_time_ms = 2200
-        job.resources_browser_sessions_used = 0
-        job.resources_proxy_requests_made = 0
-        job.resources_llm_tokens_consumed = 0
-        target.last_success_at = now
-        target.success_count = max(int(target.success_count or 0), 1)
-        db.flush()
-        db.refresh(job)
-
-        return {
-            "seeded": True,
-            "tenant_id": str(tenant_id),
-            "target_id": str(target.id),
-            "job_id": str(job.id),
-            "domain": domain,
-            "url": url,
-            "status": job.status,
-            "progress_percent_complete": job.progress_percent_complete,
-        }
-
-
 @router.get("/targets", response_model=TargetListResponse)
 async def list_targets(
     page: int = Query(default=1, ge=1),
@@ -1287,7 +1130,6 @@ async def list_targets(
                 error_count=t.error_count,
                 average_execution_time_ms=t.average_execution_time_ms,
                 tags=t.tags or [],
-                schedule=t.schedule,
             )
             for t in targets
         ],
@@ -1695,335 +1537,6 @@ async def delete_target(
     return None
 
 
-# ── Target Status Transition ──────────────────────────────────────────────────
-
-# Valid status transitions: ARCHIVED is terminal.
-_ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
-    TargetStatus.ACTIVE.value: {TargetStatus.PAUSED.value, TargetStatus.ARCHIVED.value},
-    TargetStatus.PAUSED.value: {TargetStatus.ACTIVE.value, TargetStatus.ARCHIVED.value},
-    TargetStatus.ERROR.value: {TargetStatus.ACTIVE.value, TargetStatus.PAUSED.value, TargetStatus.ARCHIVED.value},
-    TargetStatus.ARCHIVED.value: set(),  # terminal
-}
-
-
-class UpdateTargetStatusRequest(BaseModel):
-    """Request to update a scraping target's lifecycle status."""
-
-    status: TargetStatus = Field(..., description="New status for the target")
-
-
-@router.patch("/targets/{target_id}/status", response_model=ScrapingTargetDetail)
-async def update_target_status(
-    target_id: UUID,
-    request: UpdateTargetStatusRequest,
-    org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db_from_context_sync),
-):
-    """Transition a scraping target's lifecycle status.
-
-    Allowed transitions:
-    - ACTIVE → PAUSED, ARCHIVED
-    - PAUSED → ACTIVE, ARCHIVED
-    - ERROR  → ACTIVE, PAUSED, ARCHIVED
-    - ARCHIVED → (none — terminal state)
-    """
-    target = (
-        db.query(ScrapingTarget)
-        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
-        .first()
-    )
-
-    if not target:
-        raise HTTPException(status_code=404, detail="Target not found")
-
-    current_status = target.status
-    new_status = request.status.value
-
-    allowed = _ALLOWED_STATUS_TRANSITIONS.get(current_status, set())
-    if new_status not in allowed:
-        if current_status == TargetStatus.ARCHIVED.value:
-            raise HTTPException(
-                status_code=422,
-                detail="Archived targets cannot be transitioned to another status",
-            )
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid status transition from {current_status} to {new_status}",
-        )
-
-    # Block pause/archive while jobs are actively running to avoid orphaned jobs.
-    # Resuming to ACTIVE is always safe regardless of job state.
-    _BLOCKING_STATUSES = {TargetStatus.PAUSED.value, TargetStatus.ARCHIVED.value}
-    if new_status in _BLOCKING_STATUSES:
-        active_jobs = (
-            db.query(ScrapingJob)
-            .filter(
-                ScrapingJob.tenant_id == org_id,
-                ScrapingJob.target_id == target_id,
-                ScrapingJob.status.in_(
-                    [
-                        JobStatus.PENDING.value,
-                        JobStatus.QUEUED.value,
-                        JobStatus.VALIDATING.value,
-                        JobStatus.BROWSER_ACQUIRING.value,
-                        JobStatus.NAVIGATING.value,
-                        JobStatus.EXTRACTING.value,
-                        JobStatus.TRANSFORMING.value,
-                        JobStatus.STORING.value,
-                    ]
-                ),
-            )
-            .count()
-        )
-        if active_jobs > 0:
-            raise HTTPException(
-                status_code=409,
-                detail=f"Cannot transition target to {new_status} with {active_jobs} active job(s) in progress",
-            )
-
-    target.status = new_status
-    db.flush()
-    db.refresh(target)
-
-    logger.info(
-        "target_status_updated",
-        target_id=str(target_id),
-        from_status=current_status,
-        to_status=new_status,
-        tenant_id=str(org_id),
-    )
-
-    return _target_to_detail(target)
-
-
-# ── Target Batch Operations ───────────────────────────────────────────────────
-
-
-class TargetBatchOperationType(str, PyEnum):
-    """Batch operations supported on targets."""
-
-    EXECUTE = "execute"
-    PAUSE = "pause"
-    ARCHIVE = "archive"
-
-
-class TargetBatchRequest(BaseModel):
-    """Request for bulk operations on scraping targets."""
-
-    operation: TargetBatchOperationType = Field(..., description="Operation to perform")
-    target_ids: list[UUID] = Field(..., min_length=1, max_length=100, description="Target IDs to operate on")
-
-
-class TargetBatchItemResult(BaseModel):
-    """Result for a single target in a batch operation."""
-
-    id: UUID
-    status: str  # "succeeded" | "failed" | "skipped"
-    job_id: UUID | None = None
-    error: str | None = None
-
-
-class TargetBatchResponse(BaseModel):
-    """Response for a target batch operation."""
-
-    operation: TargetBatchOperationType
-    requested: int
-    succeeded: int
-    failed: int
-    results: list[TargetBatchItemResult]
-
-
-@router.post("/targets/batch", response_model=TargetBatchResponse, status_code=202)
-async def batch_target_operation(
-    request: TargetBatchRequest,
-    org_id: UUID = Depends(get_tenant_id),
-    user_id: UUID = Depends(get_current_user_id),
-    db: Session = Depends(get_db_from_context_sync),
-):
-    """Execute a bulk operation across multiple scraping targets.
-
-    - execute: Trigger crawl jobs for each active target
-    - pause:   Transition ACTIVE targets to PAUSED
-    - archive: Transition ACTIVE/PAUSED targets to ARCHIVED
-
-    Target IDs that do not belong to the authenticated tenant are silently
-    skipped (not treated as errors) to avoid leaking existence information.
-    Duplicate IDs are deduplicated before processing to prevent double-execution.
-    """
-    results: list[TargetBatchItemResult] = []
-    succeeded = 0
-    failed = 0
-
-    # Deduplicate while preserving order so the response order is predictable.
-    seen: set[UUID] = set()
-    unique_target_ids: list[UUID] = []
-    for _tid in request.target_ids:
-        if _tid not in seen:
-            seen.add(_tid)
-            unique_target_ids.append(_tid)
-
-    for target_id in unique_target_ids:
-        try:
-            target = (
-                db.query(ScrapingTarget)
-                .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
-                .first()
-            )
-            if not target:
-                # Silently skip — do not reveal whether the target exists
-                results.append(TargetBatchItemResult(id=target_id, status="skipped", error=None))
-                continue
-
-            if request.operation == TargetBatchOperationType.EXECUTE:
-                if target.status != TargetStatus.ACTIVE.value:
-                    results.append(
-                        TargetBatchItemResult(
-                            id=target_id,
-                            status="skipped",
-                            error=f"Target is not active (status: {target.status})",
-                        )
-                    )
-                    continue
-
-                job = create_scraping_job(
-                    tenant_id=org_id,
-                    target_id=target.id,
-                    created_by=user_id,
-                    configuration=target.extraction_config or {},
-                    priority=5,
-                    triggered_by=TriggeredBy.MANUAL,
-                    correlation_id=f"batch-target:{target_id}:{uuid4()}",
-                )
-                db.add(job)
-                db.flush()
-                db.refresh(job)
-
-                for stage in PipelineStage:
-                    db.add(JobStageDetail(job_id=job.id, tenant_id=org_id, stage=stage.value, status="PENDING"))
-
-                job.status = JobStatus.QUEUED.value
-                process_scraping_job.delay(str(job.id))
-
-                results.append(TargetBatchItemResult(id=target_id, status="succeeded", job_id=job.id))
-                succeeded += 1
-
-            elif request.operation == TargetBatchOperationType.PAUSE:
-                allowed = _ALLOWED_STATUS_TRANSITIONS.get(target.status, set())
-                if TargetStatus.PAUSED.value not in allowed:
-                    results.append(
-                        TargetBatchItemResult(
-                            id=target_id,
-                            status="skipped",
-                            error=f"Cannot pause target with status {target.status}",
-                        )
-                    )
-                    continue
-
-                active_jobs = (
-                    db.query(ScrapingJob)
-                    .filter(
-                        ScrapingJob.tenant_id == org_id,
-                        ScrapingJob.target_id == target.id,
-                        ScrapingJob.status.in_(
-                            [
-                                JobStatus.PENDING.value,
-                                JobStatus.QUEUED.value,
-                                JobStatus.VALIDATING.value,
-                                JobStatus.BROWSER_ACQUIRING.value,
-                                JobStatus.NAVIGATING.value,
-                                JobStatus.EXTRACTING.value,
-                                JobStatus.TRANSFORMING.value,
-                                JobStatus.STORING.value,
-                            ]
-                        ),
-                    )
-                    .count()
-                )
-                if active_jobs > 0:
-                    results.append(
-                        TargetBatchItemResult(
-                            id=target_id,
-                            status="skipped",
-                            error=f"Cannot pause target with {active_jobs} active job(s) in progress",
-                        )
-                    )
-                    continue
-
-                target.status = TargetStatus.PAUSED.value
-                db.flush()
-                results.append(TargetBatchItemResult(id=target_id, status="succeeded"))
-                succeeded += 1
-
-            elif request.operation == TargetBatchOperationType.ARCHIVE:
-                allowed = _ALLOWED_STATUS_TRANSITIONS.get(target.status, set())
-                if TargetStatus.ARCHIVED.value not in allowed:
-                    results.append(
-                        TargetBatchItemResult(
-                            id=target_id,
-                            status="skipped",
-                            error=f"Cannot archive target with status {target.status}",
-                        )
-                    )
-                    continue
-
-                active_jobs = (
-                    db.query(ScrapingJob)
-                    .filter(
-                        ScrapingJob.tenant_id == org_id,
-                        ScrapingJob.target_id == target.id,
-                        ScrapingJob.status.in_(
-                            [
-                                JobStatus.PENDING.value,
-                                JobStatus.QUEUED.value,
-                                JobStatus.VALIDATING.value,
-                                JobStatus.BROWSER_ACQUIRING.value,
-                                JobStatus.NAVIGATING.value,
-                                JobStatus.EXTRACTING.value,
-                                JobStatus.TRANSFORMING.value,
-                                JobStatus.STORING.value,
-                            ]
-                        ),
-                    )
-                    .count()
-                )
-                if active_jobs > 0:
-                    results.append(
-                        TargetBatchItemResult(
-                            id=target_id,
-                            status="skipped",
-                            error=f"Cannot archive target with {active_jobs} active job(s) in progress",
-                        )
-                    )
-                    continue
-
-                target.status = TargetStatus.ARCHIVED.value
-                db.flush()
-                results.append(TargetBatchItemResult(id=target_id, status="succeeded"))
-                succeeded += 1
-
-        except Exception as exc:
-            logger.error("batch_target_operation_failed", target_id=str(target_id), error=str(exc))
-            results.append(TargetBatchItemResult(id=target_id, status="failed", error=str(exc)))
-            failed += 1
-
-    logger.info(
-        "batch_target_operation_complete",
-        operation=request.operation.value,
-        requested=len(request.target_ids),
-        succeeded=succeeded,
-        failed=failed,
-        tenant_id=str(org_id),
-    )
-
-    return TargetBatchResponse(
-        operation=request.operation,
-        requested=len(request.target_ids),
-        succeeded=succeeded,
-        failed=failed,
-        results=results,
-    )
-
-
 @router.post("/targets/{target_id}/validate", response_model=ValidateTargetResponse)
 async def validate_target(
     target_id: UUID,
@@ -2186,6 +1699,8 @@ async def get_target_decisions(
     Returns the most recent crawl decisions across all jobs
     for this target, showing routing choices and outcomes.
     """
+    from ..crawler.decision_store import CrawlDecisionRepository
+
     # Verify target exists and belongs to org
     target = db.query(ScrapingTarget).filter(
         ScrapingTarget.id == target_id,
@@ -2236,6 +1751,8 @@ async def get_job_router_report(
     Provides metrics on routing accuracy, fallback rates,
     and performance characteristics for analysis.
     """
+    from ..crawler.decision_store import CrawlDecisionRepository
+
     # Verify job exists and belongs to org
     job = db.query(ScrapingJob).filter(
         ScrapingJob.id == job_id,
@@ -2276,6 +1793,8 @@ async def get_domain_fallback_stats(
     domain, helping identify SPA-heavy sites or routing issues.
     """
     from datetime import timedelta
+
+    from ..crawler.decision_store import CrawlDecisionRepository
 
     # Verify org has crawled this domain (basic authorization check)
     has_access = db.query(CrawlDecision).filter(
@@ -2392,7 +1911,6 @@ async def list_jobs(
             JobSummary(
                 id=j.id,
                 target_id=j.target_id,
-                configuration=j.configuration or {},
                 status=j.status,
                 priority=j.priority,
                 progress_percent_complete=j.progress_percent_complete,
