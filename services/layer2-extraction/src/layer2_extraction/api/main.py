@@ -338,7 +338,7 @@ def _get_optional_tenant(request: Request) -> str | None:
 async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
     """Stream SSE events for a pipeline job.
 
-    Emits ``start``, ``progress``, and ``complete`` (or ``error``) events.
+    Emits ``status``, ``progress``, ``log``, and ``complete`` (or ``error``) events.
     The response uses ``Content-Type: text/event-stream`` with keep-alive
     and buffering-disabled headers for proxy compatibility.
     """
