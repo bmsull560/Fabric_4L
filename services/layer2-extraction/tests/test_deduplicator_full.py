@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import math
-import pytest
 
 from layer2_extraction.extraction.deduplicator import EntityDeduplicator
 from layer2_extraction.models.ontology import (
