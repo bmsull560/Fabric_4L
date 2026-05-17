@@ -266,7 +266,6 @@ async def _job_event_generator(
                     "entities_extracted": job.entities_extracted,
                     "relationships_extracted": job.relationships_extracted,
                     "error": None,
-                })
             else:  # failed
                 yield _event("log", {"level": "error", "message": job.last_error or "Job failed"})
                 yield _event("error", {
