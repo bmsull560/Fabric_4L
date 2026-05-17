@@ -381,7 +381,6 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             registry = get_prompt_registry()
             system_tmpl = registry.get("business_case", "system")
             section_tmpl = registry.get("business_case", "generate_sections")
-            gather_tmpl = registry.get("business_case", "gather_inputs")
             provider = get_llm_provider(self.config)
             llm_client = GovernedLLMClient(
                 provider=provider,
@@ -396,7 +395,6 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             section_tmpl = None
             use_llm = False
 
-        tenant_id = state.metadata.get("tenant_id", "") if state.metadata else ""
         trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id") if state.metadata else None
 
         for section_type in requested_sections:
@@ -420,6 +418,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                         account_name=context["company_name"],
                         section_type=section_type,
                         brief_json=json.dumps(brief, indent=2),
+                        section_context_json=json.dumps(context, indent=2),
                     )
                     llm_result = await llm_client.call(
                         model_task=section_tmpl.model_task,
@@ -976,7 +975,6 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         The human gate in ``harness.runtime.yaml`` (``VALIDATE_CLAIMS``) is
         triggered when ``human_review_required=True``.
         """
-        tenant_id = state.metadata.get("tenant_id", "") if state.metadata else ""
         trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id") if state.metadata else None
         account_name = (
             state.case_input.custom_inputs.get("account_name", "")
@@ -984,10 +982,12 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             else state.input_data.get("account_name", "Unknown Account")
         )
 
+        # AgentResult is constructed with an empty tenant_id initially; it is
+        # populated after tenant resolution inside the try block below.
         agent_result = AgentResult(
             payload={},
             workflow_type="business_case",
-            tenant_id=tenant_id,
+            tenant_id="",
             trace_id=trace_id,
         )
 
@@ -1006,6 +1006,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         try:
             # Resolve tenant first — MissingTenantContextError must degrade, not crash.
             organization_id = self._resolve_organization_id(state)
+            agent_result.tenant_id = organization_id
 
             registry = get_prompt_registry()
             system_tmpl = registry.get("business_case", "system")
@@ -1065,20 +1066,26 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 )
                 validator = LiveL5Validator(client=l5_client)
                 try:
+                    from ..harness.validation_hooks import ClaimValidationRequest
                     for claim in extracted_claims[:20]:  # cap at 20 claims per run
                         claim_text = claim.get("claim_text", "")
                         if not claim_text:
                             continue
                         try:
-                            result = await validator.validate_claim(
-                                claim_text=claim_text,
-                                tenant_id=tenant_id,
-                                context={"account_name": account_name, "workflow": "business_case"},
+                            result = await validator.validate(
+                                ClaimValidationRequest(
+                                    tenant_id=organization_id,
+                                    claim_id=claim.get("claim_id", claim_text[:64]),
+                                    claim_text=claim_text,
+                                    evidence_refs=claim.get("evidence_refs", []),
+                                    account_id=str(state.case_input.opportunity_id) if state.case_input else None,
+                                    value_pack_id="business_case",
+                                )
                             )
-                            if result.get("validated"):
-                                validated.append({**claim, "l5_status": "validated", "evidence": result.get("evidence", [])})
+                            if result.validation_state.value == "passed":
+                                validated.append({**claim, "l5_status": "validated", "evidence": result.evidence_refs})
                             else:
-                                unverified.append({**claim, "l5_status": "unverified", "reason": result.get("reason", "")})
+                                unverified.append({**claim, "l5_status": result.validation_state.value, "reason": result.reason})
                         except Exception as val_exc:
                             logger.debug("L5 validation unavailable for claim: %s", val_exc)
                             unverified.append({**claim, "l5_status": "unavailable"})
@@ -1128,14 +1135,14 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             agent_result.human_review_required = True
             agent_result.customer_facing_allowed = False
 
-        except Exception as exc:
-            logger.warning("Business case claim validation failed: %s", exc)
+        except Exception:
+            logger.warning("Business case claim validation failed", extra={"code": "llm_failed"})
             agent_result.payload = {
                 "validated_claims": [],
                 "unverified_claims": [],
                 "claim_count": 0,
             }
-            agent_result.degraded_reason = f"llm_failed: {exc}"
+            agent_result.degraded_reason = "llm_failed"
 
         return agent_result.to_dict()
 

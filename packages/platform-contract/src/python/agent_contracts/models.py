@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
-from pydantic import BaseModel, Field, ValidationError, root_validator, validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 
 SEMANTIC_CONTRACT_VERSION = "2.0.0"
@@ -103,7 +103,8 @@ class AgentOutputEnvelope(BaseModel):
     evidence: List[Dict[str, Any]] = Field(default_factory=list)
     emitted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    @validator("agent_type")
+    @field_validator("agent_type")
+    @classmethod
     def agent_type_must_be_present(cls, value: str) -> str:
         if not value:
             raise ValueError("agent_type is required")
@@ -123,11 +124,11 @@ class ToolInvocationEnvelope(BaseModel):
     success: bool = True
     error: Optional[Dict[str, Any]] = None
 
-    @root_validator(skip_on_failure=True)
-    def error_required_when_failed(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        if values.get("success") is False and not values.get("error"):
+    @model_validator(mode="after")
+    def error_required_when_failed(self) -> "ToolInvocationEnvelope":
+        if self.success is False and not self.error:
             raise ValueError("failed tool invocations must include an error envelope")
-        return values
+        return self
 
 
 class WorkflowTransitionEnvelope(BaseModel):

@@ -3,6 +3,7 @@
         typecheck-layer3 typecheck-layer4 typecheck-layer5 typecheck-layer6 \
         test contract-tests contract-lint test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate migrate-layer1 migrate-layer2 migrate-layer4 migrate-layer5 evals perf-test perf-eval clean sdk \
+        setup \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
 	test-backend-integrated-validation test-backend-integrated-release-smoke \
@@ -254,6 +255,26 @@ test-e2e-docker: ## Run E2E tests with Docker containers
 test-fast: ## Run only fast tests (exclude slow and e2e)
 	@echo "→ Running fast tests only"
 	cd services/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
+
+# ─── Setup ───────────────────────────────────────────────────────────────────
+
+setup: ## Install all service dev dependencies into the active Python environment
+	@echo "→ Installing shared packages..."
+	pip install -e "packages/shared/src" 2>/dev/null || true
+	pip install -e "packages/platform-contract/src/python" 2>/dev/null || true
+	@echo "→ Installing Layer 1 dev dependencies..."
+	cd services/layer1-ingestion && pip install -e ".[dev]" -q
+	@echo "→ Installing Layer 2 dev dependencies..."
+	cd services/layer2-extraction && pip install -e ".[dev]" -q
+	@echo "→ Installing Layer 3 dev dependencies..."
+	cd services/layer3-knowledge && pip install -e ".[dev]" -q 2>/dev/null || pip install -e "." -q
+	@echo "→ Installing Layer 4 dev dependencies..."
+	cd services/layer4-agents && pip install -e ".[dev]" -q
+	@echo "→ Installing Layer 5 dev dependencies..."
+	cd services/layer5-ground-truth && pip install -e ".[dev]" -q
+	@echo "→ Installing Layer 6 dev dependencies..."
+	cd services/layer6-benchmarks && pip install -e ".[dev]" -q
+	@echo "✅  All service dependencies installed"
 
 # ─── Layer-Specific Tests ─────────────────────────────────────────────────────
 

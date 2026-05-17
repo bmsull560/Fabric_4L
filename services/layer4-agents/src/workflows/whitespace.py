@@ -511,6 +511,10 @@ Return ONLY the JSON object, no other text."""
                 account_name=account_name,
                 needs_json=json.dumps(extracted, indent=2),
                 search_results_json=json.dumps(search_results, indent=2),
+                existing_coverage_json=json.dumps(
+                    {"coverage_percentage": gaps_prior.get("coverage_percentage", 0)},
+                    indent=2,
+                ),
             )
             gap_result = await client.call(
                 model_task=gap_tmpl.model_task,
@@ -534,9 +538,12 @@ Return ONLY the JSON object, no other text."""
                 messages=[system_msg, {"role": "user", "content": hyp_content}],
                 temperature=hyp_tmpl.temperature,
                 max_tokens=hyp_tmpl.max_tokens,
+                response_format={"type": "json_object"},
                 call_id=f"ws_hyp_{trace_id or 'unknown'}",
             )
             hypotheses = client._parse_json(hyp_result.content)
+            if not hypotheses or "hypotheses" not in hypotheses:
+                raise ValueError("invalid_structured_output")
 
             # Aggregate token usage across all three calls
             total_prompt = (
@@ -571,15 +578,15 @@ Return ONLY the JSON object, no other text."""
                 total_prompt + total_completion,
             )
 
-        except Exception as exc:
-            logger.warning("Whitespace LLM hypothesis generation failed: %s", exc)
+        except Exception:
+            logger.warning("Whitespace LLM hypothesis generation failed", extra={"code": "llm_failed"})
             agent_result.payload = {
                 "extracted_entities": {},
                 "gap_analysis": {},
                 "hypotheses": [],
                 "opportunity_score": 0,
             }
-            agent_result.degraded_reason = f"llm_failed: {exc}"
+            agent_result.degraded_reason = "llm_failed"
 
         return agent_result.to_dict()
 

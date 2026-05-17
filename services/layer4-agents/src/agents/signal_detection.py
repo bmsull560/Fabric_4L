@@ -36,6 +36,7 @@ class SignalDetectionAgent__detect_signalsResult(TypedDictModel):
     message: str
     processing_metadata: Any
     signals: list[Any]
+    llm_output: Any | None = None
 
 class SignalDetectionAgent__extract_signals_from_layer2Result(TypedDictModel):
     duration_ms: int
@@ -234,6 +235,8 @@ class SignalDetectionAgent(BaseAgent):
             enrichment_start = datetime.now(UTC)
             for idx, raw_signal in enumerate(raw_signals):
                 signal = self._create_pain_signal(raw_signal, prospect_data, ctx)
+                if signal is None:
+                    continue
 
                 if include_evidence:
                     signal = await self._enrich_with_evidence(signal, ctx)
@@ -423,21 +426,40 @@ class SignalDetectionAgent(BaseAgent):
         raw_signal: dict[str, Any],
         prospect_data: dict[str, Any],
         ctx: RequestContext,
-    ) -> PainSignal:
-        """Create PainSignal from raw extraction result."""
+    ) -> PainSignal | None:
+        """Create PainSignal from raw extraction result.
+
+        Returns ``None`` (and logs a warning) when ``account_id`` is absent from
+        *prospect_data*, so the caller can skip the record rather than persisting
+        a signal with an empty account identifier.
+        """
+        account_id = prospect_data.get("account_id")
+        if not account_id:
+            logger.warning(
+                "Skipping pain signal creation: account_id missing from prospect_data"
+            )
+            return None
+
+        raw_explanation = raw_signal.get("confidence_explanation", "")
+        # PainSignal requires confidence_explanation min_length=10; pad if needed
+        confidence_explanation = (
+            raw_explanation if len(raw_explanation) >= 10
+            else (raw_explanation.strip() + " (extracted)").ljust(10)
+        )
+        description = raw_signal.get("description", "")
+        # PainSignal requires description min_length=10
+        if len(description) < 10:
+            description = (description.strip() + " (extracted)").ljust(10)
         return PainSignal(
             id=f"sig_{self._id_gen.generate()[:12]}",
             name=raw_signal.get("name", "Unknown Signal"),
             category=SignalCategory.OPERATIONAL,
-            description=raw_signal.get("description", ""),
+            description=description,
             confidence_score=raw_signal.get("confidence_score", 0.0),
-            confidence_explanation=raw_signal.get("confidence_explanation", ""),
+            confidence_explanation=confidence_explanation,
             trend_direction=TrendDirection(raw_signal.get("trend_direction", "new")),
             trend_explanation=raw_signal.get("trend_explanation", ""),
-            impact_indicators=raw_signal.get("impact_indicators", []),
-            stakeholder_quotes=raw_signal.get("stakeholder_quotes", []),
-            likely_value_drivers=raw_signal.get("likely_value_drivers", []),
-            account_id=prospect_data.get("account_id", ""),
+            account_id=account_id,
             tenant_id=ctx.tenant_id,
             extraction_trace_id=ctx.trace_id,
             source_prompt_id=prospect_data.get("prompt_id", ""),
@@ -659,7 +681,7 @@ class SignalDetectionAgent(BaseAgent):
             confidence = float(narrative_data.get("confidence", 0.7))
 
             agent_result.payload = {
-                "classified_signals": classified.get("signals", []),
+                "classified_signals": classified.get("classified_signals", []),
                 "hypotheses": hypotheses.get("hypotheses", []),
                 "narrative": narrative_data.get("narrative", ""),
                 "top_signals": narrative_data.get("top_signals", []),
@@ -677,8 +699,8 @@ class SignalDetectionAgent(BaseAgent):
                 total_prompt + total_completion,
             )
 
-        except Exception as exc:
-            logger.warning("Signal detection LLM layer failed: %s", exc)
+        except Exception:
+            logger.warning("Signal detection LLM layer failed", extra={"code": "llm_failed"})
             agent_result.payload = {
                 "classified_signals": [],
                 "hypotheses": [],
@@ -686,7 +708,7 @@ class SignalDetectionAgent(BaseAgent):
                 "top_signals": [],
                 "evidence_refs": [],
             }
-            agent_result.degraded_reason = f"llm_failed: {exc}"
+            agent_result.degraded_reason = "llm_failed"
 
         return agent_result.to_dict()
 

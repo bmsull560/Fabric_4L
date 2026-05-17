@@ -551,7 +551,7 @@ class ROICalculatorWorkflow(BaseWorkflow):
         Degrades gracefully: if the LLM call fails, returns an unenriched
         ``AgentResult`` with ``human_review_required=True``.
         """
-        agg_prior = state.output_data.get("aggregate_roi", {})
+        agg_prior = state.output_data.get("aggregate", {})
         aggregated = agg_prior.get("aggregated") or {}
         detailed = agg_prior.get("detailed_results") or []
 
@@ -596,21 +596,22 @@ class ROICalculatorWorkflow(BaseWorkflow):
 
             industry = (
                 state.input_data.get("industry_vertical")
-                or state.roi_input.industry_vertical
-                if state.roi_input
-                else "technology"
+                or (state.roi_input.industry_vertical if state.roi_input else None)
+                or "technology"
             )
             company_size = (
                 str(state.input_data.get("company_size", ""))
-                or str(state.roi_input.company_size or "")
-                if state.roi_input
-                else ""
+                or (str(state.roi_input.company_size or "") if state.roi_input else "")
+            )
+            benchmarks = (
+                state.output_data.get("fetch_benchmarks", {}).get("benchmarks") or {}
             )
 
             user_content = hyp_tmpl.render(
                 account_name=account_name,
                 formula_outputs_json=json.dumps(formula_summary, indent=2),
                 value_drivers_json=json.dumps(value_drivers_summary, indent=2),
+                benchmarks_json=json.dumps(benchmarks, indent=2),
                 industry=industry or "technology",
                 company_size=company_size or "mid-market",
             )
@@ -631,16 +632,22 @@ class ROICalculatorWorkflow(BaseWorkflow):
                 messages=messages,
                 temperature=hyp_tmpl.temperature,
                 max_tokens=hyp_tmpl.max_tokens,
+                response_format={"type": "json_object"},
                 call_id=f"roi_hyp_{trace_id or 'unknown'}",
             )
 
             # Parse the JSON response
             parsed = client._parse_json(llm_result.content)
+            if not parsed or "hypothesis" not in parsed:
+                raise ValueError("invalid_structured_output")
 
             agent_result.payload = {
-                "hypotheses": parsed.get("hypotheses", []),
-                "roi_narrative": parsed.get("roi_narrative", ""),
-                "key_value_drivers": parsed.get("key_value_drivers", []),
+                "hypothesis": parsed.get("hypothesis", ""),
+                "confidence_rationale": parsed.get("confidence_rationale", ""),
+                "key_drivers": parsed.get("key_drivers", []),
+                "risks": parsed.get("risks", []),
+                "narrative_summary": parsed.get("narrative_summary", ""),
+                "evidence_refs": parsed.get("evidence_refs", []),
                 "aggregated_roi": aggregated,
             }
             agent_result.mark_llm_enriched(
@@ -656,15 +663,18 @@ class ROICalculatorWorkflow(BaseWorkflow):
                 llm_result.cost_usd,
             )
 
-        except Exception as exc:
-            logger.warning("ROI LLM hypothesis generation failed: %s", exc)
+        except Exception:
+            logger.warning("ROI LLM hypothesis generation failed", extra={"code": "llm_failed"})
             agent_result.payload = {
-                "hypotheses": [],
-                "roi_narrative": "",
-                "key_value_drivers": [],
+                "hypothesis": "",
+                "confidence_rationale": "",
+                "key_drivers": [],
+                "risks": [],
+                "narrative_summary": "",
+                "evidence_refs": [],
                 "aggregated_roi": aggregated,
             }
-            agent_result.degraded_reason = f"llm_failed: {exc}"
+            agent_result.degraded_reason = "llm_failed"
 
         return agent_result.to_dict()
 
