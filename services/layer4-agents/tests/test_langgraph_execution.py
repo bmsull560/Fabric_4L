@@ -102,7 +102,7 @@ class TestWhitespaceAnalysisWorkflow:
     """WhitespaceAnalysisWorkflow unit tests."""
 
     @pytest.mark.asyncio
-    @patch("value_fabric.layer4.workflows.whitespace.get_openai_provider")
+    @patch("value_fabric.layer4.workflows.whitespace.get_llm_provider")
     @patch("value_fabric.layer4.workflows.whitespace.get_llm_budget_guardrails")
     async def test_analyze_prospect_returns_complete_result(self, mock_guardrails, mock_get_provider) -> None:
         """_execute_analyze_prospect must return a result with all required fields."""
