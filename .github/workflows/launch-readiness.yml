@@ -57,7 +57,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
@@ -163,7 +163,7 @@ jobs:
             artifact: layer4-report.json
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
-      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install test dependencies
@@ -186,7 +186,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
-      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
@@ -228,7 +228,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pnpm install --frozen-lockfile
