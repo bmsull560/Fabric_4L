@@ -39,13 +39,16 @@ BANNED_PATTERNS: list[str] = [
 # Format: "path:relative/to/repo:line_number"
 ALLOWLIST: dict[str, str] = {
     # Tests are allowed to use mock values and synthetic fixtures
-    "tests:tests/security/test_rbac.py:300": "Intentional JWT alg=none attack simulation in security test",
-    "tests:tests/security/test_rbac.py:301": "Intentional JWT alg=none attack simulation in security test",
-    "tests:tests/security/test_rbac.py:318": "Intentional algorithm confusion attack simulation in security test",
-    "tests:tests/security/test_rbac.py:319": "Intentional algorithm confusion attack simulation in security test",
-    "tests:tests/security/test_adversarial_auth.py:242": "Intentional JWT alg=none attack simulation in security test",
-    "tests:tests/security/test_adversarial_auth.py:243": "Intentional JWT alg=none attack simulation in security test",
-    "tests:tests/security/test_adversarial_auth.py:283": "Intentional JWT payload tampering simulation in security test",
+    "tests:tests/security/test_rbac.py:322": "Intentional JWT alg=none attack simulation in security test",
+    "tests:tests/security/test_rbac.py:323": "Intentional JWT alg=none attack simulation in security test",
+    "tests:tests/security/test_rbac.py:340": "Intentional algorithm confusion attack simulation in security test",
+    "tests:tests/security/test_rbac.py:341": "Intentional algorithm confusion attack simulation in security test",
+    "tests:tests/security/test_rbac.py:348": "Intentional JWT HMAC attack simulation in security test",
+    "tests:tests/security/test_adversarial_auth.py:347": "Intentional JWT alg=none attack simulation in security test",
+    "tests:tests/security/test_adversarial_auth.py:348": "Intentional JWT alg=none attack simulation in security test",
+    "tests:tests/security/test_adversarial_auth.py:391": "Intentional JWT payload tampering simulation in security test",
+    "tests:tests/security/test_adversarial_auth.py:575": "Intentional JWT alg=none attack simulation in security test",
+    "tests:tests/security/test_adversarial_auth.py:578": "Intentional JWT alg=none attack simulation in security test",
     "tests:services/layer3-knowledge/tests/test_scenario_engine.py:17": "Test fixture data for scenario engine unit tests",
     "tests:services/layer3-knowledge/tests/test_scenario_engine.py:19": "Test fixture data for scenario engine unit tests",
     "tests:services/layer3-knowledge/tests/test_scenario_engine.py:43": "Test fixture data for scenario engine unit tests",
@@ -87,8 +90,8 @@ ALLOWLIST: dict[str, str] = {
     "scripts:scripts/ci/check_auth_bypass.py:1": "Auth bypass checking script contains bypass strings explicitly",
     # Legitimate PKCE / JWT canonicalization uses
     "other:services/api/app/core/security.py:65": "JWT base64url canonicalization for tamper detection (not token creation)",
+    "other:services/api/app/core/security.py:115": "JWT base64url re-encode for canonical segment comparison (tamper detection, not token creation)",
     # Security test simulations
-    "tests:tests/security/test_rbac.py:326": "Intentional JWT HMAC attack simulation in security test",
     "tests:services/api/app/tests/test_production_safety.py:59": "Intentional negative test for mock llm rejection",
     "tests:services/api/app/tests/test_i03_durable_persistence_and_llm.py:66": "Intentional negative test for mock llm rejection",
     "tests:services/api/app/tests/test_i03_durable_persistence_and_llm.py:119": "Intentional negative test for demo data rejection",
@@ -114,6 +117,9 @@ ALLOWLIST: dict[str, str] = {
     "scripts:scripts/ci/prod_stub_scan.py:136": "Scanner contains security-critical pattern definition list",
     "scripts:scripts/ci/prod_stub_scan.py:137": "Scanner contains security-critical pattern definition list",
     "other:services/layer4-agents/src/api/routes/integrations.py:190": "Base64url encoding for signed integration payload transport",
+    "other:services/layer4-agents/src/api/routes/integrations.py:215": "Base64url encoding for signed OAuth state payload transport",
+    "tests:services/layer4-agents/tests/test_oidc_id_token_validation.py:22": "Test helper encodes RSA key modulus as base64url for JWK fixture",
+    "tests:tests/integration/test_oidc_live.py:245": "Intentional JWT payload tampering simulation in integration security test",
     "tests:tests/layer3/test_model_registry_tenant_context.py:16": "Test helper generates base64url fixture IDs",
 }
 

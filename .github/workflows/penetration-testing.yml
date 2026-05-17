@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: '0 2 * * 1'
 
-  # On-demand trigger
+  # On-demand (PR trigger removed — requires a live docker-compose stack not available in standard CI runners) trigger
   workflow_dispatch:
     inputs:
       target_url:
@@ -27,14 +27,6 @@ on:
           - zap-only
           - nikto-only
 
-  # Run on PR to main for security-related changes
-  pull_request:
-    branches: [main]
-    paths:
-      - '**/middleware.py'
-      - '**/auth*.py'
-      - '**/security*.py'
-      - '.github/workflows/penetration-testing.yml'
 
 env:
   TARGET_URL: ${{ inputs.target_url || 'http://localhost:8000' }}
