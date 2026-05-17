@@ -234,12 +234,12 @@ async def _job_event_generator(
         return f"data: {payload}\n\n"
 
     # Check job exists first
-    job = await job_store.get(job_id)
+    job = await job_store.get(job_id, tenant_id=tenant_id)
     if job is None:
         return  # caller raises 404 before entering generator
 
     while True:
-        job = await job_store.get(job_id)
+        job = await job_store.get(job_id, tenant_id=tenant_id)
         if job is None:
             yield _event("error", {"error": f"Job {job_id} not found", "job_id": job_id})
             return
