@@ -255,41 +255,47 @@ async def _sse_event_generator(job_id: str, tenant_id: str | None) -> AsyncGener
         payload = {"type": event_type, "timestamp": _now_z(), "data": data}
         return f"event: {event_type}\ndata: {json.dumps(payload)}\n\n"
 
-    try:
-        job = await job_store.get_job(job_id, tenant_id=tenant_id)
-    except KeyError:
-        yield _evt("error", {"error": "job_not_found", "job_id": job_id})
-        return
-
-    overall = _compute_overall_status(job.extraction_status, job.ingestion_status)
-    yield _evt("status", overall)
-
-    if overall in _SSE_TERMINAL_STATUSES:
-        yield _evt("progress", 100)
-        if overall == "completed":
-            yield _evt("log", {"level": "success", "message": "Pipeline completed"})
-            yield _evt("complete", {
-                "job_id": job_id,
-                "status": overall,
-                "entities_extracted": job.entities_extracted,
-                "relationships_extracted": job.relationships_extracted,
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-                "error": None,
-            })
-        else:
-            yield _evt("log", {"level": "error", "message": job.last_error or "Pipeline failed"})
-            yield _evt("error", {
-                "job_id": job_id,
-                "status": overall,
-                "error": job.last_error,
-                "entities_extracted": job.entities_extracted,
-                "relationships_extracted": job.relationships_extracted,
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-            })
-        return
+    first_poll = True
 
     # Poll until terminal
     for _ in range(120):  # max 60 s at 0.5 s intervals
+        if first_poll:
+            first_poll = False
+        else:
+            await asyncio.sleep(_POLL_INTERVAL)
+
+        try:
+            job = await job_store.get_job(job_id, tenant_id=tenant_id)
+        except KeyError:
+            yield _evt("error", {"error": "job_not_found", "job_id": job_id})
+            return
+
+        overall = _compute_overall_status(job.extraction_status, job.ingestion_status)
+        yield _evt("status", overall)
+
+        if overall in _SSE_TERMINAL_STATUSES:
+            yield _evt("progress", 100)
+            if overall == "completed":
+                yield _evt("log", {"level": "success", "message": "Pipeline completed"})
+                yield _evt("complete", {
+                    "job_id": job_id,
+                    "status": overall,
+                    "entities_extracted": job.entities_extracted,
+                    "relationships_extracted": job.relationships_extracted,
+                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                    "error": None,
+                })
+            else:
+                yield _evt("log", {"level": "error", "message": job.last_error or "Pipeline failed"})
+                yield _evt("error", {
+                    "job_id": job_id,
+                    "status": overall,
+                    "error": job.last_error,
+                    "entities_extracted": job.entities_extracted,
+                    "relationships_extracted": job.relationships_extracted,
+                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                })
+            return
         await asyncio.sleep(_POLL_INTERVAL)
         try:
             job = await job_store.get_job(job_id, tenant_id=tenant_id)
