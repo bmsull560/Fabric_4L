@@ -186,7 +186,7 @@ async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
         )
 
     return StreamingResponse(
-        _job_event_generator(job_id),
+        _job_event_generator(job_id, tenant_id=tenant_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
