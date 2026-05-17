@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - exercised only in minimal test envs
 
     psutil = _PsutilFallback()
 
-from api.models import ServiceMetrics
+from ..api.models import ServiceMetrics
 
 logger = logging.getLogger(__name__)
 

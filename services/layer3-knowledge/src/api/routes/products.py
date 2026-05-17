@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
-from api.dependencies import get_neo4j_driver
+from ...api.dependencies import get_neo4j_driver
 
 router = APIRouter(prefix="/products", tags=["products"])
 

@@ -14,8 +14,8 @@ from pydantic import BaseModel, Field, field_validator
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_tenant_context
 
-from api.dependencies_tenant import create_neo4j_tenant_session
-from api.exceptions import DatabaseError, ValidationError
+from ...api.dependencies_tenant import create_neo4j_tenant_session
+from ...api.exceptions import DatabaseError, ValidationError
 from logging_config import get_logger
 
 logger = get_logger(__name__)

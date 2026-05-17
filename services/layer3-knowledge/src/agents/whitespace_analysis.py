@@ -13,7 +13,7 @@ from typing import Any
 from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from agents.base import AgentResult, BaseAgent
+from ..agents.base import AgentResult, BaseAgent
 
 
 class WhitespaceAnalysisAgent__identify_gapsResult(TypedDictModel):

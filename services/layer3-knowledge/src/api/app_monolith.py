@@ -68,7 +68,7 @@ from value_fabric.shared.error_handling.exceptions import (
 )
 from value_fabric.shared.error_handling.models import ErrorCode
 
-from api.dependencies import (
+from ..api.dependencies import (
     AppState,
     close_app_state,
     get_app_state,
@@ -89,7 +89,7 @@ from api.dependencies import (
 )
 
 # P1-29: OpenTelemetry imports for distributed tracing
-from api.telemetry import (
+from ..api.telemetry import (
     OTEL_AVAILABLE,
     SERVICE_NAME,
     BatchSpanProcessor,
@@ -99,7 +99,7 @@ from api.telemetry import (
     TracerProvider,
     trace,
 )
-from api.metrics_state import get_system_metrics, set_app_metrics
+from ..api.metrics_state import get_system_metrics, set_app_metrics
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
@@ -158,7 +158,7 @@ def _resolve_ingest_tenant_id(
 
 
 from value_fabric.shared.identity.vault_check import is_vault_healthy
-from api.exceptions import (
+from ..api.exceptions import (
     AuthenticationError,
     AuthorizationError,
     RateLimitError,
@@ -171,7 +171,7 @@ SHARED_ERROR_HANDLING_AVAILABLE = True
 # Import dataclass utilities
 from dataclasses import asdict
 
-from api.rate_limiter import add_rate_limiting
+from ..api.rate_limiter import add_rate_limiting
 
 # Import cache modules
 try:
@@ -194,7 +194,7 @@ except ImportError:
     METRICS_AVAILABLE = False
 
 # Import versioning modules
-from api.models import (
+from ..api.models import (
     AuditLogEntry,
     AuditLogResponse,
     BatchAnalyticsRequest,
@@ -249,7 +249,7 @@ from api.models import (
     ValueTreeResponse,
     ValueTreeTraversal,
 )
-from api.versioning import (
+from ..api.versioning import (
     VersionMiddleware,
     get_version_compatibility,
     initialize_versioning,
@@ -660,7 +660,7 @@ if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
 
 
 # Include routers from routes modules
-from api.routes import (
+from ..api.routes import (
     benchmarks,
     calculators,
     compat_aliases,

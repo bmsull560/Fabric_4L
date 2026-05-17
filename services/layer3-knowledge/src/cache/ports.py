@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from cache.redis_cache import RedisCache
+from ..cache.redis_cache import RedisCache
 
 
 @runtime_checkable

@@ -4,7 +4,7 @@ from typing import Any
 
 from value_fabric.shared.identity.isolation import TenantScopedCypher
 
-from db.query_execution import TenantExecutionContext, TenantQueryExecutor
+from ..db.query_execution import TenantExecutionContext, TenantQueryExecutor
 
 _DEFAULT_LABELS = ("Capability", "UseCase", "Persona", "ValueDriver")
 

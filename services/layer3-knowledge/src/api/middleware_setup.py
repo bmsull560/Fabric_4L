@@ -16,8 +16,8 @@ from value_fabric.shared.fastapi_framework import (
     resolve_cors_policy,
 )
 
-from api.rate_limiter import add_rate_limiting
-from api.versioning import VersionMiddleware, get_version_compatibility
+from ..api.rate_limiter import add_rate_limiting
+from ..api.versioning import VersionMiddleware, get_version_compatibility
 
 logger = get_logger(__name__)
 
