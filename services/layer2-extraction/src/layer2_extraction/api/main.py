@@ -349,11 +349,6 @@ async def stream_job_events(job_id: str, request: Request) -> StreamingResponse:
     and buffering-disabled headers for proxy compatibility.
     """
     tenant_id = _get_optional_tenant(request)
-    # Verify job exists before opening the stream
-    try:
-        await job_store.get_job(job_id, tenant_id=tenant_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
     return StreamingResponse(
         _sse_event_generator(job_id, tenant_id),
