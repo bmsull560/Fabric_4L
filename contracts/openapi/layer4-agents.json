@@ -10364,6 +10364,581 @@
           }
         }
       }
+    },
+    "/v1/harness/runs": {
+      "post": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Create a harness run",
+        "operationId": "create_harness_run_v1_harness_runs_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Run created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "List harness runs",
+        "operationId": "list_harness_runs_v1_harness_runs_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "workflow_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated run list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}": {
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Get a harness run",
+        "operationId": "get_harness_run_v1_harness_runs__run_id__get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/transition": {
+      "post": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Advance run state",
+        "operationId": "transition_harness_run_v1_harness_runs__run_id__transition_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransitionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid transition"
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/cancel": {
+      "post": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Cancel a harness run",
+        "operationId": "cancel_harness_run_v1_harness_runs__run_id__cancel_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/checkpoints": {
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "List checkpoints for a run",
+        "operationId": "list_harness_checkpoints_v1_harness_runs__run_id__checkpoints_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkpoint list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/checkpoints/latest": {
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Get latest checkpoint for a run",
+        "operationId": "get_latest_checkpoint_v1_harness_runs__run_id__checkpoints_latest_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest checkpoint",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckpointResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No checkpoint found"
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/gates": {
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "List gates for a run",
+        "operationId": "list_harness_gates_v1_harness_runs__run_id__gates_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Gate list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Create a human gate",
+        "operationId": "create_harness_gate_v1_harness_runs__run_id__gates_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Gate created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/harness/gates/{gate_id}/decide": {
+      "post": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Decide a human gate",
+        "description": "Approve, reject, modify, or expire a human gate. decision_by is taken from the authenticated user context.",
+        "operationId": "decide_harness_gate_v1_harness_gates__gate_id__decide_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "gate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GateDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Gate decision recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid decision"
+          },
+          "404": {
+            "description": "Gate not found"
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/validate": {
+      "post": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Validate claims for a run",
+        "description": "Submit claims for L5 Ground Truth validation. Results are persisted and returned with an aggregate summary.",
+        "operationId": "validate_harness_claims_v1_harness_runs__run_id__validate_post",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateClaimsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation results with aggregate summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateClaimsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant mismatch or invalid request"
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        }
+      }
+    },
+    "/v1/harness/runs/{run_id}/validation": {
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Get validation results for a run",
+        "description": "Return stored validation results for a run. Returns an empty summary when no claims have been validated yet. Tenant-scoped.",
+        "operationId": "get_harness_run_validation_v1_harness_runs__run_id__validation_get",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stored validation results with aggregate summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateClaimsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Run belongs to a different tenant"
+          },
+          "404": {
+            "description": "Run not found"
+          }
+        }
+      }
+    },
+    "/v1/harness/health": {
+      "get": {
+        "tags": [
+          "Harness"
+        ],
+        "summary": "Harness health check",
+        "operationId": "harness_health_v1_harness_health_get",
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HarnessHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -22028,6 +22603,646 @@
               }
             ],
             "description": "Optional sanitized error details"
+          }
+        }
+      },
+      "ClaimValidationRequest_Harness": {
+        "type": "object",
+        "title": "ClaimValidationRequest",
+        "description": "A single claim submitted for L5 validation.",
+        "required": [
+          "claim_id",
+          "claim_text"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string"
+          },
+          "claim_text": {
+            "type": "string"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "value_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ValidateClaimsRequest": {
+        "type": "object",
+        "title": "ValidateClaimsRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/validate.",
+        "required": [
+          "claims"
+        ],
+        "properties": {
+          "claims": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClaimValidationRequest_Harness"
+            }
+          }
+        }
+      },
+      "ValidationResultResponse": {
+        "type": "object",
+        "title": "ValidationResultResponse",
+        "description": "Single claim validation result.",
+        "required": [
+          "id",
+          "tenant_id",
+          "claim_id",
+          "validation_state",
+          "evidence_refs",
+          "confidence",
+          "trust_score",
+          "validator",
+          "reason",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "claim_id": {
+            "type": "string"
+          },
+          "validation_state": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "needs_review",
+              "insufficient_evidence"
+            ]
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "trust_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "validator": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ValidationSummaryResponse": {
+        "type": "object",
+        "title": "ValidationSummaryResponse",
+        "description": "Aggregate publish decision across all validated claims for a run.",
+        "required": [
+          "total",
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence",
+          "can_publish",
+          "requires_human_review"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "needs_review": {
+            "type": "integer"
+          },
+          "insufficient_evidence": {
+            "type": "integer"
+          },
+          "can_publish": {
+            "type": "boolean",
+            "description": "True only when all claims passed."
+          },
+          "requires_human_review": {
+            "type": "boolean",
+            "description": "True when any claim is needs_review or insufficient_evidence."
+          }
+        }
+      },
+      "ValidateClaimsResponse": {
+        "type": "object",
+        "title": "ValidateClaimsResponse",
+        "description": "Response for POST /v1/harness/runs/{run_id}/validate and GET /v1/harness/runs/{run_id}/validation.",
+        "required": [
+          "results",
+          "total",
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationResultResponse"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "needs_review": {
+            "type": "integer"
+          },
+          "insufficient_evidence": {
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "CreateRunRequest": {
+        "type": "object",
+        "title": "CreateRunRequest",
+        "required": [
+          "workflow_type"
+        ],
+        "properties": {
+          "workflow_type": {
+            "type": "string"
+          },
+          "initiated_by": {
+            "type": "string",
+            "default": "user"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "value_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RunResponse": {
+        "type": "object",
+        "title": "RunResponse",
+        "required": [
+          "id",
+          "tenant_id",
+          "workflow_type",
+          "initiated_by",
+          "status",
+          "current_state",
+          "trace_id",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "workflow_type": {
+            "type": "string"
+          },
+          "initiated_by": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "current_state": {
+            "type": "string"
+          },
+          "value_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trace_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RunListResponse": {
+        "type": "object",
+        "title": "RunListResponse",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunResponse"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TransitionRequest": {
+        "type": "object",
+        "title": "TransitionRequest",
+        "required": [
+          "to_state"
+        ],
+        "properties": {
+          "to_state": {
+            "type": "string"
+          },
+          "human_override": {
+            "type": "boolean",
+            "default": false
+          },
+          "state_payload": {
+            "type": "object",
+            "default": {}
+          },
+          "validation_results": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ValidationResultResponse"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "TraceEventResponse": {
+        "type": "object",
+        "title": "TraceEventResponse",
+        "required": [
+          "trace_id",
+          "run_id",
+          "tenant_id",
+          "event_type",
+          "timestamp"
+        ],
+        "properties": {
+          "trace_id": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "from_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TransitionResponse": {
+        "type": "object",
+        "title": "TransitionResponse",
+        "required": [
+          "run"
+        ],
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/RunResponse"
+          },
+          "trace_event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceEventResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CheckpointResponse": {
+        "type": "object",
+        "title": "CheckpointResponse",
+        "required": [
+          "id",
+          "run_id",
+          "tenant_id",
+          "state_name",
+          "input_hash",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "state_name": {
+            "type": "string"
+          },
+          "input_hash": {
+            "type": "string"
+          },
+          "output_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateGateRequest": {
+        "type": "object",
+        "title": "CreateGateRequest",
+        "required": [
+          "gate_type"
+        ],
+        "properties": {
+          "gate_type": {
+            "type": "string"
+          }
+        }
+      },
+      "GateResponse": {
+        "type": "object",
+        "title": "GateResponse",
+        "required": [
+          "id",
+          "run_id",
+          "tenant_id",
+          "gate_type",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "gate_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "decision_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "GateListResponse": {
+        "type": "object",
+        "title": "GateListResponse",
+        "required": [
+          "items",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GateResponse"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "GateDecisionRequest": {
+        "type": "object",
+        "title": "GateDecisionRequest",
+        "required": [
+          "decision"
+        ],
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "modified",
+              "expired"
+            ]
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "HarnessHealthResponse": {
+        "type": "object",
+        "title": "HarnessHealthResponse",
+        "required": [
+          "status",
+          "validation_available",
+          "l5_healthy",
+          "db_healthy"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ]
+          },
+          "validation_available": {
+            "type": "boolean"
+          },
+          "l5_healthy": {
+            "type": "boolean"
+          },
+          "db_healthy": {
+            "type": "boolean"
           }
         }
       }

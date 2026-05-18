@@ -37,6 +37,7 @@ from harness.models import (
     ToolRiskLevel,
     ValidationState,
 )
+from harness.db_models import ClaimValidationResultRow
 from harness.repositories import (
     CheckpointRepository,
     HarnessRunRepository,
@@ -336,6 +337,102 @@ class SqlToolContractRegistry:
 
 
 # ---------------------------------------------------------------------------
+# SqlClaimValidationStore
+# ---------------------------------------------------------------------------
+
+
+class SqlClaimValidationStore:
+    """Persists and retrieves ClaimValidationResult rows for a harness run.
+
+    Separate from ValidationHook — this store handles the write-through
+    after validation completes and the read path for the GET /validation
+    endpoint. ValidationHook continues to own the live L5 query logic.
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def save_results(
+        self,
+        run_id: str,
+        results: list[ClaimValidationResult],
+    ) -> None:
+        """Persist a batch of validation results for a run.
+
+        Idempotent on the claim_id+run_id pair: existing rows for the same
+        claim are deleted before inserting the new result so re-validation
+        always reflects the latest state.
+
+        Uses core INSERT (not ORM add) to avoid flush-within-flush issues
+        when called from within an active session transaction.
+        """
+        from sqlalchemy import delete, insert
+
+        if not results:
+            return
+
+        claim_ids = [r.claim_id for r in results]
+        await self._session.execute(
+            delete(ClaimValidationResultRow).where(
+                ClaimValidationResultRow.run_id == run_id,
+                ClaimValidationResultRow.claim_id.in_(claim_ids),
+            )
+        )
+
+        rows = [
+            {
+                "id": r.id,
+                "run_id": run_id,
+                "tenant_id": r.tenant_id,
+                "claim_id": r.claim_id,
+                "validation_state": r.validation_state.value,
+                "evidence_refs": r.evidence_refs,
+                "confidence": r.confidence,
+                "trust_score": r.trust_score,
+                "validator": r.validator,
+                "reason": r.reason,
+                "created_at": r.created_at,
+            }
+            for r in results
+        ]
+        await self._session.execute(insert(ClaimValidationResultRow), rows)
+
+    async def get_results_for_run(
+        self,
+        run_id: str,
+        tenant_id: str,
+    ) -> list[ClaimValidationResult]:
+        """Return all stored validation results for a run, tenant-scoped."""
+        from sqlalchemy import select
+
+        stmt = (
+            select(ClaimValidationResultRow)
+            .where(
+                ClaimValidationResultRow.run_id == run_id,
+                ClaimValidationResultRow.tenant_id == tenant_id,
+            )
+            .order_by(ClaimValidationResultRow.created_at)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return [self._to_domain(row) for row in rows]
+
+    @staticmethod
+    def _to_domain(row: ClaimValidationResultRow) -> ClaimValidationResult:
+        return ClaimValidationResult(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            claim_id=row.claim_id,
+            validation_state=ValidationState(row.validation_state),
+            evidence_refs=row.evidence_refs or [],
+            confidence=row.confidence,
+            trust_score=row.trust_score,
+            validator=row.validator,  # type: ignore[arg-type]
+            reason=row.reason or "",
+            created_at=row.created_at,
+        )
+
+
+# ---------------------------------------------------------------------------
 # SqlTelemetryEmitter
 # ---------------------------------------------------------------------------
 
@@ -565,6 +662,7 @@ class SqlHarnessRegistry:
         self._checkpoints = checkpoint_manager or SqlCheckpointManager(session)
         self._telemetry = telemetry or SqlTelemetryEmitter(session)
         self._validation = validation_hook or ValidationHook()
+        self._cvr_store = SqlClaimValidationStore(session)
 
     # ---- Run Lifecycle ----
 
@@ -705,7 +803,15 @@ class SqlHarnessRegistry:
         self,
         tenant_id: str,
         requests: list,
+        run_id: str | None = None,
     ) -> list[ClaimValidationResult]:
+        """Validate claims and persist results when run_id is provided.
+
+        run_id is optional for backwards compatibility with callers that
+        validate outside a specific run context. When provided, results are
+        written to harness_claim_validation_results so the GET /validation
+        endpoint can return them without re-running validation.
+        """
         from harness.registry import HarnessRegistryError
         from harness.validation_hooks import ClaimValidationRequest
 
@@ -719,7 +825,29 @@ class SqlHarnessRegistry:
                 f"tenant_id mismatch in validate_claims: "
                 f"claims {mismatched} do not belong to tenant '{tenant_id}'"
             )
-        return await self._validation.validate_claims(requests)
+
+        results = await self._validation.validate_claims(requests)
+
+        if run_id is not None and results:
+            try:
+                await self._cvr_store.save_results(run_id, results)
+            except Exception as exc:
+                # Persist failure must not block the caller — log and continue.
+                logger.warning(
+                    "validate_claims: failed to persist results for run %s: %s",
+                    run_id,
+                    exc,
+                )
+
+        return results
+
+    async def get_validation_results(
+        self,
+        run_id: str,
+        tenant_id: str,
+    ) -> list[ClaimValidationResult]:
+        """Return stored validation results for a run, tenant-scoped."""
+        return await self._cvr_store.get_results_for_run(run_id, tenant_id)
 
     # ---- Checkpoints ----
 

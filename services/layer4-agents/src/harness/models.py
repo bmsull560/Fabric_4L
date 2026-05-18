@@ -383,6 +383,46 @@ class ClaimValidationResult(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class ValidationSummary(BaseModel):
+    """Aggregate result across all claims validated in a single run.
+
+    Rules:
+      - can_publish=True only when all claims passed.
+      - requires_human_review=True when any claim is needs_review or insufficient_evidence.
+      - Empty results → can_publish=False, requires_human_review=True.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    total: int = 0
+    passed: int = 0
+    failed: int = 0
+    needs_review: int = 0
+    insufficient_evidence: int = 0
+    can_publish: bool = False
+    requires_human_review: bool = True
+
+
+class EvidenceChain(BaseModel):
+    """Full evidence provenance for a single validated claim.
+
+    Captures the claim ID, all source/evidence/benchmark references, the
+    validation result from L5, and any human gate decision that overrode
+    or confirmed the automated result.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    claim_id: str
+    source_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    benchmark_refs: list[str] = Field(default_factory=list)
+    validation_result: ClaimValidationResult
+    confidence: float = Field(ge=0.0, le=1.0)
+    trust_score: float = Field(ge=0.0, le=1.0)
+    human_decision: HumanGate | None = None
+
+
 class HarnessTraceEvent(BaseModel):
     """
     Structured trace event emitted on every significant harness action.
