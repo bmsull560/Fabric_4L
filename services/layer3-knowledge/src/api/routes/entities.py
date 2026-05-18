@@ -17,6 +17,7 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.identity.isolation import TenantScopedCypher
 
 from logging_config import get_logger
+
 from ...api.dependencies import (
     AppState,
     get_app_state,

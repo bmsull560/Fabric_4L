@@ -27,7 +27,6 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from ..crawler.decision_store import CrawlDecisionRepository
 from value_fabric.shared.identity.api_key_stub import reject_api_key_unsupported
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
@@ -37,6 +36,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 # Hard imports - fail fast if security components unavailable
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
 
+from ..crawler.decision_store import CrawlDecisionRepository
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import is_production_like_environment, settings
 from ..shared.database import get_db_from_context_sync
@@ -69,8 +69,8 @@ from ..shared.models import (
     create_scraping_job,
     create_scraping_target,
 )
-from ..skills import get_skill
 from ..shared.tasks import cleanup_old_content, process_scraping_job
+from ..skills import get_skill
 
 # Configure logging
 structlog.configure(
@@ -2399,7 +2399,6 @@ async def list_source_corpora(
     Returns summary objects only — provenance arrays are excluded.
     Tenant isolation is enforced from auth context; no cross-tenant query params accepted.
     """
-    from sqlalchemy import and_
 
     q = db.query(SourceCorpus).filter(SourceCorpus.tenant_id == org_id)
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, Literal
 from uuid import uuid4
@@ -22,7 +22,7 @@ class LineageRef(BaseModel):
     trace_id: str | None = None
 
     @model_validator(mode="after")
-    def validate_lineage(self) -> "LineageRef":
+    def validate_lineage(self) -> LineageRef:
         if not self.business_case_id and not self.value_model_id:
             raise ValueError("lineage requires business_case_id or value_model_id")
         if self.trace_id is None:
@@ -100,7 +100,7 @@ def _ensure_absent(store: dict[str, BaseModel], object_id: str, object_name: str
 
 def _hash_payload(kind: str, payload: BaseModel) -> str:
     serialized = payload.model_dump_json(exclude={"immutable_audit_hash"}, by_alias=True)
-    return f"sha256:{sha256(f'{kind}:{serialized}'.encode('utf-8')).hexdigest()}"
+    return f"sha256:{sha256(f'{kind}:{serialized}'.encode()).hexdigest()}"
 
 
 def _same_origin(a: LineageRef, b: LineageRef) -> bool:
@@ -223,7 +223,7 @@ async def create_audit_export(request: AuditExportCreateRequest) -> AuditExportJ
         review_id=request.review_id,
         status="pending" if approved else "blocked",
         reason=None if approved else "approval_required",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         lineage=LineageRef(
             business_case_id=review.lineage.business_case_id,
             value_model_id=review.lineage.value_model_id,

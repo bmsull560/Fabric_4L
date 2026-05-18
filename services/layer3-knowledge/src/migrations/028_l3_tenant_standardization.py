@@ -236,13 +236,13 @@ class L3TenantStandardizationMigration:
                     f"MATCH (n:{label}) WHERE n.tenantId IS NOT NULL RETURN count(n) as has_old_tenantId"
                 )
                 old_record = await old_result.single()
-                has_old_tenantId = old_record["has_old_tenantId"] if old_record else 0
+                has_old_tenant_id = old_record["has_old_tenantId"] if old_record else 0
 
                 results["labels"][label] = {
                     "total": total,
                     "has_tenant_id": has_tenant_id,
-                    "has_old_tenantId": has_old_tenantId,
-                    "missing_any": total - has_tenant_id - has_old_tenantId,
+                    "has_old_tenantId": has_old_tenant_id,
+                    "missing_any": total - has_tenant_id - has_old_tenant_id,
                 }
 
         return results
@@ -532,7 +532,7 @@ async def main() -> int:
 
         return 0 if results["status"] in ("complete", "dry_run_complete") else 1
 
-    except Exception as e:
+    except Exception:
         logger.exception("Migration failed")
         return 1
     finally:

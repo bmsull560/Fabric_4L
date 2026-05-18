@@ -23,6 +23,10 @@ from selectolax.lexbor import LexborHTMLParser
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 
+class SSRFProtectionError(Exception):
+    """Raised when a request is blocked by SSRF protection rules."""
+
+
 class HttpxCrawler_get_statsResult(TypedDictModel):
     config: dict[str, Any]
     total_retries: int

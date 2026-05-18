@@ -9,7 +9,11 @@ from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
-from ..ingestion.neo4j_loader import Neo4jLoader, RDFLoadError, validate_ingestion_tenant_id
+from ..ingestion.neo4j_loader import (
+    Neo4jLoader,
+    RDFLoadError,
+    validate_ingestion_tenant_id,
+)
 
 
 class SyncManager_sync_extraction_resultResult(TypedDictModel):

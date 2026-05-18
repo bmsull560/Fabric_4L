@@ -44,7 +44,6 @@ from ..services.truth_service import (
 from .auth import TokenClaims, authorize_action, get_current_user
 from .schemas import (
     AddSourceRequest,
-    HealthResponse,
     MaturityLadderResponse,
     MaturityLevelDetail,
     TruthObjectCreate,

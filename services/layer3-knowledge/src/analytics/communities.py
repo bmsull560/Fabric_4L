@@ -122,7 +122,7 @@ class CommunityDetector:
 
         # Build graph projection
         node_filter = self._build_node_filter(node_labels)
-        rel_filter = self._build_rel_filter(relationship_types)
+        _rel_filter = self._build_rel_filter(relationship_types)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Check if GDS is available
@@ -230,7 +230,7 @@ class CommunityDetector:
         driver = await self._get_driver()
 
         node_filter = self._build_node_filter(node_labels)
-        rel_filter = self._build_rel_filter(relationship_types)
+        _rel_filter = self._build_rel_filter(relationship_types)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             try:

@@ -24,8 +24,7 @@ from .config.settings import settings
 # Task 4.1: Default isolation tier constant
 DEFAULT_ISOLATION_TIER = "shared"
 
-from fastapi import Depends, Header, HTTPException, status
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -165,7 +164,7 @@ class Base(DeclarativeBase):
 # ---------------------------------------------------------------------------
 
 _engine: AsyncEngine | None = None
-_session_factory: async_sessionmaker["TenantEnforcedAsyncSession"] | None = None
+_session_factory: async_sessionmaker[TenantEnforcedAsyncSession] | None = None
 
 _TENANT_CONTEXT_STATE_KEY = "tenant_context_state"
 _TENANT_CONTEXT_VALUE_KEY = "tenant_context_value"
@@ -340,6 +339,8 @@ def _allow_compat_only_db_dependency(dep_name: str) -> None:
 try:
     from value_fabric.shared.database import (
         TenantContextError as SharedTenantContextError,
+    )
+    from value_fabric.shared.database import (
         validate_tenant_id as shared_validate_tenant_id,
     )
     SHARED_TENANT_VALIDATION_AVAILABLE = True

@@ -68,6 +68,7 @@
     "check:no-server-dto-interfaces": "node scripts/assert-no-server-dto-interfaces.mjs",
     "check:no-raw-api-client-in-hooks": "node scripts/assert-no-raw-api-client-in-hooks.mjs",
     "test:e2e:journey-launch": "pnpm run test:e2e:guard && playwright test --project=journeys e2e/journeys/j24-account-signals-evidence-driver-calculator-business-case.spec.ts",
+    "collect:journey-slo": "node scripts/quality/collect-journey-slo-metrics.mjs",
     "test:journey-slo-gate": "node scripts/quality/assert-journey-launch-slos.mjs",
     "test:frontend-hygiene": "node scripts/quality/assert-frontend-hygiene.mjs && pnpm run check:no-legacy-api-imports",
     "test:legacy-removals": "node scripts/quality/assert-legacy-removals.mjs",

@@ -1009,6 +1009,15 @@ jobs:
             apps/web/coverage/
           retention-days: 14
 
+      - name: Upload frontend test report artifact (release evidence)
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        if: always()
+        with:
+          name: frontend-test-report-${{ github.sha }}
+          path: apps/web/frontend-junit.xml
+          retention-days: 90
+          if-no-files-found: warn
+
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 

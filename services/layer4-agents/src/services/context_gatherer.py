@@ -116,6 +116,7 @@ class ContextGatheringService:
 
         try:
             from uuid import UUID
+
             from ..services.account_service import AccountService
 
             service = AccountService(self._db)

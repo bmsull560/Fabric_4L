@@ -11,7 +11,6 @@ import os
 from typing import Any
 
 import httpx
-
 from value_fabric.shared.observability.trace_context import CANONICAL_TRACE_HEADER
 
 logger = logging.getLogger(__name__)

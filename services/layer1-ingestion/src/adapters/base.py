@@ -6,7 +6,7 @@ the DataSourceAdapter abstract base class.
 
 import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
@@ -155,7 +155,7 @@ class DataSourceAdapter(ABC):
 
     async def fetch_documents_batch(
         self, document_ids: list[str], **kwargs
-    ) -> Iterator[FilingDocument]:
+    ) -> AsyncGenerator[FilingDocument, None]:
         """Fetch multiple documents efficiently.
 
         Default implementation fetches sequentially with rate limiting.

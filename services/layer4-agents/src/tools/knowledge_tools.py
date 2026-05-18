@@ -26,9 +26,9 @@ from ..models.tool_schemas import (
     TraverseTreeInput,
     TraverseTreeOutput,
 )
+from ..services.llm_provider import get_llm_provider
 from ..shared.domain import context as tenant_context
 from ..shared.domain.context import TenantContextError
-from ..services.llm_provider import get_llm_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)

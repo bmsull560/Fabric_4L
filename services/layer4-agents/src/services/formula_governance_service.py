@@ -39,12 +39,18 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     def __init__(self, driver: AsyncDriver):
         self._driver = driver
 
-    async def _tenant_id_for_formula(self, formula_id: str) -> str:
+    async def _tenant_id_for_formula(self, formula_id: str, tenant_id: str) -> str:
+        """Look up the tenant_id for a formula, scoped to the caller's tenant.
+
+        Requires the caller's tenant_id so the lookup is constrained to the
+        authenticated tenant's graph partition — prevents cross-tenant ID
+        collisions from returning a foreign tenant's ID.
+        """
         query = "MATCH (f:Formula {id: $formula_id, tenant_id: $tenant_id}) RETURN f.tenant_id as tenant_id"
         async with self._driver.session() as session:
             result = await session.run(query, formula_id=formula_id, tenant_id=tenant_id)
             record = await result.single()
-            return record["tenant_id"] if record and record.get("tenant_id") else "unknown"
+            return record["tenant_id"] if record and record.get("tenant_id") else tenant_id
 
     async def get_governance(self, formula_id: str, tenant_id: str) -> FormulaGovernance | None:
         """Retrieve governance metadata for formula from Neo4j."""
@@ -508,14 +514,15 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     async def submit_for_review(
         self,
         formula_id: str,
+        tenant_id: str,
         version: str,
         submitted_by: str,
     ) -> GovernanceTransitionResult:
         """Submit formula for review."""
-        tenant_id = await self._tenant_id_for_formula(formula_id)
+        resolved_tenant_id = await self._tenant_id_for_formula(formula_id, tenant_id)
         metrics = get_metrics()
         if metrics:
-            metrics.inc_formula_approval_pending(tenant_id)
+            metrics.inc_formula_approval_pending(resolved_tenant_id)
         return await self._transition_status(
             formula_id, version, FormulaStatus.DRAFT, FormulaStatus.UNDER_REVIEW, submitted_by
         )

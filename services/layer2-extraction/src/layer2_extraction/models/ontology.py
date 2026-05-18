@@ -4,6 +4,7 @@ Defines the 4 core entity types: Capability, UseCase, Persona, ValueDriver
 using Pydantic v2 with strict validation.
 """
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID, uuid4
@@ -424,16 +425,16 @@ class ExtractionResult(BaseModel):
     chunks_processed: int = 0
     errors: list[str] = Field(default_factory=list)
 
-    def get_all_entities(self) -> list[BaseModel]:
+    def get_all_entities(self) -> Sequence[BaseModel]:
         """Return all extracted entities as a flat list."""
-        return (
-            self.capabilities
-            + self.use_cases
-            + self.personas
-            + self.value_drivers
-            + self.value_metrics
-            + self.features
-        )
+        result: list[BaseModel] = []
+        result.extend(self.capabilities)
+        result.extend(self.use_cases)
+        result.extend(self.personas)
+        result.extend(self.value_drivers)
+        result.extend(self.value_metrics)
+        result.extend(self.features)
+        return result
 
     def get_entity_by_id(self, entity_id: str) -> BaseModel | None:
         """Find an entity by its ID across all types."""

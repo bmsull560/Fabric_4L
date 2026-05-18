@@ -9,20 +9,38 @@ from fastapi import FastAPI
 from ..config.settings import settings
 from ..feature_flags.api import feature_flags_router
 from ..registry.api.routes import router as models_router
-from ..tenants.api import admin_router, api_keys_router, provisioning_router, registration_router, tenants_router, users_router
+from ..tenants.api import (
+    admin_router,
+    api_keys_router,
+    provisioning_router,
+    registration_router,
+    tenants_router,
+    users_router,
+)
 from ..tenants.api.routes.oidc import router as oidc_router
-from .routes import accounts, agent_stream, analysis, comments, notifications, prospects, signals, tasks, tools, workflows
-from .routes.harness import router as harness_router
-from .routes.company_knowledge import router as company_knowledge_router
+from .routes import (
+    accounts,
+    agent_stream,
+    analysis,
+    comments,
+    notifications,
+    prospects,
+    signals,
+    tasks,
+    tools,
+    workflows,
+)
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
+from .routes.company_knowledge import router as company_knowledge_router
 from .routes.crm_webhooks import router as crm_webhooks_router
 from .routes.enrichment import router as enrichment_router
 from .routes.frontend_compat import router as frontend_compat_router
-from .routes.ground_truth_proxy import router as ground_truth_proxy_router
 from .routes.governance_workflows import router as governance_workflows_router
+from .routes.ground_truth_proxy import router as ground_truth_proxy_router
+from .routes.harness import router as harness_router
 from .routes.health_badges import health_badges_router
 from .routes.integrations import router as integrations_router
 from .routes.intelligence import router as intelligence_router

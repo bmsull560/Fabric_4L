@@ -6,7 +6,6 @@ import os
 import sqlite3
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 

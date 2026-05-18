@@ -285,7 +285,7 @@ class HarnessRunRepository:
         self,
         tenant_id: str,
         status: HarnessRunStatus | None = None,
-        workflow_type: "HarnessWorkflowType | None" = None,
+        workflow_type: HarnessWorkflowType | None = None,
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[list[HarnessRun], int]:
@@ -294,7 +294,8 @@ class HarnessRunRepository:
         ``total_count`` reflects the full unsliced count so callers can
         compute ``has_more`` without relying on slice length.
         """
-        from sqlalchemy import func, select as sa_select
+        from sqlalchemy import func
+        from sqlalchemy import select as sa_select
 
         base = sa_select(HarnessRunRow).where(HarnessRunRow.tenant_id == tenant_id)
         if status is not None:

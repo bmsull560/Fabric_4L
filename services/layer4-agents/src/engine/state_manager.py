@@ -48,7 +48,7 @@ class StateManager:
     def __init__(
         self,
         redis_client=None,
-        ws_manager: "WorkflowWebSocketManager" | None = None,
+        ws_manager: WorkflowWebSocketManager | None = None,
         max_memory_entries: int = DEFAULT_MAX_MEMORY_ENTRIES,
     ):
         """Initialize state manager.
@@ -77,7 +77,7 @@ class StateManager:
         """Generate Redis key for workflow history."""
         return f"{_WORKFLOW_KEY_PREFIX}:{workflow_id}{_HISTORY_KEY_SUFFIX}"
 
-    def set_ws_manager(self, ws_manager: "WorkflowWebSocketManager") -> None:
+    def set_ws_manager(self, ws_manager: WorkflowWebSocketManager) -> None:
         """Set WebSocket manager for real-time broadcasting."""
         self._ws_manager = ws_manager
 

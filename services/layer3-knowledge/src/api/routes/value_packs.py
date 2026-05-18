@@ -11,13 +11,6 @@ from typing import Any, Literal, TypedDict
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
-from ...api.routes.formulas import evaluate_expression
-from ...auth.api_keys import APIKey
-from ...auth.middleware import get_current_api_key
-from ...db.driver import get_driver
-from logging_config import get_logger
 from value_fabric.layer3.models.valuepack import (
     DEFAULT_VALUEPACKS,
     ComposableTemplateLibraryResponse,
@@ -29,7 +22,15 @@ from value_fabric.layer3.models.valuepack import (
     ValuePackResponse,
     ValuePackUpdate,
 )
+from value_fabric.shared.models.typed_dict import TypedDictModel
+
+from logging_config import get_logger
+
 from ...api.routes._utils import increment_patch_version
+from ...api.routes.formulas import evaluate_expression
+from ...auth.api_keys import APIKey
+from ...auth.middleware import get_current_api_key
+from ...db.driver import get_driver
 
 
 class _build_fork_paramsResult(TypedDictModel):
@@ -1089,7 +1090,7 @@ async def fork_pack(
     # Create forked pack with copied relationships
     new_pack_id = str(uuid.uuid4())
     fork_params = _build_fork_params(orig, request, new_pack_id)
-    params["tenant_id"] = tenant_id
+    fork_params["tenant_id"] = tenant_id
     new_pack = await _execute_fork(driver, fork_params)
 
     return PackForkResponse(

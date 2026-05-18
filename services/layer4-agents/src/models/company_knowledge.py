@@ -19,7 +19,6 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -32,7 +31,6 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
-
 
 # ---------------------------------------------------------------------------
 # Enumerations
@@ -257,19 +255,19 @@ class CompanyKnowledgeProfile(Base):
     # Relationships
     # -----------------------------------------------------------------------
 
-    sources: Mapped[list["KnowledgeSource"]] = relationship(
+    sources: Mapped[list[KnowledgeSource]] = relationship(
         "KnowledgeSource",
         back_populates="profile",
         cascade="all, delete-orphan",
     )
 
-    extraction_records: Mapped[list["ValueExtractionRecord"]] = relationship(
+    extraction_records: Mapped[list[ValueExtractionRecord]] = relationship(
         "ValueExtractionRecord",
         back_populates="profile",
         cascade="all, delete-orphan",
     )
 
-    icp_profiles: Mapped[list["ICPProfile"]] = relationship(
+    icp_profiles: Mapped[list[ICPProfile]] = relationship(
         "ICPProfile",
         back_populates="profile",
         cascade="all, delete-orphan",
@@ -386,11 +384,11 @@ class KnowledgeSource(Base):
     # Relationships
     # -----------------------------------------------------------------------
 
-    profile: Mapped["CompanyKnowledgeProfile"] = relationship(
+    profile: Mapped[CompanyKnowledgeProfile] = relationship(
         "CompanyKnowledgeProfile", back_populates="sources"
     )
 
-    extraction_records: Mapped[list["ValueExtractionRecord"]] = relationship(
+    extraction_records: Mapped[list[ValueExtractionRecord]] = relationship(
         "ValueExtractionRecord",
         back_populates="source",
         cascade="all, delete-orphan",
@@ -506,11 +504,11 @@ class ValueExtractionRecord(Base):
     # Relationships
     # -----------------------------------------------------------------------
 
-    source: Mapped["KnowledgeSource"] = relationship(
+    source: Mapped[KnowledgeSource] = relationship(
         "KnowledgeSource", back_populates="extraction_records"
     )
 
-    profile: Mapped["CompanyKnowledgeProfile"] = relationship(
+    profile: Mapped[CompanyKnowledgeProfile] = relationship(
         "CompanyKnowledgeProfile", back_populates="extraction_records"
     )
 
@@ -628,7 +626,7 @@ class ICPProfile(Base):
     # Relationships
     # -----------------------------------------------------------------------
 
-    profile: Mapped["CompanyKnowledgeProfile"] = relationship(
+    profile: Mapped[CompanyKnowledgeProfile] = relationship(
         "CompanyKnowledgeProfile", back_populates="icp_profiles"
     )
 

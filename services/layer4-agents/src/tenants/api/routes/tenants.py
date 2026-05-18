@@ -16,8 +16,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated, require_super_admin
 from value_fabric.shared.identity.models import (

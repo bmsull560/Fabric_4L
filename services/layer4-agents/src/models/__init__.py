@@ -10,19 +10,6 @@ from .account import (
     EmbeddedOpportunity,
     SyncStatus,
 )
-from .company_knowledge import (
-    AuthorityWeight,
-    CompanyKnowledgeProfile,
-    CrawlStatus,
-    ICPProfile,
-    ICPSourceType,
-    KnowledgeSource,
-    PageType,
-    ProfileStatus,
-    ReviewStatus,
-    SourceType,
-    ValueExtractionRecord,
-)
 from .agent_state import (
     AgentState,
     BaseAgentState,
@@ -47,13 +34,24 @@ from .billing import (
     SubscriptionStatus,
 )
 from .business_case_record import BusinessCaseRecord
-from .saved_scenario import SavedBusinessCaseScenario
-from .workspace_tab_data import WorkspaceTabData
+from .company_knowledge import (
+    AuthorityWeight,
+    CompanyKnowledgeProfile,
+    CrawlStatus,
+    ICPProfile,
+    ICPSourceType,
+    KnowledgeSource,
+    PageType,
+    ProfileStatus,
+    ReviewStatus,
+    SourceType,
+    ValueExtractionRecord,
+)
+from .crm_sync_job import CRMSyncJob, CRMSyncJobStatus
 from .integration import (
     Integration,
     IntegrationStatus,
 )
-from .crm_sync_job import CRMSyncJob, CRMSyncJobStatus
 from .pain_signal import (
     ErrorCategory,
     EvidenceMatch,
@@ -65,6 +63,7 @@ from .pain_signal import (
     SignalCategory,
     TrendDirection,
 )
+from .saved_scenario import SavedBusinessCaseScenario
 from .tool_schemas import (
     AssembleDocumentInput,
     AssembleDocumentOutput,
@@ -111,6 +110,7 @@ from .workflow_config import (
     NodeType,
     WorkflowConfig,
 )
+from .workspace_tab_data import WorkspaceTabData
 
 __all__ = [
     # Account Models
@@ -208,4 +208,5 @@ __all__ = [
     "PageType",
     "ReviewStatus",
     "ICPSourceType",
+    "WorkspaceTabData",
 ]

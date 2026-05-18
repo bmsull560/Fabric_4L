@@ -39,8 +39,9 @@ from uuid import UUID
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..config import get_settings
 from metrics.prometheus_metrics import get_metrics
+
+from ..config import get_settings
 from ..models.truth_object import (
     DisputeReason,
     MaturityHistory,

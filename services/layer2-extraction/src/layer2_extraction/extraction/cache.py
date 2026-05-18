@@ -6,7 +6,6 @@ Uses Redis when available, with an in-memory LRU fallback for local dev.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import pickle
 from collections import OrderedDict

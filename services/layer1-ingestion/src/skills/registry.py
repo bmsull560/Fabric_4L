@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .base import BaseSkill, SkillConfig
+from .base import BaseSkill
 from .licensing_company_intake import LicensingCompanyIntakeSkill
 from .prospect_research import ProspectResearchSkill
 

@@ -97,11 +97,18 @@ def scan_file(path: str) -> list[tuple]:
             line_number = _line_number(newline_offsets, match.start())
             violations.append(("ERROR", path, line_number, pattern_name, description))
 
+    is_test_file = "tests" in Path(path).parts or Path(path).name.startswith("test_")
+
     for pattern_name, regex, description, deadline in COMPILED_WARN_PATTERNS:
         for match in regex.finditer(content):
             line_number = _line_number(newline_offsets, match.start())
-            if pattern_name == "raw_dict_agent_return" and _enclosing_function_name(content, line_number) != "execute":
-                continue
+            if pattern_name == "raw_dict_agent_return":
+                if _enclosing_function_name(content, line_number) != "execute":
+                    continue
+                # Test-local mock execute() methods legitimately return dicts;
+                # the BaseTool framework wraps them in ToolResult. Skip test files.
+                if is_test_file:
+                    continue
             violations.append(("WARN", path, line_number, pattern_name, description, deadline))
 
     return violations

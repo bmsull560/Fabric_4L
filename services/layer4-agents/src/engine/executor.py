@@ -36,17 +36,16 @@ from ..agents.base import BaseAgent
 from ..messaging.bus import InMemoryMessageBus, MessageBus
 from ..messaging.router import MessageRouter
 from ..messaging.types import MessageType
+from ..observability import Layer4EventContext, Layer4LifecycleLogger
 from ..registry.service import FALLBACK_LLM_MODEL, resolve_llm_model
 from ..tools.registry import ToolRegistry
 from ..workflows import WORKFLOW_TYPES, create_workflow
-from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
-from .state_manager import StateManager
-from .execution_validation import ensure_controller_accepts_execution
+from .execution_checkpointing import persist_interruption_if_needed
 from .execution_dispatch import build_workflow_task
 from .execution_persistence import mark_workflow_running, persist_workflow_failure
-from .execution_checkpointing import persist_interruption_if_needed
-from ..observability import Layer4EventContext, Layer4LifecycleLogger
-
+from .execution_validation import ensure_controller_accepts_execution
+from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
+from .state_manager import StateManager
 
 
 class OrchestrationController_get_resultResult(TypedDictModel):
@@ -392,6 +391,7 @@ class OrchestrationController:
 
         if self.checkpoint_saver is None:
             import os
+
             from value_fabric.shared.security.config import is_production_like_environment
 
             environment = os.getenv("ENVIRONMENT") or os.getenv("ENV") or os.getenv("APP_ENV")
@@ -1153,7 +1153,7 @@ class OrchestrationController:
                 context=self._lifecycle_context(workflow_id),
             )
             return result
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             await persist_workflow_failure(
                 state_manager=self.state_manager,
                 workflow_id=workflow_id,
@@ -1178,7 +1178,7 @@ class OrchestrationController:
             if paused and paused.status in {WorkflowStatus.PAUSED, WorkflowStatus.INTERRUPTED}:
                 raise
             raise
-        except (RuntimeError, ValueError, TimeoutError) as exc:
+        except (RuntimeError, ValueError) as exc:
             await persist_workflow_failure(
                 state_manager=self.state_manager,
                 workflow_id=workflow_id,

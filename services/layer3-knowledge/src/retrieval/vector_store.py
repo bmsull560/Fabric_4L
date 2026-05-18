@@ -23,7 +23,11 @@ from typing import Any
 from neo4j import AsyncDriver
 from neo4j.exceptions import ClientError, ServiceUnavailable
 from value_fabric.shared.identity.context import get_request_context
-from value_fabric.shared.identity.isolation import ScopedQuery, SystemCypher, TenantScopedCypher
+from value_fabric.shared.identity.isolation import (
+    ScopedQuery,
+    SystemCypher,
+    TenantScopedCypher,
+)
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings

@@ -340,6 +340,7 @@ class TestRLSPolicyStructure:
             _L4_MIGRATIONS_DIR / "025_fix_billing_rls_policies.py",
             _L4_MIGRATIONS_DIR / "026_fix_rls_null_tenant_policy.py",
             _L4_MIGRATIONS_DIR / "032_fix_rls_null_bypass_crm_billing.py",
+            _L4_MIGRATIONS_DIR / "033_fix_rls_null_tenant_policy_remaining.py",
         ]
 
         for migration_file in remediation_files:
@@ -507,6 +508,212 @@ class TestConnectionPoolReset:
 _L1_MIGRATIONS_DIR = (
     _PROJECT_ROOT / "services" / "layer1-ingestion" / "migrations" / "versions"
 )
+
+
+# ---------------------------------------------------------------------------
+# Tests: Migration 033 — remaining NULL-bypass tables
+# ---------------------------------------------------------------------------
+
+class TestMigration033RLSCoverage:
+    """Verify migration 033 closes the remaining NULL-permissive RLS gaps.
+
+    Migration 033 fixes billing tables (025), company-knowledge tables (029),
+    and CRM sync jobs (030) — all of which were created after migration 026
+    ran and therefore still had the unsafe ``tenant_id IS NULL OR ...`` pattern.
+    """
+
+    _MIGRATION_FILE = (
+        _L4_MIGRATIONS_DIR / "033_fix_rls_null_tenant_policy_remaining.py"
+    )
+
+    _EXPECTED_TABLES = [
+        # Billing (025)
+        "billing_charges",
+        "billing_customers",
+        "billing_invoice_items",
+        "billing_invoices",
+        "billing_subscriptions",
+        "billing_usage_events",
+        "billing_webhook_events",
+        # Company knowledge (029)
+        "company_knowledge_profiles",
+        "icp_profiles",
+        "knowledge_sources",
+        "value_extraction_records",
+        # CRM (030)
+        "crm_sync_jobs",
+    ]
+
+    # Billing tables that 032 did not cover — 033 must create admin_bypass_policy.
+    _NEEDS_ADMIN_BYPASS = [
+        "billing_charges",
+        "billing_invoice_items",
+        "billing_invoices",
+        "billing_usage_events",
+    ]
+
+    def test_migration_033_exists(self):
+        """Migration 033_fix_rls_null_tenant_policy_remaining.py must exist."""
+        assert self._MIGRATION_FILE.exists(), (
+            "Migration 033_fix_rls_null_tenant_policy_remaining.py is missing. "
+            "Billing, company-knowledge, and CRM tables still have the unsafe "
+            "NULL-permissive RLS policy."
+        )
+
+    def test_migration_033_covers_all_expected_tables(self):
+        """Migration 033 must reference all 12 affected tables."""
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        source = self._MIGRATION_FILE.read_text()
+        for table in self._EXPECTED_TABLES:
+            assert table in source, (
+                f"Migration 033 does not reference '{table}'. "
+                f"This table still has the unsafe NULL RLS bypass."
+            )
+
+    def test_migration_033_upgrade_is_strict(self):
+        """Migration 033 upgrade() must not contain tenant_id IS NULL."""
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        source = self._MIGRATION_FILE.read_text()
+        upgrade_match = re.search(
+            r"def upgrade\(\).*?(?=def downgrade\(\)|\Z)",
+            source,
+            re.DOTALL,
+        )
+        assert upgrade_match, "Migration 033 has no upgrade() function."
+        upgrade_body = upgrade_match.group(0)
+
+        assert "tenant_id IS NULL" not in upgrade_body, (
+            "Migration 033 upgrade() still contains 'tenant_id IS NULL'. "
+            "The fix must use strict tenant_id equality only."
+        )
+
+    def test_migration_033_uses_current_setting(self):
+        """Migration 033 upgrade() must use current_setting('app.tenant_id')."""
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        source = self._MIGRATION_FILE.read_text()
+        upgrade_match = re.search(
+            r"def upgrade\(\).*?(?=def downgrade\(\)|\Z)",
+            source,
+            re.DOTALL,
+        )
+        assert upgrade_match, "Migration 033 has no upgrade() function."
+        upgrade_body = upgrade_match.group(0)
+
+        assert "current_setting('app.tenant_id'" in upgrade_body, (
+            "Migration 033 upgrade() does not use current_setting('app.tenant_id'). "
+            "RLS policy must use the PostgreSQL session variable."
+        )
+
+    def test_migration_033_force_row_level_security(self):
+        """Migration 033 must FORCE ROW LEVEL SECURITY on all covered tables."""
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        source = self._MIGRATION_FILE.read_text()
+        assert "FORCE ROW LEVEL SECURITY" in source, (
+            "Migration 033 does not FORCE ROW LEVEL SECURITY. "
+            "Without FORCE, the table owner role bypasses all RLS policies."
+        )
+
+    def test_migration_033_creates_admin_bypass_for_billing_tables(self):
+        """Migration 033 must create admin_bypass_policy for the 4 billing tables
+        not covered by migration 032."""
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        source = self._MIGRATION_FILE.read_text()
+        upgrade_match = re.search(
+            r"def upgrade\(\).*?(?=def downgrade\(\)|\Z)",
+            source,
+            re.DOTALL,
+        )
+        assert upgrade_match, "Migration 033 has no upgrade() function."
+        upgrade_body = upgrade_match.group(0)
+
+        assert "admin_bypass_policy" in upgrade_body, (
+            "Migration 033 upgrade() does not create admin_bypass_policy. "
+            "The 4 billing tables not covered by 032 need admin access."
+        )
+        for table in self._NEEDS_ADMIN_BYPASS:
+            assert table in upgrade_body, (
+                f"Migration 033 upgrade() does not reference '{table}' "
+                f"for admin_bypass_policy creation."
+            )
+
+    def test_migration_033_downgrade_scoped_to_033_tables(self):
+        """Migration 033 downgrade() must only drop policies it created.
+
+        It must not drop policies on tables owned by migrations 028 or 032
+        (company-knowledge and CRM tables already had admin_bypass_policy).
+        """
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        source = self._MIGRATION_FILE.read_text()
+        downgrade_match = re.search(
+            r"def downgrade\(\).*",
+            source,
+            re.DOTALL,
+        )
+        if not downgrade_match:
+            return  # No downgrade — acceptable
+
+        downgrade_body = downgrade_match.group(0)
+
+        # company_knowledge and CRM tables had admin_bypass_policy from 028/032.
+        # 033 downgrade must not drop those — only drop what 033 created.
+        # The safe pattern is to use DROP POLICY IF EXISTS (idempotent).
+        if "admin_bypass_policy" in downgrade_body:
+            assert "IF EXISTS" in downgrade_body, (
+                "Migration 033 downgrade() drops admin_bypass_policy without "
+                "'IF EXISTS'. This is unsafe — it may fail if the policy was "
+                "already removed by a prior migration."
+            )
+
+    def test_migration_033_is_latest_for_covered_tables(self):
+        """For each table 033 covers, 033 must be the latest migration touching it.
+
+        This ensures the strict policy from 033 is not overwritten by a later
+        migration that reintroduces the NULL bypass.
+        """
+        if not self._MIGRATION_FILE.exists():
+            pytest.skip("Migration 033 not yet created")
+
+        migration_files = sorted(_L4_MIGRATIONS_DIR.glob("*.py"))
+
+        for table in self._EXPECTED_TABLES:
+            latest: Path | None = None
+            for mf in migration_files:
+                src = mf.read_text()
+                if table in src:
+                    latest = mf
+
+            assert latest is not None, f"No migration references '{table}'"
+
+            # The latest migration touching this table must not have NULL bypass
+            # in its upgrade() body.
+            src = latest.read_text()
+            upgrade_match = re.search(
+                r"def upgrade\(\).*?(?=def downgrade\(\)|\Z)",
+                src,
+                re.DOTALL,
+            )
+            if not upgrade_match:
+                continue
+            upgrade_body = upgrade_match.group(0)
+
+            if re.search(r"USING\s*\([^)]*tenant_id\s+IS\s+NULL", upgrade_body, re.IGNORECASE):
+                pytest.fail(
+                    f"{latest.name}: Latest migration for '{table}' still has "
+                    f"NULL-permissive RLS in upgrade(). Migration 033 must be "
+                    f"the last migration touching this table."
+                )
 
 
 class TestLayer1RLSCoverage:
