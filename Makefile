@@ -12,6 +12,7 @@
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
 	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
 	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints check-migration-heads \
+	check-test-skip-register-uniqueness \
 	harness-task harness-guard harness-check \
 	docs-harness
 
@@ -40,7 +41,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: check-conflict-markers check-no-nul-bytes check-migration-heads lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-pytest-skip-governance check-legacy-debt verify-structure docs-harness ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure + harness-docs) — required before PR
+verify: check-conflict-markers check-no-nul-bytes check-migration-heads lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-test-skip-register-uniqueness check-pytest-skip-governance check-legacy-debt verify-structure docs-harness ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure + harness-docs) — required before PR
 	@echo "✅  All checks passed"
 
 verify-structure: ## Run structural preflight and Python contract lint checks
@@ -85,6 +86,9 @@ check-pytest-skip-governance: ## Enforce pytest skip governance from collection 
 	@set +e; python -m pytest --collect-only -q -ra tests > artifacts/pytest-collection.txt 2>&1; collect_status=$$?; set -e; \
 	 python scripts/ci/check_pytest_skip_governance.py artifacts/pytest-collection.txt --allowlist config/ci/pytest_skip_allowlist.yaml --baseline config/ci/pytest_skip_baseline.json --write-report artifacts/pytest-skip-governance.json; \
 	 if [ "$$collect_status" -ne 0 ]; then echo "pytest collection exited non-zero ($$collect_status); structural-preflight should catch import errors separately."; fi
+
+check-test-skip-register-uniqueness: ## Enforce uniqueness of test skip register keys (path_pattern + marker + reason_pattern)
+	@python scripts/ci/check_test_skip_register_uniqueness.py --register config/ci/test_skip_register.yaml
 
 check-reports-evidence-policy: ## Enforce reports/ artifact policy and fail on unarchived failing snapshots
 	@python3 scripts/ci/check_reports_evidence_policy.py
