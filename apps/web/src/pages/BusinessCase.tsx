@@ -3,13 +3,15 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp } from "lucide-react";
+import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp, AlertTriangle, EyeOff, ShieldCheck, Ban } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GateStatusBanner } from "@/components/GateStatusBanner";
 import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
+import { cn } from "@/lib/utils";
+import type { BusinessCase as BusinessCaseType } from "@/hooks/useDocuments";
 
 function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
   for (const key of keys) {
@@ -21,6 +23,146 @@ function metadataString(metadata: Record<string, unknown> | undefined, keys: str
 
 function metadataBoolean(metadata: Record<string, unknown> | undefined, keys: string[]): boolean {
   return keys.some((key) => metadata?.[key] === true);
+}
+
+// ── Trust state derivation ────────────────────────────────────────────────────
+
+export type BusinessCaseTrustState =
+  | "degraded"
+  | "pending_review"
+  | "validated"
+  | "export_blocked"
+  | "export_ready";
+
+export function deriveTrustState(bc: BusinessCaseType): BusinessCaseTrustState {
+  const meta = bc.case_metadata;
+  const status = bc.status.toLowerCase();
+
+  // Degraded: LLM enrichment incomplete or explicitly not customer-facing
+  const isDegraded =
+    meta?.["customer_facing_allowed"] === false ||
+    (typeof meta?.["degraded_reason"] === "string" && (meta["degraded_reason"] as string).length > 0);
+
+  if (isDegraded) return "degraded";
+
+  // Pending review: awaiting validation or human approval
+  const isPending = ["pending", "needs_review", "draft", "in_review"].includes(status);
+  if (isPending) return "pending_review";
+
+  // Validated / approved
+  const isApproved = ["approved", "active", "completed"].includes(status);
+  if (isApproved) {
+    return bc.document_url ? "export_ready" : "validated";
+  }
+
+  // Validation failed or insufficient evidence
+  const isFailed = ["failed", "rejected", "insufficient_evidence"].includes(status);
+  if (isFailed) return "export_blocked";
+
+  // Default: treat unknown status as pending review
+  return "pending_review";
+}
+
+// ── Trust status row component ────────────────────────────────────────────────
+
+interface TrustBadgeProps {
+  label: string;
+  icon: typeof CheckCircle2;
+  className: string;
+}
+
+function TrustBadge({ label, icon: Icon, className }: TrustBadgeProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
+        className,
+      )}
+    >
+      <Icon className="w-3 h-3 shrink-0" />
+      {label}
+    </span>
+  );
+}
+
+interface BusinessCaseTrustRowProps {
+  trustState: BusinessCaseTrustState;
+  degradedReason?: string | null;
+}
+
+export function BusinessCaseTrustRow({ trustState, degradedReason }: BusinessCaseTrustRowProps) {
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 mb-4"
+      data-testid="business-case-trust-row"
+      aria-label="Business case trust status"
+    >
+      {trustState === "degraded" && (
+        <>
+          <TrustBadge
+            label="Degraded"
+            icon={AlertTriangle}
+            className="bg-red-50 text-red-700 border-red-200"
+          />
+          <TrustBadge
+            label="Internal draft only"
+            icon={EyeOff}
+            className="bg-amber-50 text-amber-700 border-amber-200"
+          />
+          <span className="text-xs text-muted-foreground">
+            {degradedReason ?? "LLM, validation, or evidence enrichment was incomplete. Human review required."}
+          </span>
+        </>
+      )}
+
+      {trustState === "pending_review" && (
+        <>
+          <TrustBadge
+            label="Pending Review"
+            icon={AlertTriangle}
+            className="bg-amber-50 text-amber-700 border-amber-200"
+          />
+          <TrustBadge
+            label="Internal draft only"
+            icon={EyeOff}
+            className="bg-amber-50 text-amber-700 border-amber-200"
+          />
+          <span className="text-xs text-muted-foreground">
+            Claims require validation or human approval before export.
+          </span>
+        </>
+      )}
+
+      {trustState === "validated" && (
+        <TrustBadge
+          label="Validated"
+          icon={ShieldCheck}
+          className="bg-emerald-50 text-emerald-700 border-emerald-200"
+        />
+      )}
+
+      {trustState === "export_ready" && (
+        <TrustBadge
+          label="Export Ready"
+          icon={CheckCircle2}
+          className="bg-emerald-50 text-emerald-700 border-emerald-200"
+        />
+      )}
+
+      {trustState === "export_blocked" && (
+        <>
+          <TrustBadge
+            label="Export Blocked"
+            icon={Ban}
+            className="bg-red-50 text-red-700 border-red-200"
+          />
+          <span className="text-xs text-muted-foreground">
+            Validation failed or evidence is insufficient.
+          </span>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function BusinessCase() {
@@ -153,6 +295,11 @@ export default function BusinessCase() {
   const normalizedStatus = businessCase.status.toLowerCase();
   const isApproved = ["approved", "active", "completed"].includes(normalizedStatus);
   const hasExportDocument = Boolean(businessCase.document_url);
+  const trustState = deriveTrustState(businessCase);
+  const exportAllowed = trustState === "export_ready";
+  const degradedReason = typeof businessCase.case_metadata?.["degraded_reason"] === "string"
+    ? businessCase.case_metadata["degraded_reason"] as string
+    : null;
   const exportState = isApproved && hasExportDocument ? "Export PDF ready" : "Export PDF disabled until approval and document generation complete";
   const accountRouteId =
     metadataString(businessCase.case_metadata, ["external_account_id", "provider_record_id", "account_route_id"]) ||
@@ -187,7 +334,7 @@ export default function BusinessCase() {
             <Btn
               variant="ghost"
               onClick={handleExportPDF}
-              disabled={exportMutation.isPending || !businessCase.document_url}
+              disabled={exportMutation.isPending || !exportAllowed}
             >
               {exportMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               Export PDF
@@ -202,6 +349,9 @@ export default function BusinessCase() {
       />
 
       {accountRouteId && <GateStatusBanner accountId={accountRouteId} />}
+
+      {/* Trust status row */}
+      <BusinessCaseTrustRow trustState={trustState} degradedReason={degradedReason} />
 
       {/* Export error */}
       {exportMutation.error && (

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { StatCard } from "@/components/blocks";
 import { WorkflowLayout } from "../components/WorkflowLayout";
+import { WorkflowStatusBanner } from "../components/WorkflowStatusBanner";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";
 
@@ -67,6 +68,9 @@ export default function AIModel() {
             </button>
           </div>
         </header>
+
+        {/* Live workflow status — sourced from the most recent harness run */}
+        <WorkflowStatusBanner className="mb-1" />
 
         <section className="grid grid-cols-4 gap-3">
           <StatCard label="AI Hypotheses" value={hypotheses.length} sub="Generated" icon={Sparkles} iconClassName="text-primary" iconBgClassName="bg-primary/10" />
@@ -145,6 +149,11 @@ export default function AIModel() {
             );
           })}
         </section>
+
+        {/* Demo data notice */}
+        <p className="text-[11px] text-muted-foreground/60 text-center pt-1">
+          Hypotheses are demo data — backend model generation is not yet wired.
+        </p>
       </main>
     </WorkflowLayout>
   );
