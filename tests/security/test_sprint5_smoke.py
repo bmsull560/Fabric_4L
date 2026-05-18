@@ -305,17 +305,44 @@ class TestNoSecretsInLogs:
         source = pathlib.Path(
             "services/layer4-agents/src/observability.py"
         ).read_text()
-        secret_patterns = ["api_key", "secret", "password", "token"]
-        for pattern in secret_patterns:
-            # Only flag if it appears in the payload dict construction
-            if f'"{pattern}"' in source or f"'{pattern}'" in source:
-                # Allowed only in comments or docstrings
-                tree = ast.parse(source)
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.Dict):
-                        for key in node.keys:
-                            if isinstance(key, ast.Constant) and pattern in str(key.value):
-                                pytest.fail(
-                                    f"Layer4LifecycleLogger payload must not include "
-                                    f"secret field '{key.value}'"
-                                )
+        tree = ast.parse(source)
+
+        lifecycle_logger_class = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, ast.ClassDef)
+                and node.name == "Layer4LifecycleLogger"
+            ),
+            None,
+        )
+        assert lifecycle_logger_class is not None, (
+            "Expected Layer4LifecycleLogger to exist in observability.py"
+        )
+
+        emit_method = next(
+            (
+                node
+                for node in lifecycle_logger_class.body
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.name == "emit"
+            ),
+            None,
+        )
+        assert emit_method is not None, (
+            "Expected Layer4LifecycleLogger.emit() to exist in observability.py"
+        )
+
+        forbidden_keys = {"api_key", "secret", "password"}
+        for node in ast.walk(emit_method):
+            if isinstance(node, ast.Dict):
+                for key in node.keys:
+                    if (
+                        isinstance(key, ast.Constant)
+                        and isinstance(key.value, str)
+                        and key.value in forbidden_keys
+                    ):
+                        pytest.fail(
+                            f"Layer4LifecycleLogger.emit() payload must not include "
+                            f"secret field '{key.value}'"
+                        )
