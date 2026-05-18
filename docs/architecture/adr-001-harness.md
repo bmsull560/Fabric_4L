@@ -94,8 +94,12 @@ Backed by `Layer5GroundTruthClient` (`src/integration/layer5_client.py`).
 - Complex rollback orchestration for every tool
 - Multi-zone deployment model
 - Full procedural memory system
-- FastAPI routes (deferred; test patterns established)
+- FastAPI routes (implemented; see `src/api/routes/harness.py` and `docs/architecture/harness-agent-integration.md`)
 - Frontend changes (deferred until backend validated)
+
+> **Note on gate decide endpoint:** The canonical path is `POST /v1/harness/gates/{gate_id}/decide`
+> (gate-scoped). The run-scoped variant `POST /v1/harness/runs/{run_id}/gates/{gate_id}/decide`
+> is **not implemented**. `decision_by` is always derived from auth context, never from the request body.
 
 ## Implementation Notes
 

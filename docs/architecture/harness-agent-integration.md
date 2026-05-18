@@ -206,7 +206,7 @@ All endpoints are under the `/v1/harness` prefix and require an authenticated te
 | `GET` | `/v1/harness/runs/{run_id}/checkpoints/latest` | Get the most recent checkpoint |
 | `GET` | `/v1/harness/runs/{run_id}/gates` | List human gates for a run |
 | `POST` | `/v1/harness/runs/{run_id}/gates` | Create a human gate on a run |
-| `POST` | `/v1/harness/runs/{run_id}/gates/{gate_id}/decide` | Approve or reject a gate |
+| `POST` | `/v1/harness/gates/{gate_id}/decide` | Approve or reject a gate (gate-scoped; `decision_by` derived from auth context) |
 | `POST` | `/v1/harness/runs/{run_id}/validate` | Trigger claim validation via L5 |
 | `GET` | `/v1/harness/health` | Harness component health check |
 

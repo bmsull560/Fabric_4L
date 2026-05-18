@@ -5,7 +5,8 @@ Exposes the SqlHarnessRegistry as a REST API under /v1/harness/*.
 All routes:
   - Extract tenant_id from authenticated RequestContext (never from request body).
   - Inject SqlHarnessRegistry via get_harness_registry() dependency.
-  - Return 404 on missing resources, 403 on tenant mismatch, 400 on bad input.
+  - Return 404 on missing resources, 403 on tenant mismatch, 422 on semantic
+    validation failures (invalid transitions, terminal-state violations).
   - Follow the same error shape as /v1/workflows/*.
 """
 
@@ -91,7 +92,7 @@ async def create_run(
 ) -> RunResponse:
     """Create a new HarnessRun for the authenticated tenant."""
 
-    run = registry.create_run(
+    run = await registry.create_run(
         tenant_id=ctx.tenant_id,
         workflow_type=body.workflow_type,
         initiated_by=body.initiated_by,
@@ -143,7 +144,7 @@ async def get_run(
 ) -> RunResponse:
     """Get a single harness run by ID."""
     try:
-        run = registry.get_run(run_id, ctx.tenant_id)
+        run = await registry.get_run(run_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:
@@ -164,7 +165,7 @@ async def transition_run(
 ) -> TransitionResponse:
     """Advance the state machine for a harness run."""
     try:
-        run, event = registry.transition(
+        run, event = await registry.transition(
             run_id=run_id,
             tenant_id=ctx.tenant_id,
             to_state=body.to_state,
@@ -178,7 +179,7 @@ async def transition_run(
         raise HTTPException(status_code=403, detail=str(exc))
     except Exception as exc:
         logger.exception("Unexpected error transitioning run %s", run_id)
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc))
 
     return TransitionResponse(
         run=RunResponse.from_domain(run),
@@ -198,7 +199,7 @@ async def cancel_run(
 ) -> None:
     """Cancel (transition to CANCELLED) a harness run."""
     try:
-        run = registry.get_run(run_id, ctx.tenant_id)
+        run = await registry.get_run(run_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:
@@ -206,20 +207,22 @@ async def cancel_run(
 
     if run.current_state.is_terminal:
         raise HTTPException(
-            status_code=400,
+            status_code=422,
             detail=f"Run {run_id} is already in terminal state {run.current_state}",
         )
 
     try:
-        registry.transition(
+        await registry.transition(
             run_id=run_id,
             tenant_id=ctx.tenant_id,
             to_state=HarnessState.CANCELLED,
             human_override=True,
         )
+    except HarnessRegistryError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
     except Exception as exc:
         logger.exception("Error cancelling run %s", run_id)
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -239,13 +242,13 @@ async def list_checkpoints(
 ) -> CheckpointListResponse:
     """List all checkpoints for a harness run."""
     try:
-        registry.get_run(run_id, ctx.tenant_id)  # tenant check
+        await registry.get_run(run_id, ctx.tenant_id)  # tenant check
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    checkpoints = registry.get_checkpoints(run_id, ctx.tenant_id)
+    checkpoints = await registry.get_checkpoints(run_id, ctx.tenant_id)
     return CheckpointListResponse(
         items=[CheckpointResponse.from_domain(c) for c in checkpoints],
         total=len(checkpoints),
@@ -264,13 +267,13 @@ async def get_latest_checkpoint(
 ) -> CheckpointResponse:
     """Get the most recent checkpoint for a harness run."""
     try:
-        registry.get_run(run_id, ctx.tenant_id)
+        await registry.get_run(run_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    checkpoints = registry.get_checkpoints(run_id, ctx.tenant_id)
+    checkpoints = await registry.get_checkpoints(run_id, ctx.tenant_id)
     if not checkpoints:
         raise HTTPException(status_code=404, detail=f"No checkpoints found for run {run_id}")
     latest = max(checkpoints, key=lambda c: c.created_at)
@@ -294,13 +297,13 @@ async def list_gates(
 ) -> GateListResponse:
     """List all human gates for a harness run."""
     try:
-        registry.get_run(run_id, ctx.tenant_id)
+        await registry.get_run(run_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    gates = registry.list_gates_for_run(run_id, ctx.tenant_id)
+    gates = await registry.list_gates_for_run(run_id, ctx.tenant_id)
     return GateListResponse(
         items=[GateResponse.from_domain(g) for g in gates],
         total=len(gates),
@@ -321,13 +324,13 @@ async def create_gate(
 ) -> GateResponse:
     """Create a human gate for a harness run."""
     try:
-        registry.get_run(run_id, ctx.tenant_id)
+        await registry.get_run(run_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    gate = registry.create_human_gate(
+    gate = await registry.create_human_gate(
         run_id=run_id,
         tenant_id=ctx.tenant_id,
         gate_type=body.gate_type,
@@ -348,7 +351,7 @@ async def decide_gate(
 ) -> GateResponse:
     """Approve, reject, modify, or expire a human gate."""
     try:
-        _gate = registry.get_gate(gate_id, ctx.tenant_id)
+        _gate = await registry.get_gate(gate_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Gate {gate_id} not found")
     except HarnessRegistryError as exc:
@@ -362,10 +365,10 @@ async def decide_gate(
     }
 
     try:
-        updated_gate = registry.decide_gate(
+        updated_gate = await registry.decide_gate(
             gate_id=gate_id,
             tenant_id=ctx.tenant_id,
-            new_status=decision_map[body.decision],
+            decision=decision_map[body.decision],
             decision_by=ctx.user_id or ctx.tenant_id,
             decision_reason=body.decision_reason,
         )
@@ -393,7 +396,7 @@ async def validate_claims(
 ) -> ValidateClaimsResponse:
     """Validate a list of claims through the L5 ValidationHook."""
     try:
-        registry.get_run(run_id, ctx.tenant_id)
+        await registry.get_run(run_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     except HarnessRegistryError as exc:

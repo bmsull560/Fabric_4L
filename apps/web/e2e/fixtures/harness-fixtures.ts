@@ -298,32 +298,17 @@ export const HARNESS_API = {
   runDetail: (runId: string) => `**/api/v1/agents/harness/runs/${runId}`,
   checkpoints: (runId: string) => `**/api/v1/agents/harness/runs/${runId}/checkpoints`,
   gates: (runId: string) => `**/api/v1/agents/harness/runs/${runId}/gates`,
-  // Gate-scoped decide route — decision_by is server-derived from auth context,
-  // not trusted from the client. Payload: DecideHumanGateRequest.
+  // Gate-scoped decide route — decision_by is server-derived from auth context.
+  // Payload: { decision: 'approved' | 'rejected' | 'modified' | 'expired', decision_reason?: string }
   decide: (gateId: string) => `**/api/v1/agents/harness/gates/${gateId}/decide`,
 } as const;
 
 /**
  * Canonical request payload for POST /v1/harness/gates/:gateId/decide.
  * decision_by is intentionally absent — the server derives it from auth context.
+ * Matches backend GateDecisionRequest (harness/api_models.py).
  */
 export interface DecideHumanGateRequest {
-  status: 'approved' | 'rejected' | 'modified';
+  decision: 'approved' | 'rejected' | 'modified' | 'expired';
   decision_reason?: string;
-  human_override?: boolean;
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Canonical response shape from POST /v1/harness/gates/:gateId/decide.
- */
-export interface HumanGateDecision {
-  gate_id: string;
-  run_id: string;
-  tenant_id: string;
-  status: 'approved' | 'rejected' | 'modified';
-  decision_by: string;       // server-derived from auth context
-  decision_reason?: string;
-  decided_at: string;
-  human_override: boolean;
 }
