@@ -17,7 +17,6 @@ import {
   Clock, RefreshCw, Database, Globe, FileText, Cloud, Server,
   Loader2, TestTube, Trash2, Edit3, Plug, AlertCircle, Play
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
@@ -36,6 +35,7 @@ import {
   type SyncFrequency,
   type SourceFilters,
 } from "@/hooks/useSources";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 

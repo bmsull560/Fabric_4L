@@ -25,9 +25,9 @@ import {
   Gauge,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Btn } from "@/components/WfPrimitives";
 import { buildCreateAccountPayload, useCreateAccount } from "@/hooks/useAccounts";
 import { getOrCreateCanonicalCaseId, persistWorkspaceTab } from "@/hooks/useWorkspaceCase";
+import { Btn } from "@/components/ui/fabric";
 
 interface ApiValidationDetail {
   msg?: string;

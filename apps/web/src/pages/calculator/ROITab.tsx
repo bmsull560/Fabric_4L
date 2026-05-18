@@ -12,13 +12,14 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { QK } from "@/hooks/queryKeys";
 import { useValueLevers } from "@/hooks/useCalculators";
 import { useBenchmarksList, useCalculateROI, useIndustryBenchmarks, type ROICalculationRequest } from "@/hooks/useROICalculator";
 import { useValuePacks } from "@/hooks/useValuePacks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard } from "@/components/ui/fabric";
 
 type ScenarioState = {
   deal_size: number;

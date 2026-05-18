@@ -14,12 +14,13 @@ import { useValueTreePaths } from "@/hooks/useValueTrees";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState, EmptyState } from "@/components/states";
-import { SectionCard, Btn } from "@/components/WfPrimitives";
 import { EvidenceTabContent } from "@/pages/intelligence/EvidenceTab";
 import AlternativesTab from "@/pages/evidence/AlternativesTab";
 import SolutionCostTab from "@/pages/evidence/SolutionCostTab";
 import { TreePine, ArrowRight } from "lucide-react";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { Btn } from "@/components/ui/fabric";
 
 export default function DriverTreePage() {
   const params = useParams<{ accountId: string; tab?: string }>();

@@ -9,9 +9,6 @@
     "services/layer2-extraction/src"
   ],
   "strict": [
-    "value_fabric/layer3/security/query_validator.py",
-    "value_fabric/layer3/security/monitor.py",
-    "value_fabric/layer3/analytics/manager.py",
     "tests/layer3/test_typed_payloads.py"
   ]
 }

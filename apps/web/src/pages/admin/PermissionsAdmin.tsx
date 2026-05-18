@@ -18,7 +18,6 @@ import {
   CheckCircle2, Clock, AlertCircle, RefreshCw,
   Trash2, Eye, EyeOff,
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/formatters";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -31,6 +30,7 @@ import {
   type User,
   type ApiKey,
 } from "@/hooks/useGovernance";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Styling Constants ───────────────────────────────────────────────────────────
 

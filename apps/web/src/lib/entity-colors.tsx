@@ -7,6 +7,9 @@ import React from "react";
  * with neutral Fabric tokens.
  */
 
+/** Legacy entity type union used by graph/browser components. */
+export type EntityType = "capability" | "usecase" | "persona" | "valuedriver";
+
 export interface EntityColorScheme {
   bg: string;        // Background class (e.g., bg-violet-100)
   text: string;      // Text class (e.g., text-violet-800)

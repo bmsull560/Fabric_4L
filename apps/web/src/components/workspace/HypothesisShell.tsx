@@ -1,9 +1,9 @@
 import { useLocation, useParams } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { useNavigation } from "@/hooks/useNavigation";
-import { Btn } from "@/components/WfPrimitives";
 import WorkspacePagePattern, { type WorkspaceAccountContext } from "@/components/workspace/WorkspacePagePattern";
 import { buildPath } from "@/navigation/navigationService";
+import { Btn } from "@/components/ui/fabric";
 
 interface HypothesisShellProps { account: WorkspaceAccountContext; children: React.ReactNode; rightRail?: React.ReactNode; }
 const TABS = [
