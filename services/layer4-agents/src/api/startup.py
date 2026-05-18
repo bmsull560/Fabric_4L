@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 import redis.asyncio as redis
 from fastapi import FastAPI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-
-from value_fabric.shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
+from value_fabric.shared.identity.feature_flags import (
+    init_feature_flags,
+    register_feature_flag_lookup,
+)
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 
 from ..config import configure_settings
@@ -22,8 +25,8 @@ from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..feature_flags.service import FeatureFlagService
 from ..resilience import TenantRateLimiter
-from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.crm_sync_job_runner import CRMSyncJobRunner
+from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..services.value_flow_facade import ValueFlowFacadeService
 from ..tools import create_default_registry
@@ -73,7 +76,7 @@ class RuntimeState:
     checkpoint_saver: AsyncPostgresSaver | None = None
     crm_sync_scheduler: CRMSyncScheduler | None = None
     crm_sync_job_runner: CRMSyncJobRunner | None = None
-    oidc_cleanup_task: "OIDCCleanupTask | None" = None
+    oidc_cleanup_task: OIDCCleanupTask | None = None
 
 
 runtime_state = RuntimeState()

@@ -12,6 +12,8 @@ from typing import Any, TypedDict
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
+
+
 class AnalyticsEventPayload(TypedDict):
     event_id: str
     timestamp: str

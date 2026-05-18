@@ -15,8 +15,8 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from ..db.query_execution import run_scoped_query
-from ..schema.constraints import get_entity_types, get_relationship_types
 from ..retrieval.vector_store import VectorStore
+from ..schema.constraints import get_entity_types, get_relationship_types
 
 
 class _serialize_neo4j_valueResult(TypedDictModel):

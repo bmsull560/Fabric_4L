@@ -22,3 +22,23 @@ class SignalExtractionResult(BaseModel):
     signals: list[OperationalSignal] = Field(default_factory=list)
     source_url: str = ""
     extraction_cost_usd: float = 0.0
+
+
+class ExtractionMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cost_usd: float = 0.0
+    latency_seconds: float = 0.0
+    extraction_version: str = ""
+
+
+class OperationalSignalExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    signals: list[OperationalSignal] = Field(default_factory=list)
+    metadata: ExtractionMetadata = Field(default_factory=ExtractionMetadata)
+    source_url: str = ""
+    tenant_id: str = ""

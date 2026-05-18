@@ -28,7 +28,6 @@ except ImportError:
 
 from fastapi import BackgroundTasks, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
-
 from pydantic import BaseModel, Field
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
@@ -47,10 +46,6 @@ except Exception:
     ).strip().lower()
     if _secret_env in {"production", "prod", "staging", "stage"}:
         raise RuntimeError("Failed to load Infisical secrets in production-like Layer 2 runtime")
-
-from ..shared_bootstrap import verify_metrics_access
-from .app_factory import create_app
-from .lifespan import create_lifespan
 
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager
@@ -76,6 +71,10 @@ from layer2_extraction.output.provenance import (
 )
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+
+from ..shared_bootstrap import verify_metrics_access
+from .app_factory import create_app
+from .lifespan import create_lifespan
 
 logger = logging.getLogger(__name__)
 
@@ -985,7 +984,7 @@ async def health_check():
             active_connections = 0
 
     # Check Layer 3 dependency
-    dependencies = []
+    dependencies: list[dict[str, Any]] = []
     overall_status = "healthy"
 
     if os.getenv("LAYER2_HEALTH_SKIP_LAYER3", "").lower() in {"1", "true", "yes"}:
@@ -1418,7 +1417,6 @@ async def stream_job_events(job_id: str):
 
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
-
 
 
 class health_checkResult(TypedDictModel):

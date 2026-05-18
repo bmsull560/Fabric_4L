@@ -22,8 +22,8 @@ from rdflib.namespace import RDF
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
-from ..schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
 from ..ingestion.validators import RequiredFieldValidator
+from ..schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
 
 logger = logging.getLogger(__name__)
 

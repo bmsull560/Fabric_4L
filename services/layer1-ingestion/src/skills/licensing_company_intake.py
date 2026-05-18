@@ -11,7 +11,6 @@ from typing import Any
 
 from .base import BaseSkill, SkillConfig
 
-
 # JSON Schema for AI extraction stage — licensing company sources
 _LICENSING_COMPANY_EXTRACTION_SCHEMA = {
     "type": "object",

@@ -40,6 +40,15 @@ __all__ = [
     "WorkflowProgressActionableState",
     "WorkflowProgressSchema",
     "normalize_workflow_progress",
+    "AddInvoiceItemRequest",
+    "CheckoutRequest",
+    "CreateInvoiceRequest",
+    "CustomerSyncRequest",
+    "PortalRequest",
+    "RecordChargeRequest",
+    "SubscriptionResponse",
+    "UsageBatchRequest",
+    "UsageEventRequest",
 ]
 from .billing import (
     AddInvoiceItemRequest,

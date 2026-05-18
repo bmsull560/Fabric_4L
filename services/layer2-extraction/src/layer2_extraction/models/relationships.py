@@ -3,11 +3,42 @@
 from __future__ import annotations
 
 import re
-import uuid
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class ImpactLevel(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class BenefitType(str, Enum):
+    COST_REDUCTION = "cost_reduction"
+    REVENUE_GROWTH = "revenue_growth"
+    RISK_REDUCTION = "risk_reduction"
+    EFFICIENCY_GAIN = "efficiency_gain"
+    COMPLIANCE = "compliance"
+    OTHER = "other"
+
+
+class DriverType(str, Enum):
+    FINANCIAL = "financial"
+    OPERATIONAL = "operational"
+    STRATEGIC = "strategic"
+    COMPLIANCE = "compliance"
+    CUSTOMER = "customer"
+    OTHER = "other"
+
+
+class EnablementType(str, Enum):
+    DIRECT = "direct"
+    INDIRECT = "indirect"
+    PREREQUISITE = "prerequisite"
+    COMPLEMENTARY = "complementary"
 
 
 class PredicateType(str, Enum):
@@ -56,7 +87,7 @@ class Relationship(BaseModel):
     influence_weight: float | None = None
 
     @model_validator(mode="after")
-    def _sync_alias_fields(self) -> "Relationship":
+    def _sync_alias_fields(self) -> Relationship:
         if self.source_id and not self.subject_id:
             self.subject_id = self.source_id
         if self.target_id and not self.object_id:
@@ -74,7 +105,7 @@ class Relationship(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _validate_not_empty(self) -> "Relationship":
+    def _validate_not_empty(self) -> Relationship:
         if not self.source_id or not self.source_id.strip():
             raise ValueError("source_id cannot be empty")
         if not self.target_id or not self.target_id.strip():
@@ -82,7 +113,7 @@ class Relationship(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def _validate_source_id_format(self) -> "Relationship":
+    def _validate_source_id_format(self) -> Relationship:
         if self.source_id:
             hyphen_count = self.source_id.count("-")
             if hyphen_count >= 2 and not re.match(
@@ -124,7 +155,7 @@ class Relationship(BaseModel):
         )
 
     @model_validator(mode="after")
-    def _validate_relationship(self) -> "Relationship":
+    def _validate_relationship(self) -> Relationship:
         if self.subject_id and self.object_id and self.subject_id == self.object_id:
             raise ValueError("subject_id and object_id cannot be the same")
         return self

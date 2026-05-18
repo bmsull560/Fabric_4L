@@ -31,8 +31,14 @@ from value_fabric.shared.identity.fallback_telemetry import (
     enforce_fallback_enabled,
     record_fallback_usage,
 )
-from value_fabric.shared.identity.permissions import Role, get_role_permissions, normalize_role_claims
-from value_fabric.shared.identity.policy_registry import authorize_action as authorize_shared_action
+from value_fabric.shared.identity.permissions import (
+    Role,
+    get_role_permissions,
+    normalize_role_claims,
+)
+from value_fabric.shared.identity.policy_registry import (
+    authorize_action as authorize_shared_action,
+)
 
 from ..config import Settings, get_settings
 
@@ -63,6 +69,7 @@ class TokenClaims:
 
     tenant_id: UUID
     user_id: str | None = None
+    email: str | None = None
     roles: list[str] = field(default_factory=list)
     permissions: list[str] = field(default_factory=list)
     raw: dict = field(default_factory=dict)
@@ -273,6 +280,7 @@ def get_current_user(
             )
 
         user_id = payload.get(settings.jwt_user_claim)
+        email = payload.get("email")
         roles = payload.get(settings.jwt_roles_claim, [])
         if isinstance(roles, str):
             roles = [roles]
@@ -291,6 +299,7 @@ def get_current_user(
         return TokenClaims(
             tenant_id=org_id,
             user_id=user_id,
+            email=email,
             roles=roles,
             permissions=_derive_permissions(roles),
             raw=payload,

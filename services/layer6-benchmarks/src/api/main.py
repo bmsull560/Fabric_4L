@@ -12,7 +12,6 @@ from urllib.parse import parse_qs, urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import Response
-
 from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.identity.policy_registry import authorize_action
 from value_fabric.shared.models.typed_dict import TypedDictModel

@@ -13,21 +13,21 @@ The response contract is unchanged from the original stub:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
 from datetime import UTC, datetime
 
-import json
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from opentelemetry import trace
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.error_handling.middleware import get_request_id
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
+
 from ..common.db import get_route_db
 
 logger = logging.getLogger(__name__)
@@ -264,8 +264,8 @@ async def agent_stream_chat(
     context_gatherer = None
     tool_registry = None
     if neo4j_driver or db:
-        from ...services.context_gatherer import ContextGatheringService
         from ...services.agent_tools import AgentToolRegistry
+        from ...services.context_gatherer import ContextGatheringService
         context_gatherer = ContextGatheringService(neo4j_driver=neo4j_driver, db=db)
         tool_registry = AgentToolRegistry(neo4j_driver=neo4j_driver, db=db)
 
@@ -373,8 +373,8 @@ async def agent_stream_chat_sse(
     context_gatherer = None
     tool_registry = None
     if neo4j_driver or db:
-        from ...services.context_gatherer import ContextGatheringService
         from ...services.agent_tools import AgentToolRegistry
+        from ...services.context_gatherer import ContextGatheringService
         context_gatherer = ContextGatheringService(neo4j_driver=neo4j_driver, db=db)
         tool_registry = AgentToolRegistry(neo4j_driver=neo4j_driver, db=db)
 

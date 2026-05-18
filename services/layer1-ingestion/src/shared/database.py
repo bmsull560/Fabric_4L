@@ -2,6 +2,11 @@
 
 P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 SECURITY: Fail-safe tenant isolation - tenant context is mandatory
+
+Public FastAPI dependencies (use these in route handlers):
+  - get_db_from_context   — canonical replacement for get_db_with_tenant
+  - get_db_with_tenant    — deprecated; use get_db_from_context instead
+  - get_db_from_context_sync — sync variant for GovernanceMiddlewareSync paths
 """
 
 import logging
@@ -14,8 +19,8 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from .config import settings
 from ..metrics.prometheus_metrics import get_metrics
+from .config import settings
 
 # Database connection pool configuration from environment
 # Tune these based on your load: pool_size + max_overflow = max concurrent connections
@@ -272,9 +277,59 @@ def get_db_with_tenant(
     Usage::
 
         @router.get("/jobs/{id}")
-        async def get_job(id: UUID, db: Session = Depends(get_db_with_tenant)):
+        async def get_job(id: UUID, db: Session = Depends(get_db_from_context)):
             ...
-    
+
+    Raises:
+        HTTPException: 401 if authenticated tenant context is missing
+
+    .. deprecated:: Use get_db_from_context() instead (deadline: 2026-06-01).
+    """
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx is None or not getattr(ctx, "tenant_id", None):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    try:
+        tenant_id = validate_tenant_id(ctx.tenant_id)
+    except TenantContextError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    session = SessionLocal()
+    try:
+        session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id}
+        )
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def get_db_from_context(
+    request: Request,
+) -> Generator[Session, None, None]:
+    """FastAPI dependency for DB session with tenant from GovernanceMiddleware context.
+
+    Replaces get_db_with_tenant(). Reads tenant from the canonical
+    ``request.state.governance_context`` set by GovernanceMiddleware.
+
+    SECURITY: Fail-safe — rejects requests without validated tenant context.
+
+    Usage::
+
+        @router.get("/jobs/{id}")
+        async def get_job(id: UUID, db: Session = Depends(get_db_from_context)):
+            ...
+
     Raises:
         HTTPException: 401 if authenticated tenant context is missing
     """

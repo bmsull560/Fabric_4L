@@ -112,7 +112,7 @@ class PausePoint(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")
-    def validate_pause_point(self) -> "PausePoint":
+    def validate_pause_point(self) -> PausePoint:
         """Validate pause point consistency."""
         # Ensure required_inputs has entries if pause reason is missing_data
         if self.reason == PauseReason.MISSING_DATA and not self.required_inputs:

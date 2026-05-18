@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -121,7 +121,7 @@ def register_core_routes(app: FastAPI) -> None:
             "status": overall_status,
             "service": "layer4-agents",
             "version": "0.2.0",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "executor_ready": runtime_state.workflow_executor is not None,
             "uptime_seconds": uptime,
             "dependencies": dependencies,

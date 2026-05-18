@@ -10,9 +10,9 @@ from __future__ import annotations
 import importlib
 import logging
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from types import ModuleType
-from contextlib import asynccontextmanager
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ else:
         return _tenant_validation_metrics.copy()
 
     def reset_tenant_validation_metrics() -> None:
-        _tenant_validation_metrics.update({k: 0 for k in _tenant_validation_metrics})
+        _tenant_validation_metrics.update(dict.fromkeys(_tenant_validation_metrics, 0))
 
     def validate_tenant_id(tenant_id: UUID | str | None) -> str:
         _tenant_validation_metrics["validations_total"] += 1

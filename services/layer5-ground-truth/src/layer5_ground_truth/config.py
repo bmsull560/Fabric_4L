@@ -1,7 +1,7 @@
 """Configuration for Layer 5 Ground Truth service."""
 
-from functools import lru_cache
 import logging
+from functools import lru_cache
 from typing import ClassVar
 from urllib.parse import urlparse
 

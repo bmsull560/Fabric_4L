@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from layer2_extraction.startup.dependency_verifier import (
     DependencyRule,
+)
+from layer2_extraction.startup.dependency_verifier import (
     verify_startup_dependencies as _verify_startup_dependencies,
 )
 

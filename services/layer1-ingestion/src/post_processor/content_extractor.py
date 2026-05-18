@@ -332,7 +332,7 @@ class ContentExtractor:
         links = []
 
         for a_tag in soup.find_all("a", href=True):
-            href = a_tag["href"]
+            href = str(a_tag["href"])
             absolute_url = urljoin(base_url, href)
             parsed = urlparse(absolute_url)
 
@@ -350,7 +350,7 @@ class ContentExtractor:
                     "text": a_tag.get_text(strip=True)[:200],
                     "title": a_tag.get("title", "")[:200],
                     "is_external": is_external,
-                    "is_nofollow": "nofollow" in a_tag.get("rel", []),
+                    "is_nofollow": "nofollow" in list(a_tag.get("rel") or []),
                 }
             )
 

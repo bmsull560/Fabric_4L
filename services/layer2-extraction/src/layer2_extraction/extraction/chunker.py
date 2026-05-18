@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -12,7 +12,7 @@ class Chunk:
     content: str
     start_idx: int
     end_idx: int
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if not self.content or not self.content.strip():
@@ -41,11 +41,11 @@ class SemanticChunker:
         text = re.sub(r"\n{4,}", "\n\n\n", text)
         return text.strip()
 
-    def _split_by_headers(self, text: str) -> List[Dict[str, Any]]:
+    def _split_by_headers(self, text: str) -> list[dict[str, Any]]:
         """Split text into sections based on Markdown headers."""
         lines = text.split("\n")
-        sections: List[Dict[str, Any]] = []
-        current_lines: List[str] = []
+        sections: list[dict[str, Any]] = []
+        current_lines: list[str] = []
         current_header = ""
         current_level = 0
 
@@ -75,9 +75,9 @@ class SemanticChunker:
             sections.append({"header": "", "level": 0, "content": text.strip()})
         return sections
 
-    def _get_overlap_paras(self, paras: List[str], budget: int) -> List[str]:
+    def _get_overlap_paras(self, paras: list[str], budget: int) -> list[str]:
         """Select paragraphs that fit within the overlap budget."""
-        result: List[str] = []
+        result: list[str] = []
         total = 0
         for p in paras:
             needed = len(p) + (2 if result else 0)
@@ -87,14 +87,14 @@ class SemanticChunker:
             total += needed
         return result
 
-    def chunk_text(self, text: str, source_url: Optional[str] = None) -> List[Chunk]:
+    def chunk_text(self, text: str, source_url: str | None = None) -> list[Chunk]:
         """Split text into chunks."""
         text = self._preprocess(text)
         if not text:
             return []
 
         sections = self._split_by_headers(text)
-        chunks: List[Chunk] = []
+        chunks: list[Chunk] = []
         global_idx = 0
 
         for section in sections:
@@ -124,13 +124,18 @@ class SemanticChunker:
             paras = content.split("\n\n")
             header_prefix = f"{'#' * level} {header}\n\n" if header and self.preserve_headers else ""
 
-            current_paras: List[str] = []
+            current_paras: list[str] = []
             current_len = len(header_prefix)
 
-            def _flush_chunk(overlap_paras: Optional[List[str]] = None):
+            def _flush_chunk(
+                overlap_paras: list[str] | None = None,
+                _header_prefix: str = header_prefix,
+                _header: str | None = header,
+                _level: int = level,
+            ) -> None:
                 nonlocal current_paras, current_len, global_idx
                 body = "\n\n".join(current_paras)
-                chunk_text_val = header_prefix + body if header_prefix else body
+                chunk_text_val = _header_prefix + body if _header_prefix else body
                 end_idx = global_idx + len(chunk_text_val)
                 chunks.append(
                     Chunk(
@@ -138,15 +143,15 @@ class SemanticChunker:
                         start_idx=global_idx,
                         end_idx=end_idx,
                         metadata={
-                            "section_header": header,
-                            "header_level": level,
+                            "section_header": _header,
+                            "header_level": _level,
                             "source_url": source_url,
                         },
                     )
                 )
                 global_idx = end_idx
                 current_paras = list(overlap_paras) if overlap_paras else []
-                current_len = len(header_prefix) + sum(len(p) + 2 for p in current_paras)
+                current_len = len(_header_prefix) + sum(len(p) + 2 for p in current_paras)
                 if current_paras:
                     current_len -= 2
 
@@ -170,10 +175,10 @@ class SemanticChunker:
 
 def chunk_markdown(
     text: str,
-    source_url: Optional[str] = None,
+    source_url: str | None = None,
     chunk_size: int = SemanticChunker.DEFAULT_CHUNK_SIZE,
     chunk_overlap: int = SemanticChunker.DEFAULT_CHUNK_OVERLAP,
-) -> List[Chunk]:
+) -> list[Chunk]:
     """Chunk Markdown text using default semantic chunker settings."""
     chunker = SemanticChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     return chunker.chunk_text(text, source_url=source_url)

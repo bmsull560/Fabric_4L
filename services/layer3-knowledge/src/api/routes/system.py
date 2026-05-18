@@ -31,14 +31,15 @@ except ImportError:  # pragma: no cover - exercised only in minimal test envs
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
 from value_fabric.layer3.config import get_settings
-from value_fabric.shared.observability.metrics_access import verify_metrics_access  # type: ignore[import-untyped]
+from value_fabric.shared.observability.metrics_access import (
+    verify_metrics_access,  # type: ignore[import-untyped]
+)
 
 from ...api.dependencies import get_schema_initializer
 from ...api.models import (
     DependencyStatus,
     DetailedHealthResponse,
     HealthResponse,
-    ServiceMetrics,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ router = APIRouter()
 SYSTEM_HEALTH_RESPONSES = {200: {"description": "Service health payload"}, 503: {"description": "Service unavailable"}}
 
 # Import shared metrics helpers from a non-route module to avoid circular imports.
-from ...api.metrics_state import get_system_metrics, set_app_metrics
+from ...api.metrics_state import get_system_metrics
 
 
 async def check_dependencies(schema_initializer: Any | None = None) -> list[DependencyStatus]:

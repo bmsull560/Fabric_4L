@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from ..models.ontology import Capability, Persona, UseCase, ValueDriver
+from ..models.ontology import Capability, UseCase, ValueDriver
 from ..models.relationships import PredicateType, Relationship
 
 

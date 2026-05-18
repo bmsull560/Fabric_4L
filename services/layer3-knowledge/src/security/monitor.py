@@ -13,6 +13,8 @@ from typing import Any, Literal, TypedDict
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
+
+
 class SecurityEventPayload(TypedDict):
     event_id: str
     timestamp: str
