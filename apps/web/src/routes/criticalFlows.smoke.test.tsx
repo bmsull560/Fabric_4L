@@ -22,3 +22,23 @@ describe('prospect setup interaction smoke', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Intelligence launched. Opening workspace...');
   });
 });
+
+
+describe('workflow intelligence route smoke', () => {
+  it('keeps launch CTA disabled when prompt is unsafe or empty', async () => {
+    const user = userEvent.setup();
+    const onCreateSetup = vi.fn();
+    render(
+      <MemoryRouter>
+        <ProspectSetup onCreateSetup={onCreateSetup} />
+      </MemoryRouter>
+    );
+
+    const launch = screen.getByRole('button', { name: 'Launch Intelligence' });
+    expect(launch).toBeDisabled();
+
+    await user.type(screen.getByLabelText('New value case prompt'), '   ');
+    expect(launch).toBeDisabled();
+    expect(onCreateSetup).not.toHaveBeenCalled();
+  });
+});
