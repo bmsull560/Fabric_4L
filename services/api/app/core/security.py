@@ -14,6 +14,12 @@ from app.core.config import get_settings
 from app.core.database import db
 from app.models.schemas import User
 
+# ---------------------------------------------------------------------------
+# Brute-force / account lockout constants (F-05)
+# ---------------------------------------------------------------------------
+_MAX_FAILED_ATTEMPTS = 10       # lock after this many consecutive failures
+_LOCKOUT_DURATION_MINUTES = 15  # how long the account stays locked
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -46,10 +52,84 @@ def _auth_error(status_code: int, *, error_code: str, message: str) -> HTTPExcep
     )
 
 
+# Top-20 most common passwords — checked server-side to prevent trivially weak credentials.
+# NIST 800-63B §5.1.1 requires checking against known-compromised passwords.
+_COMMON_PASSWORDS: frozenset[str] = frozenset({
+    "password", "password1", "password12", "password123", "password1234",
+    "password12345", "password123456", "password1234567", "password12345678",
+    "123456", "12345678", "123456789", "1234567890", "12345678901",
+    "qwerty", "qwerty123", "qwerty1234", "abc123", "letmein", "monkey",
+    "dragon", "master", "sunshine", "princess", "welcome", "shadow",
+    "superman", "michael", "football", "iloveyou", "admin", "login",
+    "passw0rd", "p@ssword", "p@ssw0rd", "trustno1", "hello", "charlie",
+    "changeme", "changeme1", "changeme123", "iloveyou1", "iloveyou123",
+})
+
+_MIN_PASSWORD_LENGTH = 12
+
+
+def validate_password_strength(password: str) -> None:
+    """Enforce minimum password requirements server-side.
+
+    Raises ValueError with a stable error code on failure so callers can
+    return HTTP 422 with a consistent WEAK_PASSWORD code.
+
+    Requirements (NIST 800-63B §5.1.1 baseline):
+    - Minimum 12 characters
+    - Not in the common-password blocklist
+    """
+    if len(password) < _MIN_PASSWORD_LENGTH:
+        raise ValueError(
+            f"WEAK_PASSWORD: password must be at least {_MIN_PASSWORD_LENGTH} characters"
+        )
+    if password.lower() in _COMMON_PASSWORDS:
+        raise ValueError(
+            "WEAK_PASSWORD: password is too common — choose a less predictable password"
+        )
+
+
+def is_account_locked(user: "User") -> bool:
+    """Return True if the account is currently locked due to failed login attempts."""
+    if user.locked_until is None:
+        return False
+    try:
+        locked_until = datetime.fromisoformat(user.locked_until)
+        return datetime.now(UTC) < locked_until
+    except (ValueError, TypeError):
+        return False
+
+
+def record_failed_login(user: "User") -> "User":
+    """Increment failed attempt counter and lock the account if threshold is reached.
+
+    Returns an updated User instance (caller must persist it).
+    """
+    new_attempts = user.failed_login_attempts + 1
+    locked_until = None
+    if new_attempts >= _MAX_FAILED_ATTEMPTS:
+        locked_until = (datetime.now(UTC) + timedelta(minutes=_LOCKOUT_DURATION_MINUTES)).isoformat()
+    return user.model_copy(update={
+        "failed_login_attempts": new_attempts,
+        "locked_until": locked_until,
+    })
+
+
+def record_successful_login(user: "User") -> "User":
+    """Reset failed attempt counter and lockout on successful authentication.
+
+    Returns an updated User instance (caller must persist it).
+    """
+    return user.model_copy(update={
+        "failed_login_attempts": 0,
+        "locked_until": None,
+    })
+
+
 def verify_password(plain: str, hashed: str) -> bool:
+    # sha256$ prefixed hashes are insecure legacy values — reject them unconditionally.
+    # Any account with such a hash must go through password reset before logging in.
     if hashed.startswith("sha256$"):
-        import hashlib
-        return hashlib.sha256(plain.encode()).hexdigest() == hashed.removeprefix("sha256$")
+        return False
     try:
         return pwd_context.verify(plain, hashed)
     except Exception:
@@ -57,13 +137,9 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def hash_password(password: str) -> str:
-    try:
-        return pwd_context.hash(password)
-    except Exception:
-        # Fallback for environments where bcrypt backend fails to load
-        # (e.g. passlib + Python 3.14 compatibility issues in test env)
-        import hashlib
-        return f"sha256${hashlib.sha256(password.encode()).hexdigest()}"
+    # bcrypt must be available. If it is not, fail loudly rather than silently
+    # falling back to an insecure algorithm (SHA-256 is not a password hash).
+    return pwd_context.hash(password)
 
 
 def create_access_token(
@@ -238,5 +314,13 @@ async def get_current_user(
             status.HTTP_401_UNAUTHORIZED,
             error_code="AUTH_USER_NOT_FOUND",
             message="Authenticated user was not found.",
+        )
+    # Reject deactivated users even if they hold a valid JWT (F-09).
+    # Deactivation must take effect immediately — not at token expiry.
+    if user.status == "deactivated":
+        raise _auth_error(
+            status.HTTP_401_UNAUTHORIZED,
+            error_code="AUTH_ACCOUNT_DEACTIVATED",
+            message="This account has been deactivated.",
         )
     return user
