@@ -26,6 +26,8 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from services.llm_output_parser import parse_llm_json
+
 if TYPE_CHECKING:
     from harness.models import HarnessRun
     from harness.telemetry import TelemetryEmitter
@@ -269,7 +271,7 @@ class GovernedLLMClient:
             response_format={"type": "json_object"},
             call_id=call_id,
         )
-        parsed = self._parse_json(result.content)
+        parsed = parse_llm_json(result.content, call_site="governed_llm_client.call_structured")
         return parsed, result
 
     # ------------------------------------------------------------------
@@ -411,17 +413,4 @@ class GovernedLLMClient:
             return "AUTH"
         return "PROVIDER"
 
-    @staticmethod
-    def _parse_json(content: str) -> dict[str, Any]:
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            for start, end in [('{', '}'), ('[', ']')]:
-                s = content.find(start)
-                e = content.rfind(end)
-                if s != -1 and e > s:
-                    try:
-                        return json.loads(content[s:e + 1])
-                    except json.JSONDecodeError:
-                        continue
-        return {}
+    # _parse_json removed — use parse_llm_json (services.llm_output_parser) per §2.5

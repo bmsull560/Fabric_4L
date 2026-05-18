@@ -14,12 +14,13 @@ Intents:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
+
+from .llm_output_parser import parse_llm_json
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ class LLMIntentClassifier:
             )
 
             raw = response.choices[0].message.content or "{}"
-            parsed = json.loads(raw)
+            parsed = parse_llm_json(raw, call_site="llm_intent_classifier")
 
             intent = str(parsed.get("intent", "general_question")).lower().strip()
             if intent not in VALID_INTENTS:
