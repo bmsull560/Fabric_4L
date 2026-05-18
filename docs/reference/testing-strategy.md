@@ -344,14 +344,14 @@ make test-frontend
 - KPI rows with `TBD`: **none** (all rows are populated by the refresh pipeline).
 
 <!-- KPI_TABLE_START -->
-_Last measured on: 2026-05-12 07:33 UTC_
+_Last measured on: 2026-05-18 10:36 UTC_
 _Snapshot source: local-fallback / repository snapshot_
 
 | Metric | Target | Current | CI Warn | CI Fail | Source-of-truth pipeline/job |
 |---|---|---:|---:|---:|---|
-| Unit Test Count | 1000+ | 644 | <950 | <900 | pr-checks / layer jobs + cross-layer |
-| Integration Test Count | 200+ | 43 | <190 | <180 | pr-checks / Integration Tests (Docker) |
-| E2E Test Count | 50+ | 118 | <48 | <45 | pr-checks / Frontend + Playwright |
+| Unit Test Count | 1000+ | 0 | <950 | <900 | pr-checks / layer jobs + cross-layer |
+| Integration Test Count | 200+ | 0 | <190 | <180 | pr-checks / Integration Tests (Docker) |
+| E2E Test Count | 50+ | 0 | <48 | <45 | pr-checks / Frontend + Playwright |
 | Line Coverage | ≥80% | 80.0% (fallback CI gate) | <82% | <80% | pr-checks / *-coverage.xml |
 | Branch Coverage | ≥70% | 70.0% (fallback CI gate) | <72% | <70% | pr-checks / frontend coverage + backend thresholds |
 | Flaky Test Rate | <1% | 0.0% (fallback: no quarantined flaky markers) | >0.5% | >1.0% | pr-checks / flaky tracker |
