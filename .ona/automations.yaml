@@ -19,8 +19,6 @@ tasks:
       pnpm install --frozen-lockfile
     triggeredBy:
       - postDevcontainerStart
-    dependsOn:
-      - installPythonDeps
 
 services:
   devStack:
