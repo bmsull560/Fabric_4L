@@ -84,6 +84,8 @@ jobs:
 
       - name: Enforce static test skip governance
         run: |
+          python scripts/ci/check_test_skip_register_uniqueness.py \
+            --register config/ci/test_skip_register.yaml
           python scripts/ci/check_test_skip_governance.py \
             --register config/ci/test_skip_register.yaml \
             --write-report artifacts/test-skip-governance.json
