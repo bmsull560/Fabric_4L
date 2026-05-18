@@ -14,7 +14,6 @@ import {
   Globe, Database, CheckCircle2, AlertTriangle, TrendingUp,
   Download, Info, AlertCircle, RefreshCw,
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton, ErrorBoundary } from "@/components";
 import { cn } from "@/lib/utils";
 import {
@@ -24,6 +23,7 @@ import {
   type BenchmarkStatus,
 } from "@/hooks";
 import { formatDate } from "@/lib/formatters";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Styling Constants ───────────────────────────────────────────────────────────
 

@@ -11,9 +11,9 @@
 import { useState, useCallback } from 'react';
 import { Plus, Trash2, AlertCircle, Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Btn } from '@/components/WfPrimitives';
 import useOntologyStore from '@/stores/ontologyStore';
 import type { OntologyType, OntologyProperty, PropertyConstraints } from '@/hooks/useOntology';
+import { Btn } from "@/components/ui/fabric";
 
 function createPropertyId(name: string): string {
   const normalizedName = name

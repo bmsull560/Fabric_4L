@@ -573,28 +573,43 @@ class EnrichmentOrchestrator:
     async def _enrich_from_domain(self, account: Account) -> dict[str, Any]:
         """Enrich account with executive/leadership data from domain lookup.
 
-        Uses public sources to identify key executives.
-        This is a placeholder that returns structured data format —
-        production would integrate with a people data API (e.g., Apollo, Clearbit).
+        Production integration requires an Apollo/Clearbit API key.
+        Fails closed unless ENRICHMENT_MOCK_MODE=true is explicitly set.
+        In mock mode, returns placeholder data tagged with mock=true.
         """
+        import os
+
         domain = account.domain
         if not domain:
             return EnrichmentOrchestrator__enrich_from_domainResult.model_validate({"success": False, "error": "No domain available"})
 
-        # In production, this would call an external API like Apollo.io or Clearbit
-        # For now, we mark the source as attempted and return the expected structure
+        mock_mode = os.environ.get("ENRICHMENT_MOCK_MODE", "").lower() == "true"
+
+        if not mock_mode:
+            logger.info(
+                "domain_enrichment_not_configured",
+                account_name=account.name,
+                domain=domain,
+                note="Set ENRICHMENT_MOCK_MODE=true for placeholder data in non-production environments",
+            )
+            return EnrichmentOrchestrator__enrich_from_domainResult.model_validate({
+                "success": False,
+                "error": "domain_enrichment_not_configured",
+                "note": "Apollo/Clearbit API key required; set ENRICHMENT_MOCK_MODE=true for mock data",
+            })
+
+        # Mock mode: return placeholder data clearly tagged as mock.
         logger.info(
-            "domain_enrichment_attempted",
+            "domain_enrichment_mock",
             account_name=account.name,
             domain=domain,
-            note="Production integration pending — requires Apollo/Clearbit API key",
         )
-
         return EnrichmentOrchestrator__enrich_from_domainResult.model_validate({
             "success": True,
-            "source": "domain_lookup",
+            "source": "mock",
+            "mock": True,
             "domain": domain,
-            "note": "Executive enrichment requires external API integration (Apollo/Clearbit)",
+            "note": "Mock data — ENRICHMENT_MOCK_MODE=true",
             "executives_found": 0,
         })
 
@@ -602,26 +617,41 @@ class EnrichmentOrchestrator:
     async def _enrich_from_news(self, account: Account) -> dict[str, Any]:
         """Enrich account with pain signals from news/public sources.
 
-        Scans for signals like layoffs, leadership changes, M&A activity,
-        regulatory actions, and technology migrations.
+        Production integration requires a NewsAPI/GDELT API key.
+        Fails closed unless ENRICHMENT_MOCK_MODE=true is explicitly set.
+        In mock mode, returns placeholder data tagged with mock=true.
         """
+        import os
+
         company_name = account.name
         if not company_name:
             return EnrichmentOrchestrator__enrich_from_newsResult.model_validate({"success": False, "error": "No company name available"})
 
-        # In production, this would call a news API (e.g., NewsAPI, GDELT)
-        # For now, we mark the source as attempted
-        logger.info(
-            "news_enrichment_attempted",
-            account_name=company_name,
-            note="Production integration pending — requires news API key",
-        )
+        mock_mode = os.environ.get("ENRICHMENT_MOCK_MODE", "").lower() == "true"
 
+        if not mock_mode:
+            logger.info(
+                "news_enrichment_not_configured",
+                account_name=company_name,
+                note="Set ENRICHMENT_MOCK_MODE=true for placeholder data in non-production environments",
+            )
+            return EnrichmentOrchestrator__enrich_from_newsResult.model_validate({
+                "success": False,
+                "error": "news_enrichment_not_configured",
+                "note": "NewsAPI/GDELT API key required; set ENRICHMENT_MOCK_MODE=true for mock data",
+            })
+
+        # Mock mode: return placeholder data clearly tagged as mock.
+        logger.info(
+            "news_enrichment_mock",
+            account_name=company_name,
+        )
         return EnrichmentOrchestrator__enrich_from_newsResult.model_validate({
             "success": True,
-            "source": "news_scan",
+            "source": "mock",
+            "mock": True,
             "company_name": company_name,
-            "note": "News enrichment requires external API integration (NewsAPI/GDELT)",
+            "note": "Mock data — ENRICHMENT_MOCK_MODE=true",
             "signals_found": 0,
         })
 

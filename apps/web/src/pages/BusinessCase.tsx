@@ -3,12 +3,27 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp } from "lucide-react";
+import {
+  Download,
+  Share2,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  CheckCircle2,
+  FileText,
+  Send,
+  TrendingUp,
+} from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GateStatusBanner } from "@/components/GateStatusBanner";
-import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
+import {
+  useBusinessCase,
+  useBusinessCaseExport,
+  useRegenerateBusinessCase,
+} from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
 import { SectionCard } from "@/components/blocks/SectionCard";
 import { PageHeader, Btn } from "@/components/ui/fabric";

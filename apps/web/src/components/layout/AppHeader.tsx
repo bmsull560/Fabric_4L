@@ -1,4 +1,3 @@
-"use client";
 
 import { PanelLeftClose, PanelLeftOpen, Search, Bell, User, LogOut, Settings, ChevronDown } from "lucide-react";
 import { useMatches, Link } from "react-router-dom";

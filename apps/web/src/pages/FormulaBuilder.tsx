@@ -22,7 +22,6 @@ import {
   Save, CheckCircle2, AlertCircle, ChevronRight, Loader2,
   Target, GitBranch, Network, Beaker, Shield, Clock,
 } from "lucide-react";
-import { Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -46,6 +45,9 @@ import { useFormulaScenario, type VariableAdjustment, type ScenarioResponse } fr
 import { formatRelativeTime } from "@/lib/formatters";
 import { VersionHistoryPanel, DependencyPanel, ScenarioPanel } from "./FormulaBuilder/components";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { Tabs } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { Btn } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('FormulaBuilder');
 

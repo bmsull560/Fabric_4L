@@ -6,8 +6,8 @@
 import { AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Btn } from "@/components/WfPrimitives";
 import { ReactNode } from "react";
+import { Btn } from "@/components/ui/fabric";
 
 interface ErrorStateProps {
   title: string;

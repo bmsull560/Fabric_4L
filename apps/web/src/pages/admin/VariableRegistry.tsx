@@ -20,7 +20,6 @@ import {
   Percent, Type, Settings, ChevronRight, ChevronDown, Download,
   Upload, RefreshCw, ExternalLink, Check, X
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
@@ -36,6 +35,7 @@ import {
   type SourceType,
   type ValidationStatus,
 } from "@/hooks/useVariables";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Styling Constants ───────────────────────────────────────────────────────────
 

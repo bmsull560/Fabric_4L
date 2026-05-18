@@ -11,8 +11,7 @@ import {
   Database, Search, CheckCircle2, AlertTriangle,
   Sparkles, ArrowRight, Zap, FileText
 } from "lucide-react";
-import { StatCard, StatusBadgeBlock as StatusBadge } from "@/components/blocks";
-import { SectionCard } from "@/components/blocks/SectionCard";
+import { StatCard, StatusBadgeBlock as StatusBadge, SectionCard } from "@/components/blocks";
 import { WorkflowLayout } from "../components/WorkflowLayout";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";

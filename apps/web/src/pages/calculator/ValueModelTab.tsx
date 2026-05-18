@@ -12,8 +12,9 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard } from "@/components/ui/fabric";
 
 export default function CalcValueModelTab() {
   const params = useParams<{ accountId: string }>();

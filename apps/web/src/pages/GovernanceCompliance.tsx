@@ -1,17 +1,13 @@
 import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import {
-  PageHeader,
-  MetricCard,
-  SectionCard,
-  DataTable,
-} from "@/components/WfPrimitives";
-import {
   useMaturityLadder,
   useStaleTruths,
   useTruthFreshnessSummary,
   useTruths,
 } from "@/hooks/useGroundTruthGovernance";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, MetricCard, LegacyDataTable } from "@/components/ui/fabric";
 
 export default function GovernanceCompliance() {
   const { data: freshnessSummary, isLoading: isLoadingFreshness } =
@@ -74,7 +70,7 @@ export default function GovernanceCompliance() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <SectionCard title="Maturity Ladder Coverage" noPad>
-          <DataTable
+          <LegacyDataTable
             columns={["Level", "Name", "Required Status", "Count"]}
             rows={(maturityLadder?.levels ?? []).map(level => [
               <span key="level" className="font-semibold">
@@ -92,7 +88,7 @@ export default function GovernanceCompliance() {
           title={`Stale Truth Objects (${staleTruths?.items.length ?? 0})`}
           noPad
         >
-          <DataTable
+          <LegacyDataTable
             columns={["Truth ID", "Claim", "Status", "Maturity", "Freshness"]}
             rows={(staleTruths?.items ?? []).map(truth => [
               <span key="id" className="font-mono text-[11px]">

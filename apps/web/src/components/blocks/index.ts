@@ -8,10 +8,7 @@
  * over lower-level shadcn/Radix primitives in `components/ui/`.
  *
  * Usage:
- *   import { StatCard, StatusBadgeBlock, ProgressBar } from "@/components/blocks";
- *
- * Note: SectionCard is available via direct import from "./SectionCard" to avoid
- * naming conflict with the backward-compatible SectionCard in WfPrimitives.tsx
+ *   import { StatCard, StatusBadgeBlock, ProgressBar, SectionCard } from "@/components/blocks";
  */
 
 // ── Metric & Status ──────────────────────────────────────────────────────
@@ -25,7 +22,8 @@ export { ProgressBar } from "./ProgressBar";
 export type { ProgressBarProps } from "./ProgressBar";
 
 // ── Layout ────────────────────────────────────────────────────────────────
-// SectionCard exported directly to avoid conflict with WfPrimitives backward-compat wrapper
+export { SectionCard } from "./SectionCard";
+export type { SectionCardProps } from "./SectionCard";
 
 // ── Navigation ───────────────────────────────────────────────────────────
 export { TabNav } from "./TabNav";

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Btn } from '@/components/WfPrimitives';
 import {
   Cloud,
   CheckCircle2,
@@ -11,6 +10,7 @@ import {
 import type { Integration, CRMProvider } from '@/hooks/useIntegrations';
 import { PROVIDER_NAMES, PROVIDER_STYLES } from './constants';
 import { formatLastSync, formatRecordCount } from './utils';
+import { Btn } from "@/components/ui/fabric";
 
 interface IntegrationListProps {
   integrations: Integration[] | undefined;
