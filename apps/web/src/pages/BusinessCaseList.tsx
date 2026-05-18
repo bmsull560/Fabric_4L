@@ -20,7 +20,6 @@ import {
   CheckCircle2, TrendingUp, Users, Building2, Loader2, AlertCircle
 } from "lucide-react";
 import { useNavigation, useRoutePrefetch } from "@/hooks";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { EmptyState } from "@/components/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { VirtualList } from "@/components/ui/virtual-list";
@@ -48,6 +47,7 @@ import {
   type BusinessCaseListItem,
   type BusinessCaseFilters,
 } from "@/hooks/useBusinessCases";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

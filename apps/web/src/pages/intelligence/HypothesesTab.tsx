@@ -28,7 +28,6 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -39,6 +38,8 @@ import {
   type ValueHypothesis,
 } from "@/hooks/useHypotheses";
 import { useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

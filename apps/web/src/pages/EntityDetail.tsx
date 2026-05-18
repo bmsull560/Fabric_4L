@@ -16,11 +16,12 @@ import {
   ArrowLeft, Zap, ExternalLink, Clock, Shield, GitBranch,
   AlertCircle, ChevronRight
 } from "lucide-react";
-import { Btn, SectionCard } from "@/components/WfPrimitives";
-import { EntityBadge } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEntity, useEntities, type Entity } from "@/hooks/useEntities";
 import { cn } from "@/lib/utils";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { Btn } from "@/components/ui/fabric";
+import { EntityBadge } from "@/lib/entity-colors";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────
 function confidenceColor(c: number) {

@@ -5,11 +5,23 @@ import { cn } from "@/lib/utils";
 export interface MetricCardProps {
   label: string;
   value: string;
-  trend?: { value: string; positive: boolean | null };
+  /**
+   * Trend display. Accepts either:
+   * - `{ value: string; positive: boolean | null }` — canonical form
+   * - `string` — legacy shorthand (use with `trendUp` for direction)
+   */
+  trend?: { value: string; positive: boolean | null } | string;
+  /** Used with legacy string `trend` to indicate direction. */
+  trendUp?: boolean;
   className?: string;
 }
 
-export function MetricCard({ label, value, trend, className }: MetricCardProps) {
+export function MetricCard({ label, value, trend, trendUp, className }: MetricCardProps) {
+  // Normalise legacy string trend to the canonical object form.
+  const resolvedTrend: { value: string; positive: boolean | null } | undefined =
+    typeof trend === "string"
+      ? { value: trend, positive: trendUp === undefined ? null : trendUp }
+      : trend;
   return (
     <FabricCard padding="normal" shadow="sm" className={cn("h-full", className)}>
       <p className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -18,16 +30,16 @@ export function MetricCard({ label, value, trend, className }: MetricCardProps) 
       <p className="text-[28px] font-bold tracking-[-0.02em] text-foreground mt-1 leading-[1.1]">
         {value}
       </p>
-      {trend && (
+      {resolvedTrend && (
         <div className={cn("flex items-center gap-1 mt-2 text-[12px] font-medium",
-          trend.positive === true && "text-emerald-600 dark:text-emerald-400",
-          trend.positive === false && "text-red-600 dark:text-red-400",
-          trend.positive === null && "text-muted-foreground"
+          resolvedTrend.positive === true && "text-emerald-600 dark:text-emerald-400",
+          resolvedTrend.positive === false && "text-red-600 dark:text-red-400",
+          resolvedTrend.positive === null && "text-muted-foreground"
         )}>
-          {trend.positive === true && <TrendingUp className="h-3.5 w-3.5" />}
-          {trend.positive === false && <TrendingDown className="h-3.5 w-3.5" />}
-          {trend.positive === null && <Minus className="h-3.5 w-3.5" />}
-          {trend.value}
+          {resolvedTrend.positive === true && <TrendingUp className="h-3.5 w-3.5" />}
+          {resolvedTrend.positive === false && <TrendingDown className="h-3.5 w-3.5" />}
+          {resolvedTrend.positive === null && <Minus className="h-3.5 w-3.5" />}
+          {resolvedTrend.value}
         </div>
       )}
     </FabricCard>

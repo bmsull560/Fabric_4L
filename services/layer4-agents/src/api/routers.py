@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from ..config.settings import settings
 from ..feature_flags.api import feature_flags_router
@@ -32,6 +33,7 @@ from .routes import (
 )
 from .routes import audit as audit_router
 from .routes.billing import router as billing_router
+from ..services.stripe_client import StripeNotConfiguredError
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
 from .routes.company_knowledge import router as company_knowledge_router
@@ -87,11 +89,26 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(ground_truth_proxy_router)
     app.include_router(governance_workflows_router, prefix="/v1")
 
+    # Billing routes are always registered so callers receive a structured
+    # billing_not_configured response (HTTP 402) rather than a 404.
+    # StripeNotConfiguredError is caught by the exception handler below.
+    app.include_router(billing_router, prefix="/v1")
     if settings.is_billing_configured:
-        app.include_router(billing_router, prefix="/v1")
         logger.info("Billing routes enabled (Stripe configured)")
     else:
-        logger.info("Billing routes disabled (set BILLING_ENABLED=true and STRIPE_SECRET_KEY to enable)")
+        logger.info("Billing routes registered in fail-closed mode (STRIPE_SECRET_KEY not set)")
+
+    @app.exception_handler(StripeNotConfiguredError)
+    async def _stripe_not_configured_handler(
+        request: Request, exc: StripeNotConfiguredError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=402,
+            content={
+                "error": "billing_not_configured",
+                "message": "Stripe is not configured. Set STRIPE_SECRET_KEY to enable billing.",
+            },
+        )
 
     app.include_router(c1_router, prefix="/v1", tags=["c1"])
     app.include_router(frontend_compat_router, prefix="/v1")

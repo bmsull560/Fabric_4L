@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
@@ -39,6 +38,8 @@ import {
   type NarrativeTone,
   type NarrativeAudience,
 } from "@/hooks/useNarratives";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface NarrativeVersion {

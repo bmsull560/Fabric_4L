@@ -12,11 +12,12 @@ import {
   Target, Zap, TrendingUp, Users, Download,
   AlertCircle, Loader2, ArrowLeft, CheckCircle2,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport } from "@/hooks/useDocuments";
 
 import { cn } from "@/lib/utils";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 export default function ExecutiveView() {
   const [searchParams] = useSearchParams();

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Btn } from '@/components/WfPrimitives';
 import {
   CloudOff,
   Loader2,
@@ -20,6 +19,7 @@ import type {
 } from '@/hooks/useIntegrations';
 import { PROVIDER_STYLES, VALIDATION } from './constants';
 import { getStatusBadgeClasses, formatLastSync, formatRecordCount } from './utils';
+import { Btn } from "@/components/ui/fabric";
 
 interface EditingConfig {
   enabled: boolean;

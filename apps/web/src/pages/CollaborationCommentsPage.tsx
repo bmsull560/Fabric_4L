@@ -1,13 +1,13 @@
 import { FormEvent, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2, MessageSquare, RefreshCw, Send } from 'lucide-react';
-import { PageHeader, Btn } from '@/components/WfPrimitives';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/states';
 import { useComments, useCreateComment } from '@/hooks/useComments';
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 export default function CollaborationCommentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();

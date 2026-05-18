@@ -24,7 +24,6 @@ import {
   Trash2,
   Play,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import {
   useFormulas,
   useDeleteFormula,
@@ -33,6 +32,8 @@ import {
 } from "@/hooks/useFormulas";
 import { useNavigation } from "@/hooks";
 import { formatRelativeTime } from "@/lib/formatters";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

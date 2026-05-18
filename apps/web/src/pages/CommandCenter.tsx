@@ -7,8 +7,8 @@ import { useState } from "react";
 import { Globe, ChevronDown, ChevronUp, Settings2, Zap, Clock, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
 import { useRecentIngestionJobs, useIngestionStats, useSubmitDomain, type IngestionJob } from "@/hooks/useIngestion";
 import { useIngestionUIStore } from "@/stores";
-import { MetricCard, PageHeader, DataTable, StatusBadge, Btn } from "@/components/WfPrimitives";
 import { toast } from "sonner";
+import { MetricCard, PageHeader, LegacyDataTable, StatusBadge, Btn } from "@/components/ui/fabric";
 
 const EXTRACTION_PROFILES = ["Default", "Deep Crawl", "Financial Focus", "Technical Focus"];
 const ONTOLOGY_TARGETS = ["General", "SaaS / B2B", "Financial Services", "Healthcare"];
@@ -173,7 +173,7 @@ export default function CommandCenter() {
             <h2 className="text-[14px] font-bold text-foreground">Recent Maps</h2>
             <button className="text-[11px] text-blue-600 hover:underline">View all</button>
           </div>
-          <DataTable
+          <LegacyDataTable
             columns={["Domain", "Pages", "Status", "Updated"]}
             rows={recentJobs.map(job => [
               <span className="flex items-center gap-2">

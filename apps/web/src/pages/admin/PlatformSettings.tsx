@@ -17,7 +17,6 @@ import {
   Palette, Save, Loader2, AlertCircle, RefreshCw,
   CheckCircle2, ExternalLink, Info
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -29,6 +28,7 @@ import {
   type UpdateSettingsPayload,
 } from "@/hooks/usePlatformSettings";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('PlatformSettings');
 

@@ -1,4 +1,14 @@
 export { PageHeader } from "./PageHeader";
+export { Btn } from "./Btn";
+export type { BtnProps } from "./Btn";
+export { LegacyDataTable } from "./LegacyDataTable";
+export type { LegacyDataTableProps } from "./LegacyDataTable";
+export { Tabs } from "./LegacyTabs";
+export type { LegacyTabsProps } from "./LegacyTabs";
+export { Toolbar } from "./Toolbar";
+export { SearchInput } from "./SearchInput";
+export type { SearchInputProps } from "./SearchInput";
+export { GraphLegend } from "./GraphLegend";
 export { FabricCard } from "./FabricCard";
 export { FilterBar } from "./FilterBar";
 export { StatusBadge } from "./StatusBadge";

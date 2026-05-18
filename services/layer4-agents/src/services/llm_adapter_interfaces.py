@@ -36,6 +36,27 @@ class AdapterError:
     provider_code: str | None = None
 
 
+class ProviderNotImplementedError(RuntimeError):
+    """Raised when a configured LLM provider has no adapter implementation.
+
+    Distinct from NotImplementedError (which signals an abstract method) and
+    from AdapterError (which is a data envelope, not an exception). Callers
+    that catch this can surface a clear configuration error rather than a
+    generic 500.
+
+    Usage::
+
+        raise ProviderNotImplementedError("anthropic")
+    """
+
+    def __init__(self, provider_name: str) -> None:
+        self.provider_name = provider_name
+        super().__init__(
+            f"LLM provider {provider_name!r} is not implemented. "
+            "Set LAYER4_LLM_PROVIDER to 'openai' or 'together'."
+        )
+
+
 @dataclass(frozen=True)
 class ToolCall:
     """Provider-agnostic tool-call record."""

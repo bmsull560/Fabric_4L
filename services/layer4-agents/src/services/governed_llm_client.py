@@ -334,6 +334,8 @@ class GovernedLLMClient:
         self._emit_raw("llm_call_start", meta)
 
     def _emit_call_complete(self, result: LLMCallResult, call_id: str | None) -> None:
+        # Required structured log fields (S6-R4.2):
+        # tenant_id and workflow_id are injected by _emit_raw via self._run.
         meta = {
             "model_task": result.model_task,
             "model": result.model,

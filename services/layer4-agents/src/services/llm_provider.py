@@ -12,6 +12,7 @@ from .llm_adapter_interfaces import (
     CompletionRequest,
     CompletionResult,
     ErrorCategory,
+    ProviderNotImplementedError,
     StructuredOutputAdapter,
     ToolCall,
     ToolCallingAdapter,
@@ -281,9 +282,7 @@ def get_llm_provider(config: dict[str, Any] | None = None) -> Any:
         return get_openai_provider(config)
 
     if provider_name == "anthropic":
-        raise NotImplementedError(
-            "Anthropic provider is not implemented; set LAYER4_LLM_PROVIDER to 'together' or 'openai'."
-        )
+        raise ProviderNotImplementedError("anthropic")
 
     raise ValueError(
         f"Unknown LLM provider: {provider_name!r}. "

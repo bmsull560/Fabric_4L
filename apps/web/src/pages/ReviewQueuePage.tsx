@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle, XCircle, MessageCircle, Clock, Send } from "lucide-react";
-import { PageHeader, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import {
@@ -10,6 +9,8 @@ import {
   useUpdateReviewRequest,
   useAddReviewComment,
 } from "@/hooks/useGates";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader } from "@/components/ui/fabric";
 
 export default function ReviewQueuePage() {
   const { accountId: paramAccountId } = useParams<{ accountId: string }>();
