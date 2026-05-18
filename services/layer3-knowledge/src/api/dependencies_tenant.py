@@ -1,4 +1,8 @@
-"""Neo4j-aware tenant dependencies for Layer 3 Knowledge Graph (Sprint 5).
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Neo4j-aware tenant dependencies for Layer 3 Knowledge Graph (Sprint 5).
 
 This module provides FastAPI dependencies that extract tenant context from
 RequestContext and apply Neo4j-specific tenant enforcement through composite

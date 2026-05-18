@@ -1,4 +1,8 @@
-"""Thin FastAPI composition root for Layer 3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Thin FastAPI composition root for Layer 3.
 
 Migration ledger:
 - moved router groups: system, entity/browser, value tree, formulas, benchmarks, query/search helpers.

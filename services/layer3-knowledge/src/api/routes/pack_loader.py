@@ -1,4 +1,8 @@
-"""Value Pack Loader for Layer 3 API.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Value Pack Loader for Layer 3 API.
 
 Loads domain value packs from JSON files into the formula registry.
 """

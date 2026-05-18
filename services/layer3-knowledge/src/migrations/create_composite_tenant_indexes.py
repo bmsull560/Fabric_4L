@@ -1,4 +1,8 @@
-"""Create composite (tenant_id, name) indexes for efficient tenant-scoped lookups.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Create composite (tenant_id, name) indexes for efficient tenant-scoped lookups.
 
 This migration script creates composite btree indexes on (tenant_id, name) for
 all major entity types to optimize tenant-scoped queries. These indexes improve

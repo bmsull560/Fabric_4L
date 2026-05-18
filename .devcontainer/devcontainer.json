@@ -4,8 +4,8 @@
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker": {},
     "ghcr.io/devcontainers/features/node": {
-      "version": "20",
-      "pnpmVersion": "9"
+      "version": "22",
+      "pnpmVersion": "10"
     },
     "ghcr.io/devcontainers/features/python": {
       "version": "3.11",

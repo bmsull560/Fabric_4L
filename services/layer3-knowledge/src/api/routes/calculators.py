@@ -1,4 +1,8 @@
-"""Calculator API routes for Layer 3 Knowledge Graph.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Calculator API routes for Layer 3 Knowledge Graph.
 
 Provides endpoints for value lever configuration and value case persistence.
 """

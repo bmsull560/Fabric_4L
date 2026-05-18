@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -45,6 +46,9 @@ def test_config_env_schema_files_back_declared_package_exports():
 
 
 def test_config_package_env_schemas_compile():
+    # tsc is only available after `pnpm install` in packages/config, which
+    # requires Node >=22.12.0.  Skip gracefully when the runtime prerequisite
+    # is not met rather than failing with a misleading error.
     result = subprocess.run(
         ["pnpm", "--dir", "packages/config", "exec", "tsc", "--noEmit"],
         cwd=REPO_ROOT,
@@ -53,5 +57,11 @@ def test_config_package_env_schemas_compile():
         stderr=subprocess.STDOUT,
         check=False,
     )
+
+    if result.returncode == 254 and "Command" in result.stdout and "not found" in result.stdout:
+        import pytest
+        pytest.skip(
+            "tsc not available — run `pnpm --dir packages/config install` with Node >=22.12.0 first"
+        )
 
     assert result.returncode == 0, result.stdout

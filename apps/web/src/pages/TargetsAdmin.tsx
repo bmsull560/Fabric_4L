@@ -338,7 +338,7 @@ function TargetFilterBar({ filters, onChange, onRefresh, isRefreshing }: FilterB
         />
       </div>
       <Select value={filters.status ?? 'all'} onValueChange={v => onChange({ status: v === 'all' ? undefined : v as TargetStatus, page: 1 })}>
-        <SelectTrigger className="h-8 w-32 text-[13px]"><SelectValue placeholder="Status" /></SelectTrigger>
+        <SelectTrigger className="h-8 w-32 text-[13px]" aria-label="Status filter"><SelectValue placeholder="Status" /></SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All statuses</SelectItem>
           <SelectItem value="ACTIVE">Active</SelectItem>
@@ -459,6 +459,10 @@ export default function TargetsAdmin() {
   const [filters, setFilters] = useState<TargetFilters>({ page: 1, limit: 25, sortBy: 'created_at', sortOrder: 'desc' });
   const updateFilters = useCallback((patch: Partial<TargetFilters>) => setFilters(f => ({ ...f, ...patch })), []);
 
+  // Data — declared before selection handlers that depend on `data`
+  const { data, isLoading, isFetching, refetch } = useTargets(filters);
+  const { data: stats, isLoading: statsLoading } = useTargetStats();
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const handleSelectOne = useCallback((id: string, checked: boolean) => {
@@ -472,10 +476,6 @@ export default function TargetsAdmin() {
   const [panelMode, setPanelMode] = useState<PanelMode>(null);
   const [selectedTarget, setSelectedTarget] = useState<TargetSummary | null>(null);
   const [archiveTargetId, setArchiveTargetId] = useState<string | null>(null);
-
-  // Data
-  const { data, isLoading, isFetching, refetch } = useTargets(filters);
-  const { data: stats, isLoading: statsLoading } = useTargetStats();
 
   // Mutations
   const updateStatus = useUpdateTargetStatus();

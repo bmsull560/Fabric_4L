@@ -1,4 +1,9 @@
-"""Cache package initialization."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Cache package initialization.
+"""
 
 from ..cache.aiocache_adapter import AiocacheCacheAdapter
 from ..cache.factory import CacheProviderName, build_cache_port

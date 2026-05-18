@@ -1,4 +1,8 @@
-"""Backend agents for Value Fabric knowledge graph operations.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Backend agents for Value Fabric knowledge graph operations.
 
 This module implements the agent framework defined in the backend logic spec:
 - ValueTreeProjectionAgent: Value tree traversal and projection

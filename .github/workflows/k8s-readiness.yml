@@ -13,6 +13,8 @@ on:
       - ".github/workflows/k8s-readiness.yml"
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   k8s-static-precheck:
     name: K8s Static Precheck

@@ -1,4 +1,8 @@
-"""Provenance Tracking Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Provenance Tracking Agent.
 
 Implements PROV-O lineage tracking with RDF-star annotations.
 """

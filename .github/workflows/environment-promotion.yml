@@ -103,6 +103,7 @@ jobs:
           for metadata_file in artifacts/build-metadata/*.json; do
             layer=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["layer"])' "$metadata_file")
             digest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["image_digest"])' "$metadata_file")
+            tag=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["published_tag"])' "$metadata_file")
             image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}@${digest}"
             if ! docker manifest inspect "$image" > /dev/null 2>&1; then
               echo "❌ Image digest not found: $image"

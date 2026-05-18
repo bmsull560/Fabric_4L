@@ -5,6 +5,8 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   refresh-testing-kpis:
     name: Refresh docs/reference/testing-strategy.md KPI block

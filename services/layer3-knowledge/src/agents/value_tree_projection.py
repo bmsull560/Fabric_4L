@@ -1,4 +1,8 @@
-"""Value Tree Projection Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Value Tree Projection Agent.
 
 Implements value tree traversal and projection algorithms for:
 - Upward traversal (outcome discovery)

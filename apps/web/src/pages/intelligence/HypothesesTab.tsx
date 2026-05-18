@@ -37,6 +37,7 @@ import {
   useConvertHypothesisToTree,
   type ValueHypothesis,
 } from "@/hooks/useHypotheses";
+import { useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

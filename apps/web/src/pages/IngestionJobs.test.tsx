@@ -192,7 +192,7 @@ describe("IngestionJobs", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText("Job Queue")).toBeInTheDocument();
+      expect(screen.getAllByText("Job Queue").length).toBeGreaterThan(0);
     });
 
     // Check table headers
@@ -537,7 +537,7 @@ describe("IngestionJobs", () => {
 
     await userEvent.click(screen.getByText("New Job"));
 
-    expect(mockSetLocation).toHaveBeenCalledWith("/home?wfStep=0", undefined);
+    expect(mockSetLocation).toHaveBeenCalledWith("/home?wfStep=0", expect.anything());
   });
 
   it("shows mutation error when cancel fails", async () => {

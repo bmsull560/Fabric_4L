@@ -23,6 +23,8 @@ on:
       - 'apps/web/src/**'
       - 'scripts/ci/check_layer4_route_contract_matrix.py'
 
+permissions: read-all
+
 jobs:
   check-matrix:
     runs-on: ubuntu-latest

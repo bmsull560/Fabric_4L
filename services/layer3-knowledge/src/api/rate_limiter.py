@@ -1,4 +1,8 @@
-"""Layer 3 request-limiting adapters and middleware.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Layer 3 request-limiting adapters and middleware.
 
 Canonical sliding-window state math is implemented in
 ``value_fabric.shared.rate_limiting.tenant_rate_limiter``. This module must

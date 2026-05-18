@@ -1,4 +1,8 @@
-"""FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
 
 Migration ledger:
 - moved groups: operational system routes (/health,/metrics) and query/search implementations to api/routes modules.

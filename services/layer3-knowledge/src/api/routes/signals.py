@@ -1,4 +1,8 @@
-"""ValueSignal graph persistence routes for Layer 3 Knowledge Graph.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: ValueSignal graph persistence routes for Layer 3 Knowledge Graph.
 
 Stores ValueSignal objects as Neo4j nodes and provides tenant-scoped
 query endpoints for L4 agents and the frontend.

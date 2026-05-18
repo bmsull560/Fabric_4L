@@ -13,7 +13,8 @@ CONTRACT = check_layer5_shim_integrity._layer5_source_contract
 
 
 def test_layer5_compatibility_tree_is_shim_only() -> None:
-    assert check_layer5_shim_integrity.main() == 0
+    # Pass argv=[] to prevent argparse from consuming pytest's own CLI arguments.
+    assert check_layer5_shim_integrity.main(argv=[]) == 0
 
 
 def test_contract_rejects_non_shim_compatibility_file(tmp_path, monkeypatch) -> None:

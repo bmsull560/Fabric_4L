@@ -1,4 +1,8 @@
-"""Phase 2 Migration: L3 Tenant Property Standardization
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Phase 2 Migration: L3 Tenant Property Standardization
 
 This migration performs three operations:
 

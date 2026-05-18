@@ -25,6 +25,13 @@ _WEAK_SECRET_DENYLIST = frozenset({
     "admin", "root", "123456", "12345678", "qwerty",
 })
 
+# JWT algorithms approved for use (NIST/RFC 7518 safe subset)
+_APPROVED_JWT_ALGORITHMS = frozenset({
+    "HS256", "HS384", "HS512",
+    "RS256", "RS384", "RS512",
+    "ES256", "ES384", "ES512",
+})
+
 # Dev-only environment names — anything else is treated as production-like
 _DEV_ENVIRONMENTS = frozenset({"local", "dev", "development", "test", "testing", "ci"})
 
@@ -562,6 +569,28 @@ def validate_jwt_secret_strength() -> None:
             "Production requires at least %d characters.",
             len(jwt_secret),
             _MIN_JWT_SECRET_LENGTH,
+        )
+
+
+def validate_jwt_config() -> None:
+    """Validate JWT configuration for the current environment.
+
+    Checks that JWT_SECRET meets minimum strength requirements and that
+    JWT_ALGORITHM (if set) is an approved value.  This is the canonical
+    entry point for JWT configuration validation; it delegates to
+    validate_jwt_secret_strength() for secret-strength checks and adds
+    algorithm-safety checks.
+
+    Raises:
+        ValueError: If JWT configuration is unsafe for the current environment
+    """
+    validate_jwt_secret_strength()
+
+    algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+    if algorithm not in _APPROVED_JWT_ALGORITHMS:
+        raise ValueError(
+            f"JWT_ALGORITHM '{algorithm}' is not an approved algorithm. "
+            f"Approved algorithms: {sorted(_APPROVED_JWT_ALGORITHMS)}"
         )
 
 

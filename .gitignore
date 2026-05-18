@@ -176,3 +176,4 @@ CUsers*
 /collect_output.txt
 /pytest_collect*.txt
 /layer1_test_results*.txt
+core

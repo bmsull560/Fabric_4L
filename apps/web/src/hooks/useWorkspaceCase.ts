@@ -71,7 +71,7 @@ export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: strin
 }
 
 export function usePersistWorkspaceTab(tabKey: string) {
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: async ({ caseId, payload }: { caseId: string; payload: unknown }) => {
       try {
         const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
@@ -87,6 +87,14 @@ export function usePersistWorkspaceTab(tabKey: string) {
       }
     },
   });
+
+  const persistState: 'idle' | 'saving' | 'saved' | 'failed' =
+    mutation.isPending ? 'saving'
+    : mutation.isSuccess ? 'saved'
+    : mutation.isError ? 'failed'
+    : 'idle';
+
+  return { ...mutation, persistState };
 }
 
 export function useValidateEvidenceClaim() {
@@ -219,3 +227,72 @@ export function useAttachEvidenceToDriverMutation() {
 }
 
 export const useReviewSignalMutation = useSignalReview;
+
+// ── Generic workspace page action dispatcher ──────────────────────────────────
+
+export interface WorkspacePageActionContract {
+  entityType: 'signal' | 'evidence' | 'hypothesis' | 'scenario';
+  entityId: string;
+  accountId: string;
+  caseId: string;
+  intendedOperation: 'signal_review' | 'evidence_attach' | 'hypothesis_convert' | 'scenario_update';
+  payload: Record<string, unknown>;
+  runMetadataIds?: Record<string, string>;
+}
+
+/**
+ * Dispatches a workspace page action to the appropriate L4 endpoint and
+ * invalidates the relevant workspace tab query on success.
+ */
+export function useApplyWorkspacePageAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (action: WorkspacePageActionContract) => {
+      const { entityType: _entityType, entityId, accountId, caseId, intendedOperation, payload, runMetadataIds } = action;
+
+      switch (intendedOperation) {
+        case 'signal_review': {
+          const response = await apiClient.patch('l4', `/v1/signals/${entityId}/review`, {
+            account_id: accountId,
+            review_status: payload.reviewStatus,
+            decision_note: payload.decisionNote,
+            ...(runMetadataIds ? { run_metadata_ids: runMetadataIds } : {}),
+          });
+          return response.data;
+        }
+        case 'evidence_attach': {
+          const hypothesisId = encodeURIComponent(String(payload.hypothesisId ?? ''));
+          const response = await apiClient.post('l4', `/v1/hypotheses/${hypothesisId}/attach-evidence`, {
+            evidence_id: entityId,
+            account_id: accountId,
+            case_id: caseId,
+          });
+          return response.data;
+        }
+        case 'hypothesis_convert': {
+          const response = await apiClient.post('l4', `/v1/hypotheses/${entityId}/validate`, {
+            new_status: 'converted',
+            feedback: payload.feedback,
+            account_id: accountId,
+            case_id: caseId,
+          });
+          return response.data;
+        }
+        case 'scenario_update': {
+          const response = await apiClient.patch('l4', `/analysis/cases/${caseId}/workspace/value-model/scenarios/${entityId}`, {
+            updates: payload,
+            account_id: accountId,
+            ...(runMetadataIds ? { run_metadata_ids: runMetadataIds } : {}),
+          });
+          return response.data;
+        }
+        default: {
+          throw new Error(`Unknown workspace page action: ${intendedOperation}`);
+        }
+      }
+    },
+    onSuccess: async (_result, action) => {
+      await queryClient.invalidateQueries({ queryKey: ['workspace', 'tab', action.caseId] });
+    },
+  });
+}

@@ -292,6 +292,9 @@ export const QK = {
     assumptionsList: () => ["roi", "assumptions-list"] as const,
     assumptionDetail: (id: string) => ["roi", "assumption", id] as const,
     agentCalculation: () => ["roi", "agent-calculation"] as const,
+    /** Scenario versions scoped to a case/account/model triple (useROIScenarios). */
+    scenarioVersions: (scope: { accountId?: string | null; caseId?: string | null; modelId?: string | null }) =>
+      ["roi", "scenario-versions", scope.accountId ?? "", scope.caseId ?? "", scope.modelId ?? ""] as const,
   },
 
   // L3 — Value Calculators (Workflow)
@@ -346,6 +349,90 @@ export const QK = {
     dealReadiness: (accountId: string) =>
       ["intelligence", "deal-readiness", accountId] as const,
     pipeline: () => ["intelligence", "pipeline"] as const,
+  },
+
+  // Layer 1 — Scraping Targets
+  targets: {
+    all: ["targets"] as const,
+    list: (filters: unknown) =>
+      ["targets", "list", stableKey(filters)] as const,
+    detail: (id: string) => ["targets", "detail", id] as const,
+    stats: ["targets", "stats"] as const,
+    jobs: (targetId: string) => ["targets", "jobs", targetId] as const,
+  },
+
+  // Layer 4 — Harness (workflow execution engine)
+  harness: {
+    all: ["harness"] as const,
+    runs: (params: unknown) => ["harness", "runs", stableKey(params)] as const,
+    run: (runId: string) => ["harness", "run", runId] as const,
+    checkpoints: (runId: string) => ["harness", "checkpoints", runId] as const,
+    gates: (runId: string) => ["harness", "gates", runId] as const,
+    health: () => ["harness", "health"] as const,
+  },
+
+  // Layer 4 — Gate reviews
+  gates: {
+    all: ["gates"] as const,
+    account: (accountId: string) => ["gates", "account", accountId] as const,
+  },
+
+  // Governance reviews
+  reviews: {
+    all: ["reviews"] as const,
+    list: (accountId: string) => ["reviews", "list", accountId] as const,
+    detail: (reviewId: string) => ["reviews", "detail", reviewId] as const,
+  },
+
+  // Comments
+  comments: {
+    all: ["comments"] as const,
+    list: (filters: unknown) =>
+      ["comments", "list", stableKey(filters)] as const,
+    detail: (id: string) => ["comments", "detail", id] as const,
+  },
+
+  // Notifications
+  notifications: {
+    all: ["notifications"] as const,
+    list: (filters: unknown) =>
+      ["notifications", "list", stableKey(filters)] as const,
+    detail: (id: string) => ["notifications", "detail", id] as const,
+  },
+
+  // Tasks
+  tasks: {
+    all: ["tasks"] as const,
+    list: (filters: unknown) =>
+      ["tasks", "list", stableKey(filters)] as const,
+    detail: (id: string) => ["tasks", "detail", id] as const,
+  },
+
+  // Layer 1 — Skill job outputs / source corpora
+  skillOutputs: {
+    all: ["skill-outputs"] as const,
+    corpora: (filters?: unknown) =>
+      filters != null
+        ? ["skill-outputs", "corpora", stableKey(filters)]
+        : (["skill-outputs", "corpora"] as const),
+    corpus: (id: string) => ["skill-outputs", "corpus", id] as const,
+    packets: (filters?: unknown) =>
+      filters != null
+        ? ["skill-outputs", "packets", stableKey(filters)]
+        : (["skill-outputs", "packets"] as const),
+    packet: (id: string) => ["skill-outputs", "packet", id] as const,
+    jobOutput: (jobId: string) =>
+      ["skill-outputs", "job-output", jobId] as const,
+  },
+
+  // Layer 3 — Value Signals
+  valueSignals: {
+    all: ["value-signals"] as const,
+    list: (accountId: string, filters?: unknown) =>
+      ["value-signals", "list", accountId, stableKey(filters ?? {})] as const,
+    detail: (id: string) => ["value-signals", "detail", id] as const,
+    account: (accountId: string) =>
+      ["value-signals", "account", accountId] as const,
   },
 } as const;
 

@@ -122,6 +122,19 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const BASE_DEFAULTS: Partial<FormValues> = {
+  targetType: 'SINGLE_PAGE',
+  crawlPath: 'browser',
+  scheduleEnabled: false,
+  respectRobotsTxt: true,
+  piiRedaction: true,
+  authType: 'NONE',
+  crawlDelaySeconds: 1,
+  retryAttempts: 3,
+  requestsPerSecond: 1,
+  requestsPerMinute: 30,
+};
+
 interface Props {
   targetId: string | null;
   onSuccess: (target: Target) => void;
@@ -135,18 +148,7 @@ export function TargetFormPanel({ targetId, onSuccess, onCancel }: Props) {
 
   const { register, handleSubmit, control, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      targetType: 'SINGLE_PAGE',
-      crawlPath: 'browser',
-      scheduleEnabled: false,
-      respectRobotsTxt: true,
-      piiRedaction: true,
-      authType: 'NONE',
-      crawlDelaySeconds: 1,
-      retryAttempts: 3,
-      requestsPerSecond: 1,
-      requestsPerMinute: 30,
-    },
+    defaultValues: existing ? targetToForm(existing) : BASE_DEFAULTS,
   });
 
   useEffect(() => {
@@ -155,6 +157,7 @@ export function TargetFormPanel({ targetId, onSuccess, onCancel }: Props) {
 
   const scheduleEnabled = watch('scheduleEnabled');
   const authType = watch('authType');
+  const isMutating = createTarget.isPending || updateTarget.isPending;
 
   const onSubmit = async (values: FormValues) => {
     const request = formToRequest(values);
@@ -241,7 +244,7 @@ export function TargetFormPanel({ targetId, onSuccess, onCancel }: Props) {
       <div className="flex items-center justify-between">
         <Label className="text-[13px]">Enable schedule</Label>
         <Controller name="scheduleEnabled" control={control} render={({ field }) => (
-          <Switch checked={field.value} onCheckedChange={field.onChange} />
+          <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Enable schedule" />
         )} />
       </div>
       {scheduleEnabled && (
@@ -316,8 +319,8 @@ export function TargetFormPanel({ targetId, onSuccess, onCancel }: Props) {
       {/* Footer actions */}
       <div className="flex items-center gap-3 pt-4 border-t border-border">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1 h-8 text-[13px]">Cancel</Button>
-        <Button type="submit" disabled={isSubmitting} className="flex-1 h-8 text-[13px]">
-          {isSubmitting && <Loader2 size={13} className="mr-1.5 animate-spin" />}
+        <Button type="submit" disabled={isSubmitting || isMutating} className="flex-1 h-8 text-[13px]">
+          {(isSubmitting || isMutating) && <Loader2 size={13} className="mr-1.5 animate-spin" />}
           {targetId ? 'Save changes' : 'Create target'}
         </Button>
       </div>

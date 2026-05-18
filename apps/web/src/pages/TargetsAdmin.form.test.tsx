@@ -6,7 +6,7 @@
  * cancel, server errors, pending state, optional fields.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithRouter } from '../test-utils';
 import { TargetFormPanel } from './TargetsAdmin.form';
@@ -94,12 +94,12 @@ describe('Create form', () => {
 
   it('renders Target Type select', async () => {
     renderCreate();
-    await waitFor(() => expect(screen.getByText('Single Page')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Single Page').length).toBeGreaterThan(0));
   });
 
   it('renders Crawl Path select', async () => {
     renderCreate();
-    await waitFor(() => expect(screen.getByText('Browser (Playwright)')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Browser (Playwright)').length).toBeGreaterThan(0));
   });
 
   it('renders Schedule enabled toggle', async () => {

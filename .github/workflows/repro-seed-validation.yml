@@ -13,6 +13,8 @@ on:
       - 'tests/repro-seeds/**'
       - '.github/workflows/repro-seed-validation.yml'
 
+permissions: read-all
+
 jobs:
   validate-repro-seeds:
     runs-on: ubuntu-latest

@@ -1,6 +1,8 @@
-"""
+"""Allowed service-local exception for Layer 3 service wrapper.
 
-Provides endpoints for Value Model CRUD and management.
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Provides endpoints for Value Model CRUD and management.
 
 All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """

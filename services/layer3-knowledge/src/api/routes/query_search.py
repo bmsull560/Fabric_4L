@@ -1,4 +1,8 @@
-"""Graph query/search route helpers extracted from Layer 3 monolith.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Graph query/search route helpers extracted from Layer 3 monolith.
 
 Migration ledger:
 - moved groups: graphrag query aliases, streaming graphrag query, hybrid search execution.

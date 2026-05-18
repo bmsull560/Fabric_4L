@@ -1,4 +1,8 @@
-"""CachePort provider selection for OSS substitution pilots.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: CachePort provider selection for OSS substitution pilots.
 
 Legacy cache remains the default provider.  OSS-backed providers must be
 constructed explicitly so pilot code cannot change production behavior by

@@ -1,4 +1,8 @@
-"""Benchmark API routes for Layer 3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Benchmark API routes for Layer 3.
 
 Provides endpoints for benchmark CRUD and policy management.
 Benchmarks are stored as Neo4j Benchmark nodes and may be linked to

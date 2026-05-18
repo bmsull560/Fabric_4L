@@ -199,7 +199,7 @@ describe('useRequireAuth', () => {
     renderHook(() => useRequireAuth(), { wrapper });
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', undefined);
+      expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', expect.anything());
     });
   });
 
@@ -295,7 +295,7 @@ describe('useRequireAuth', () => {
     rerender();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', undefined);
+      expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', expect.anything());
     });
   });
 });
@@ -331,7 +331,7 @@ describe('useAuthRedirect', () => {
     result.current.handleUnauthorized();
 
     expect(mockLogout).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', expect.anything());
   });
 
   it('handleUnauthorized can be called multiple times', () => {
@@ -355,6 +355,6 @@ describe('useAuthRedirect', () => {
 
     expect(mockLogout).toHaveBeenCalledTimes(3);
     expect(mockNavigate).toHaveBeenCalledTimes(3);
-    expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('/login?wfStep=0', expect.anything());
   });
 });

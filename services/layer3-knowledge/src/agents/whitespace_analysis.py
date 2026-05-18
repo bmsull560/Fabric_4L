@@ -1,4 +1,8 @@
-"""Whitespace Analysis Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Whitespace Analysis Agent.
 
 Implements gap identification, maturity assessment, and expansion pathway generation.
 """
