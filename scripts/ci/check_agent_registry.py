@@ -34,6 +34,10 @@ DEFAULT_REGISTRY_ROOT = REPO_ROOT / "contracts" / "agent-registry"
 TOOL_MANIFEST_ROOT = REPO_ROOT / "contracts" / "tool-manifests"
 AGENT_TAXONOMY_PATH = REPO_ROOT / "services" / "layer4-agents" / "src" / "agents" / "taxonomy.py"
 WORKFLOW_CONFIG_PATH = REPO_ROOT / "services" / "layer4-agents" / "src" / "models" / "workflow_config.py"
+MODEL_REGISTRY_SERVICE_PATH = REPO_ROOT / "services" / "layer4-agents" / "src" / "registry" / "service.py"
+MODEL_REGISTRY_ROUTES_PATH = REPO_ROOT / "services" / "layer4-agents" / "src" / "registry" / "api" / "routes.py"
+L4_SETTINGS_PATH = REPO_ROOT / "services" / "layer4-agents" / "src" / "config" / "settings.py"
+ALLOWED_MODEL_STAGES = {"dev", "staging", "production", "deprecated"}
 
 BASE_REQUIRED_FIELDS = {
     "id",
@@ -94,6 +98,7 @@ class RegistryValidator:
         self._validate_prompts()
         self._validate_reasoning_policies()
         self._validate_semantic_compatibility_matrix()
+        self._validate_model_registry_runtime_alignment()
         return self._report()
 
     def _load_json_documents(self) -> None:
@@ -429,6 +434,52 @@ class RegistryValidator:
             self._warning(path, "semantic-compatibility-agent-missing", f"Registered agents missing from compatibility matrix: {', '.join(missing_agents)}")
         if extra_agents:
             self._warning(path, "semantic-compatibility-agent-extra", f"Compatibility matrix agents not present in registry manifest: {', '.join(extra_agents)}")
+
+    def _validate_model_registry_runtime_alignment(self) -> None:
+        """Validate Layer 4 model runtime selectors and environment stage policy."""
+        runtime_models = self._runtime_model_references()
+        if not runtime_models:
+            self._error(MODEL_REGISTRY_SERVICE_PATH, "runtime-models-missing", "No runtime model selectors found for Layer 4")
+            return
+
+        registered_models = self._registered_registry_models()
+        missing_models = sorted(runtime_models - registered_models)
+        if missing_models:
+            self._error(
+                self.registry_root / "README.md",
+                "runtime-model-unregistered",
+                f"Runtime model selectors missing from contracts/agent-registry README model inventory: {', '.join(missing_models)}",
+            )
+
+        service_text = MODEL_REGISTRY_SERVICE_PATH.read_text(encoding="utf-8") if MODEL_REGISTRY_SERVICE_PATH.exists() else ""
+        if "allowed_transitions" not in service_text:
+            self._error(MODEL_REGISTRY_SERVICE_PATH, "stage-policy-missing", "Model registry service must declare explicit allowed stage transitions")
+        for stage in sorted(ALLOWED_MODEL_STAGES):
+            if f"\"{stage}\"" not in service_text and f"'{stage}'" not in service_text:
+                self._error(MODEL_REGISTRY_SERVICE_PATH, "stage-policy-missing-value", f"Model registry service missing stage policy value: {stage}")
+
+        routes_text = MODEL_REGISTRY_ROUTES_PATH.read_text(encoding="utf-8") if MODEL_REGISTRY_ROUTES_PATH.exists() else ""
+        if "AuditAction.MODEL_EVALUATED" not in routes_text:
+            self._error(MODEL_REGISTRY_ROUTES_PATH, "audit-eval-missing", "Eval score updates must emit AuditAction.MODEL_EVALUATED")
+        if "AuditAction.MODEL_PROMOTED" not in service_text or "AuditAction.MODEL_DEPRECATED" not in service_text:
+            self._error(MODEL_REGISTRY_SERVICE_PATH, "audit-promotion-missing", "Model stage transitions must emit MODEL_PROMOTED/MODEL_DEPRECATED audit events")
+
+    def _registered_registry_models(self) -> set[str]:
+        readme_path = self.registry_root / "README.md"
+        if not readme_path.exists():
+            self._error(readme_path, "registry-readme-missing", "contracts/agent-registry/README.md is required for runtime-model alignment checks")
+            return set()
+        text = readme_path.read_text(encoding="utf-8")
+        return set(re.findall(r"`([a-zA-Z0-9_.:-]+)`", text))
+
+    def _runtime_model_references(self) -> set[str]:
+        model_names: set[str] = set()
+        for path in (MODEL_REGISTRY_SERVICE_PATH, L4_SETTINGS_PATH):
+            if not path.exists():
+                continue
+            text = path.read_text(encoding="utf-8")
+            model_names.update(re.findall(r"(gpt-[a-zA-Z0-9_.-]+|claude-[a-zA-Z0-9_.-]+)", text))
+        return model_names
 
     def _registered_agent_types(self) -> set[str]:
         path = self.registry_root / "agents" / "manifest.json"
