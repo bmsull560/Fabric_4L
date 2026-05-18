@@ -154,68 +154,66 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
 
         profile = prospect_data.get("profile", {})
 
+        # Budget guardrail pre-check (throttle / escalation) before dispatching.
         initial_model = "gpt-4o-mini"
         decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
-        provider = get_llm_provider(self.config)
 
-        # P1-12 FIX: Wrap user content in delimiters to prevent prompt injection
-        prompt = f"""Extract structured business needs from the following prospect description.
-
-Prospect: {profile.get("name", "Unknown")}
-Industry: {profile.get("industry", "Unknown")}
-Description:
-<<<USER_CONTENT>>>
-{needs_text}
-<<</USER_CONTENT>>>
-
-Extract needs as JSON with this exact shape:
-{{"needs": ["Reduce invoice processing time", "Improve data visibility across departments"]}}
-
-Return ONLY the JSON object, no other text."""
+        ctx = require_context()
+        tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
 
         try:
-            response = await provider.complete_text(
-                model=decision.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                response_format={"type": "json_object"},
+            # Load prompt from registry — no inline prompt literals.
+            prompt_registry = get_prompt_registry()
+            needs_tmpl = prompt_registry.get("whitespace_analysis", "needs_extraction")
+            user_content = needs_tmpl.render(
+                prospect_name=profile.get("name", "Unknown"),
+                industry=profile.get("industry", "Unknown"),
+                needs_text=needs_text or "",
             )
-            content = response.content
-            # Extract JSON from potential markdown
+            provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "value_model_generation",
+                tenant_id=tenant_id,
+            )
+            llm_client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(),
+                run=harness_run,
+            )
+            llm_result = await llm_client.call(
+                model_task=needs_tmpl.model_task,
+                messages=[{"role": "user", "content": user_content}],
+                temperature=needs_tmpl.temperature,
+                max_tokens=needs_tmpl.max_tokens,
+                response_format={"type": "json_object"},
+                call_id=f"ws_needs_{tenant_id}",
+            )
+            content = llm_result.content
+            # Strip markdown fences if present.
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
             extracted_needs = ExtractedNeedsResponse.model_validate_json(content).needs
-            prompt_tokens = response.usage.prompt_tokens
-            completion_tokens = response.usage.completion_tokens
-            cost = LLMCostCalculator().calculate_cost(
-                provider="openai",
-                model=decision.model,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-            )
-            await get_llm_budget_guardrails().record_usage(cost_usd=cost)
-            ctx = require_context()
-            tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
+            await get_llm_budget_guardrails().record_usage(cost_usd=llm_result.cost_usd)
             metrics = get_metrics()
             if metrics:
                 metrics.record_llm_cost(
-                    provider="openai",
-                    model=decision.model,
+                    provider=llm_result.provider,
+                    model=llm_result.model,
                     tenant_id=tenant_id,
-                    cost=cost,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
+                    cost=llm_result.cost_usd,
+                    prompt_tokens=llm_result.prompt_tokens,
+                    completion_tokens=llm_result.completion_tokens,
                     status="throttled" if decision.escalation_required else "success",
                 )
         except LLMBudgetExceededError as e:
             logger.error("LLM need extraction blocked by budget guardrail: %s", e)
             extracted_needs = self._extract_needs_basic(needs_text)
         except Exception as e:
-            logger.error(f"LLM need extraction failed: {e}")
+            logger.error("LLM need extraction failed: %s", e)
             # Fallback to basic extraction
             extracted_needs = self._extract_needs_basic(needs_text)
 
@@ -475,9 +473,15 @@ Return ONLY the JSON object, no other text."""
             hyp_tmpl = registry.get("whitespace_analysis", "hypothesis_generation")
 
             provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "value_model_generation",
+                tenant_id=tenant_id or "unknown",
+                trace_id=trace_id,
+            )
             client = GovernedLLMClient(
                 provider=provider,
                 provider_name=self._resolve_provider_name(),
+                run=harness_run,
             )
             system_msg = {"role": "system", "content": system_tmpl.body}
 

@@ -622,9 +622,15 @@ class ROICalculatorWorkflow(BaseWorkflow):
             ]
 
             provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "roi_calculator_generation",
+                tenant_id=tenant_id or "unknown",
+                trace_id=trace_id,
+            )
             client = GovernedLLMClient(
                 provider=provider,
                 provider_name=self._resolve_provider_name(),
+                run=harness_run,
             )
 
             llm_result = await client.call(

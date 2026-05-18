@@ -28,9 +28,11 @@ _SERVICE_ROOT = _SRC.parent
 _PROMPTS = _SERVICE_ROOT / "prompts"
 _CONFIG = _SERVICE_ROOT / "config" / "harness.runtime.yaml"
 _SHARED = _SERVICE_ROOT.parents[1] / "packages" / "shared" / "src"
+_PLATFORM_CONTRACT = _SERVICE_ROOT.parents[1] / "packages" / "platform-contract" / "src" / "python"
 
 sys.path.insert(0, str(_SRC))
 sys.path.insert(0, str(_SHARED))
+sys.path.insert(0, str(_PLATFORM_CONTRACT))
 
 
 def _load_direct(rel_path: str):
@@ -338,13 +340,14 @@ class TestGovernedLLMClientConfig:
         assert cap(None, None, None) is None
 
     def test_parse_json(self):
-        """Calls the real GovernedLLMClient._parse_json static method."""
-        mod = _load_direct("services/governed_llm_client.py")
-        parse = mod.GovernedLLMClient._parse_json
+        """parse_llm_json (canonical §2.5 boundary) handles clean JSON, prose-wrapped JSON, and failures."""
+        # GovernedLLMClient delegates JSON parsing to parse_llm_json per §2.5.
+        # Test the canonical implementation directly.
+        from canonical.llm_output_parser import parse_llm_json
 
-        assert parse('{"a": 1}') == {"a": 1}
-        assert parse('Here is the result:\n{"key": "val"}') == {"key": "val"}
-        assert parse("no json here") == {}
+        assert parse_llm_json('{"a": 1}') == {"a": 1}
+        assert parse_llm_json('Here is the result:\n{"key": "val"}') == {"key": "val"}
+        assert parse_llm_json("no json here") == {}
 
 
 # ---------------------------------------------------------------------------

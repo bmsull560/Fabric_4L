@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+logger = logging.getLogger(__name__)
 
 from pydantic import ConfigDict, create_model
 
@@ -285,7 +288,18 @@ def get_llm_provider(config: dict[str, Any] | None = None) -> Any:
             "Anthropic provider is not implemented; set LAYER4_LLM_PROVIDER to 'together' or 'openai'."
         )
 
-    raise ValueError(
-        f"Unknown LLM provider: {provider_name!r}. "
-        "Supported values: 'together', 'openai'."
+    logger.warning(
+        "Unknown LLM provider %r — falling back to Together.ai. "
+        "Set LAYER4_LLM_PROVIDER to 'together' or 'openai' to suppress this warning.",
+        provider_name,
     )
+    from .together_provider import TogetherAIProvider
+
+    api_key = (
+        os.getenv("LAYER4_TOGETHER_API_KEY")
+        or (config.get("together_api_key") if config and hasattr(config, "get") else None)
+        or getattr(config, "together_api_key", None)
+    )
+    base_url = os.getenv("LAYER4_TOGETHER_BASE_URL", "https://api.together.ai/v1")
+    timeout = float(os.getenv("LAYER4_TOGETHER_TIMEOUT_SECONDS", "60"))
+    return TogetherAIProvider(api_key=api_key, base_url=base_url, timeout=timeout)

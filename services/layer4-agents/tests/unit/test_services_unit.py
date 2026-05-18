@@ -193,10 +193,14 @@ class TestEncryptionServiceEdgeCases:
     """Additional edge-case tests for EncryptionService."""
 
     @pytest.fixture(autouse=True)
-    def reset_encryption(self):
+    def reset_encryption(self, monkeypatch):
         from collections import OrderedDict
         from value_fabric.layer4.services.encryption_service import EncryptionService
 
+        # Allow ephemeral key generation so tests that call encrypt/decrypt
+        # work without a real CREDENTIALS_MASTER_KEY in the test environment.
+        monkeypatch.setenv("ALLOW_EPHEMERAL_ENCRYPTION", "true")
+        monkeypatch.delenv("CREDENTIALS_MASTER_KEY", raising=False)
         EncryptionService._MASTER_KEY = None
         EncryptionService._key_cache = OrderedDict()
         yield
