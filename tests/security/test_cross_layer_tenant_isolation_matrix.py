@@ -518,7 +518,7 @@ def test_l5_fail_closed_without_context() -> None:
     from layer5_ground_truth.api.auth import get_current_user
 
     request = _request_with_context(None)
-    request.state.context = None
+    request.state.governance_context = None
     request.url = SimpleNamespace(path="/api/v1/truths")
     settings = SimpleNamespace(is_production_like=True, allow_insecure_dev_auth_bypass=False)
 

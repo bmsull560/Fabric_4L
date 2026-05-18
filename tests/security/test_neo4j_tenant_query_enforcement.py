@@ -36,7 +36,7 @@ class TestNeo4jTenantQueryEnforcement:
         mock_context.tenant_id = tenant_id
         
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
         
         # Use fixture for mock driver
         mock_driver, mock_session, mock_result = mock_neo4j_driver
@@ -84,7 +84,7 @@ class TestNeo4jTenantQueryEnforcement:
         mock_context.tenant_id = tenant_id
         
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
         
         # Create batch request with update operation
         batch_request = BatchEntityRequest(
@@ -207,7 +207,7 @@ class TestTenantIdParameterValidation:
         mock_context.tenant_id = tenant_uuid
         
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
         
         # Act
         result = _extract_tenant_id(mock_request)

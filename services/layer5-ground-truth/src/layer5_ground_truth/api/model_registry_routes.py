@@ -266,8 +266,6 @@ async def deprecate_model_version(
     model.deprecation_reason = reason or "Manually deprecated"
     model.is_active = False
 
-    await db.commit()
-
     logger.info(
         "Deprecated model version: %s/%s@%s (org=%s, reason=%s)",
         model.provider,
@@ -422,7 +420,6 @@ async def promote_model(
             deployed_by=caller.user_id or caller.email,
         )
         db.add(deployment)
-        await db.commit()
         await db.refresh(deployment)
 
     # If making default, clear other defaults for this environment
@@ -562,8 +559,6 @@ async def rollback_deployment(
     deployment.rolled_back_by = caller.user_id or caller.email
     deployment.rollback_reason = payload.reason
 
-    await db.commit()
-
     logger.info(
         "Rolled back deployment %s (reason: %s)",
         deployment_id,
@@ -633,7 +628,6 @@ async def create_evaluation(
     )
 
     db.add(evaluation)
-    await db.commit()
     await db.refresh(evaluation)
 
     logger.info(

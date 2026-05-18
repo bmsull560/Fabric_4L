@@ -461,7 +461,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 _current_context.reset(token)
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
-                request.state.context = ctx
 
                 # Tenant lifecycle enforcement — must run before business logic.
                 # tenant_status is carried in the JWT raw claims or context raw dict.
@@ -494,7 +493,6 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     )
             else:
                 request.state.governance_context = None
-                request.state.context = None
 
             # Rate limiting check (after identity, before request handling)
             if ctx is not None and self._rate_limiter is not None:
