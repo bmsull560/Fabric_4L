@@ -14,6 +14,15 @@ This runbook covers enterprise identity-provider incidents affecting Fabric_4L u
 
 Confirm whether the provider discovery document, JWKS endpoint, authorization endpoint, token endpoint, and callback route are reachable from the deployment network. Do not paste provider secrets into logs or tickets. Capture only sanitized provider URL, HTTP status, request ID, tenant ID, and timestamp.
 
+Canonical runtime auth boundaries and integration points:
+- Shared identity boundary: `packages/shared/src/value_fabric/shared/identity/` (JWT decode, JWKS resolution, auth context, middleware, dependency gates).
+- Service middleware entrypoints: each service `api/main.py` (or equivalent) where `GovernanceMiddleware` is mounted.
+- Layer 4 OAuth callback boundary: `services/layer4-agents/src/api/routes/integrations.py` (`/v1/integrations/salesforce/oauth/callback`).
+
+Configuration and secret-management guardrail:
+- Keep `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URL`/`OIDC_JWKS_JSON`, and callback state-signing secrets in Infisical/Vault (or ExternalSecrets-backed injection), not in repo-tracked environment files.
+- `.env.example` documents contract keys only; production values must come from secret manager paths.
+
 | Check | Command or evidence | Pass criterion |
 |---|---|---|
 | Discovery metadata | Fetch configured issuer metadata from the deployment environment. | HTTP 200 and issuer matches configured issuer exactly. |
