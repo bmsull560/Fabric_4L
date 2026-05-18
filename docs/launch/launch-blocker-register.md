@@ -39,6 +39,19 @@ The CI/staging backend-integrated reproducibility package for GitHub Actions run
 
 Until the remaining four journeys have retained JUnit/trace/video/screenshot artifacts tied to a release-candidate SHA, `P0-001` remains open as `REQUIRES_ENVIRONMENT`.
 
+
+## 2026-05-18 Release-Gate Remediation Tasks (Opened)
+
+Launch sign-off is **blocked** until the tasks below are resolved and evidence is re-collected on a host with Docker/Compose available.
+
+| Task ID | Gate / Step | Failure Evidence | Owner | Status | Blocking Rule |
+|---|---|---|---|---|---|
+| RG-2026-05-18-01 | Full-stack launch path (`docker compose -f docker-compose.full.yml up -d`) | Host missing `docker` CLI (`command not found`). | Platform/SRE | OPEN | Blocks all downstream live validation and launch sign-off. |
+| RG-2026-05-18-02 | `make verify` canonical gate | Fails at `lint-layer4` with 26 Ruff errors (import ordering/unused imports/redefinitions). | Layer 4 owner | OPEN | Blocks launch until `make verify` is green. |
+| RG-2026-05-18-03 | `scripts/ops/release-gate.sh` (`release-candidate`) | Decision `FAIL`: blocking gates 1/7 pass; artifact gates 1/2 pass; see `artifacts/release/logs/*.log`. | Release manager + gate owners | OPEN | Blocks launch until release-candidate decision is PASS. |
+| RG-2026-05-18-04 | Live workflow validation (`--seed --playwright`, mocks disabled) | `docker-compose is required in this validation environment`; run exits FAIL and writes BLOCKED evidence only. | QA/Platform | OPEN | Blocks P0 live workflow sign-off evidence. |
+| RG-2026-05-18-05 | Artifact schema validation (`validate_live_workflow_artifacts.py`) | Fails: `required artifactPresence.composeConfig must be true`. | QA/CI | OPEN | Blocks acceptance of live evidence bundle. |
+
 ## P0 Launch Blocker
 
 | ID | Item | Owner | Required Evidence | Current Status | Decision Rule |
