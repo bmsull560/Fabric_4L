@@ -5,11 +5,12 @@ using native structured LLM outputs with Pydantic model validation for
 compile-time type safety and automatic schema enforcement.
 """
 
-import json
 import math
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
+
+from layer2_extraction.shared.llm_output_parser import parse_llm_json
 
 # Type variable for generic extraction
 T = TypeVar("T", bound=BaseModel)
@@ -80,7 +81,10 @@ def _parse_tool_arguments(response: Any, method_name: str) -> dict[str, Any]:
         tool_calls = response.choices[0].message.tool_calls
         if not tool_calls:
             raise ValueError("No tool calls returned")
-        return json.loads(tool_calls[0].function.arguments)
+        return parse_llm_json(
+            tool_calls[0].function.arguments,
+            call_site=f"llm_extractor.{method_name}",
+        )
     except Exception as exc:
         raise LLMExtractionError(f"{method_name}: invalid function-call payload: {exc}") from exc
 
