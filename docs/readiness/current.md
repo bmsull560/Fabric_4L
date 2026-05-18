@@ -45,3 +45,7 @@ Any archived readiness note that includes percentages must include at least one 
 - Filename prefix `ARCHIVED_`
 
 This allows automated checks to distinguish historical records from canonical readiness state.
+
+## Decision Artifact
+
+- Canonical launch decision package: `docs/readiness/launch-decision-artifact.md`
