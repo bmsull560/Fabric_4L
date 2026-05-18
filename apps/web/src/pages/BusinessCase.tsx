@@ -30,63 +30,6 @@ import { PageHeader, Btn } from "@/components/ui/fabric";
 import { cn } from "@/lib/utils";
 import type { ValidationState } from "@/api/harness";
 
-function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
-  for (const key of keys) {
-    const value = metadata?.[key];
-    if (typeof value === "string" && value.trim()) return value;
-  }
-  return "";
-}
-
-function metadataBoolean(metadata: Record<string, unknown> | undefined, keys: string[]): boolean {
-  return keys.some((key) => metadata?.[key] === true);
-}
-
-// ── Validation badge helpers ──────────────────────────────────────────────────
-
-function validationBadgeClass(state: ValidationState): string {
-  switch (state) {
-    case "passed":               return "bg-emerald-500/15 text-emerald-700 border-emerald-200";
-    case "failed":               return "bg-red-500/15 text-red-700 border-red-200";
-    case "needs_review":         return "bg-amber-500/15 text-amber-700 border-amber-200";
-    case "insufficient_evidence": return "bg-slate-100 text-slate-600 border-slate-200";
-  }
-}
-
-function validationBadgeLabel(state: ValidationState): string {
-  switch (state) {
-    case "passed":               return "Validated";
-    case "failed":               return "Blocked";
-    case "needs_review":         return "Needs Review";
-    case "insufficient_evidence": return "Insufficient Evidence";
-  }
-}
-
-/** Derive an overall ValidationState from a validation_summary object in case_metadata. */
-function deriveOverallValidationState(
-  summary: Record<string, unknown> | undefined,
-): ValidationState | null {
-  if (!summary || typeof summary.total !== "number" || summary.total === 0) return null;
-  if ((summary.failed as number) > 0) return "failed";
-  if ((summary.needs_review as number) > 0 || (summary.insufficient_evidence as number) > 0)
-    return "needs_review";
-  if ((summary.passed as number) === summary.total) return "passed";
-  return "insufficient_evidence";
-}
-
-/** Return the ValidationState for a claim at a given recommendation index. */
-function claimValidationState(
-  claimValidations: unknown,
-  index: number,
-): ValidationState | null {
-  if (!Array.isArray(claimValidations)) return null;
-  const entry = claimValidations[index];
-  if (!entry || typeof entry !== "object") return null;
-  const state = (entry as Record<string, unknown>).validation_state as string | undefined;
-  const validStates: ValidationState[] = ["passed", "failed", "needs_review", "insufficient_evidence"];
-  return validStates.includes(state as ValidationState) ? (state as ValidationState) : null;
-}
-
 export default function BusinessCase() {
   const { caseId } = useParams<{ caseId: string }>();
   const [searchParams] = useSearchParams();
@@ -217,6 +160,11 @@ export default function BusinessCase() {
   const normalizedStatus = businessCase.status.toLowerCase();
   const isApproved = ["approved", "active", "completed"].includes(normalizedStatus);
   const hasExportDocument = Boolean(businessCase.document_url);
+  const trustState = deriveTrustState(businessCase);
+  const exportAllowed = trustState === "export_ready";
+  const degradedReason = typeof businessCase.case_metadata?.["degraded_reason"] === "string"
+    ? businessCase.case_metadata["degraded_reason"] as string
+    : null;
   const exportState = isApproved && hasExportDocument ? "Export PDF ready" : "Export PDF disabled until approval and document generation complete";
   const accountRouteId =
     metadataString(businessCase.case_metadata, ["external_account_id", "provider_record_id", "account_route_id"]) ||
@@ -251,7 +199,7 @@ export default function BusinessCase() {
             <Btn
               variant="ghost"
               onClick={handleExportPDF}
-              disabled={exportMutation.isPending || !businessCase.document_url}
+              disabled={exportMutation.isPending || !exportAllowed}
             >
               {exportMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               Export PDF
@@ -266,6 +214,9 @@ export default function BusinessCase() {
       />
 
       {accountRouteId && <GateStatusBanner accountId={accountRouteId} />}
+
+      {/* Trust status row */}
+      <BusinessCaseTrustRow trustState={trustState} degradedReason={degradedReason} />
 
       {/* Export error */}
       {exportMutation.error && (
