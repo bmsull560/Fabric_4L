@@ -319,3 +319,40 @@ const CONTRACTS_OPENAPI_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../../../../contracts/openapi'
 );
+const LAYER4_ROUTE_CONTRACT_MATRIX_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../../../contracts/layer4-route-contract-matrix.json'
+);
+
+describe('OpenAPI drift: layer4 route contract matrix coverage', () => {
+  it('covers launched intelligence and workspace flows with backend route ownership', () => {
+    const matrix = JSON.parse(readFileSync(LAYER4_ROUTE_CONTRACT_MATRIX_PATH, 'utf-8')) as {
+      entries: Array<{
+        openapi_path: string;
+        method: string;
+        backend_route_files?: string[];
+      }>;
+    };
+
+    const expectedRoutes = [
+      { method: 'GET', path: '/v1/intelligence/account/{account_id}/briefing' },
+      { method: 'GET', path: '/v1/intelligence/account/{account_id}/deal-readiness' },
+      { method: 'GET', path: '/v1/intelligence/pipeline-summary' },
+      { method: 'GET', path: '/v1/cases/{case_id}/workspace/evidence' },
+      { method: 'GET', path: '/v1/cases/{case_id}/workspace/{tab_key}' },
+      { method: 'PUT', path: '/v1/cases/{case_id}/workspace/{tab_key}' },
+      { method: 'POST', path: '/v1/cases/{case_id}/workspace/generate' },
+    ] as const;
+
+    for (const route of expectedRoutes) {
+      const entry = matrix.entries.find((candidate) => (
+        candidate.method === route.method && candidate.openapi_path === route.path
+      ));
+      expect(entry, `Missing matrix entry for ${route.method} ${route.path}`).toBeTruthy();
+      expect(
+        entry?.backend_route_files?.length ?? 0,
+        `Missing backend route ownership for ${route.method} ${route.path}`
+      ).toBeGreaterThan(0);
+    }
+  });
+});
