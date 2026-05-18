@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 FALLBACK_LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o")
 """Default LLM model when registry lookup fails or is unavailable."""
+ALLOWED_MODEL_STAGES = {"dev", "staging", "production", "deprecated"}
 
 
 class PromotionError(Exception):
@@ -167,9 +168,26 @@ class ModelRegistryService:
             raise PromotionError(f"Model version {model_version_id} not found")
 
         from_stage = model.stage
+        if from_stage not in ALLOWED_MODEL_STAGES or to_stage not in ALLOWED_MODEL_STAGES:
+            raise PromotionError(
+                f"Invalid stage transition {from_stage!r} -> {to_stage!r}. "
+                f"Allowed states: {sorted(ALLOWED_MODEL_STAGES)}"
+            )
 
         if from_stage == to_stage:
             raise PromotionError(f"Model is already in stage '{to_stage}'")
+
+        allowed_transitions: dict[str, set[str]] = {
+            "dev": {"staging"},
+            "staging": {"production", "deprecated"},
+            "production": {"deprecated"},
+            "deprecated": set(),
+        }
+        if to_stage not in allowed_transitions[from_stage]:
+            raise PromotionError(
+                f"Forbidden stage transition {from_stage!r} -> {to_stage!r}. "
+                f"Allowed targets: {sorted(allowed_transitions[from_stage])}"
+            )
 
         # Enforce promotion gates
         eval_passed = None

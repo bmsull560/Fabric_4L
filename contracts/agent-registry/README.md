@@ -16,6 +16,14 @@ This directory is the **semantic source of truth** for Layer 4 agent behavior. P
 
 The compatibility matrix intentionally starts with `enforcement_default: "warn"`. Runtime validators and frontend event schemas surface semantic-contract gaps without blocking execution until strict enforcement is explicitly promoted through the governance process.
 
+## Layer 4 Runtime Model Selectors
+
+Layer 4 runtime selectors must remain aligned with contract-governed model inventory. Current selectors approved for runtime defaults and fallback:
+
+- `gpt-4`
+- `gpt-4o`
+- `claude-3-sonnet-20240229`
+
 ## Change Discipline
 
 Registry changes are governed by `contracts/GOVERNANCE.md`. Prompt,
