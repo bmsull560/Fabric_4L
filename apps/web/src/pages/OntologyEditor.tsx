@@ -18,7 +18,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { Check, X, AlertCircle, Undo2, Redo2, Download, Upload, Plus, GitBranch, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PageHeader, Btn, SectionCard } from '@/components/WfPrimitives';
 import { TypeTree, PropertyEditor, RelationshipMap } from '@/components/ontology';
 import {
   useOntologySchema,
@@ -36,6 +35,8 @@ import {
 } from '@/hooks/useOntology';
 import useOntologyStore from '@/stores/ontologyStore';
 import { toast } from 'sonner';
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 export default function OntologyEditor() {
   // Data fetching

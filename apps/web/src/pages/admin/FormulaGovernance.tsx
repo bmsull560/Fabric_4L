@@ -20,7 +20,6 @@ import {
   ArrowUpDown, MoreHorizontal, Download, FileText, Check, X,
   MessageSquare, Shield, Loader2, RefreshCw, Send,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton, ErrorBoundary } from "@/components";
 import { formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
@@ -34,6 +33,8 @@ import {
   type FormulaStatus,
 } from "@/hooks";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('FormulaGovernance');
 

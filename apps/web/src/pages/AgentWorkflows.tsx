@@ -28,15 +28,6 @@ import {
   useWorkflowTypes,
   type Workflow,
 } from "@/hooks/useWorkflows";
-import {
-  PageHeader,
-  MetricCard,
-  DataTable,
-  StatusBadge as StatusBadgePrimitive,
-  Btn,
-  SectionCard,
-  Tabs,
-} from "@/components/WfPrimitives";
 import { HarnessRunDetail } from "@/components/HarnessRunDetail";
 import { QueryState } from "@/components/QueryState";
 import { WorkflowDetail } from "@/components/WorkflowDetail";
@@ -51,6 +42,10 @@ import {
 } from "@/hooks/useHarness";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { StatusBadge as StatusBadgePrimitive } from "@/components/ui/fabric";
+import { Tabs } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, MetricCard, LegacyDataTable, Btn } from "@/components/ui/fabric";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -412,7 +407,7 @@ export default function AgentWorkflows() {
           isEmpty={historyWorkflows.length === 0}
           emptyMessage="No workflow history available."
         >
-          <DataTable
+          <LegacyDataTable
             columns={[
               "Job ID",
               "Name",
@@ -483,7 +478,7 @@ export default function AgentWorkflows() {
             emptySubMessage="Harness-backed agent runs will appear here."
             loadingMessage="Loading harness runs…"
           >
-            <DataTable
+            <LegacyDataTable
               columns={["Run ID", "Workflow Type", "State", "Status", "Created", "Actions"]}
               rows={harnessRuns.map((run: HarnessRun) => [
                 <span key="id" className="font-mono text-xs text-muted-foreground truncate max-w-[120px] block">

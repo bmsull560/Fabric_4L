@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { PageHeader, SectionCard, DataTable } from "@/components/WfPrimitives";
 import {
   useTruths,
   useTruthAuditTrail,
 } from "@/hooks/useGroundTruthGovernance";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, LegacyDataTable } from "@/components/ui/fabric";
 
 export default function GovernanceAuditLog() {
   const { data: truthList, isLoading: isLoadingTruths } = useTruths({
@@ -86,7 +87,7 @@ export default function GovernanceAuditLog() {
           ) : isError ? (
             <div className="p-4 text-[12px] text-red-600">{error.message}</div>
           ) : (
-            <DataTable
+            <LegacyDataTable
               columns={[
                 "Transition",
                 "Maturity",

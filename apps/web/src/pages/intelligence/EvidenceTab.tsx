@@ -8,8 +8,9 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
 import { useAttachEvidenceToDriverMutation, useCanonicalCaseId, useEvidenceDecisionMutation, usePersistWorkspaceTab, useValidateEvidenceClaim, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 type VerificationState = "verified" | "partial" | "unverified";
 interface EvidenceItem { id: string; title: string; type: string; source: string; matchScore: number; verification: VerificationState; linkedSignals: string[]; excerpt: string }
