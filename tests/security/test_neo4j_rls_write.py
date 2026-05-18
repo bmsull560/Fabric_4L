@@ -242,7 +242,7 @@ class TestNeo4jWriteTenantEnforcement:
         mock_context.tenant_id = jwt_tenant
 
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
 
         mock_session = AsyncMock()
         mock_result = AsyncMock()
@@ -305,7 +305,7 @@ class TestNeo4jWriteTenantEnforcement:
         mock_context.tenant_id = jwt_tenant
 
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
 
         mock_session = AsyncMock()
         mock_result = AsyncMock()
@@ -356,7 +356,7 @@ class TestNeo4jWriteTenantEnforcement:
         mock_context.tenant_id = jwt_tenant
 
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
 
         mock_session = AsyncMock()
         mock_result = AsyncMock()
@@ -407,7 +407,7 @@ class TestNeo4jWriteTenantEnforcement:
         mock_context.tenant_id = jwt_tenant
 
         mock_request = MagicMock()
-        mock_request.state.context = mock_context
+        mock_request.state.governance_context = mock_context
 
         mock_session = AsyncMock()
         mock_result = AsyncMock()
