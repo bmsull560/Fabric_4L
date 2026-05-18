@@ -308,8 +308,8 @@ jobs:
         run: python scripts/ci/platform_contract_lint.py
 
       - name: Run Agent Registry and Semantic Compatibility Validation
-        run: python scripts/ci/check_agent_registry.py
-        # Phase 2 semantic compatibility starts in warning mode; malformed contracts still fail.
+        run: python scripts/ci/check_agent_registry.py --strict
+        # Strict mode is required for Layer 4 model/runtime registry enforcement.
 
       - name: Run Strict Shared-Import Enforcement
         run: python scripts/ci/check_shared_imports.py --strict --scope runtime
