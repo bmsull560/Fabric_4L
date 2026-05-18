@@ -14,9 +14,7 @@ with the layer4 conftest path.
 from __future__ import annotations
 
 import ast
-import os
 import pathlib
-import unittest.mock as mock
 
 import pytest
 
