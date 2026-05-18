@@ -8,10 +8,8 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-
 from value_fabric.shared.identity import RequestContext, Role, require_authenticated, require_role
 from value_fabric.shared.observability.logging import get_logger
-
 
 router = APIRouter()
 logger = get_logger(__name__)

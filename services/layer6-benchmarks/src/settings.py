@@ -4,9 +4,15 @@ from functools import lru_cache
 from typing import Literal
 from urllib.parse import parse_qsl, urlparse
 
-from pydantic import AliasChoices, Field, SecretStr, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    SecretStr,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from value_fabric.shared.security.neo4j import (
     INSECURE_NEO4J_PASSWORDS,
     is_production_like_environment,

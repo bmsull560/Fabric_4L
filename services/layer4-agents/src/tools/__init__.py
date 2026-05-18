@@ -58,7 +58,6 @@ from .registry import (
     get_global_registry,
     tool,
 )
-from .utility_tools import FormatCurrencyTool, ValidateInputTool
 from .signal_tools import (
     create_signal,
     get_account_signals,
@@ -66,6 +65,7 @@ from .signal_tools import (
     get_renewal_risk_signals,
     get_signals_for_business_case,
 )
+from .utility_tools import FormatCurrencyTool, ValidateInputTool
 
 
 def create_default_registry(config: dict | None = None) -> ToolRegistry:

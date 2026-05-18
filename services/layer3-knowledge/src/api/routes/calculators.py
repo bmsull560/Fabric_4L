@@ -3,10 +3,10 @@
 Provides endpoints for value lever configuration and value case persistence.
 """
 
+from datetime import datetime
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import datetime
 
 from ...api.dependencies_tenant import create_neo4j_tenant_session
 
@@ -28,21 +28,21 @@ class ValueLever(BaseModel):
 
 
 class LeverConfigRequest(BaseModel):
-    industry: Optional[str] = None
-    company_size: Optional[str] = None
-    product_line: Optional[str] = None
+    industry: str | None = None
+    company_size: str | None = None
+    product_line: str | None = None
 
 
 class LeverConfigResponse(BaseModel):
-    levers: List[ValueLever]
+    levers: list[ValueLever]
     metadata: dict
 
 
 class ValueCaseRequest(BaseModel):
     account_id: str
-    prospect_id: Optional[str] = None
-    levers: List[dict]
-    scenarios: List[dict]
+    prospect_id: str | None = None
+    levers: list[dict]
+    scenarios: list[dict]
     metadata: dict
 
 
@@ -51,8 +51,8 @@ class ValueCaseResponse(BaseModel):
     account_id: str
     created_at: str
     updated_at: str
-    levers: List[dict]
-    scenarios: List[dict]
+    levers: list[dict]
+    scenarios: list[dict]
     metadata: dict
 
 

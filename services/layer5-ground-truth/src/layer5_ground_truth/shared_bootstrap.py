@@ -4,13 +4,17 @@ This module intentionally uses normal package imports only; Docker images and
 local test commands must provide repository/package roots on PYTHONPATH.
 """
 
-from typing import Any, Callable, cast
+from collections.abc import Callable
+from typing import Any, cast
 
-from value_fabric.shared.fastapi_framework.app import create_fabric_app, install_metrics_middleware
+from value_fabric.shared.fastapi_framework.app import (
+    create_fabric_app,
+    install_metrics_middleware,
+)
 from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
 from value_fabric.shared.observability.metrics_access import verify_metrics_access
 from value_fabric.shared.security.config import validate_production_safety
-from value_fabric.shared.security.middleware import SecurityConfig, add_security_middleware
+from value_fabric.shared.security.middleware import add_security_middleware
 
 create_fabric_app = cast(Callable[..., Any], create_fabric_app)
 install_metrics_middleware = cast(Callable[..., Any], install_metrics_middleware)

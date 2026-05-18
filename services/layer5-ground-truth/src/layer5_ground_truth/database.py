@@ -177,15 +177,15 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         settings = get_settings()
         _assert_rls_safe_database_url(settings.database_url, source="Layer 5 database URL")
-        engine_kwargs: dict[str, Any] = dict(
-            pool_size=settings.db_pool_size,
-            max_overflow=settings.db_max_overflow,
-            pool_pre_ping=settings.db_pool_pre_ping,
-            pool_recycle=settings.db_pool_recycle,
-            pool_timeout=settings.db_pool_timeout,
-            echo=settings.debug,
-            future=True,
-        )
+        engine_kwargs: dict[str, Any] = {
+            "pool_size": settings.db_pool_size,
+            "max_overflow": settings.db_max_overflow,
+            "pool_pre_ping": settings.db_pool_pre_ping,
+            "pool_recycle": settings.db_pool_recycle,
+            "pool_timeout": settings.db_pool_timeout,
+            "echo": settings.debug,
+            "future": True,
+        }
         # SQLite requires check_same_thread=False for connection pooling
         if settings.database_url.startswith("sqlite"):
             engine_kwargs["connect_args"] = {"check_same_thread": False}
@@ -327,6 +327,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import text
+
 from metrics.prometheus_metrics import get_metrics
 
 try:

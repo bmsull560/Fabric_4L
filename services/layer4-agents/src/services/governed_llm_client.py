@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 if TYPE_CHECKING:
-    from harness.models import HarnessRun, HarnessWorkflowType
+    from harness.models import HarnessRun
     from harness.telemetry import TelemetryEmitter
     from services.llm_provider import LLMProvider
 

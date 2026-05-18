@@ -312,7 +312,7 @@ class Settings(BaseSettings):
     pipeline_stage_timeout_seconds: int = Field(default=300, description="Timeout per pipeline stage")
     max_pipeline_retries: int = Field(default=3, description="Max retries per pipeline stage")
 
-    model_config = ConfigDict(case_sensitive=False)
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # Global settings instance

@@ -90,7 +90,6 @@ async def create_run(
     ctx: AuthCtxDep,
 ) -> RunResponse:
     """Create a new HarnessRun for the authenticated tenant."""
-    from ...harness.models import InitiatedBy
 
     run = registry.create_run(
         tenant_id=ctx.tenant_id,
@@ -349,7 +348,7 @@ async def decide_gate(
 ) -> GateResponse:
     """Approve, reject, modify, or expire a human gate."""
     try:
-        gate = registry.get_gate(gate_id, ctx.tenant_id)
+        _gate = registry.get_gate(gate_id, ctx.tenant_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Gate {gate_id} not found")
     except HarnessRegistryError as exc:

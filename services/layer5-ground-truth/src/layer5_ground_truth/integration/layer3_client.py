@@ -17,8 +17,9 @@ from uuid import UUID
 
 import httpx
 
-from ..config import get_settings
 from metrics.prometheus_metrics import get_metrics
+
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 

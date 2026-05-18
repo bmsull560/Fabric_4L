@@ -35,7 +35,17 @@ jobs:
       - name: Run security regression tests
         run: |
           python3 scripts/ensure-pytest-collection.py --dir tests/security --min-tests 600
-          pytest tests/security/ -v --tb=short
+          pytest tests/security/ -v --tb=short \
+            --junitxml=security-test-report.xml \
+            -o "junit_suite_name=security-regression"
+
+      - name: Upload security test report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-test-report-${{ github.sha }}
+          path: security-test-report.xml
+          retention-days: 90
 
       - name: Check for secret fallbacks in workflows
         run: |

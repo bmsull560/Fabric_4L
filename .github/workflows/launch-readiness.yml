@@ -109,9 +109,9 @@ jobs:
       - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         if: always()
         with:
-          name: frontend-test-report-shard-${{ matrix.shard }}
+          name: frontend-test-report-shard-${{ matrix.shard }}-${{ github.sha }}
           path: apps/web/test-results/**
-          retention-days: 14
+          retention-days: 90
           if-no-files-found: warn
 
   stage-2-journey-smoke:
@@ -232,7 +232,34 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pnpm install --frozen-lockfile
+      - name: Run launch journey tests against staging
+        env:
+          BASE_URL: ${{ vars.STAGING_BASE_URL }}
+          PLAYWRIGHT_JUNIT_FILE: apps/web/e2e-results/junit.xml
+        run: |
+          pnpm --dir apps/web exec playwright install --with-deps chromium
+          pnpm --dir apps/web exec playwright test \
+            --project=backend-integrated \
+            e2e/journeys/j1-golden-path-backend-integrated.spec.ts \
+            e2e/journeys/j11-golden-path-business-lifecycle.spec.ts \
+            --reporter=junit \
+            --output=apps/web/e2e-results \
+            || true
+      - name: Collect journey SLO metrics
+        env:
+          PLAYWRIGHT_JUNIT_FILE: apps/web/e2e-results/junit.xml
+          JOURNEY_SLO_REPORT_PATH: apps/web/tmp/journey-slo-report.json
+        run: pnpm --dir apps/web run collect:journey-slo
+      - name: Upload journey SLO report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-slo-report-${{ github.sha }}
+          path: apps/web/tmp/journey-slo-report.json
+          retention-days: 90
       - name: Journey SLO gate
+        env:
+          JOURNEY_SLO_REPORT_PATH: apps/web/tmp/journey-slo-report.json
         run: pnpm --dir apps/web run test:journey-slo-gate
       - name: Generate staging evidence summary
         run: python scripts/ci/generate_launch_evidence_bundle.py --artifacts-only --up-to-stage staging --repo-root . --json-summary .tmp/staging-evidence-summary.json || true

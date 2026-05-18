@@ -142,9 +142,9 @@ class PIIScanner:
 
     def __init__(
         self,
-        threshold_flag: float = None,
-        threshold_quarantine: float = None,
-        enabled_entities: list[PIIEntityType] = None,
+        threshold_flag: float | None = None,
+        threshold_quarantine: float | None = None,
+        enabled_entities: list[PIIEntityType] | None = None,
     ):
         self.threshold_flag = threshold_flag or settings.pii_threshold_flag
         self.threshold_quarantine = threshold_quarantine or settings.pii_threshold_quarantine

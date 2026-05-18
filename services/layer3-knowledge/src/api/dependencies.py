@@ -3,8 +3,13 @@
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
-from neo4j.exceptions import ConfigurationError, Neo4jError, ServiceUnavailable, TransientError
 from neo4j import AsyncDriver
+from neo4j.exceptions import (
+    ConfigurationError,
+    Neo4jError,
+    ServiceUnavailable,
+    TransientError,
+)
 from value_fabric.layer3.agents import (
     NarrativeSynthesisAgent,
     ProvenanceTrackingAgent,

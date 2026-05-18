@@ -6,7 +6,6 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger
 from value_fabric.shared.fastapi_framework import (

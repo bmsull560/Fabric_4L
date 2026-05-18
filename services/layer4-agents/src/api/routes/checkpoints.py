@@ -15,6 +15,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
+from value_fabric.shared.error_handling.middleware import get_request_id
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -198,7 +199,9 @@ async def list_checkpoints(
             executor=executor, workflow_id=workflow_id, tenant_id=_ctx.tenant_id
         )
         checkpoints = await _query_checkpoints(
-            executor.checkpoint_saver, workflow_id, limit, request_id=request_id
+            executor.checkpoint_saver, workflow_id, limit,
+            tenant_id=str(_ctx.tenant_id),
+            request_id=request_id,
         )
 
         return CheckpointListResponse(
@@ -410,7 +413,7 @@ async def resume_from_checkpoint(
                 status_code=404, detail=f"Checkpoint {request.checkpoint_id} not found"
             )
 
-        actor_user_id = str(context.user_id) if context.user_id is not None else "anonymous"
+        actor_user_id = str(_ctx.user_id) if _ctx.user_id is not None else "anonymous"
 
         # Resume workflow with checkpoint state and server-resolved actor identity
         result = await executor.resume_from_checkpoint(
@@ -442,7 +445,12 @@ async def resume_from_checkpoint(
 
 
 async def _query_checkpoints(
-    checkpoint_saver, thread_id: str, limit: int = 50, *, request_id: str | None = None
+    checkpoint_saver,
+    thread_id: str,
+    limit: int = 50,
+    *,
+    tenant_id: str | None = None,
+    request_id: str | None = None,
 ) -> list[CheckpointInfo]:
     """Query checkpoints from LangGraph Postgres saver.
 

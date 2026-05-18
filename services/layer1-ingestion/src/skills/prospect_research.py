@@ -12,7 +12,6 @@ from typing import Any
 
 from .base import BaseSkill, SkillConfig
 
-
 # JSON Schema for AI extraction stage — prospect research
 _PROSPECT_RESEARCH_EXTRACTION_SCHEMA = {
     "type": "object",
