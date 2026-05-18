@@ -3,167 +3,32 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp, AlertTriangle, EyeOff, ShieldCheck, Ban } from "lucide-react";
+import {
+  Download,
+  Share2,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  CheckCircle2,
+  FileText,
+  Send,
+  TrendingUp,
+} from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GateStatusBanner } from "@/components/GateStatusBanner";
-import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
+import {
+  useBusinessCase,
+  useBusinessCaseExport,
+  useRegenerateBusinessCase,
+} from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 import { cn } from "@/lib/utils";
-import type { BusinessCase as BusinessCaseType } from "@/hooks/useDocuments";
-
-function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
-  for (const key of keys) {
-    const value = metadata?.[key];
-    if (typeof value === "string" && value.trim()) return value;
-  }
-  return "";
-}
-
-function metadataBoolean(metadata: Record<string, unknown> | undefined, keys: string[]): boolean {
-  return keys.some((key) => metadata?.[key] === true);
-}
-
-// ── Trust state derivation ────────────────────────────────────────────────────
-
-export type BusinessCaseTrustState =
-  | "degraded"
-  | "pending_review"
-  | "validated"
-  | "export_blocked"
-  | "export_ready";
-
-export function deriveTrustState(bc: BusinessCaseType): BusinessCaseTrustState {
-  const meta = bc.case_metadata;
-  const status = bc.status.toLowerCase();
-
-  // Degraded: LLM enrichment incomplete or explicitly not customer-facing
-  const isDegraded =
-    meta?.["customer_facing_allowed"] === false ||
-    (typeof meta?.["degraded_reason"] === "string" && (meta["degraded_reason"] as string).length > 0);
-
-  if (isDegraded) return "degraded";
-
-  // Pending review: awaiting validation or human approval
-  const isPending = ["pending", "needs_review", "draft", "in_review"].includes(status);
-  if (isPending) return "pending_review";
-
-  // Validated / approved
-  const isApproved = ["approved", "active", "completed"].includes(status);
-  if (isApproved) {
-    return bc.document_url ? "export_ready" : "validated";
-  }
-
-  // Validation failed or insufficient evidence
-  const isFailed = ["failed", "rejected", "insufficient_evidence"].includes(status);
-  if (isFailed) return "export_blocked";
-
-  // Default: treat unknown status as pending review
-  return "pending_review";
-}
-
-// ── Trust status row component ────────────────────────────────────────────────
-
-interface TrustBadgeProps {
-  label: string;
-  icon: typeof CheckCircle2;
-  className: string;
-}
-
-function TrustBadge({ label, icon: Icon, className }: TrustBadgeProps) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border",
-        className,
-      )}
-    >
-      <Icon className="w-3 h-3 shrink-0" />
-      {label}
-    </span>
-  );
-}
-
-interface BusinessCaseTrustRowProps {
-  trustState: BusinessCaseTrustState;
-  degradedReason?: string | null;
-}
-
-export function BusinessCaseTrustRow({ trustState, degradedReason }: BusinessCaseTrustRowProps) {
-  return (
-    <div
-      className="flex flex-wrap items-center gap-2 mb-4"
-      data-testid="business-case-trust-row"
-      aria-label="Business case trust status"
-    >
-      {trustState === "degraded" && (
-        <>
-          <TrustBadge
-            label="Degraded"
-            icon={AlertTriangle}
-            className="bg-red-50 text-red-700 border-red-200"
-          />
-          <TrustBadge
-            label="Internal draft only"
-            icon={EyeOff}
-            className="bg-amber-50 text-amber-700 border-amber-200"
-          />
-          <span className="text-xs text-muted-foreground">
-            {degradedReason ?? "LLM, validation, or evidence enrichment was incomplete. Human review required."}
-          </span>
-        </>
-      )}
-
-      {trustState === "pending_review" && (
-        <>
-          <TrustBadge
-            label="Pending Review"
-            icon={AlertTriangle}
-            className="bg-amber-50 text-amber-700 border-amber-200"
-          />
-          <TrustBadge
-            label="Internal draft only"
-            icon={EyeOff}
-            className="bg-amber-50 text-amber-700 border-amber-200"
-          />
-          <span className="text-xs text-muted-foreground">
-            Claims require validation or human approval before export.
-          </span>
-        </>
-      )}
-
-      {trustState === "validated" && (
-        <TrustBadge
-          label="Validated"
-          icon={ShieldCheck}
-          className="bg-emerald-50 text-emerald-700 border-emerald-200"
-        />
-      )}
-
-      {trustState === "export_ready" && (
-        <TrustBadge
-          label="Export Ready"
-          icon={CheckCircle2}
-          className="bg-emerald-50 text-emerald-700 border-emerald-200"
-        />
-      )}
-
-      {trustState === "export_blocked" && (
-        <>
-          <TrustBadge
-            label="Export Blocked"
-            icon={Ban}
-            className="bg-red-50 text-red-700 border-red-200"
-          />
-          <span className="text-xs text-muted-foreground">
-            Validation failed or evidence is insufficient.
-          </span>
-        </>
-      )}
-    </div>
-  );
-}
+import type { ValidationState } from "@/api/harness";
 
 export default function BusinessCase() {
   const { caseId } = useParams<{ caseId: string }>();
@@ -362,7 +227,7 @@ export default function BusinessCase() {
       )}
 
       <SectionCard title="Business Case Lifecycle" className="mb-5">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <FileText size={13} />
@@ -376,6 +241,29 @@ export default function BusinessCase() {
               Approval Status
             </div>
             <p className="mt-2 text-[13px] font-semibold text-foreground">{isApproved ? "Approved" : "Draft"}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <CheckCircle2 size={13} />
+              Claim Validation
+            </div>
+            <div className="mt-2">
+              {(() => {
+                const overallState = deriveOverallValidationState(
+                  businessCase.case_metadata?.validation_summary as Record<string, unknown> | undefined
+                );
+                return overallState ? (
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[11px]", validationBadgeClass(overallState))}
+                  >
+                    {validationBadgeLabel(overallState)}
+                  </Badge>
+                ) : (
+                  <p className="text-[13px] text-muted-foreground">Not validated</p>
+                );
+              })()}
+            </div>
           </div>
           <div className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -416,12 +304,26 @@ export default function BusinessCase() {
       {businessCase.recommendations?.length > 0 && (
         <SectionCard title="Recommendations" className="mb-5">
           <ul className="space-y-2">
-            {businessCase.recommendations.map((rec, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
-                <span className="text-blue-600 font-bold">{idx + 1}.</span>
-                <span>{rec}</span>
-              </li>
-            ))}
+            {businessCase.recommendations.map((rec, idx) => {
+              const claimState = claimValidationState(
+                businessCase.case_metadata?.claim_validations,
+                idx,
+              );
+              return (
+                <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
+                  <span className="text-blue-600 font-bold shrink-0">{idx + 1}.</span>
+                  <span className="flex-1">{rec}</span>
+                  {claimState && (
+                    <Badge
+                      variant="outline"
+                      className={cn("text-[10px] shrink-0 self-start mt-0.5", validationBadgeClass(claimState))}
+                    >
+                      {validationBadgeLabel(claimState)}
+                    </Badge>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </SectionCard>
       )}

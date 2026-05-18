@@ -20,7 +20,6 @@ import {
   MoreHorizontal, Trash2, Share2, GitBranch, FlaskConical,
   Boxes, AlertCircle,
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -32,6 +31,7 @@ import {
   type ModelFilters,
   type ModelFolder,
 } from "@/hooks/useModels";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

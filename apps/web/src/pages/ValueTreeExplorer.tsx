@@ -23,15 +23,17 @@ import {
   Search,
   TreeDeciduous
 } from "lucide-react";
-import { PageHeader, Btn, Tabs, SectionCard } from "@/components/WfPrimitives";
-import { EntityBadge } from "@/components/WfPrimitives";
-import type { EntityType } from "@/components/WfPrimitives";
+import type { EntityType } from "@/lib/entity-colors";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useValueTree, useValueTreeCache, useValueTreePaths, useCreateValueTree, useImportValueTree } from "@/hooks/useValueTrees";
 import { useEntities, type Entity } from "@/hooks/useEntities";
 import type { ValueTreeNode, ValueTreeEdge, ValueTreeResponse } from "@/api/valueTrees";
 import { ValueTreeResponseSchema } from "@/lib/schemas";
+import { Tabs } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
+import { EntityBadge } from "@/lib/entity-colors";
 
 // Types for UI tree rendering
 interface TreeNode {

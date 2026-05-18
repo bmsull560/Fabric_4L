@@ -18,7 +18,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
-from value_fabric.shared.identity.dependencies import require_authenticated
+from value_fabric.shared.identity.dependencies import require_authenticated, require_content_admin
 
 from ...database import get_db_from_context
 from ...harness.api_models import (
@@ -39,8 +39,10 @@ from ...harness.api_models import (
     ValidateClaimsResponse,
     ValidationResultResponse,
 )
+from ...harness.api_models import ValidationSummaryResponse
 from ...harness.factory import make_live_l5_registry, make_sql_registry
 from ...harness.models import GateStatus, HarnessRunStatus, HarnessState, HarnessWorkflowType
+from ...harness.policies import aggregate_validation_results
 from ...harness.registry import HarnessRegistryError
 from ...harness.sql_stores import SqlHarnessRegistry
 from ...harness.validation_hooks import ClaimValidationRequest as DomainClaimValidationRequest
@@ -60,8 +62,8 @@ async def get_harness_registry(
     _ctx: RequestContext = Depends(require_authenticated),
 ) -> SqlHarnessRegistry:
     """Inject a SqlHarnessRegistry wired to the current session and tenant."""
-    l5_url = os.environ.get("L5_BASE_URL")
-    if l5_url and os.environ.get("L5_SERVICE_TOKEN"):
+    l5_url = os.environ.get("LAYER5_GROUND_TRUTH_URL")
+    if l5_url and os.environ.get("LAYER5_SERVICE_TOKEN"):
         return await make_live_l5_registry(
             session=db,
             tenant_id=_ctx.tenant_id,
@@ -71,6 +73,8 @@ async def get_harness_registry(
 
 HarnessRegistryDep = Annotated[SqlHarnessRegistry, Depends(get_harness_registry)]
 AuthCtxDep = Annotated[RequestContext, Depends(require_authenticated)]
+# Gate decisions require content_admin or higher (reviewer/admin role).
+ContentAdminCtxDep = Annotated[RequestContext, Depends(require_content_admin)]
 
 
 # ---------------------------------------------------------------------------
@@ -344,9 +348,14 @@ async def decide_gate(
     gate_id: str,
     body: GateDecisionRequest,
     registry: HarnessRegistryDep,
-    ctx: AuthCtxDep,
+    ctx: ContentAdminCtxDep,
 ) -> GateResponse:
-    """Approve, reject, modify, or expire a human gate."""
+    """Approve, reject, modify, or expire a human gate.
+
+    Requires content_admin, tenant_admin, or super_admin role.
+    decision_by is always server-derived from ctx.user_id — any
+    body-supplied value is ignored to prevent spoofing.
+    """
     try:
         _gate = registry.get_gate(gate_id, ctx.tenant_id)
     except KeyError:
@@ -361,12 +370,15 @@ async def decide_gate(
         "expired": GateStatus.EXPIRED,
     }
 
+    # decision_by is always server-derived — never from request body.
+    server_decision_by = ctx.user_id or ctx.tenant_id
+
     try:
         updated_gate = registry.decide_gate(
             gate_id=gate_id,
             tenant_id=ctx.tenant_id,
             new_status=decision_map[body.decision],
-            decision_by=ctx.user_id or ctx.tenant_id,
+            decision_by=server_decision_by,
             decision_reason=body.decision_reason,
         )
     except (ValueError, HarnessRegistryError) as exc:
@@ -412,22 +424,63 @@ async def validate_claims(
     ]
 
     try:
-        results = await registry.validate_claims(ctx.tenant_id, domain_requests)
+        results = await registry.validate_claims(ctx.tenant_id, domain_requests, run_id=run_id)
     except HarnessRegistryError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    from ...harness.models import ValidationState
-
+    summary = aggregate_validation_results(results)
     result_responses = [ValidationResultResponse.from_domain(r) for r in results]
     return ValidateClaimsResponse(
         results=result_responses,
-        total=len(results),
-        passed=sum(1 for r in results if r.validation_state == ValidationState.PASSED),
-        failed=sum(1 for r in results if r.validation_state == ValidationState.FAILED),
-        needs_review=sum(1 for r in results if r.validation_state == ValidationState.NEEDS_REVIEW),
-        insufficient_evidence=sum(
-            1 for r in results if r.validation_state == ValidationState.INSUFFICIENT_EVIDENCE
-        ),
+        total=summary.total,
+        passed=summary.passed,
+        failed=summary.failed,
+        needs_review=summary.needs_review,
+        insufficient_evidence=summary.insufficient_evidence,
+        summary=ValidationSummaryResponse.from_domain(summary),
+    )
+
+
+@router.get(
+    "/harness/runs/{run_id}/validation",
+    response_model=ValidateClaimsResponse,
+    summary="Get validation results for a run",
+)
+async def get_run_validation(
+    run_id: str,
+    registry: HarnessRegistryDep,
+    ctx: AuthCtxDep,
+) -> ValidateClaimsResponse:
+    """Return the stored validation results for a run.
+
+    Returns an empty summary when no claims have been validated yet.
+    Tenant-scoped: 403 if run belongs to a different tenant.
+    """
+    try:
+        registry.get_run(run_id, ctx.tenant_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    except HarnessRegistryError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    # Retrieve stored validation results from the SQL registry if available.
+    results = []
+    if hasattr(registry, "get_validation_results"):
+        try:
+            results = await registry.get_validation_results(run_id, ctx.tenant_id)
+        except Exception as exc:
+            logger.warning("get_run_validation: failed to load results for run %s: %s", run_id, exc)
+
+    summary = aggregate_validation_results(results)
+    result_responses = [ValidationResultResponse.from_domain(r) for r in results]
+    return ValidateClaimsResponse(
+        results=result_responses,
+        total=summary.total,
+        passed=summary.passed,
+        failed=summary.failed,
+        needs_review=summary.needs_review,
+        insufficient_evidence=summary.insufficient_evidence,
+        summary=ValidationSummaryResponse.from_domain(summary),
     )
 
 

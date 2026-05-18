@@ -88,6 +88,17 @@ export function useHarnessGates(runId: string | undefined) {
   });
 }
 
+// ── Validation ────────────────────────────────────────────────────────────────
+
+export function useHarnessValidation(runId: string | undefined) {
+  return useQuery({
+    queryKey: QK.harness.validation(runId ?? ""),
+    queryFn: () => harnessApi.getValidation(runId!),
+    enabled: !!runId,
+    staleTime: STALE_TIME.detail,
+  });
+}
+
 // ── Health ────────────────────────────────────────────────────────────────────
 
 export function useHarnessHealth() {

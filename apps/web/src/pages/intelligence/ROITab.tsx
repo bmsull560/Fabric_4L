@@ -24,7 +24,6 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { useCanonicalCaseId, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { cn } from "@/lib/utils";
 import {
@@ -36,6 +35,8 @@ import {
   type AnnualProjection,
   type ROITemplate,
 } from "@/hooks/useROICalculator";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard } from "@/components/ui/fabric";
 
 function formatCurrency(val: number): string {
   if (Math.abs(val) >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;

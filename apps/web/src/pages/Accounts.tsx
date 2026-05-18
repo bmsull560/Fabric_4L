@@ -9,7 +9,6 @@
  */
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
 import { PaginationBar } from "@/components/ui/fabric/PaginationBar";
 import { useNavigation, useRoutePrefetch } from "@/hooks";
 import AccountIntakeModal from "@/components/workspace/AccountIntakeModal";
@@ -59,6 +58,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import { PageHeader, Btn, StatusBadge } from "@/components/ui/fabric";
 
 const PROVIDER_COLORS: Record<CRMProvider, { bg: string; text: string; border: string }> = {
   salesforce: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },

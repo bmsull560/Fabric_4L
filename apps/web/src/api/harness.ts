@@ -174,6 +174,27 @@ export interface ValidateClaimsRequest {
   claims: ClaimToValidate[];
 }
 
+export interface ValidationSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  needs_review: number;
+  insufficient_evidence: number;
+  can_publish: boolean;
+  requires_human_review: boolean;
+}
+
+export interface EvidenceChain {
+  claim_id: string;
+  source_refs: string[];
+  evidence_refs: string[];
+  benchmark_refs: string[];
+  validation_result: ClaimValidationResult;
+  confidence: number;
+  trust_score: number;
+  human_decision: HumanGate | null;
+}
+
 export interface ValidateClaimsResponse {
   results: ClaimValidationResult[];
   total: number;
@@ -181,6 +202,7 @@ export interface ValidateClaimsResponse {
   failed: number;
   needs_review: number;
   insufficient_evidence: number;
+  summary: ValidationSummary | null;
 }
 
 export interface HarnessHealthResponse {
@@ -243,6 +265,9 @@ export const harnessApi = {
   // Validation
   validateClaims: (runId: string, data: ValidateClaimsRequest) =>
     apiClient.post(L4, `/harness/runs/${runId}/validate`, data).then(r => r.data as ValidateClaimsResponse),
+
+  getValidation: (runId: string) =>
+    apiClient.get(L4, `/harness/runs/${runId}/validation`).then(r => r.data as ValidateClaimsResponse),
 
   // Health
   health: () =>

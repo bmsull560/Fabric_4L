@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { GitCompare, RotateCcw, Plus, Calendar } from "lucide-react";
-import { PageHeader, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useSnapshots, useCreateSnapshot, useSnapshotDiff } from "@/hooks/useVersioning";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader } from "@/components/ui/fabric";
 
 export default function VersionHistoryPage() {
   const { accountId: paramAccountId } = useParams<{ accountId: string }>();

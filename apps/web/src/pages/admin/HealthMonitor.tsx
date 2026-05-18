@@ -18,7 +18,6 @@ import {
   Globe, Shield, Loader2, Bell, ExternalLink,
   ChevronDown, ChevronUp, Filter
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton, ErrorBoundary } from "@/components";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +27,7 @@ import {
   type ServiceHealth,
   type HealthAlert,
 } from "@/hooks";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

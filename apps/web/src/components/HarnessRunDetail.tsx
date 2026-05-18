@@ -5,9 +5,11 @@
  * human gates (with approve/reject actions), and validation outcomes.
  */
 
+import { useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock,
   Loader2,
@@ -20,13 +22,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { HarnessRun, HumanGate, ValidationState } from "@/api/harness";
+import type { ClaimValidationResult, HarnessRun, HumanGate, ValidationState, ValidationSummary } from "@/api/harness";
 import { TERMINAL_STATES, isTerminalState } from "@/api/harness";
 import {
   useDecideGate,
   useHarnessCheckpoints,
   useHarnessGates,
   useHarnessRun,
+  useHarnessValidation,
   useTransitionHarnessRun,
 } from "@/hooks/useHarness";
 
@@ -78,6 +81,24 @@ function validationStateColor(state: ValidationState): string {
   }
 }
 
+function validationStateBadgeClass(state: ValidationState): string {
+  switch (state) {
+    case "passed":               return "bg-emerald-500/15 text-emerald-700 border-emerald-200";
+    case "failed":               return "bg-red-500/15 text-red-700 border-red-200";
+    case "needs_review":         return "bg-amber-500/15 text-amber-700 border-amber-200";
+    case "insufficient_evidence": return "bg-slate-100 text-slate-600 border-slate-200";
+  }
+}
+
+function validationStateLabel(state: ValidationState): string {
+  switch (state) {
+    case "passed":               return "Passed";
+    case "failed":               return "Failed";
+    case "needs_review":         return "Needs Review";
+    case "insufficient_evidence": return "Insufficient Evidence";
+  }
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
     month: "short", day: "numeric",
@@ -86,6 +107,86 @@ function formatDate(iso: string): string {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function ValidationSection({
+  results,
+  summary,
+}: {
+  results: ClaimValidationResult[];
+  summary: ValidationSummary | null;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Derive aggregate state for the badge
+  const aggregateState: ValidationState =
+    !summary || summary.total === 0
+      ? "insufficient_evidence"
+      : summary.failed > 0
+      ? "failed"
+      : summary.needs_review > 0 || summary.insufficient_evidence > 0
+      ? "needs_review"
+      : "passed";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className={cn("text-xs", validationStateBadgeClass(aggregateState))}
+          >
+            {validationStateLabel(aggregateState)}
+          </Badge>
+          {summary && summary.total > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {summary.passed}/{summary.total} passed
+            </span>
+          )}
+        </div>
+        {results.length > 0 && (
+          <button
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {expanded ? "Hide" : "Show"} claims
+          </button>
+        )}
+      </div>
+
+      {results.length === 0 && (
+        <p className="text-xs text-muted-foreground italic">No claims validated yet.</p>
+      )}
+
+      {expanded && results.length > 0 && (
+        <div className="space-y-1.5 mt-2">
+          {results.map((r) => (
+            <div
+              key={r.id}
+              className="rounded border border-border bg-muted/30 px-3 py-2 text-xs"
+            >
+              <div className="flex items-center justify-between gap-2 mb-0.5">
+                <span className="font-mono truncate text-[11px] text-muted-foreground">
+                  {r.claim_id}
+                </span>
+                <Badge
+                  variant="outline"
+                  className={cn("text-[10px] shrink-0", validationStateBadgeClass(r.validation_state))}
+                >
+                  {validationStateLabel(r.validation_state)}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <span>Confidence: {Math.round(r.confidence * 100)}%</span>
+                {r.reason && <span className="truncate">{r.reason}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function StateProgress({ currentState, status }: { currentState: string; status: string }) {
   const currentIdx = STATE_ORDER.indexOf(currentState as typeof STATE_ORDER[number]);
@@ -179,6 +280,7 @@ export function HarnessRunDetail({ runId, isOpen, onClose }: HarnessRunDetailPro
   const { data: run, isLoading: runLoading } = useHarnessRun(runId ?? undefined);
   const { data: checkpointsData } = useHarnessCheckpoints(runId ?? undefined);
   const { data: gatesData } = useHarnessGates(runId ?? undefined);
+  const { data: validationData } = useHarnessValidation(runId ?? undefined);
   const transition = useTransitionHarnessRun();
 
   const checkpoints = checkpointsData?.items ?? [];
@@ -356,6 +458,21 @@ export function HarnessRunDetail({ runId, isOpen, onClose }: HarnessRunDetailPro
                   </section>
                 </>
               )}
+
+              {/* Validation */}
+              <>
+                <Separator />
+                <section>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Claim Validation
+                  </h3>
+                  <ValidationSection
+                    results={validationData?.results ?? []}
+                    summary={validationData?.summary ?? null}
+                  />
+                </section>
+              </>
 
             </div>
           </ScrollArea>
