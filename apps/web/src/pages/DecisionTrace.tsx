@@ -5,11 +5,13 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { Shield, Download, CheckCircle2, Loader2 } from "lucide-react";
-import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProvenanceTrail, useAuditLogs, useExportProvenance, type AuditLogEntry, type AuditLogFilter } from "@/hooks/useProvenance";
 import { useBusinessCase } from "@/hooks/useDocuments";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { Toolbar } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn, StatusBadge, LegacyDataTable } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('DecisionTrace');
 
@@ -302,7 +304,7 @@ export default function DecisionTrace() {
         {/* Trace list */}
         <div className="flex-1">
           <SectionCard title={`Audit Log (${auditLogs?.total || 0} entries)`} noPad>
-            <DataTable
+            <LegacyDataTable
               columns={["Trace ID", "Entity", "Action", "Agent", "Timestamp", "Status", "Actions"]}
               rows={auditRows}
               emptyMessage="No audit entries found"

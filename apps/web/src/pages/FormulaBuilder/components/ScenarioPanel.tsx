@@ -3,8 +3,8 @@
  */
 import { useState } from "react";
 import { AlertCircle, Beaker, Loader2 } from "lucide-react";
-import { Btn } from "@/components/WfPrimitives";
 import { useFormulaScenario, type VariableAdjustment, type ScenarioResponse } from "@/hooks/useFormulaScenario";
+import { Btn } from "@/components/ui/fabric";
 
 interface ScenarioPanelProps {
   formulaId: string;

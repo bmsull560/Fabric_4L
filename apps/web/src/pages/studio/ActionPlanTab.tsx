@@ -14,12 +14,13 @@ import { useAccount } from "@/hooks/useAccounts";
 import { useNavigation } from "@/hooks";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 // DIL hooks
 import { useAccountHypotheses, type ValueHypothesis } from "@/hooks/useHypotheses";
 import { useProducts, type Product, type ProductListResponse, type ProductCapability } from "@/hooks/useProducts";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Recommendation {

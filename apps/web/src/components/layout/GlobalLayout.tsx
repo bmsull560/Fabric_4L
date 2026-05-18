@@ -1,4 +1,3 @@
-"use client";
 
 import { Suspense, useCallback, useState } from "react";
 import { Outlet, useMatch } from "react-router-dom";

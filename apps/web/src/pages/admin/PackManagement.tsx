@@ -17,7 +17,6 @@ import {
   CheckCircle2, Clock, AlertCircle, Archive, RefreshCw,
   Loader2, BarChart3, FlaskConical, ListChecks,
 } from "lucide-react";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/formatters";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -27,6 +26,7 @@ import {
   type ValuePack,
   type PackStatus,
 } from "@/hooks/useValuePacks";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Styling Constants ───────────────────────────────────────────────────────────
 

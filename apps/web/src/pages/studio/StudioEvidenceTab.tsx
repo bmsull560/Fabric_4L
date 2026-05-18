@@ -18,13 +18,14 @@ import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, {
   type RightRailMode,
 } from "@/components/workspace/RightRail";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCaseStudies, type CaseStudy } from "@/hooks/useEvidence";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 // ── Case Study Card ────────────────────────────────────────────────────────────
 function CaseStudyCard({

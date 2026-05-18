@@ -24,9 +24,9 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { X, MessageSquare, Info, Send, History } from "lucide-react";
-import { Btn } from "@/components/WfPrimitives";
 import { ProcessSteps } from "./ProcessSteps";
 import type { StepSnapshot, RunMetadata } from "@/agui/events";
+import { Btn } from "@/components/ui/fabric";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

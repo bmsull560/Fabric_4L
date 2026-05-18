@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
@@ -31,6 +30,8 @@ import {
   type EnrichmentResult,
   type EnrichmentCoverageStats,
 } from "@/hooks/useEnrichment";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 // ── Source Config ──────────────────────────────────────────────────────────────
 const SOURCE_CONFIG: Record<

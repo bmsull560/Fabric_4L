@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Save, RotateCcw } from "lucide-react";
-import { ProgressBar } from "@/components/blocks";
-import { SectionCard } from "@/components/blocks/SectionCard";
+import { ProgressBar, SectionCard } from "@/components/blocks";
 import { useCreateValueCase, useUpdateValueCase, useValueCase, useValueLevers, type ValueCaseResponse } from "@/hooks/useCalculators";
 
 export interface ValueLeversCalculatorProps {

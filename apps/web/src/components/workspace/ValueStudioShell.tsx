@@ -1,8 +1,8 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Btn } from "@/components/WfPrimitives";
 import WorkspacePagePattern, { type WorkspaceAccountContext } from "@/components/workspace/WorkspacePagePattern";
 import { buildPath } from "@/navigation/navigationService";
+import { Btn } from "@/components/ui/fabric";
 interface ValueStudioShellProps { account: WorkspaceAccountContext; children: React.ReactNode; rightRail?: React.ReactNode; }
 const TABS = [
   { key: "action-plan", label: "Action Plan" },
