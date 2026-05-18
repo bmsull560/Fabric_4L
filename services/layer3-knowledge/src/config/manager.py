@@ -22,6 +22,17 @@ class ConfigurationManager__load_from_fileResult(TypedDictModel):
 logger = logging.getLogger(__name__)
 
 
+class VaultSourceNotSupportedError(RuntimeError):
+    """Raised when a vault config source is requested but Vault support is not implemented.
+
+    Direct Vault API access is intentionally unsupported in v1. Use External Secrets
+    Operator (ESO) to sync Vault secrets into Kubernetes Secrets, then mount them as
+    environment variables and configure the source as ``type: env``.
+
+    See ``docs/secrets-management.md`` and ``docs/governance/compatibility-debt-registry.md``.
+    """
+
+
 class Environment(str, Enum):
     """Deployment environments."""
 
@@ -417,6 +428,11 @@ class ConfigurationManager:
                 if config_data:
                     merged_config = self._merge_configs(merged_config, config_data)
                     logger.debug(f"Loaded configuration from {source.name}")
+            except VaultSourceNotSupportedError:
+                # Vault is intentionally unsupported in v1 — always re-raise regardless of
+                # source.required so misconfigured vault sources fail loudly rather than
+                # silently producing an empty config.
+                raise
             except Exception as e:
                 if source.required:
                     raise ValueError(
@@ -540,18 +556,24 @@ class ConfigurationManager:
         return env_config
 
     def _load_from_vault(self, source: ConfigSource) -> dict[str, Any]:
-        """Load configuration from Vault.
+        """Raise VaultSourceNotSupportedError — direct Vault access is not implemented in v1.
+
+        Use External Secrets Operator (ESO) to sync Vault secrets into Kubernetes Secrets,
+        mount them as environment variables, and configure the source as ``type: env``.
+        See ``docs/governance/compatibility-debt-registry.md`` for the migration path.
 
         Args:
-            source: Vault configuration source
+            source: Vault configuration source (unsupported)
 
-        Returns:
-            Configuration data
+        Raises:
+            VaultSourceNotSupportedError: Always. Vault source type is not supported in v1.
         """
-        # Placeholder for Vault integration
-        # In production, this would use hvac or similar library
-        logger.warning("Vault integration not implemented")
-        return ConfigurationManager__load_from_vaultResult.model_validate({})
+        raise VaultSourceNotSupportedError(
+            f"Vault config source '{source.name}' is not supported in v1. "
+            "Use External Secrets Operator (ESO) to sync Vault secrets into Kubernetes "
+            "Secrets and configure the source as type: env. "
+            "See docs/governance/compatibility-debt-registry.md for the migration path."
+        )
 
     def _convert_env_value(self, value: str) -> Any:
         """Convert environment variable value to appropriate type.
