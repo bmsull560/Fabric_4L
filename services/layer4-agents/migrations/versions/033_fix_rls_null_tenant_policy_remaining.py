@@ -1,7 +1,7 @@
 """Fix NULL-permissive RLS policies introduced after migration 026.
 
-Revision ID: 032
-Revises: 031
+Revision ID: 033
+Revises: 032
 Create Date: 2026-05-17
 
 SECURITY FIX: Three migration groups created tables with the unsafe pattern:
@@ -34,8 +34,8 @@ from typing import Union
 from alembic import op
 
 
-revision: str = "032"
-down_revision: Union[str, None] = "031"
+revision: str = "033"
+down_revision: Union[str, None] = "032"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -86,7 +86,21 @@ ALL_TABLES = BILLING_TABLES + COMPANY_KNOWLEDGE_TABLES + CRM_TABLES
 
 
 def upgrade() -> None:
-    """Replace NULL-permissive tenant_isolation_policy with strict matching."""
+    """Replace NULL-permissive tenant_isolation_policy with strict matching.
+
+    Also creates admin_bypass_policy for the four billing tables that 032 did
+    not cover (billing_charges, billing_invoice_items, billing_invoices,
+    billing_usage_events). Company-knowledge and CRM tables already have
+    admin_bypass_policy from migrations 028 and 032 respectively.
+    """
+    # Tables that need admin_bypass_policy created — not covered by 028 or 032.
+    _NEEDS_ADMIN_BYPASS = {
+        "billing_charges",
+        "billing_invoice_items",
+        "billing_invoices",
+        "billing_usage_events",
+    }
+
     for table in ALL_TABLES:
         op.execute(
             f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}"
@@ -103,24 +117,45 @@ def upgrade() -> None:
                     tenant_id::text = current_setting('app.tenant_id', true)
                 )
         """)
+        if table in _NEEDS_ADMIN_BYPASS:
+            op.execute(f"DROP POLICY IF EXISTS admin_bypass_policy ON {table}")
+            op.execute(f"""
+                CREATE POLICY admin_bypass_policy ON {table}
+                    FOR ALL
+                    TO admin_role, system_role
+                    USING (current_setting('app.tenant_id', true) = '')
+                    WITH CHECK (current_setting('app.tenant_id', true) = '')
+            """)
 
 
 def downgrade() -> None:
-    """Revert to NULL-permissive policies (restores pre-032 state)."""
-    for table in ALL_TABLES:
-        op.execute(
-            f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}"
-        )
-        op.execute(f"""
-            CREATE POLICY tenant_isolation_policy ON {table}
-                FOR ALL
-                TO PUBLIC
-                USING (
-                    tenant_id IS NULL OR
-                    tenant_id::text = current_setting('app.tenant_id', true)
-                )
-                WITH CHECK (
-                    tenant_id IS NULL OR
-                    tenant_id::text = current_setting('app.tenant_id', true)
-                )
-        """)
+    """Remove policies created by 033's upgrade.
+
+    Drops tenant_isolation_policy (and admin_bypass_policy where 033 created
+    it) on the 8 tables exclusively owned by this migration. Does NOT
+    re-apply NULL-permissive policies: the tables that 028 and 032 hardened
+    remain at their hardened state after this downgrade, which is correct —
+    those migrations are still marked applied in alembic_version.
+
+    Tables owned by 032 (billing_customers, billing_subscriptions,
+    billing_webhook_events, crm_sync_jobs) are not touched.
+    """
+    _033_ONLY_TABLES = [
+        t for t in ALL_TABLES
+        if t not in {
+            "billing_customers",
+            "billing_subscriptions",
+            "billing_webhook_events",
+            "crm_sync_jobs",
+        }
+    ]
+    _NEEDS_ADMIN_BYPASS = {
+        "billing_charges",
+        "billing_invoice_items",
+        "billing_invoices",
+        "billing_usage_events",
+    }
+    for table in _033_ONLY_TABLES:
+        op.execute(f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}")
+        if table in _NEEDS_ADMIN_BYPASS:
+            op.execute(f"DROP POLICY IF EXISTS admin_bypass_policy ON {table}")
