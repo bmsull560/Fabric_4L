@@ -19,6 +19,7 @@ from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..harness.prompt_registry import get_prompt_registry
+from ..services.llm_output_parser import parse_llm_json
 from ..messaging.signal_events import (
     ErrorCategory,
     SignalCompletedEvent,
@@ -625,7 +626,7 @@ class SignalDetectionAgent(BaseAgent):
                 max_tokens=class_tmpl.max_tokens,
                 call_id=f"sd_class_{trace_id}",
             )
-            classified = client._parse_json(class_result.content)
+            classified = parse_llm_json(class_result.content)
 
             # ── Step 2: hypothesis generation (high-confidence only) ────
             high_conf = [
@@ -654,7 +655,7 @@ class SignalDetectionAgent(BaseAgent):
                 max_tokens=hyp_tmpl.max_tokens,
                 call_id=f"sd_hyp_{trace_id}",
             )
-            hypotheses = client._parse_json(hyp_result.content)
+            hypotheses = parse_llm_json(hyp_result.content)
 
             # ── Step 3: narrative ───────────────────────────────────────
             signal_summary = {
@@ -674,7 +675,7 @@ class SignalDetectionAgent(BaseAgent):
                 max_tokens=narr_tmpl.max_tokens,
                 call_id=f"sd_narr_{trace_id}",
             )
-            narrative_data = client._parse_json(narr_result.content)
+            narrative_data = parse_llm_json(narr_result.content)
 
             total_prompt = class_result.prompt_tokens + hyp_result.prompt_tokens + narr_result.prompt_tokens
             total_completion = class_result.completion_tokens + hyp_result.completion_tokens + narr_result.completion_tokens
