@@ -621,10 +621,19 @@ async def get_db_from_context(
         if context.isolation_tier == "shared":
             await _set_local_tenant_context(session, tenant_id)
         else:
-            # Future: handle 'schema' and 'database' tiers
+            # Only 'shared' (PostgreSQL RLS) is supported in v1.
+            # 'schema' and 'database' tiers are rejected at provisioning time
+            # (see tenant_provisioning.py). This branch is a defensive fallback
+            # for tenants that were provisioned before that guard was added.
+            # 422 is correct: the request is structurally valid but the tier
+            # value is not accepted by this server.
             raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail=f"Isolation tier '{context.isolation_tier}' not yet implemented",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Isolation tier '{context.isolation_tier}' is not supported. "
+                    "Only 'shared' (PostgreSQL RLS) is available in v1. "
+                    "Contact support to migrate this tenant."
+                ),
             )
 
         # Task 3.1: Emit tenant context set audit event
@@ -751,7 +760,7 @@ async def get_tiered_db_session(
         request_context: Optional RequestContext for audit logging
 
     Raises:
-        HTTPException: 501 if unimplemented tier requested
+        HTTPException: 422 if an unsupported isolation tier is requested
         TenantContextError: If tenant_id is invalid
     """
     _allow_compat_only_db_dependency("get_tiered_db_session")
@@ -785,24 +794,24 @@ async def get_tiered_db_session(
                 await session.rollback()
                 raise
 
-    elif isolation_tier == "schema":
-        # Future: Implement schema-per-tenant routing
+    elif isolation_tier in ("schema", "database"):
+        # "schema" and "database" tiers are not implemented in v1.
+        # Tenants must be provisioned with isolation_tier="shared".
+        # If this path is reached, the tenant was provisioned with an unsupported
+        # tier — reject immediately rather than silently failing mid-workflow.
         raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Schema-per-tenant isolation tier not yet implemented",
-        )
-
-    elif isolation_tier == "database":
-        # Future: Implement database-per-tenant routing
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Database-per-tenant isolation tier not yet implemented",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Isolation tier {isolation_tier!r} is not implemented. "
+                "Only 'shared' (PostgreSQL RLS) is supported in v1. "
+                "Re-provision this tenant with isolation_tier='shared'."
+            ),
         )
 
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown isolation tier: {isolation_tier}",
+            detail=f"Unknown isolation tier: {isolation_tier!r}. Supported: 'shared'.",
         )
 
 
@@ -877,7 +886,7 @@ async def db_session_for_context(
 
     Raises:
         TenantContextError: If tenant_id is missing or invalid.
-        HTTPException: If an unimplemented isolation tier is requested.
+        HTTPException: 422 if an unsupported isolation tier is requested.
     """
     if not SHARED_IDENTITY_AVAILABLE:
         raise RuntimeError("shared.identity package required for db_session_for_context")
@@ -898,8 +907,12 @@ async def db_session_for_context(
             await _set_local_tenant_context(session, tenant_id)
         else:
             raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail=f"Isolation tier '{context.isolation_tier}' not yet implemented",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Isolation tier '{context.isolation_tier}' is not implemented. "
+                    "Only 'shared' (PostgreSQL RLS) is supported in v1. "
+                    "Re-provision this tenant with isolation_tier='shared'."
+                ),
             )
 
         await _emit_tenant_context_set_audit(context, str(tenant_id), is_bypass=False)
