@@ -6,10 +6,13 @@ import { useState } from "react";
 import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GateStatusBanner } from "@/components/GateStatusBanner";
 import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
+import { cn } from "@/lib/utils";
+import type { ValidationState } from "@/api/harness";
 
 function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
   for (const key of keys) {
@@ -21,6 +24,51 @@ function metadataString(metadata: Record<string, unknown> | undefined, keys: str
 
 function metadataBoolean(metadata: Record<string, unknown> | undefined, keys: string[]): boolean {
   return keys.some((key) => metadata?.[key] === true);
+}
+
+// ── Validation badge helpers ──────────────────────────────────────────────────
+
+function validationBadgeClass(state: ValidationState): string {
+  switch (state) {
+    case "passed":               return "bg-emerald-500/15 text-emerald-700 border-emerald-200";
+    case "failed":               return "bg-red-500/15 text-red-700 border-red-200";
+    case "needs_review":         return "bg-amber-500/15 text-amber-700 border-amber-200";
+    case "insufficient_evidence": return "bg-slate-100 text-slate-600 border-slate-200";
+  }
+}
+
+function validationBadgeLabel(state: ValidationState): string {
+  switch (state) {
+    case "passed":               return "Validated";
+    case "failed":               return "Blocked";
+    case "needs_review":         return "Needs Review";
+    case "insufficient_evidence": return "Insufficient Evidence";
+  }
+}
+
+/** Derive an overall ValidationState from a validation_summary object in case_metadata. */
+function deriveOverallValidationState(
+  summary: Record<string, unknown> | undefined,
+): ValidationState | null {
+  if (!summary || typeof summary.total !== "number" || summary.total === 0) return null;
+  if ((summary.failed as number) > 0) return "failed";
+  if ((summary.needs_review as number) > 0 || (summary.insufficient_evidence as number) > 0)
+    return "needs_review";
+  if ((summary.passed as number) === summary.total) return "passed";
+  return "insufficient_evidence";
+}
+
+/** Return the ValidationState for a claim at a given recommendation index. */
+function claimValidationState(
+  claimValidations: unknown,
+  index: number,
+): ValidationState | null {
+  if (!Array.isArray(claimValidations)) return null;
+  const entry = claimValidations[index];
+  if (!entry || typeof entry !== "object") return null;
+  const state = (entry as Record<string, unknown>).validation_state as string | undefined;
+  const validStates: ValidationState[] = ["passed", "failed", "needs_review", "insufficient_evidence"];
+  return validStates.includes(state as ValidationState) ? (state as ValidationState) : null;
 }
 
 export default function BusinessCase() {
@@ -212,7 +260,7 @@ export default function BusinessCase() {
       )}
 
       <SectionCard title="Business Case Lifecycle" className="mb-5">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <FileText size={13} />
@@ -226,6 +274,29 @@ export default function BusinessCase() {
               Approval Status
             </div>
             <p className="mt-2 text-[13px] font-semibold text-foreground">{isApproved ? "Approved" : "Draft"}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <CheckCircle2 size={13} />
+              Claim Validation
+            </div>
+            <div className="mt-2">
+              {(() => {
+                const overallState = deriveOverallValidationState(
+                  businessCase.case_metadata?.validation_summary as Record<string, unknown> | undefined
+                );
+                return overallState ? (
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[11px]", validationBadgeClass(overallState))}
+                  >
+                    {validationBadgeLabel(overallState)}
+                  </Badge>
+                ) : (
+                  <p className="text-[13px] text-muted-foreground">Not validated</p>
+                );
+              })()}
+            </div>
           </div>
           <div className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -266,12 +337,26 @@ export default function BusinessCase() {
       {businessCase.recommendations?.length > 0 && (
         <SectionCard title="Recommendations" className="mb-5">
           <ul className="space-y-2">
-            {businessCase.recommendations.map((rec, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
-                <span className="text-blue-600 font-bold">{idx + 1}.</span>
-                <span>{rec}</span>
-              </li>
-            ))}
+            {businessCase.recommendations.map((rec, idx) => {
+              const claimState = claimValidationState(
+                businessCase.case_metadata?.claim_validations,
+                idx,
+              );
+              return (
+                <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
+                  <span className="text-blue-600 font-bold shrink-0">{idx + 1}.</span>
+                  <span className="flex-1">{rec}</span>
+                  {claimState && (
+                    <Badge
+                      variant="outline"
+                      className={cn("text-[10px] shrink-0 self-start mt-0.5", validationBadgeClass(claimState))}
+                    >
+                      {validationBadgeLabel(claimState)}
+                    </Badge>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </SectionCard>
       )}
