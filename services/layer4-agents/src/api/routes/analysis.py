@@ -9,7 +9,16 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +30,6 @@ from value_fabric.shared.identity.policy_registry import authorize_action
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...config.settings import settings
-from ..common.audit import emit_and_persist_audit
-from ..common.db import get_route_db
-from ..common.errors import normalize_exception
-from ..security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import (
     BusinessCaseAgentState,
@@ -43,6 +48,10 @@ from ...services.export_storage import generate_download_url, upload_bytes
 from ...tenants.models.api_key import APIKey
 from ...tenants.models.tenant import IsolationTier, Tenant, TenantStatus
 from ...tenants.models.user import User
+from ..common.audit import emit_and_persist_audit
+from ..common.db import get_route_db
+from ..common.errors import normalize_exception
+from ..security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token
 
 
 class export_business_caseResult(TypedDictModel):
@@ -1550,22 +1559,16 @@ class SavedScenarioDetail(SavedScenarioSummary):
     adjustments: list[dict[str, Any]]
 
 
-class WorkspaceTabData(BaseModel):
-    """Generic workspace tab data container."""
-    signals: list[dict[str, Any]] = Field(default_factory=list)
-    drivers: list[dict[str, Any]] = Field(default_factory=list)
-    evidence: list[dict[str, Any]] = Field(default_factory=list)
-    stakeholders: list[dict[str, Any]] = Field(default_factory=list)
-
-
 class WorkspaceEvidenceItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     title: str
     type: str = "evidence"
     source: str = "Unknown"
-    matchScore: int = 0
+    match_score: int = Field(default=0, alias="matchScore")
     verification: str = "unverified"
-    linkedSignals: list[str] = Field(default_factory=list)
+    linked_signals: list[str] = Field(default_factory=list, alias="linkedSignals")
     excerpt: str = ""
     decision_status: str | None = None
     attached_driver_id: str | None = None
@@ -1746,9 +1749,6 @@ async def get_workspace_evidence(
     context: RequestContext = Depends(require_authenticated),
 ) -> WorkspaceEvidenceResponse:
     authorize_action("layer4.analysis.read_case", context)
-    from sqlalchemy import select
-    from ...models.workspace_tab_data import WorkspaceTabData
-
     tenant_id = str(context.tenant_id)
     result = await db.execute(
         select(WorkspaceTabData).where(
@@ -1795,9 +1795,6 @@ async def get_workspace_tab(
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
 
-    from sqlalchemy import select
-    from ...models.workspace_tab_data import WorkspaceTabData
-
     tenant_id = str(context.tenant_id)
     result = await db.execute(
         select(WorkspaceTabData).where(
@@ -1826,9 +1823,6 @@ async def update_workspace_tab(
     valid_tabs = {"signals", "drivers", "evidence", "stakeholders", "action-plan", "value-model", "narrative", "intake", "evidence-links"}
     if tab_key not in valid_tabs:
         raise HTTPException(status_code=400, detail=f"Invalid tab_key. Must be one of: {valid_tabs}")
-
-    from sqlalchemy import select
-    from ...models.workspace_tab_data import WorkspaceTabData
 
     tenant_id = str(context.tenant_id)
     result = await db.execute(

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from value_fabric.shared.identity.protocols import MetricsAccessHook
 
+
 def _resolve_shared_src() -> Path | None:
     current = Path(__file__).resolve()
     for parent in current.parents:

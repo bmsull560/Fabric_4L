@@ -9,7 +9,8 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
+import { useNavigation } from "@/hooks/useNavigation";
 import { useWorkspaceSelectionStore } from "@/stores/workspaceSelectionStore";
 import {
   Lightbulb,
@@ -158,7 +159,7 @@ function HypothesisCard({
 
 export default function HypothesesTab() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
+  const { navigateTo } = useNavigation();
   const setSelection = useWorkspaceSelectionStore((state) => state.setSelection);
   const { accountId } = useParams<{ accountId: string }>();
   const { data: account, isLoading: accountLoading, error: accountError, refetch: refetchAccount } = useAccount(accountId ?? null);
@@ -425,10 +426,9 @@ export default function HypothesesTab() {
                         const query = new URLSearchParams();
                         if (result.tree_id) query.set("tree_id", result.tree_id);
                         if (result.value_model_id) query.set("value_model_id", result.value_model_id);
-                        navigate({
-                          pathname: `/drivers/${result.account_id}/evidence`,
-                          search: query.toString() ? `?${query.toString()}` : "",
-                        }, {
+                        const qs = query.toString();
+                        const path = `/drivers/${result.account_id}/evidence${qs ? `?${qs}` : ""}`;
+                        navigateTo(path, {
                           state: {
                             hypothesisId: result.hypothesis_id,
                             accountId: result.account_id,

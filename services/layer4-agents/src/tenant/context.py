@@ -52,7 +52,7 @@ class TenantContext:
 
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "TenantContext":
+    def from_dict(cls, data: dict[str, Any]) -> TenantContext:
         """Create from dictionary."""
         return cls(
             tenant_id=data["tenant_id"],

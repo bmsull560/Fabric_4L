@@ -33,6 +33,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, TypedDict
 
+
 class ValidationFindingPayload(TypedDict):
     severity: Literal["error", "warning", "info"]
     message: str

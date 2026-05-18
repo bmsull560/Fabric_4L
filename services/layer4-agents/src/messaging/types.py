@@ -148,7 +148,7 @@ class AgentMessage:
 
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "AgentMessage":
+    def from_dict(cls, data: dict[str, Any]) -> AgentMessage:
         """Create message from dictionary."""
         return cls(
             message_id=data["message_id"],

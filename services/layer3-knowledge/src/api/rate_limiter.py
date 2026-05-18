@@ -15,9 +15,11 @@ from typing import Any
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-
+from value_fabric.shared.identity.authoritative_rate_limiter import (
+    AuthoritativeRateLimiter,
+    RateLimitDimensions,
+)
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from value_fabric.shared.identity.authoritative_rate_limiter import AuthoritativeRateLimiter, RateLimitDimensions
 from value_fabric.shared.rate_limiting.tenant_rate_limiter import SlidingWindowAdapter
 
 from logging_config import get_logger

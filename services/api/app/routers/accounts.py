@@ -1,3 +1,4 @@
+import secrets
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -71,8 +72,14 @@ async def create_share_link(account_id: str, tenant_id: str = Depends(tenant_req
     acc = db.accounts.get(account_id, tenant_id=tenant_id)
     if not acc:
         raise HTTPException(status_code=404, detail="Account not found")
-    token = f"share_{account_id}_{tenant_id}_{hash(account_id + tenant_id) % 1000000}"
-    return {"share_token": token, "account_id": account_id, "role": "read_only"}
+    # Use a cryptographically secure random token (256 bits of entropy).
+    # Python's built-in hash() is non-cryptographic, seed-randomized per process,
+    # and produces only ~20 bits of effective entropy after modulo — do not use it.
+    raw_token = secrets.token_urlsafe(32)
+    # TODO(F-25): persist hashlib.sha256(raw_token.encode()).hexdigest() + expiry
+    # in a ShareLink table so the token can be validated and revoked server-side.
+    # The hash must never be returned to the caller — only the raw token is returned once.
+    return {"share_token": raw_token, "account_id": account_id, "role": "read_only"}
 
 
 @router.delete("/{account_id}/share")

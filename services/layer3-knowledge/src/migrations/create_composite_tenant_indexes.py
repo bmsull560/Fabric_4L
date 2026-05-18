@@ -37,7 +37,6 @@ Or programmatically:
 import asyncio
 import logging
 import os
-from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -226,7 +225,7 @@ async def main() -> None:
     
     try:
         result = await migration.run_migration()
-        print(f"\nMigration result:")
+        print("\nMigration result:")
         print(f"  Status: {result['status']}")
         print(f"  Indexes created: {result['indexes_created']}")
         print(f"  Indexes already exist: {result['indexes_already_exist']}")

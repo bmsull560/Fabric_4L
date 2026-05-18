@@ -37,10 +37,13 @@ class User(BaseModel):
     tenant_id: str
     email: str
     name: str
-    role: Literal["admin", "editor", "viewer"] = "editor"
+    role: Literal["tenant_admin", "content_admin", "analyst", "read_only"] = "analyst"
     password_hash: str | None = None
     status: Literal["invited", "active", "deactivated"] = "active"
     invited_by: str | None = None
+    # Brute-force protection fields (F-05)
+    failed_login_attempts: int = 0
+    locked_until: str | None = None  # ISO-8601 UTC timestamp
 
 
 # ============================================================================

@@ -48,10 +48,9 @@ except ImportError:  # pragma: no cover - exercised only in minimal test envs
 
     psutil = _PsutilFallback()
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger, setup_logging
-from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.fastapi_framework import (
     RouterMount,
     add_governance_middleware,
@@ -60,8 +59,9 @@ from value_fabric.shared.fastapi_framework import (
     include_router_mounts,
     resolve_cors_policy,
 )
-from value_fabric.shared.security import validate_production_safety
+from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.security import validate_production_safety
 
 from .dependencies import (
     AppState,
@@ -143,7 +143,6 @@ from .rate_limiter import add_rate_limiting
 try:
     from ..cache import (
         CacheConfig,
-        get_request_deduplicator,
         initialize_cache,
     )
 
@@ -164,12 +163,12 @@ from .models import (
     AuditLogEntry,
     AuditLogResponse,
     BatchAnalyticsRequest,
-    BatchAnalyticsResult,
     BatchAnalyticsResponse,
+    BatchAnalyticsResult,
     BatchEntityOperation,
     BatchEntityRequest,
-    BatchEntityResult,
     BatchEntityResponse,
+    BatchEntityResult,
     CentralityRequest,
     CentralityResponse,
     Community,
@@ -207,7 +206,6 @@ from .models import (
     SearchResponse,
     SearchResult,
     SearchType,
-    ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
     SubgraphResponse,
@@ -1363,7 +1361,7 @@ async def detailed_health_check(
     elif any(dep.status == "degraded" for dep in dependencies):
         overall_status = "degraded"
 
-    response_time_ms = round((time.time() - start_time) * 1000, 2)
+    _response_time_ms = round((time.time() - start_time) * 1000, 2)
 
     # System information
     system_info = {
@@ -1466,7 +1464,7 @@ async def init_schema(
     if schema_initializer is None:
         raise HTTPException(status_code=503, detail="Schema initializer not available")
     await schema_initializer.initialize_schema(drop_existing=drop_existing)
-    return init_schemaResult.model_validate({"status": "initialized", "drop_existing": drop_existing})
+    return {"status": "initialized", "drop_existing": drop_existing}
 
 
 @app.get("/v1/schema/statistics", response_model=SchemaStatistics)
@@ -2628,10 +2626,10 @@ async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, A
             )
             record = await result.single()
             if record:
-                return _create_entityResult.model_validate({"success": True, "entity_id": record["entity_id"]})
-            return _create_entityResult.model_validate({"success": False, "error": "Failed to create entity"})
+                return {"success": True, "entity_id": record["entity_id"]}
+            return {"success": False, "error": "Failed to create entity"}
     except Exception as e:
-        return _create_entityResult.model_validate({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 
 async def _update_entity(
@@ -2650,7 +2648,7 @@ async def _update_entity(
     try:
         # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
         if not tenant_id:
-            return _update_entityResult.model_validate({"success": False, "error": "tenant_id is required for entity updates"})
+            return {"success": False, "error": "tenant_id is required for entity updates"}
         
         async with driver.session() as session:
             # Update entity with mandatory tenant filtering
@@ -2667,10 +2665,10 @@ async def _update_entity(
             result = await session.run(query, params)
             record = await result.single()
             if record:
-                return _update_entityResult.model_validate({"success": True})
-            return _update_entityResult.model_validate({"success": False, "error": "Entity not found"})
+                return {"success": True}
+            return {"success": False, "error": "Entity not found"}
     except Exception as e:
-        return _update_entityResult.model_validate({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 
 async def _delete_entity(
@@ -2689,7 +2687,7 @@ async def _delete_entity(
     try:
         # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
         if not tenant_id:
-            return _delete_entityResult.model_validate({"success": False, "error": "tenant_id is required for entity deletion"})
+            return {"success": False, "error": "tenant_id is required for entity deletion"}
         
         async with driver.session() as session:
             # Delete entity with mandatory tenant filtering
@@ -2702,10 +2700,10 @@ async def _delete_entity(
             result = await session.run(query, params)
             record = await result.single()
             if record and record["deleted"] > 0:
-                return _delete_entityResult.model_validate({"success": True})
-            return _delete_entityResult.model_validate({"success": False, "error": "Entity not found"})
+                return {"success": True}
+            return {"success": False, "error": "Entity not found"}
     except Exception as e:
-        return _delete_entityResult.model_validate({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 
 async def _delete_entity_by_id(
@@ -2891,11 +2889,11 @@ async def agent_workflow(
                 status_code=400, detail=f"Unknown workflow type: {workflow_type}"
             )
 
-        return agent_workflowResult.model_validate({
+        return {
             "workflow_type": workflow_type,
             "steps_completed": len(results),
             "results": results,
-        })
+        }
 
 
     except HTTPException:

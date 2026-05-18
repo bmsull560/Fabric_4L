@@ -14,6 +14,7 @@ import json
 import os
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from enum import Enum as PyEnum
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -25,24 +26,27 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from value_fabric.shared.error_handling.handlers import (
-    get_request_trace_id,
-    global_exception_handler as shared_global_exception_handler,
-    validation_exception_handler as shared_validation_exception_handler,
-)
-from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from value_fabric.shared.identity import RequestContext, Role, require_authenticated, require_role
+from value_fabric.shared.error_handling.handlers import (
+    get_request_trace_id,
+)
+from value_fabric.shared.error_handling.handlers import (
+    global_exception_handler as shared_global_exception_handler,
+)
+from value_fabric.shared.error_handling.handlers import (
+    validation_exception_handler as shared_validation_exception_handler,
+)
+from value_fabric.shared.error_handling.models import ErrorCode, ErrorResponse
 from value_fabric.shared.fastapi_framework import (
     add_governance_middleware,
     add_security_validation_middleware,
 )
-from value_fabric.shared.security import validate_production_safety
 from value_fabric.shared.identity.rate_limiter import RedisRateLimiter
 from value_fabric.shared.identity.vault_check import is_vault_healthy
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.security import validate_production_safety
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import is_production_like_environment, settings
@@ -2228,14 +2232,14 @@ async def batch_operation(
             raise HTTPException(status_code=400, detail="target_ids not allowed for cancel/retry operations")
     
     # Enforce batch size limit
-    MAX_BATCH_SIZE = 100
+    max_batch_size = 100
     requested_count = len(request.target_ids) if request.target_ids else len(request.job_ids)
     if requested_count == 0:
         raise HTTPException(status_code=400, detail="At least one target_id or job_id is required")
-    if requested_count > MAX_BATCH_SIZE:
+    if requested_count > max_batch_size:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Batch size exceeds maximum of {MAX_BATCH_SIZE}"
+            status_code=400,
+            detail=f"Batch size exceeds maximum of {max_batch_size}"
         )
     
     results = []

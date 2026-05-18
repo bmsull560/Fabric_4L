@@ -5,10 +5,9 @@ Removal/migration target: 2026-09-30
 Reason: Pydantic models for Layer 3 knowledge API.
 """
 
+import os
 from collections import Counter
 from datetime import datetime
-
-import os
 from enum import Enum
 from typing import Annotated, Any, Literal
 
@@ -18,14 +17,13 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
 from value_fabric.shared.contracts.layer3_statuses import (
-    BenchmarkStatus,
     EntityStatus,
     HealthStatus,
     IngestStatus,
     SyncStatus,
 )
+
 
 # Health Check
 class DependencyStatus(BaseModel):

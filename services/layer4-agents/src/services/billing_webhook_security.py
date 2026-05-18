@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
+
 from fastapi import Request
 
 STRIPE_WEBHOOK_IPS = [

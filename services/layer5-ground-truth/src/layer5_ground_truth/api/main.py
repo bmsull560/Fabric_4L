@@ -9,18 +9,19 @@ Or via Docker:
 
 """
 
+import inspect
 import logging
-import os
 import re
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-import inspect
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
+
 from layer5_ground_truth import __version__
+
 from ..shared_bootstrap import (
     SecurityConfig,
     add_security_middleware,
@@ -316,8 +317,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
-
     app = create_fabric_app(
         service_name="layer5-ground-truth",
         title="Value Fabric — Ground Truth Layer (L5)",
@@ -577,13 +576,13 @@ def _validate_jwt_secret(secret: str) -> None:
     if secret_lower in JWT_SECRET_DENYLIST:
         raise RuntimeError(
             "JWT_SECRET is a known weak/placeholder value. "
-            f"Generate a secure secret: openssl rand -base64 32"
+            "Generate a secure secret: openssl rand -base64 32"
         )
 
     if _JWT_WEAK_PATTERN.match(secret_lower):
         raise RuntimeError(
             "JWT_SECRET matches a weak secret pattern. "
-            f"Generate a secure secret: openssl rand -base64 32"
+            "Generate a secure secret: openssl rand -base64 32"
         )
 
 

@@ -11,8 +11,8 @@ constraints (id, tenant_id) and query scoping.
 
 from __future__ import annotations
 
-import logging
 import inspect
+import logging
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -21,9 +21,13 @@ from fastapi import Depends, HTTPException, Request, status
 if TYPE_CHECKING:
     from value_fabric.shared.identity.context import RequestContext
 
+from value_fabric.shared.identity.protocols import (
+    ProviderUnavailableError,
+    RequestContextProvider,
+)
+
 from ..api.dependencies import get_neo4j_driver
 from ..db.query_execution import TenantExecutionContext, TenantQueryExecutor
-from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
 
 try:
     from value_fabric.shared.identity.isolation import (

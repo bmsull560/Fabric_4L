@@ -8,7 +8,6 @@ Reason: Cache package initialization.
 from ..cache.aiocache_adapter import AiocacheCacheAdapter
 from ..cache.factory import CacheProviderName, build_cache_port
 from ..cache.ports import CachePort, LegacyCacheAdapter, as_cache_port
-from ..cache.shadow import CacheParityMismatch, ShadowCacheComparator
 from ..cache.redis_cache import (
     CacheConfig,
     CacheKey,
@@ -20,6 +19,7 @@ from ..cache.redis_cache import (
     get_request_deduplicator,
     initialize_cache,
 )
+from ..cache.shadow import CacheParityMismatch, ShadowCacheComparator
 
 __all__ = [
     "CacheConfig",

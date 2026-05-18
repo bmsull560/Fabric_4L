@@ -17,8 +17,8 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from value_fabric.shared.identity.dependencies import require_authenticated
 from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import require_authenticated
 
 logger = logging.getLogger(__name__)
 

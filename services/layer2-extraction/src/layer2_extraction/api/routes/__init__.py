@@ -4,8 +4,8 @@ from layer2_extraction.api.routes.extraction import (
     EntityProvenance,
     EntitySourceSpan,
     ExtractedEntity,
-    ExtractionResultSummary,
     ExtractionResultsResponse,
+    ExtractionResultSummary,
     get_extraction_results,
 )
 

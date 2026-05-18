@@ -16,10 +16,13 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, HTTPException, Request, status
+from value_fabric.shared.identity.protocols import (
+    ProviderUnavailableError,
+    RequestContextProvider,
+)
 
-from src.security import QueryValidator, UnscopedQueryError
 from src.db.query_execution import TenantExecutionContext, TenantQueryExecutor
-from value_fabric.shared.identity.protocols import ProviderUnavailableError, RequestContextProvider
+from src.security import QueryValidator, UnscopedQueryError
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession

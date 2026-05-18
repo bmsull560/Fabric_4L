@@ -6,6 +6,7 @@ from typing import Any
 
 from value_fabric.shared.identity.isolation import QueryScope, ScopedQuery
 
+
 class TenantQueryValidationError(ValueError):
     """Raised when Cypher execution violates tenant isolation requirements."""
 

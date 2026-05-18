@@ -11,7 +11,12 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from ..api.exceptions import DatabaseError, SearchError, ValidationError, VectorStoreError
+from ..api.exceptions import (
+    DatabaseError,
+    SearchError,
+    ValidationError,
+    VectorStoreError,
+)
 
 
 def map_exception_to_http_error(exc: Exception, *, context: dict[str, Any]) -> HTTPException:

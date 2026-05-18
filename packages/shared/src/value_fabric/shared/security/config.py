@@ -726,6 +726,12 @@ def get_startup_summary() -> dict[str, Any]:
     return summary
 
 
+# Compatibility alias — imported by value_fabric.shared.identity.dependencies.
+# validate_jwt_secret_strength() is the canonical implementation; this alias
+# preserves the name used by legacy callers without duplicating logic.
+validate_jwt_config = validate_jwt_secret_strength
+
+
 def _get_rls_status(database_url: str) -> str:
     """Determine RLS status based on database configuration.
 

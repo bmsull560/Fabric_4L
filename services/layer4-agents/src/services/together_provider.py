@@ -24,6 +24,7 @@ from .llm_adapter_interfaces import (
     ToolCall,
     ToolCallingAdapter,
 )
+from .llm_output_parser import parse_llm_json
 from .llm_provider import LLMEmbeddingResponse, LLMTextResponse, LLMUsage
 
 logger = logging.getLogger(__name__)
@@ -188,7 +189,7 @@ class TogetherAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
         try:
             response = await self._get_client().chat.completions.create(**kwargs)
             content = (response.choices[0].message.content or "{}").strip()
-            return self._parse_json_response(content)
+            return parse_llm_json(content, call_site="together_provider.extract_structured")
         except Exception as exc:
             # If json_object mode caused a 400, retry without it
             if use_json_mode and ("400" in str(exc) or "bad request" in str(exc).lower()):
@@ -200,7 +201,7 @@ class TogetherAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
                 try:
                     response = await self._get_client().chat.completions.create(**kwargs)
                     content = (response.choices[0].message.content or "{}").strip()
-                    return self._parse_json_response(content)
+                    return parse_llm_json(content, call_site="together_provider.extract_structured_retry")
                 except Exception as retry_exc:
                     return self._normalize_error(retry_exc)
             return self._normalize_error(exc)
@@ -244,30 +245,7 @@ class TogetherAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _parse_json_response(content: str) -> dict[str, Any]:
-        """Extract the first JSON object or array from a model response."""
-        # Try direct parse first
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            pass
-
-        # Find the first { or [ and attempt to parse from there
-        for start_char, end_char in [('{', '}'), ('[', ']')]:
-            start = content.find(start_char)
-            if start == -1:
-                continue
-            # Walk backwards from end to find matching close
-            end = content.rfind(end_char)
-            if end > start:
-                try:
-                    return json.loads(content[start:end + 1])
-                except json.JSONDecodeError:
-                    continue
-
-        logger.warning("Could not parse JSON from Together.ai response: %r", content[:200])
-        return {}
+    # _parse_json_response removed — use parse_llm_json (services.llm_output_parser) per §2.5
 
     def _normalize_error(self, exc: Exception) -> AdapterError:
         msg = str(exc)

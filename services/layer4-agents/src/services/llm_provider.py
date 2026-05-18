@@ -211,8 +211,8 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
             )
             # CONTRACT §2.5: Validate structured LLM output with Pydantic, not raw JSON.parse
             content = response.choices[0].message.content or "{}"
-            Model = self._build_model_from_schema(schema)
-            return Model.model_validate_json(content).model_dump()
+            model_cls = self._build_model_from_schema(schema)
+            return model_cls.model_validate_json(content).model_dump()
         except Exception as exc:  # pragma: no cover - defensive normalization
             return self._normalize_error(exc)
 

@@ -390,22 +390,22 @@ class WorkflowBuilder:
         self.entry_point: str | None = None
         self.global_config: dict[str, Any] = {}
 
-    def add_node(self, node: NodeConfig) -> "WorkflowBuilder":
+    def add_node(self, node: NodeConfig) -> WorkflowBuilder:
         """Add a node to the workflow."""
         self.nodes.append(node)
         return self
 
-    def add_edge(self, source: str, target: str, **kwargs) -> "WorkflowBuilder":
+    def add_edge(self, source: str, target: str, **kwargs) -> WorkflowBuilder:
         """Add an edge between nodes."""
         self.edges.append(EdgeConfig(source=source, target=target, **kwargs))
         return self
 
-    def set_entry_point(self, node_id: str) -> "WorkflowBuilder":
+    def set_entry_point(self, node_id: str) -> WorkflowBuilder:
         """Set the workflow entry point."""
         self.entry_point = node_id
         return self
 
-    def set_global_config(self, config: dict[str, Any]) -> "WorkflowBuilder":
+    def set_global_config(self, config: dict[str, Any]) -> WorkflowBuilder:
         """Set global workflow configuration."""
         self.global_config = config
         return self

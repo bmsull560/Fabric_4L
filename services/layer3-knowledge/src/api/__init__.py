@@ -51,7 +51,7 @@ try:
 except (ImportError, Exception):
     _RUNTIME_AVAILABLE = False
     # Provide None stubs so callers can check _RUNTIME_AVAILABLE
-    app = None  # type: ignore[assignment]
+    app = None
 
 __all__ = [
     "app",

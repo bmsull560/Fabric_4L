@@ -26,10 +26,15 @@ from value_fabric.shared.identity.jwt import encode_jwt
 from value_fabric.shared.identity.oidc import OIDCClient, map_role_from_claims
 from value_fabric.shared.identity.oidc_config import OIDCProviderConfig
 from value_fabric.shared.identity.permissions import Role
-from value_fabric.shared.identity.providers import resolve_oidc_config, resolve_client_secret
+from value_fabric.shared.identity.providers import resolve_client_secret, resolve_oidc_config
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from ....api.security.csrf import CSRF_COOKIE_NAME, SESSION_COOKIE_NAME, issue_csrf_token, validate_double_submit
+from ....api.security.csrf import (
+    CSRF_COOKIE_NAME,
+    SESSION_COOKIE_NAME,
+    issue_csrf_token,
+    validate_double_submit,
+)
 
 # SECURITY: OIDC login/callback endpoints are pre-authentication flows.
 # The user does not yet have a JWT, so get_db (no tenant context) is

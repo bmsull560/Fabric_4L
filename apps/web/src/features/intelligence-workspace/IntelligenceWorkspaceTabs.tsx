@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { getActiveTabDefs, getTabOrDefault } from "./workspaceTabRegistry";
 import { useWorkspaceContext } from "./hooks/useWorkspaceContext";
+import { workspacePath } from "./workspaceRoutes";
 
 export default function IntelligenceWorkspaceTabs() {
   const { accountId, tabId } = useWorkspaceContext();
@@ -16,7 +17,7 @@ export default function IntelligenceWorkspaceTabs() {
   return (
     <div className="flex border-b border-border px-6 overflow-x-auto" role="tablist">
       {tabs.map((tab) => (
-        <Link key={tab.id} to={`/accounts/${accountId}/intelligence/${tab.id}`}>
+        <Link key={tab.id} to={workspacePath(accountId ?? "", tab.id)}>
           <button
             role="tab"
             aria-selected={activeTab === tab.id}

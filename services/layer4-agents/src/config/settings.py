@@ -7,10 +7,8 @@ Fails fast on startup if required configuration is missing or invalid.
 from __future__ import annotations
 
 import importlib
-import secrets
-
 import logging
-
+import secrets
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -565,7 +563,7 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def validate_prod_neo4j_aura(self) -> "Settings":
+    def validate_prod_neo4j_aura(self) -> Settings:
         """Production/staging must use managed Aura, not in-cluster Neo4j."""
         validate_neo4j_aura_config(
             uri=self.neo4j_uri,
