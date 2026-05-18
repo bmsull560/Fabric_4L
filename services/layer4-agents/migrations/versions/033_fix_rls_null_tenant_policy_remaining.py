@@ -1,7 +1,7 @@
 """Fix NULL-permissive RLS policies introduced after migration 026.
 
-Revision ID: 032
-Revises: 031
+Revision ID: 033
+Revises: 032
 Create Date: 2026-05-17
 
 SECURITY FIX: Three migration groups created tables with the unsafe pattern:
@@ -34,8 +34,8 @@ from typing import Union
 from alembic import op
 
 
-revision: str = "032"
-down_revision: Union[str, None] = "031"
+revision: str = "033"
+down_revision: Union[str, None] = "032"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
