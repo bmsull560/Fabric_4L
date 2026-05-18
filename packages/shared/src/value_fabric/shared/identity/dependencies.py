@@ -302,14 +302,29 @@ def require_privileged_access(
     *,
     privilege_reason_header: str = "X-Privileged-Reason",
     require_audit_log: bool = True,
+    require_audit_emission: bool | None = None,
 ):
     """Return a dependency that permits only audited super-admin access.
 
     The dependency fails closed for unauthenticated contexts, invalid contexts,
     non-super-admin roles, and missing audit reasons when audit logging is
-    required. Audit emission failures are logged and swallowed so an audit sink
-    outage does not create an availability incident after authorization succeeds.
+    required.
+
+    Audit emission failures are treated as hard failures by default (F-16):
+    if the audit sink is unavailable, privileged access is denied rather than
+    proceeding silently without a record. This can be overridden by setting
+    ``require_audit_emission=False`` or the env var
+    ``PRIVILEGED_ACCESS_REQUIRE_AUDIT=false`` for planned maintenance windows.
     """
+
+    # Resolve whether audit emission failure is a hard block.
+    # Order of precedence: explicit kwarg > env var > default True.
+    _require_emission: bool
+    if require_audit_emission is not None:
+        _require_emission = require_audit_emission
+    else:
+        _env = os.getenv("PRIVILEGED_ACCESS_REQUIRE_AUDIT", "true").strip().lower()
+        _require_emission = _env not in {"0", "false", "no", "off"}
 
     async def _check_privileged(
         request: Request,
@@ -386,8 +401,30 @@ def require_privileged_access(
                         details=audit_details.model_dump(),
                     )
                 )
-            except Exception as exc:  # pragma: no cover - behavior asserted by tests via no raise
-                logger.error("Failed to emit privileged access audit event: %s", exc)
+            except Exception as exc:
+                if _require_emission:
+                    # Fail closed: if we cannot record that privileged access
+                    # occurred, we must not permit it (F-16).
+                    logger.error(
+                        "Privileged access denied: audit emission failed. "
+                        "Set PRIVILEGED_ACCESS_REQUIRE_AUDIT=false to override "
+                        "during planned audit sink maintenance. Error: %s",
+                        exc,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=(
+                            "Privileged access temporarily unavailable: "
+                            "audit logging is required but the audit sink is unreachable."
+                        ),
+                    ) from exc
+                else:
+                    # Operator has explicitly opted out of hard failure.
+                    logger.warning(
+                        "Privileged access proceeding without audit record "
+                        "(PRIVILEGED_ACCESS_REQUIRE_AUDIT=false). Error: %s",
+                        exc,
+                    )
 
         return context
 

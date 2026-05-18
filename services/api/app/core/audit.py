@@ -1,4 +1,4 @@
-"""Audit logging middleware for state-changing actions.
+"""Audit logging middleware for state-changing and sensitive read actions.
 
 Logs every POST, PUT, PATCH, DELETE with:
 - timestamp
@@ -7,6 +7,10 @@ Logs every POST, PUT, PATCH, DELETE with:
 - impersonator_id (if applicable)
 - ip_address
 - method, path, status_code
+
+Also logs GET requests to SENSITIVE_READ_PATHS (F-20): endpoints that expose
+user lists, audit logs, or configuration data. These reads must be traceable
+for SOC 2 CC7.2 compliance.
 """
 
 from __future__ import annotations
@@ -35,6 +39,23 @@ AUDIT_SKIP_PATHS = {
     "/redoc",
 }
 
+# GET paths that expose sensitive data and must be audit-logged (F-20).
+# Reads of user lists, audit logs, and configuration are traceable for SOC 2 CC7.2.
+SENSITIVE_READ_PATHS: frozenset[str] = frozenset({
+    "/v1/users",
+    "/v1/accounts",
+    "/governance/audit-log",
+    "/governance/review-queue",
+    "/governance/gates",
+    "/auth/me",
+})
+
+# Path prefixes that trigger sensitive-read logging regardless of exact path.
+SENSITIVE_READ_PREFIXES: tuple[str, ...] = (
+    "/v1/users/",
+    "/v1/accounts/",
+)
+
 
 class AuditMiddleware(BaseHTTPMiddleware):
     """Log every state-changing request with identity and tenant context."""
@@ -48,10 +69,18 @@ class AuditMiddleware(BaseHTTPMiddleware):
             return response
 
         method = request.method.upper()
+        path = request.url.path
         is_mutating = method in MUTATING_METHODS
+        is_sensitive_read = (
+            method == "GET"
+            and (
+                path in SENSITIVE_READ_PATHS
+                or path.startswith(SENSITIVE_READ_PREFIXES)
+            )
+        )
 
-        # Always log mutating requests; optionally log reads for high-sensitivity paths
-        if not is_mutating:
+        # Log mutating requests and sensitive reads; skip everything else.
+        if not is_mutating and not is_sensitive_read:
             return response
 
         ctx = get_request_context()
@@ -70,8 +99,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
             else None
         )
 
+        event_type = "sensitive_read" if is_sensitive_read else "state_change"
         audit_entry: dict[str, Any] = {
-            "event": "state_change",
+            "event": event_type,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "actor_id": actor_id,
             "tenant_id": tenant_id,
@@ -86,20 +116,11 @@ class AuditMiddleware(BaseHTTPMiddleware):
         # Security events: always log at WARNING
         if response.status_code in (401, 403):
             audit_entry["event"] = "access_denied"
-            logger.warning(
-                "access_denied",
-                extra=audit_entry,
-            )
+            logger.warning("access_denied", extra=audit_entry)
         elif response.status_code >= 500:
             audit_entry["event"] = "server_error"
-            logger.error(
-                "server_error",
-                extra=audit_entry,
-            )
+            logger.error("server_error", extra=audit_entry)
         else:
-            logger.info(
-                "state_change",
-                extra=audit_entry,
-            )
+            logger.info(event_type, extra=audit_entry)
 
         return response
