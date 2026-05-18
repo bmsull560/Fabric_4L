@@ -35,6 +35,7 @@ import { useAccountContextStore } from "@/stores/accountContextStore";
 import { resolveWorkspaceRoutePath } from "@/navigation/accountRouting";
 import { resolveBreadcrumbs } from "@/navigation/navSchema";
 import { resolveWorkspacePath } from "@/navigation/navigationService";
+import { isRouteActive } from "@/navigation/navHelpers";
 
 /* ─── Nav Data ─── */
 interface NavItem {
@@ -321,7 +322,7 @@ interface NavSectionProps {
 
 function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAccountId, onNavigate }: NavSectionProps) {
   const resolvedPath = resolveWorkspaceRoutePath(item.path, selectedAccountId);
-  const isActive = currentPath === resolvedPath || currentPath.startsWith(resolvedPath + "/");
+  const isActive = isRouteActive(currentPath, resolvedPath);
   const [isOpen, setIsOpen] = useState(isActive);
 
   const visibleChildren = useMemo(
@@ -348,7 +349,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
         <div className="ml-7 mt-1 space-y-0.5 border-l border-sidebar-border pl-3">
           {(visibleChildren || []).map(child => {
             const childResolved = resolveWorkspaceRoutePath(child.path, selectedAccountId);
-            const childActive = currentPath === childResolved || currentPath.startsWith(childResolved + "/");
+            const childActive = isRouteActive(currentPath, childResolved);
             return (
               <Link
                 key={child.id}

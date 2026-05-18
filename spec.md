@@ -1,10 +1,156 @@
-# Spec: Next 10 Repo-Owned Tasks — Sprint Plan
+# Spec: FE-C1 + FE-C2 — Imperative Navigation & URL Concatenation Remediation
 
-## Status
+**Contract:** §2.6 UI State Management  
+**Deadline:** 2026-05-30  
+**Deprecation IDs:** DEP-IMPERATIVE-NAV-009, DEP-URL-CONCAT-010  
+**ESLint rules:** `fabric-contracts/no-imperative-navigation`, `fabric-contracts/no-url-concatenation`
 
 <!-- ARCHIVED: Security Audit spec (F-01 through F-25) superseded 2026-05-18. Implemented in PR #398. -->
 
-## Audit Basis
+## Problem Statement
+
+Two contract clusters remain open against the frontend:
+
+- **FE-C1:** `HypothesesTab.tsx` uses `useNavigate()` directly (bypassing the canonical `useNavigation()` abstraction) to navigate with router `location.state`.
+- **FE-C2:** Nine sites across six files construct UI route strings via template-literal concatenation instead of using centralized route helpers.
+
+Both patterns are flagged as `error` by the `eslint-plugin-fabric-contracts` rules. The canonical infrastructure (`navigationService.ts`, `useNavigation()`, `navHelpers.ts`, `workspaceRoutes.ts`) already exists — this work closes the remaining violations by migrating call sites and filling the one gap in the abstraction (router state support).
+
+---
+
+## Violation Inventory
+
+### FE-C1 — Imperative Navigation
+
+| File | Line | Violation |
+|---|---|---|
+| `apps/web/src/pages/intelligence/HypothesesTab.tsx` | 160, 427 | `useNavigate()` + `navigate({ pathname, search }, { state: {...} })` |
+
+### FE-C2 — URL Concatenation
+
+| File | Lines | Pattern |
+|---|---|---|
+| `apps/web/src/shell/router.tsx` | 150 | `` navigateTo(`/accounts/${accountId}/intelligence/signals`) `` |
+| `apps/web/src/shell/router.tsx` | 165 | `` <Navigate to={`/studio/${selectedAccountId}/${targetTab}`} /> `` |
+| `apps/web/src/components/workspace/DriverTreeShell.tsx` | 19 | `` to:`/drivers/${accountId}/${t.key}` `` |
+| `apps/web/src/components/workspace/CalculatorShell.tsx` | 14 | `` to:`/calculator/${accountId}/${t.key}` `` |
+| `apps/web/src/pages/deliverables/ExecutiveView.tsx` | 51, 56 | `` href/to:`/deliverables/cases/${bc.case_id}` `` |
+| `apps/web/src/pages/deliverables/TechnicalView.tsx` | 54, 59 | same |
+| `apps/web/src/pages/deliverables/CFOView.tsx` | 77, 82 | same |
+| `apps/web/src/features/intelligence-workspace/IntelligenceWorkspaceTabs.tsx` | 19 | `` to:`/accounts/${accountId}/intelligence/${tab.id}` `` |
+| `apps/web/src/components/layout/Layout.tsx` | 324, 351 | `resolvedPath + "/"` (active-state detection) |
+
+---
+
+## Requirements
+
+### R1 — Extend `useNavigation()` with typed router state support
+
+`useNavigation()` must expose a `navigateTo(path, options?)` signature where `options` accepts a `state` field typed as `Record<string, unknown>`. Existing callers that pass no options must continue to work unchanged.
+
+```ts
+navigateTo(path: string, options?: { state?: Record<string, unknown> }): void
+```
+
+### R2 — Migrate `HypothesesTab.tsx` to `useNavigation()`
+
+Replace `useNavigate()` + direct `navigate()` call with `useNavigation()` + `navigateTo(path, { state })`. The router state payload (`hypothesisId`, `accountId`, `tenantId`, `evidenceIds`, `valueModelId`, `treeId`, `createdId`, `conversionStatus`) must be passed via the `state` option. Search params (`tree_id`, `value_model_id`) are constructed via `URLSearchParams` and appended to the path string before calling `navigateTo`.
+
+### R3 — Fix `shell/router.tsx` URL concatenation (2 sites)
+
+- Line 150: Replace `` `/accounts/${accountId}/intelligence/signals` `` with `workspacePath(accountId, 'signals')` from `workspaceRoutes.ts`.
+- Line 165: Replace `` `/studio/${selectedAccountId}/${targetTab}` `` with `getStatePath('studio', { accountId: selectedAccountId })` + tab segment via `buildPath`, or add a `studioPath(accountId, tab)` helper to `accountRouting.ts`.
+
+### R4 — Fix `DriverTreeShell.tsx` and `CalculatorShell.tsx`
+
+Replace inline tab `to` template literals with `buildPath` from `navigationService.ts`:
+
+```ts
+// DriverTreeShell
+to: buildPath('/drivers/:accountId/:tab', { accountId, tab: t.key })
+
+// CalculatorShell
+to: buildPath('/calculator/:accountId/:tab', { accountId, tab: t.key })
+```
+
+### R5 — Create `deliverableRoutes.ts` and migrate three view files
+
+Create `apps/web/src/navigation/deliverableRoutes.ts`:
+
+```ts
+import { getStatePath } from "@/navigation/navigationService";
+
+export const deliverableRoutes = {
+  businessCaseDetail: (caseId: string) =>
+    getStatePath("business-case-detail", { caseId }),
+  businessCaseList: () =>
+    getStatePath("business-cases"),
+};
+```
+
+Replace all `` `/deliverables/cases/${bc.case_id}` `` and `"/deliverables/cases"` literals in `ExecutiveView.tsx`, `TechnicalView.tsx`, and `CFOView.tsx` with `deliverableRoutes.businessCaseDetail(bc.case_id)` and `deliverableRoutes.businessCaseList()`.
+
+### R6 — Fix `IntelligenceWorkspaceTabs.tsx`
+
+Replace `` `/accounts/${accountId}/intelligence/${tab.id}` `` with `workspacePath(accountId, tab.id)` from `workspaceRoutes.ts`.
+
+### R7 — Fix `Layout.tsx` active-state detection
+
+Replace the two `resolvedPath + "/"` BinaryExpressions with `isRouteActive(currentPath, resolvedPath)` from `navHelpers.ts`. The helper already implements the same `location === resolvedPath || location.startsWith(resolvedPath + "/")` logic.
+
+### R8 — `workspaceRoutes.ts` internal alignment (optional)
+
+`workspaceRoutes.ts` is the canonical workspace route helper; callers must not be migrated away from it. Its internals may optionally use `buildPath` / `getStatePath` from `navigationService.ts` if doing so removes duplication or fixes path correctness. No caller changes required.
+
+---
+
+## Acceptance Criteria
+
+- [ ] `HypothesesTab.tsx` imports `useNavigation()`, not `useNavigate()`.
+- [ ] `useNavigation()` accepts an optional `state` param; existing callers unchanged.
+- [ ] No `useNavigate()` direct calls remain outside `apps/web/src/navigation/`.
+- [ ] No UI route template-literal concatenation remains in the 6 affected files.
+- [ ] `deliverableRoutes.ts` exists and is the sole source of deliverable route strings.
+- [ ] `Layout.tsx` uses `isRouteActive()` for active-state checks; no `+ "/"` BinaryExpression.
+- [ ] `DriverTreeShell.tsx` and `CalculatorShell.tsx` use `buildPath` for tab `to` props.
+- [ ] `IntelligenceWorkspaceTabs.tsx` uses `workspacePath()`.
+- [ ] `shell/router.tsx` URL concatenation sites replaced with canonical helpers.
+- [ ] ESLint `no-imperative-navigation` and `no-url-concatenation` rules pass with 0 errors on changed files (verified by static grep since Node 22 is unavailable in this environment).
+- [ ] Tests cover: `useNavigation()` with and without state; `isRouteActive()` with/without trailing slash; `deliverableRoutes` helpers; workspace tab path construction.
+- [ ] No Zustand/global store introduced for route transition state.
+- [ ] `make lint` and `make typecheck` pass.
+
+---
+
+## Implementation Tasks (ordered)
+
+1. **Extend `useNavigation()` hook** — add optional `state` param to `navigateTo()`; update TypeScript signature; keep existing callers working.
+2. **Migrate `HypothesesTab.tsx`** — replace `useNavigate()` + `navigate()` with `useNavigation()` + `navigateTo(path, { state })`.
+3. **Create `deliverableRoutes.ts`** — `businessCaseDetail(caseId)` and `businessCaseList()` using `getStatePath`.
+4. **Fix `ExecutiveView.tsx`, `TechnicalView.tsx`, `CFOView.tsx`** — replace template literals with `deliverableRoutes.*`.
+5. **Fix `IntelligenceWorkspaceTabs.tsx`** — replace template literal with `workspacePath()`.
+6. **Fix `DriverTreeShell.tsx` and `CalculatorShell.tsx`** — replace tab `to` template literals with `buildPath`.
+7. **Fix `shell/router.tsx`** — replace 2 URL concatenation sites with canonical helpers.
+8. **Fix `Layout.tsx`** — replace `resolvedPath + "/"` with `isRouteActive()`.
+9. **Add/update tests** — `useNavigation` state, `isRouteActive`, `deliverableRoutes`, workspace path construction.
+10. **Run `make lint` and `make typecheck`** — confirm 0 errors.
+11. **Update `contract-remediation-queue-by-layer.md`** — mark FE-C1 and FE-C2 closed.
+
+---
+
+## Out of Scope
+
+- `ExportMenu.tsx` — uses template literals for API endpoint paths, not UI routes. Not a §2.6 violation.
+- `workspaceRoutes.ts` caller migration — callers stay on `workspaceRoutes.ts`; internal refactor only if there is a correctness benefit.
+- DEP-WOUTER-ROUTER-011 (direct wouter imports) — separate deprecation, not in this sprint.
+- Node 22 / full ESLint run — environment constraint; static grep + typecheck used as proxy.
+
+---
+
+<!-- ARCHIVED SPRINT PLAN BELOW — superseded 2026-05-18 -->
+---
+
+## Audit Basis (archived)
 
 Full `make verify` run + per-layer mypy, platform_contract_lint, launch blocker register, security test coverage, and RLS gap analysis. Completed 2026-05-18.
 
