@@ -186,4 +186,4 @@ class TestCrossStackJWTContract:
             )
 
 
-import pathlib  # noqa: E402 — needed for test_dual_stack_drift_is_documented
+import pathlib
