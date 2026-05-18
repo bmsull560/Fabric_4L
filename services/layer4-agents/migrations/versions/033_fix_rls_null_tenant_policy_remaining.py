@@ -106,8 +106,25 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Revert to NULL-permissive policies (restores pre-032 state)."""
-    for table in ALL_TABLES:
+    """Revert to NULL-permissive policies for tables owned exclusively by 033.
+
+    Tables already fixed by migration 032 (billing_customers,
+    billing_subscriptions, billing_webhook_events, crm_sync_jobs) are
+    intentionally excluded: reverting them here would leave the database at
+    revision 032 with pre-032 leaky RLS on those tables.
+    """
+    # Only the tables that 033 exclusively introduced — not the 4 tables
+    # that 032 already fixed and whose downgrade is 032's responsibility.
+    _033_ONLY_TABLES = [
+        t for t in ALL_TABLES
+        if t not in {
+            "billing_customers",
+            "billing_subscriptions",
+            "billing_webhook_events",
+            "crm_sync_jobs",
+        }
+    ]
+    for table in _033_ONLY_TABLES:
         op.execute(
             f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}"
         )
