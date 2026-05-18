@@ -227,6 +227,7 @@ export interface paths {
          *     Example:
          *         POST /v1/workflows/wf-123/resume
          *         {
+         *             "user_id": "user-001",
          *             "resume_data": {"approved": true, "notes": "Proceed with ROI calc"}
          *         }
          *
@@ -1306,11 +1307,12 @@ export interface paths {
          *     Salesforce sends notifications when Accounts, Opportunities, or Contacts
          *     are created/updated. We trigger incremental sync for affected records.
          *
-         *     **Production Multi-Tenancy:**
-         *     The `tenant_id` query parameter is required in production. Configure your
-         *     Salesforce outbound message URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
-         *     The handler verifies both tenant existence and webhook token authenticity
-         *     before syncing to prevent cross-tenant data leakage.
+         *     **Tenant Binding:**
+         *     Configure the Salesforce outbound message URL with
+         *     `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
+         *     The handler requires an authenticated tenant-bound integration for normal
+         *     operation and only allows tenant-free local development flows behind an
+         *     explicit development-only flag.
          *
          *     Headers:
          *         X-Webhook-Token: Per-tenant opaque token (preferred)
@@ -1342,11 +1344,12 @@ export interface paths {
          *     HubSpot sends notifications when objects are created, updated, or deleted.
          *     We trigger incremental sync for affected company (account) records.
          *
-         *     **Production Multi-Tenancy:**
-         *     The `tenant_id` query parameter is required in production. Configure your
-         *     HubSpot webhook URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
-         *     The handler verifies both tenant existence and webhook token authenticity
-         *     before syncing to prevent cross-tenant data leakage.
+         *     **Tenant Binding:**
+         *     Configure the HubSpot webhook URL with
+         *     `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
+         *     The handler requires an authenticated tenant-bound integration for normal
+         *     operation and only allows tenant-free local development flows behind an
+         *     explicit development-only flag.
          *
          *     Headers:
          *         X-Webhook-Token: Per-tenant opaque token (preferred)
@@ -2044,7 +2047,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/integrations/salesforce/oauth/authorize": {
+    "/v1/integrations/{provider}/sync-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sync Jobs */
+        get: operations["list_sync_jobs_v1_integrations__provider__sync_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{provider}/sync-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sync Job */
+        get: operations["get_sync_job_v1_integrations__provider__sync_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/salesforce/oauth/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -2055,9 +2092,30 @@ export interface paths {
         put?: never;
         /**
          * Start Salesforce Oauth
-         * @description Generate the Salesforce OAuth authorize URL for the current tenant.
+         * @description Canonical Salesforce OAuth start route.
          */
-        post: operations["start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post"];
+        post: operations["start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/salesforce/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Salesforce Oauth Compat
+         * @deprecated
+         * @description Deprecated compatibility alias for the old OAuth start route.
+         */
+        post: operations["start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4457,8 +4515,6 @@ export interface components {
             status: string;
             /** Archived At */
             archived_at: string;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * AuditEventInfo
@@ -4835,6 +4891,51 @@ export interface components {
          * @enum {string}
          */
         CRMProvider: "salesforce" | "hubspot" | "manual";
+        /** CRMSyncJobListResponse */
+        CRMSyncJobListResponse: {
+            /** Jobs */
+            jobs: components["schemas"]["CRMSyncJobResponse"][];
+        };
+        /** CRMSyncJobResponse */
+        CRMSyncJobResponse: {
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+            /** Requested By */
+            requested_by?: string | null;
+            /** Queued At */
+            queued_at?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Finished At */
+            finished_at?: string | null;
+            /**
+             * Records Synced
+             * @default 0
+             */
+            records_synced: number;
+            /**
+             * Records Updated
+             * @default 0
+             */
+            records_updated: number;
+            /**
+             * Records Failed
+             * @default 0
+             */
+            records_failed: number;
+            /** Error Summary */
+            error_summary?: string | null;
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
         /**
          * CaseListItem
          * @description Case list response item.
@@ -5941,7 +6042,7 @@ export interface components {
              * Api Key
              * @description API key/token for the CRM
              */
-            api_key: string;
+            api_key?: string | null;
             /**
              * Api Secret
              * @description API secret (if required)
@@ -6626,8 +6727,6 @@ export interface components {
             account_id: string;
             /** Value Path Category */
             value_path_category: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * PromotionLogResponse
@@ -6994,6 +7093,8 @@ export interface components {
             request_id?: string | null;
             /** Org Id */
             org_id?: unknown | null;
+            /** Workspace Id */
+            workspace_id?: unknown | null;
             /** Tenant Role */
             tenant_role?: string | null;
             /**
@@ -7009,6 +7110,8 @@ export interface components {
             accessed_tenant_ids?: string[];
             /** Privileged Session Start */
             privileged_session_start?: number | null;
+            /** Impersonator Id */
+            impersonator_id?: string | null;
             /**
              * Locked
              * @default false
@@ -7132,8 +7235,13 @@ export interface components {
         };
         /** SalesforceOAuthAuthorizeResponse */
         SalesforceOAuthAuthorizeResponse: {
-            /** Authorize Url */
-            authorize_url: string;
+            /** Authorization Url */
+            authorization_url: string;
+            /**
+             * Authorize Url
+             * @description Deprecated compatibility alias
+             */
+            authorize_url?: string | null;
             /** State Expires At */
             state_expires_at: string;
         };
@@ -7600,6 +7708,8 @@ export interface components {
         SyncTriggerResponse: {
             /** Sync Id */
             sync_id: string;
+            /** Job Id */
+            job_id: string;
             /** Status */
             status: string;
             /** Provider */
@@ -8388,8 +8498,6 @@ export interface components {
          *
          *     Spec requires:
          *     - workflow_type: enum [whitespace_analysis, business_case_generation]
-         *     - tenant_id: string
-         *     - user_id: string
          *     - inputs: object
          */
         WorkflowCreateRequest: {
@@ -11112,6 +11220,20 @@ export interface operations {
                     "application/json": components["schemas"]["CheckpointListResponse"];
                 };
             };
+            /** @description Workflow out of tenant scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Workflow not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -11143,6 +11265,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StateSnapshotResponse"];
                 };
+            };
+            /** @description Workflow out of tenant scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Workflow/checkpoint not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -11179,6 +11315,20 @@ export interface operations {
                     "application/json": components["schemas"]["StateDiffResponse"];
                 };
             };
+            /** @description Workflow out of tenant scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Workflow/checkpoint not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -11213,6 +11363,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResumeFromCheckpointResponse"];
                 };
+            };
+            /** @description Workflow out of tenant scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Workflow/checkpoint not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -11769,7 +11933,105 @@ export interface operations {
             };
         };
     };
-    start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post: {
+    list_sync_jobs_v1_integrations__provider__sync_jobs_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                provider: components["schemas"]["CRMProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CRMSyncJobListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_sync_job_v1_integrations__provider__sync_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["CRMProvider"];
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CRMSyncJobResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post: {
         parameters: {
             query?: never;
             header?: never;

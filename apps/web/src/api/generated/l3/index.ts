@@ -7667,6 +7667,27 @@ export interface components {
             /** @description Tree statistics */
             stats: components["schemas"]["ValueTreeStats"];
         };
+        /** EntityContextResponse */
+        EntityContextResponse: {
+            /** Entity Id */
+            entity_id: string;
+            /** Center */
+            center: Record<string, never>;
+            /** Neighbors */
+            neighbors: Record<string, never>[];
+            /** Relationships */
+            relationships: Record<string, never>[];
+            /** Entity Count */
+            entity_count: number;
+            /** Relationship Count */
+            relationship_count: number;
+            /**
+             * Pagination
+             * @description Pagination info: {has_more, next_cursor, returned_count}
+             * @default null
+             */
+            pagination: Record<string, never> | null;
+        };
     };
     responses: never;
     parameters: never;

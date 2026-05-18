@@ -102,11 +102,31 @@ Generate types for the domains with the highest orphan endpoint counts:
 
 ### 4.2 Phase 2 (Sprint 4-8): Remaining Domains
 
-Generate types for Ontology, Workflows, Formulas, ValuePacks, Governance, Settings.
+**Status: Complete (2026-05-18)**
+
+All Phase 2 domains are covered by existing OpenAPI specs and generated types are committed:
+
+| Domain | OpenAPI Spec | Generated Output |
+|--------|-------------|-----------------|
+| Ontology | `contracts/openapi/layer2-extraction.json` | `src/api/generated/l2/index.ts` |
+| Formulas | `contracts/openapi/layer3-knowledge.json` | `src/api/generated/l3/index.ts` |
+| ValuePacks | `contracts/openapi/layer3-knowledge.json` | `src/api/generated/l3/index.ts` |
+| Workflows | `contracts/openapi/layer4-agents.json` | `src/api/generated/l4/index.ts` |
+| Governance | `contracts/openapi/layer4-agents.json` | `src/api/generated/l4/index.ts` |
+| Settings | `contracts/openapi/layer4-agents.json` | `src/api/generated/l4/index.ts` |
 
 ### 4.3 Phase 3 (Sprint 9-12): Full Coverage
 
-Generate types for Tools, Analysis, CRM Webhooks, OIDC SSO, and any remaining domains.
+**Status: Complete (2026-05-18)**
+
+All Phase 3 domains are covered by existing OpenAPI specs and generated types are committed:
+
+| Domain | OpenAPI Spec | Generated Output |
+|--------|-------------|-----------------|
+| Tools | `contracts/openapi/layer4-agents.json` | `src/api/generated/l4/index.ts` |
+| CRM Webhooks | `contracts/openapi/layer4-agents.json` | `src/api/generated/l4/index.ts` |
+
+**Note:** Analysis and OIDC SSO endpoints are not yet present in the checked-in OpenAPI specs. When those routes are added to the backend (see Sprint 2B for OIDC), regenerate types by running `pnpm run generate:types`.
 
 ---
 
@@ -140,3 +160,4 @@ The `type_sync_check` CI gate runs on every PR:
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0.0 | 2026-04-26 | Initial ratification |
+| 1.1.0 | 2026-05-18 | Phase 2–3 domains completed: Ontology (L2), Formulas/Packs (L3), Workflows/Settings/Governance/Tools/CRM (L4) types generated and committed. Stale L1/L3/L4/L6 types regenerated to match current OpenAPI specs. |

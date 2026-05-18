@@ -111,11 +111,44 @@ The seed service is not started automatically.
 From repo root, run the fail-closed automation gate:
 
 ```bash
+# Validate compose syntax and frontend guardrails only — no containers started.
 scripts/ci/run_live_workflow_validation.sh --config-only
+
+# Start the live stack, probe all layer health endpoints, write a timestamped
+# evidence artifact, then tear down. Completes in ~5 minutes.
+scripts/ci/run_live_workflow_validation.sh --smoke
+
+# Full validation with seed and Playwright P0 suite.
 scripts/ci/run_live_workflow_validation.sh --seed --playwright
 ```
 
-The first command validates compose resolution and live-mode guardrails without starting containers. The second command starts or rebuilds the canonical live stack, waits for required service health, probes the frontend and Layer 4 health endpoints, then runs guarded seed and P0 Playwright validation. Evidence is written to `artifacts/live-workflow-validation/`, including a resolved compose file, execution log, and Markdown summary.
+### Validation Modes
+
+| Mode | Containers started | Health probed | Teardown | CI trigger |
+|---|---|---|---|---|
+| `--config-only` | No | No | N/A | PR/push to `main` (path-filtered) |
+| `--smoke` | Yes | Yes (all layers) | Yes (automatic) | Every push to `release/**` |
+| `--no-start` | No | Yes (running stack) | No | Manual / `workflow_dispatch` |
+| `--remote` | No | Yes (URL-based) | No | Manual / `workflow_dispatch` |
+| (default / `full`) | Yes | Yes | No | Manual / `workflow_dispatch` |
+
+### Smoke Mode Evidence Artifact
+
+`--smoke` writes a SHA-stamped JSON artifact to:
+
+```
+artifacts/live-workflow-validation/live-stack-smoke-evidence-<sha>.json
+```
+
+The artifact contains per-layer container health states, endpoint probe results, and a top-level `result: PASS | FAIL` field. It is uploaded to GitHub Actions with 90-day retention under the artifact name `live-stack-smoke-evidence-<sha>`.
+
+This artifact is the evidence required to close the live-stack CI gap identified in Sprint 1A of `docs/launch/sprint-launch-plan.md`.
+
+### CI Wiring
+
+- **PR / push to `main`** (path-filtered): `live-validation-gate` job runs `--config-only`.
+- **Push to `release/**`** (any path): `live-smoke-gate` job runs `--smoke` automatically.
+- **`workflow_dispatch`**: Both jobs are available; select mode from the dropdown.
 
 ## Playwright Live Commands
 

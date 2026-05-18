@@ -37,7 +37,7 @@ allowed_mismatches:
     review_by: 2026-08-18
 
   - layer: all
-    path: /health` (per layer)
+    path: /health (per layer)
     method: GET
     reason: >
       Operational health endpoints exist per layer but are excluded from
@@ -46,3 +46,12 @@ allowed_mismatches:
     owner: platform
     # Reviewed 2026-05-18: by design; health endpoints are infra-facing only.
     review_by: 2026-08-18
+
+# Phase 2-3 domain coverage note (Sprint 1B — 2026-05-18):
+# All Phase 2-3 domains (Ontology, Workflows, Formulas, ValuePacks, Governance,
+# Settings, Tools, CRM Webhooks) are covered by existing OpenAPI specs:
+#   - Ontology       -> contracts/openapi/layer2-extraction.json
+#   - Formulas/Packs -> contracts/openapi/layer3-knowledge.json
+#   - Workflows/Settings/Governance/Tools/CRM -> contracts/openapi/layer4-agents.json
+# Generated TypeScript types are committed to apps/web/src/api/generated/.
+# No allowlist entries are required for Phase 2-3 domains.
