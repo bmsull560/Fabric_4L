@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+import base64
+import hashlib
+import hmac
+import json
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
@@ -111,3 +115,52 @@ async def test_complete_salesforce_oauth_rejects_invalid_state(client: AsyncClie
 
     assert response.status_code == 303
     assert "oauth_status=error" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_complete_salesforce_oauth_rejects_state_with_invalid_tenant_mapping(
+    client: AsyncClient,
+    app: FastAPI,
+) -> None:
+    service = SimpleNamespace()
+    service.exchange_salesforce_oauth_code = pytest.fail
+    service.upsert_salesforce_oauth_integration = pytest.fail
+    app.dependency_overrides[integrations_route.get_integration_service] = lambda: service
+
+    auth_response = await client.post(
+        "/v1/integrations/salesforce/oauth/start",
+        json={"return_to": "/context/integrations?provider=salesforce"},
+    )
+    state = parse_qs(urlparse(auth_response.json()["authorization_url"]).query)["state"][0]
+    payload, signature = state.split(".", 1)
+    tampered_state = f"{payload}.{signature[:-1]}0" if signature[-1] != "0" else f"{payload}.{signature[:-1]}1"
+
+    response = await client.get(
+        "/v1/integrations/salesforce/oauth/callback",
+        params={"code": "auth-code", "state": tampered_state},
+    )
+
+    assert response.status_code == 303
+    assert "oauth_status=error" in response.headers["location"]
+
+
+def test_decode_signed_state_rejects_non_uuid_tenant(monkeypatch) -> None:
+    monkeypatch.setenv("JWT_SECRET", "test-jwt-secret-1234567890")
+    payload = {
+        "tenant_id": "tenant-not-uuid",
+        "user_id": "user-123",
+        "return_to": "/context/integrations?provider=salesforce",
+        "oauth_base_url": "https://login.salesforce.com",
+        "iat": 2_000_000_000,
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+    signature = hmac.new(
+        b"test-jwt-secret-1234567890",
+        encoded_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    state = f"{encoded_payload}.{signature}"
+
+    with pytest.raises(integrations_route.IntegrationValidationError, match="tenant mapping is invalid"):
+        integrations_route._decode_signed_state(state)
