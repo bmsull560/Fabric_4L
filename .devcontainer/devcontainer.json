@@ -31,29 +31,35 @@
     }
   },
   "forwardPorts": [
-    3000,
+    3001,
     8000,
-    8001,
-    8002,
     8004,
-    8005,
-    8006,
+    8007,
+    8080,
     5432,
     6379,
     7474,
     7687
   ],
   "portsAttributes": {
-    "3000": {
+    "3001": {
       "label": "Frontend",
-      "onAutoForward": "notify"
+      "onAutoForward": "openBrowserOnce"
     },
     "8000": {
-      "label": "API",
+      "label": "API Gateway",
       "onAutoForward": "silent"
     },
-    "8001": {
-      "label": "Layer 3 Knowledge API",
+    "8004": {
+      "label": "Layer 4 Agents",
+      "onAutoForward": "silent"
+    },
+    "8007": {
+      "label": "Layer 2-5 Signal Refinery",
+      "onAutoForward": "silent"
+    },
+    "8080": {
+      "label": "Keycloak",
       "onAutoForward": "silent"
     },
     "5432": {
