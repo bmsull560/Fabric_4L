@@ -32,6 +32,15 @@ class VaultSourceNotSupportedError(RuntimeError):
     See ``docs/secrets-management.md`` and ``docs/governance/compatibility-debt-registry.md``.
     """
 
+    def __init__(self, source_name: str) -> None:
+        self.source_name = source_name
+        super().__init__(
+            f"Vault config source '{source_name}' is not supported in v1. "
+            "Use External Secrets Operator (ESO) to sync Vault secrets into Kubernetes "
+            "Secrets and configure the source as type: env. "
+            "See docs/governance/compatibility-debt-registry.md for the migration path."
+        )
+
 
 class Environment(str, Enum):
     """Deployment environments."""
@@ -568,12 +577,7 @@ class ConfigurationManager:
         Raises:
             VaultSourceNotSupportedError: Always. Vault source type is not supported in v1.
         """
-        raise VaultSourceNotSupportedError(
-            f"Vault config source '{source.name}' is not supported in v1. "
-            "Use External Secrets Operator (ESO) to sync Vault secrets into Kubernetes "
-            "Secrets and configure the source as type: env. "
-            "See docs/governance/compatibility-debt-registry.md for the migration path."
-        )
+        raise VaultSourceNotSupportedError(source.name)
 
     def _convert_env_value(self, value: str) -> Any:
         """Convert environment variable value to appropriate type.

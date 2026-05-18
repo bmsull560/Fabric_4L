@@ -167,6 +167,10 @@ jobs:
         with:
           kustomize-version: "5.4.3"
 
+      - name: Guard against placeholder digests
+        run: |
+          bash scripts/check-no-placeholder-digests.sh k8s/envs/prod/kustomization.yaml
+
       - name: Update Dev overlay with new image tags
         run: |
           set -euo pipefail
