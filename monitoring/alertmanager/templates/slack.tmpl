@@ -15,6 +15,7 @@
 *Alert:* {{ .Annotations.summary }}
 *Description:* {{ .Annotations.description }}
 {{ if .Annotations.runbook_url }}*Runbook:* <{{ .Annotations.runbook_url }}|View Runbook>{{ end }}
+{{ if .Annotations.escalation_url }}*Escalation:* <{{ .Annotations.escalation_url }}|Escalation Policy>{{ end }}
 *Silence:* <{{ .GeneratorURL }}|Silence>
 ---
 {{ end }}

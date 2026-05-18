@@ -118,7 +118,8 @@ receivers:
           *Layer:* {{ .Labels.layer | default "unknown" }}
           *Namespace:* {{ .Labels.namespace }}
           *Description:* {{ .Annotations.description }}
-          *Runbook:* {{ .Annotations.runbook_url }}
+          *Runbook:* {{ .Annotations.runbook_url | default "n/a" }}
+          *Escalation:* {{ .Annotations.escalation_url | default "n/a" }}
           {{ end }}
         color: 'danger'
         footer: 'Prometheus Alertmanager'
@@ -136,6 +137,8 @@ receivers:
           *Layer:* {{ .Labels.layer | default "unknown" }}
           *Namespace:* {{ .Labels.namespace }}
           *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url | default "n/a" }}
+          *Escalation:* {{ .Annotations.escalation_url | default "n/a" }}
           {{ end }}
         color: 'warning'
         footer: 'Prometheus Alertmanager'
@@ -165,6 +168,8 @@ receivers:
           {{ range .Alerts }}
           *Alert:* {{ .Annotations.summary }}
           *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url | default "n/a" }}
+          *Escalation:* {{ .Annotations.escalation_url | default "n/a" }}
           {{ end }}
         color: 'warning'
 
@@ -178,6 +183,8 @@ receivers:
           {{ range .Alerts }}
           *Alert:* {{ .Annotations.summary }}
           *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url | default "n/a" }}
+          *Escalation:* {{ .Annotations.escalation_url | default "n/a" }}
           {{ end }}
         color: 'warning'
 
