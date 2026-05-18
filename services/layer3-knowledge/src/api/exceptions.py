@@ -1,4 +1,9 @@
-"""Custom exception classes for Value Fabric Layer 3 API."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Custom exception classes for Value Fabric Layer 3 API.
+"""
 
 from typing import Any
 

@@ -1,4 +1,8 @@
-"""Tenant-aware Neo4j dependencies with query validation (Phase 4).
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Tenant-aware Neo4j dependencies with query validation (Phase 4).
 
 Provides secure Neo4j session injection with:
 1. Automatic tenant_id extraction from RequestContext

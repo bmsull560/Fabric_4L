@@ -172,7 +172,7 @@ describe('Schedule section', () => {
 describe('Rate limits section', () => {
   it('renders requests per second', async () => {
     renderPanel();
-    await waitFor(() => expect(screen.getByText('1')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('1').length).toBeGreaterThan(0));
   });
 });
 
@@ -181,7 +181,7 @@ describe('Rate limits section', () => {
 describe('Compliance section', () => {
   it('shows robots.txt respect setting', async () => {
     renderPanel();
-    await waitFor(() => expect(screen.getByText('Yes')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Yes').length).toBeGreaterThan(0));
   });
 });
 

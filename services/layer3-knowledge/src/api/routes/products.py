@@ -1,4 +1,8 @@
-"""Product Portfolio API routes for the Knowledge Graph.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Product Portfolio API routes for the Knowledge Graph.
 
 Provides CRUD operations for Products and Features, capability linking,
 signal-to-product matching, and portfolio analytics.

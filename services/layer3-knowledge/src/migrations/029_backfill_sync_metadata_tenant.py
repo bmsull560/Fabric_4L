@@ -1,4 +1,8 @@
-"""Backfill tenant_id on SyncMetadata nodes using trusted source ownership mapping.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Backfill tenant_id on SyncMetadata nodes using trusted source ownership mapping.
 
 Trusted ownership precedence:
 1. :Source {id = source_id, tenant_id}

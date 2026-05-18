@@ -16,12 +16,16 @@ import {
 } from './useCompetitiveIntel';
 
 // Mock the apiClient
-vi.mock('@/api/client', () => ({
-  apiClient: {
-    get: vi.fn(),
-    post: vi.fn(),
-  },
-}));
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/client')>();
+  return {
+    ...actual,
+    apiClient: {
+      get: vi.fn(),
+      post: vi.fn(),
+    },
+  };
+});
 
 const sampleBattlecard: Battlecard = {
   id: 'bc-001',

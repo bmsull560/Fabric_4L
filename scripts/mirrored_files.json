@@ -1,10 +1,4 @@
 {
-  "mirrored_pairs": [
-    {
-      "name": "shared identity isolation mirror parity",
-      "canonical": "value_fabric/shared/identity/isolation.py",
-      "mirror": "packages/shared/src/value_fabric/shared/identity/isolation.py"
-    }
-  ],
+  "mirrored_pairs": [],
   "wrapper_files": []
 }

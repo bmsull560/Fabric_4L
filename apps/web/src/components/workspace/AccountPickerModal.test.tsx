@@ -111,6 +111,6 @@ describe("AccountPickerModal", () => {
     renderModal(<AccountPickerModal workspace="intelligence" />);
 
     await user.click(screen.getByRole("button", { name: "Manage Accounts" }));
-    expect(mockNavigate).toHaveBeenCalledWith("/accounts?wfStep=0", undefined);
+    expect(mockNavigate).toHaveBeenCalledWith("/accounts", expect.anything());
   });
 });

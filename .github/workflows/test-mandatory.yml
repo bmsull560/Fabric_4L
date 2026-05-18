@@ -43,7 +43,7 @@ jobs:
       - name: Run mandatory test profile
         env:
           PYTHONPATH: ${{ github.workspace }}/packages/shared/src:${{ github.workspace }}
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
         run: |
           # MANDATORY: unit + contract + security tests
           # These fail (never skip) if dependencies are missing

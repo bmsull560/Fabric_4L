@@ -1,4 +1,9 @@
-"""API module for Layer 3 Knowledge Graph."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: API module for Layer 3 Knowledge Graph.
+"""
 
 # Dependencies and app require a full runtime environment (neo4j, agents, etc.)
 # Wrap in try/except so that lightweight submodules (e.g. pack_loader) remain

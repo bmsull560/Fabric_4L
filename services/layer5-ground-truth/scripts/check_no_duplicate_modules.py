@@ -12,6 +12,13 @@ from pathlib import Path
 DEFAULT_CANONICAL = "services/layer5-ground-truth/src/layer5_ground_truth"
 DEFAULT_SHIM = "value_fabric/layer5"
 
+# Module-level roots used by tests that monkeypatch these attributes to inject
+# temporary directories.  main() and _shim_violations(repo_root) use these as
+# defaults when no explicit repo_root is provided.
+_REPO_ROOT: Path = Path(__file__).resolve().parents[3]
+CANONICAL_ROOT: Path = _REPO_ROOT / DEFAULT_CANONICAL
+SHIM_ROOT: Path = _REPO_ROOT / DEFAULT_SHIM
+
 
 def _py_files(root: Path) -> list[Path]:
     return sorted(path for path in root.rglob("*.py") if "__pycache__" not in path.parts)
@@ -63,9 +70,31 @@ def _is_namespace_package_shim(shim_init: Path, canonical_root: Path) -> bool:
     )
 
 
-def _shim_violations(repo_root: Path) -> list[str]:
-    canonical_root = repo_root / DEFAULT_CANONICAL
-    shim_root = repo_root / DEFAULT_SHIM
+def _shim_violations(repo_root: Path | None = None) -> list[str]:
+    """Return a list of shim-integrity violations.
+
+    When called with no arguments (e.g. from tests that monkeypatch the
+    module-level CANONICAL_ROOT / SHIM_ROOT attributes), reads those attributes
+    from this module's globals so that monkeypatching works correctly.
+    """
+    import sys as _sys
+    # Resolve the live module object so monkeypatching CANONICAL_ROOT / SHIM_ROOT
+    # is respected even when the module was loaded via spec_from_file_location.
+    _mod = None
+    for _m in _sys.modules.values():
+        if getattr(_m, "__file__", None) == __file__:
+            _mod = _m
+            break
+    if repo_root is None:
+        canonical_root = getattr(_mod, "CANONICAL_ROOT", CANONICAL_ROOT) if _mod else CANONICAL_ROOT
+        shim_root = getattr(_mod, "SHIM_ROOT", SHIM_ROOT) if _mod else SHIM_ROOT
+        # repo_root is used for relative path display; derive it from canonical_root
+        # (canonical_root is <repo>/services/layer5-ground-truth/src/layer5_ground_truth
+        # or a tmp_path in tests — use its grandparent as the display root).
+        repo_root = canonical_root.parent.parent
+    else:
+        canonical_root = repo_root / DEFAULT_CANONICAL
+        shim_root = repo_root / DEFAULT_SHIM
     shim_init = shim_root / "__init__.py"
     violations: list[str] = []
 
@@ -121,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    violations = _shim_violations(args.repo_root)
+    violations = _shim_violations(repo_root=args.repo_root)
     if not violations:
         print("OK: Layer 5 canonical tree and compatibility shims are aligned.")
         return 0

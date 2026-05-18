@@ -21,6 +21,8 @@ on:
         required: false
         type: boolean
 
+permissions: read-all
+
 env:
   REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
   IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
@@ -85,6 +87,7 @@ jobs:
           echo "Image ref is immutable: $ref"
 
       - name: Build and push image
+        id: build
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671 # v5
         with:
           context: ${{ matrix.layer == 'frontend' && 'frontend' || format('services/{0}', matrix.layer) }}
@@ -96,6 +99,25 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
+
+      - name: Write build metadata artifact
+        run: |
+          mkdir -p /tmp/build-metadata
+          cat > /tmp/build-metadata/build-metadata-${{ matrix.layer }}.json <<'EOF'
+          {
+            "layer": "${{ matrix.layer }}",
+            "image_digest": "${{ steps.build.outputs.digest }}",
+            "published_tag": "sha-${{ steps.sha.outputs.short }}",
+            "source_commit_sha": "${{ github.sha }}"
+          }
+          EOF
+
+      - name: Upload build metadata artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata-${{ matrix.layer }}
+          path: /tmp/build-metadata/build-metadata-${{ matrix.layer }}.json
+          retention-days: 7
 
   test-images:
     name: Test Built Images

@@ -1,15 +1,19 @@
-"""Regression guard for Layer 3 models canonical/shim topology."""
+"""Regression guard for Layer 3 models canonical topology.
+
+Architecture note: value_fabric/layer3/__init__.py is a path-redirect shim
+that appends services/layer3-knowledge/src/ to __path__.  The canonical
+models source is therefore services/layer3-knowledge/src/api/models.py —
+there is no separate shim file at value_fabric/layer3/api/models.py.
+"""
 
 from pathlib import Path
 
-CANONICAL_MODELS = Path("value_fabric/layer3/api/models.py")
-COMPAT_MODELS = Path("services/layer3-knowledge/src/api/models.py")
-
-
-EXPECTED_COMPAT_CONTENT = '"""Compatibility shim for Layer 3 API models.\n\nCanonical implementation lives in ``value_fabric.layer3.api.models`` per\n``docs/reference/layer-runtime-path-governance.md``.\n"""\n\nfrom value_fabric.layer3.api.models import *  # noqa: F401,F403\n'
+# Canonical source — the redirect shim makes this the authoritative file.
+CANONICAL_MODELS = Path("services/layer3-knowledge/src/api/models.py")
 
 
 def test_layer3_canonical_models_is_substantive() -> None:
+    """The canonical models file must define the expected Pydantic model classes."""
     canonical_source = CANONICAL_MODELS.read_text(encoding="utf-8")
 
     assert "class HealthResponse(BaseModel):" in canonical_source
@@ -18,8 +22,17 @@ def test_layer3_canonical_models_is_substantive() -> None:
 
 
 def test_layer3_compat_models_remains_shim_only() -> None:
-    compat_source = COMPAT_MODELS.read_text(encoding="utf-8")
+    """The canonical models file must not be a self-referential re-export shim.
 
-    assert compat_source == EXPECTED_COMPAT_CONTENT
-    assert "class " not in compat_source
-    assert "from pydantic import" not in compat_source
+    A re-export of value_fabric.layer3.api.models from within
+    services/layer3-knowledge/src/api/models.py would be circular because
+    value_fabric.layer3 redirects to services/layer3-knowledge/src/.
+    """
+    canonical_source = CANONICAL_MODELS.read_text(encoding="utf-8")
+
+    assert "from value_fabric.layer3.api.models import *" not in canonical_source, (
+        "Circular self-import detected: services/layer3-knowledge/src/api/models.py "
+        "IS value_fabric.layer3.api.models via the path-redirect shim."
+    )
+    # Must contain substantive class definitions, not be an empty wrapper
+    assert "class " in canonical_source

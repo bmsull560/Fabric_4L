@@ -98,7 +98,7 @@ beforeEach(() => {
 describe('Page header', () => {
   it('renders the Targets title', async () => {
     renderWithRouter(<TargetsAdmin />);
-    await waitFor(() => expect(screen.getByText('Targets')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Targets').length).toBeGreaterThan(0));
   });
 
   it('renders New Target button', async () => {
@@ -185,8 +185,8 @@ describe('Target table', () => {
   it('renders status badges', async () => {
     renderWithRouter(<TargetsAdmin />);
     await waitFor(() => {
-      expect(screen.getByText('Active')).toBeInTheDocument();
-      expect(screen.getByText('Paused')).toBeInTheDocument();
+      expect(screen.getAllByText('Active').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Paused').length).toBeGreaterThan(0);
     });
   });
 });

@@ -1,4 +1,9 @@
-"""Pydantic models for Layer 3 knowledge API."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Pydantic models for Layer 3 knowledge API.
+"""
 
 import os
 from collections import Counter

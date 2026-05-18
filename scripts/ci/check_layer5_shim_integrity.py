@@ -20,8 +20,8 @@ _layer5_source_contract = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_layer5_source_contract)
 
 
-def main() -> int:
-    return _layer5_source_contract.main()
+def main(argv: list[str] | None = None) -> int:
+    return _layer5_source_contract.main(argv=argv)
 
 
 if __name__ == "__main__":

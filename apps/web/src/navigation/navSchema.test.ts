@@ -50,7 +50,11 @@ describe("resolveBreadcrumbs", () => {
       "Hypothesis",
       "Opportunities / Value Paths",
     ]);
+    // /drivers → "Driver Tree" (section root)
+    // /drivers/acct-123 → "Driver Tree" (account-level driver-tree node)
+    // /drivers/acct-123/evidence → "Driver Tab" (tab-level node)
     expect(resolveBreadcrumbs("/drivers/acct-123/evidence").map((c) => c.label)).toEqual([
+      "Driver Tree",
       "Driver Tree",
       "Driver Tab",
     ]);

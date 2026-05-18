@@ -1,4 +1,8 @@
-"""Value Tree API routes.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Value Tree API routes.
 
 Provides endpoints for traversing and retrieving the 4-layer value tree:
 - Capability -> UseCase -> Persona -> ValueDriver

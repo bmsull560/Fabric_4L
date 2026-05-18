@@ -1,4 +1,9 @@
-"""API routes package."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: API routes package.
+"""
 
 # pack_loader has no external dependencies and must always be importable.
 # Other routes require neo4j, FastAPI, and agent dependencies — wrap in

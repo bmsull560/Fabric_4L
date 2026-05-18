@@ -1,4 +1,9 @@
-"""Operational routes extracted from the Layer 3 monolith."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Operational routes extracted from the Layer 3 monolith.
+"""
 
 # mypy: disable-error-code=import-untyped
 

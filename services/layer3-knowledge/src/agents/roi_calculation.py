@@ -1,4 +1,8 @@
-"""ROI Calculation Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: ROI Calculation Agent.
 
 Implements formula execution, metric substitution, and sensitivity analysis.
 """

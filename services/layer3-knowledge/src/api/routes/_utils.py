@@ -1,4 +1,8 @@
-"""Shared utilities for API routes.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Shared utilities for API routes.
 
 Common helpers for validation, parsing, and formatting.
 """

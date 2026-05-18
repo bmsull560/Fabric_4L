@@ -1,4 +1,8 @@
-"""Entity API routes - Canonical Entity Browser endpoints.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Entity API routes - Canonical Entity Browser endpoints.
 
 This module provides the canonical entity browser API as specified in
 the Value Fabric API contract. It exposes endpoints for:

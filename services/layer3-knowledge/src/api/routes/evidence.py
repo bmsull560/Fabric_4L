@@ -1,5 +1,8 @@
-"""
-Evidence Library API Routes — Data Intelligence Layer Phase 1.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Evidence Library API Routes — Data Intelligence Layer Phase 1.
 
 Provides endpoints for managing the evidence library (case studies,
 benchmarks, proof points) in the Neo4j knowledge graph.

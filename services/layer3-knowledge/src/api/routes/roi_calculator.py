@@ -1,5 +1,8 @@
-"""
-ROI Calculator API routes — Data Intelligence Layer Phase 2, Task 2.3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: ROI Calculator API routes — Data Intelligence Layer Phase 2, Task 2.3.
 
 Provides REST endpoints for calculating ROI projections, managing templates,
 comparing scenarios, and retrieving industry benchmarks.

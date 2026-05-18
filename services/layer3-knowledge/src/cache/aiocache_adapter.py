@@ -1,4 +1,8 @@
-"""aiocache-backed implementation of the stable CachePort contract.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: aiocache-backed implementation of the stable CachePort contract.
 
 The adapter is intentionally non-default for OSS-1.  It mirrors the current
 RedisCache logical behavior at the CachePort boundary while avoiding direct

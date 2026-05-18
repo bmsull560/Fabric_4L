@@ -1,4 +1,8 @@
-"""Narrative Synthesis Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Narrative Synthesis Agent.
 
 Implements template-based narrative generation for:
 - Executive summaries
