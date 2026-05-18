@@ -1281,7 +1281,9 @@
     },
     {
       "route_id": "GET /v1/cases/{case_id}/workspace/evidence",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/analysis.py"
+      ],
       "openapi_path": "/v1/cases/{case_id}/workspace/evidence",
       "method": "GET",
       "operation_id": "get_workspace_evidence_v1_cases__case_id__workspace_evidence_get",
@@ -1314,7 +1316,9 @@
     },
     {
       "route_id": "POST /v1/cases/{case_id}/workspace/generate",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/analysis.py"
+      ],
       "openapi_path": "/v1/cases/{case_id}/workspace/generate",
       "method": "POST",
       "operation_id": "generate_workspace_intelligence_v1_cases__case_id__workspace_generate_post",
@@ -1349,7 +1353,9 @@
     },
     {
       "route_id": "GET /v1/cases/{case_id}/workspace/{tab_key}",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/analysis.py"
+      ],
       "openapi_path": "/v1/cases/{case_id}/workspace/{tab_key}",
       "method": "GET",
       "operation_id": "get_workspace_tab_v1_cases__case_id__workspace__tab_key__get",
@@ -1381,7 +1387,9 @@
     },
     {
       "route_id": "PUT /v1/cases/{case_id}/workspace/{tab_key}",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/analysis.py"
+      ],
       "openapi_path": "/v1/cases/{case_id}/workspace/{tab_key}",
       "method": "PUT",
       "operation_id": "update_workspace_tab_v1_cases__case_id__workspace__tab_key__put",
@@ -3539,7 +3547,9 @@
     },
     {
       "route_id": "GET /v1/intelligence/account/{account_id}/briefing",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/intelligence.py"
+      ],
       "openapi_path": "/v1/intelligence/account/{account_id}/briefing",
       "method": "GET",
       "operation_id": "get_account_briefing_v1_intelligence_account__account_id__briefing_get",
@@ -3567,7 +3577,9 @@
     },
     {
       "route_id": "GET /v1/intelligence/account/{account_id}/deal-readiness",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/intelligence.py"
+      ],
       "openapi_path": "/v1/intelligence/account/{account_id}/deal-readiness",
       "method": "GET",
       "operation_id": "get_deal_readiness_v1_intelligence_account__account_id__deal_readiness_get",
@@ -3598,7 +3610,9 @@
     },
     {
       "route_id": "GET /v1/intelligence/pipeline-summary",
-      "backend_route_files": [],
+      "backend_route_files": [
+        "services/layer4-agents/src/api/routes/intelligence.py"
+      ],
       "openapi_path": "/v1/intelligence/pipeline-summary",
       "method": "GET",
       "operation_id": "get_pipeline_summary_v1_intelligence_pipeline_summary_get",
