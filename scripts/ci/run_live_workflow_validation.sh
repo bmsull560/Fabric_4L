@@ -23,6 +23,7 @@ RELEASE_CANDIDATE_SHA="${RELEASE_CANDIDATE_SHA:-${GITHUB_SHA:-}}"
 CONFIG_ONLY="false"
 START_STACK="true"
 REMOTE_STACK="false"
+SMOKE_MODE="false"
 FINALIZED="false"
 
 usage() {
@@ -31,6 +32,9 @@ Usage: scripts/ci/run_live_workflow_validation.sh [options]
 
 Options:
   --config-only       Validate docker-compose.live.yml and frontend guardrails only.
+  --smoke             Start the live stack, probe all layer health endpoints, write a
+                      timestamped evidence artifact, then tear down. Completes in ~5 min.
+                      Used for automatic CI validation on release/** and main branches.
   --no-start          Do not start or rebuild containers; probe the currently running stack.
   --remote            Probe an already deployed remote live stack by URL instead of docker-compose containers.
   --seed              Run the guarded live seed step after services become healthy.
@@ -58,6 +62,9 @@ while [[ $# -gt 0 ]]; do
     --config-only)
       CONFIG_ONLY="true"
       START_STACK="false"
+      ;;
+    --smoke)
+      SMOKE_MODE="true"
       ;;
     --no-start)
       START_STACK="false"
@@ -573,6 +580,62 @@ if [[ "$RUN_LIVE_PLAYWRIGHT" == "true" ]]; then
   if ! find "$PLAYWRIGHT_ARTIFACT_DIR/test-results" -type f -name '*.zip' -print -quit 2>/dev/null | grep -q .; then
     fail "FAIL" "Playwright live trace artifact is missing under $PLAYWRIGHT_ARTIFACT_DIR/test-results"
   fi
+fi
+
+if [[ "$SMOKE_MODE" == "true" ]]; then
+  section "smoke evidence artifact"
+  SMOKE_EVIDENCE_FILE="$ARTIFACT_DIR/live-stack-smoke-evidence-${RELEASE_CANDIDATE_SHA:-unknown}.json"
+  ENDPOINT_PROBES_FILE="$ENDPOINT_PROBES_FILE" \
+  HEALTH_STATUS_FILE="$HEALTH_STATUS_FILE" \
+  RELEASE_CANDIDATE_SHA="${RELEASE_CANDIDATE_SHA:-}" \
+  COMPOSE_FILE="$COMPOSE_FILE" \
+  FRONTEND_URL="$FRONTEND_URL" \
+  BACKEND_URL="$BACKEND_URL" \
+  SMOKE_EVIDENCE_FILE="$SMOKE_EVIDENCE_FILE" \
+  node <<'SMOKE_NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const probesFile = process.env.ENDPOINT_PROBES_FILE;
+const healthFile = process.env.HEALTH_STATUS_FILE;
+const probes = [];
+if (fs.existsSync(probesFile)) {
+  const lines = fs.readFileSync(probesFile, 'utf8').trim().split('\n').slice(1);
+  for (const line of lines) {
+    const [name, url, status_code] = line.split('\t');
+    if (name) probes.push({ name, url, status_code: parseInt(status_code, 10) || 0 });
+  }
+}
+const containerHealth = [];
+if (fs.existsSync(healthFile)) {
+  const lines = fs.readFileSync(healthFile, 'utf8').trim().split('\n').filter(Boolean);
+  for (const line of lines) {
+    try { containerHealth.push(JSON.parse(line)); } catch (_) {}
+  }
+}
+const allProbesPass = probes.length > 0 && probes.every(p => p.status_code >= 200 && p.status_code < 400);
+const allContainersHealthy = containerHealth.length > 0 && containerHealth.every(c => c.state === 'healthy' || c.state === 'running');
+const payload = {
+  generatedAt: new Date().toISOString(),
+  mode: 'smoke',
+  releaseCandidateSha: process.env.RELEASE_CANDIDATE_SHA || 'unknown',
+  composeFile: process.env.COMPOSE_FILE,
+  frontendUrl: process.env.FRONTEND_URL,
+  backendUrl: process.env.BACKEND_URL,
+  endpointProbes: probes,
+  containerHealth,
+  allProbesPass,
+  allContainersHealthy,
+  result: allProbesPass && allContainersHealthy ? 'PASS' : 'FAIL',
+};
+fs.mkdirSync(path.dirname(process.env.SMOKE_EVIDENCE_FILE), { recursive: true });
+fs.writeFileSync(process.env.SMOKE_EVIDENCE_FILE, JSON.stringify(payload, null, 2) + '\n');
+console.log('smoke evidence written to ' + process.env.SMOKE_EVIDENCE_FILE);
+console.log('result: ' + payload.result);
+SMOKE_NODE
+
+  section "smoke teardown"
+  docker-compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" down --volumes --remove-orphans 2>&1 | sanitize_stream || true
+  echo "live stack torn down"
 fi
 
 collect_evidence "successful validation"

@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Readiness Check
-         * @description Standard readiness contract for orchestration and probes.
+         * @description Dependency readiness contract for orchestration and probes.
          */
         get: operations["readiness_check_ready_get"];
         put?: never;
@@ -328,7 +328,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Service health payload */
+            /** @description Successful Response */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -336,13 +336,6 @@ export interface operations {
                 content: {
                     "application/json": unknown;
                 };
-            };
-            /** @description Service unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

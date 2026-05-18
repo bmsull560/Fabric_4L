@@ -766,6 +766,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/jobs/licensing-company-intake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a licensing company ontology intake job
+         * @description Creates a skill-aware scraping job that ingests a licensing company website and produces a SourceCorpus for downstream ontology construction.
+         */
+        post: operations["create_licensing_company_intake_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/jobs/prospect-research": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a prospect research job
+         * @description Creates a skill-aware scraping job that researches a sales prospect and produces an AccountIntelligencePacket.
+         */
+        post: operations["create_prospect_research_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/jobs/{job_id}/skill-output": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get skill output for a completed job
+         * @description Returns the structured skill output (SourceCorpus or AccountIntelligencePacket) for a completed skill-aware job.
+         */
+        get: operations["get_job_skill_output"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/source-corpora": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List SourceCorpus records for the authenticated tenant
+         * @description Returns summary objects only. Provenance arrays are excluded from list responses. Tenant isolation is enforced from auth context.
+         */
+        get: operations["list_source_corpora"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/source-corpora/{corpus_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a SourceCorpus by ID
+         * @description Returns the full SourceCorpus including provenance. Returns 404 for cross-tenant access.
+         */
+        get: operations["get_source_corpus_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/account-intelligence-packets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List AccountIntelligencePacket records for the authenticated tenant
+         * @description Returns summary objects only. source_references arrays are excluded from list responses. Tenant isolation is enforced from auth context.
+         */
+        get: operations["list_account_intelligence_packets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/account-intelligence-packets/{packet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an AccountIntelligencePacket by ID
+         * @description Returns the full AccountIntelligencePacket including source_references. Returns 404 for cross-tenant access.
+         */
+        get: operations["get_account_intelligence_packet_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2042,6 +2182,128 @@ export interface components {
             field: string;
             /** Message */
             message: string;
+        };
+        CreateLicensingCompanyIntakeRequest: {
+            /**
+             * Format: uuid
+             * @description ScrapingTarget ID to crawl
+             */
+            target_id: string;
+            /** @description Name of the licensing company */
+            company_name: string;
+            /** @description Optional external company identifier */
+            company_id?: string | null;
+            /** @default 5 */
+            priority: number;
+            /** @description Optional job configuration overrides */
+            override_config?: Record<string, never> | null;
+        };
+        CreateProspectResearchRequest: {
+            /**
+             * Format: uuid
+             * @description ScrapingTarget ID to crawl
+             */
+            target_id: string;
+            /** @description Name of the prospect account */
+            account_name: string;
+            /** @description Optional CRM account identifier */
+            account_id?: string | null;
+            /** @default 5 */
+            priority: number;
+            /** @description Optional job configuration overrides */
+            override_config?: Record<string, never> | null;
+        };
+        SkillJobResponse: {
+            /** Format: uuid */
+            job_id: string;
+            /** @example QUEUED */
+            status: string;
+            /** @example licensing_company_intake */
+            job_type: string;
+            /** @example licensing_company_intake */
+            skill_name: string;
+            queue_position: number;
+            queue_position_metadata?: Record<string, never> | null;
+        };
+        SkillOutputEnvelope: {
+            /** @enum {string} */
+            output_contract: "SourceCorpus" | "AccountIntelligencePacket";
+            /** @description The full skill output matching the output_contract schema */
+            data: Record<string, never>;
+        };
+        SourceCorpusSummary: {
+            /** Format: uuid */
+            id: string;
+            company_name: string;
+            company_id?: string | null;
+            corpus_type: string;
+            /** @description Total number of sources across all source_groups */
+            source_count: number;
+            extraction_status: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        SourceCorpusListResponse: {
+            items: components["schemas"]["SourceCorpusSummary"][];
+            total: number;
+            limit: number;
+            /** @description ISO-8601 cursor for next page */
+            next_cursor?: string | null;
+        };
+        SourceCorpusDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenant_id: string;
+            company_id?: string | null;
+            company_name: string;
+            corpus_type: string;
+            source_groups?: Record<string, never>[];
+            candidate_concepts?: string[];
+            provenance?: Record<string, never>[];
+            extraction_status: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AccountIntelligencePacketSummary: {
+            /** Format: uuid */
+            id: string;
+            account_name: string;
+            account_id?: string | null;
+            packet_type: string;
+            observed_signal_count: number;
+            high_confidence_signal_count: number;
+            /** Format: date-time */
+            created_at: string;
+        };
+        AccountIntelligencePacketListResponse: {
+            items: components["schemas"]["AccountIntelligencePacketSummary"][];
+            total: number;
+            limit: number;
+            /** @description ISO-8601 cursor for next page */
+            next_cursor?: string | null;
+        };
+        AccountIntelligencePacketDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tenant_id: string;
+            account_id?: string | null;
+            account_name: string;
+            packet_type: string;
+            company_profile?: Record<string, never>;
+            observed_signals?: Record<string, never>[];
+            likely_pain_areas?: string[];
+            likely_stakeholders?: string[];
+            source_references?: Record<string, never>[];
+            confidence_summary?: Record<string, never>;
+            next_recommended_events?: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
     };
     responses: never;
@@ -3468,6 +3730,296 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    create_licensing_company_intake_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLicensingCompanyIntakeRequest"];
+            };
+        };
+        responses: {
+            /** @description Job accepted and queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillJobResponse"];
+                };
+            };
+            /** @description Invalid request or unknown job_type */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_prospect_research_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProspectResearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Job accepted and queued */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillJobResponse"];
+                };
+            };
+            /** @description Invalid request or unknown job_type */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_job_skill_output: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Skill output envelope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillOutputEnvelope"];
+                };
+            };
+            /** @description Job has no skill output */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Job not found or output not yet available */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_source_corpora: {
+        parameters: {
+            query?: {
+                company_id?: string;
+                job_id?: string;
+                extraction_status?: string;
+                created_after?: string;
+                created_before?: string;
+                limit?: number;
+                /** @description ISO-8601 created_at of last seen item for cursor pagination */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of SourceCorpus summaries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceCorpusListResponse"];
+                };
+            };
+            /** @description Invalid cursor format */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_source_corpus_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                corpus_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SourceCorpus detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceCorpusDetail"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found or cross-tenant access denied */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_account_intelligence_packets: {
+        parameters: {
+            query?: {
+                account_id?: string;
+                job_id?: string;
+                created_after?: string;
+                created_before?: string;
+                limit?: number;
+                /** @description ISO-8601 created_at of last seen item for cursor pagination */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated list of AccountIntelligencePacket summaries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountIntelligencePacketListResponse"];
+                };
+            };
+            /** @description Invalid cursor format */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_account_intelligence_packet_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                packet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description AccountIntelligencePacket detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountIntelligencePacketDetail"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found or cross-tenant access denied */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

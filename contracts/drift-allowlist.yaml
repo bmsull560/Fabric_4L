@@ -21,7 +21,7 @@ allowed_mismatches:
       regular GET with text/event-stream response. Frontend polls instead
       of using SSE today.
     owner: platform
-    review_by: 2026-05-15
+    review_by: 2026-08-18
 
   - layer: l4
     path: /v1/workflows/{workflow_id}/events
@@ -31,14 +31,23 @@ allowed_mismatches:
       GET with StreamingResponse in FastAPI but flagged by drift script
       because contract map marks it as method="SSE".
     owner: platform
-    review_by: 2026-05-15
+    review_by: 2026-08-18
 
   - layer: all
-    path: /health` (per layer)
+    path: /health (per layer)
     method: GET
     reason: >
       Operational health endpoints exist per layer but are excluded from
       the frontend contract map by design. Frontend defines a query key
       but no active hook consumes these endpoints.
     owner: platform
-    review_by: 2026-05-15
+    review_by: 2026-08-18
+
+# Phase 2-3 domain coverage note (Sprint 1B — 2026-05-18):
+# All Phase 2-3 domains (Ontology, Workflows, Formulas, ValuePacks, Governance,
+# Settings, Tools, CRM Webhooks) are covered by existing OpenAPI specs:
+#   - Ontology       -> contracts/openapi/layer2-extraction.json
+#   - Formulas/Packs -> contracts/openapi/layer3-knowledge.json
+#   - Workflows/Settings/Governance/Tools/CRM -> contracts/openapi/layer4-agents.json
+# Generated TypeScript types are committed to apps/web/src/api/generated/.
+# No allowlist entries are required for Phase 2-3 domains.
