@@ -11,7 +11,6 @@ Covers:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -100,10 +99,11 @@ async def test_cancel_terminal_run_returns_422():
 
 @pytest.mark.asyncio
 async def test_cross_tenant_run_returns_404():
-    """Registry raises KeyError for a run not visible to the requesting tenant; route returns 404."""
+    """Registry raises RunNotFoundError for a run not visible to the requesting tenant; route returns 404."""
     from httpx import ASGITransport, AsyncClient
+    from src.harness.registry import RunNotFoundError
     registry = MagicMock()
-    registry.get_run = AsyncMock(side_effect=KeyError(_RUN_ID))
+    registry.get_run = AsyncMock(side_effect=RunNotFoundError(_RUN_ID))
     app = _build_app(registry, tenant_id=_TENANT_B)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get(f"/v1/harness/runs/{_RUN_ID}")
