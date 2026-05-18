@@ -159,6 +159,26 @@ class GovernedLLMClient:
         budget = self._resolve_budget(model_task)
         effective_max_tokens = self._cap_tokens(max_tokens, budget.get("max_completion_tokens"))
 
+        # Pre-call cost guard: estimate cost from actual message length where
+        # possible, falling back to budget caps.  Rejects before touching the
+        # provider to prevent billing surprises.
+        estimated_cost = self._estimate_call_cost(model_task, model, messages)
+        if self._max_cost_per_call_usd is not None and estimated_cost > self._max_cost_per_call_usd:
+            self._emit_raw(
+                "llm_call_failed",
+                {
+                    "model_task": model_task,
+                    "model": model,
+                    "provider": self._provider_name,
+                    "error": "cost_cap_exceeded",
+                    "cost_usd": estimated_cost,
+                    "max_cost_usd": self._max_cost_per_call_usd,
+                    "pre_call": True,
+                    **({"call_id": call_id} if call_id else {}),
+                },
+            )
+            raise _CostCapExceeded()
+
         self._emit_call_start(model_task, model, call_id)
 
         retry_cfg = self._config.get("llm", {}).get("retry", {})
@@ -183,6 +203,11 @@ class GovernedLLMClient:
                     response.usage.prompt_tokens,
                     response.usage.completion_tokens,
                 )
+                # Post-call secondary guard: actual cost may exceed the pre-call
+                # estimate (e.g. when the model returns more tokens than budgeted).
+                # llm_call_failed is emitted here to close the open llm_call_start
+                # trace event — without it the start event would be left dangling
+                # with no matching complete or failed counterpart.
                 if self._max_cost_per_call_usd is not None and cost > self._max_cost_per_call_usd:
                     self._emit_raw(
                         "llm_call_failed",
@@ -193,6 +218,7 @@ class GovernedLLMClient:
                             "error": "cost_cap_exceeded",
                             "cost_usd": cost,
                             "max_cost_usd": self._max_cost_per_call_usd,
+                            "pre_call": False,
                             **({"call_id": call_id} if call_id else {}),
                         },
                     )
@@ -316,6 +342,45 @@ class GovernedLLMClient:
     # Cost
     # ------------------------------------------------------------------
 
+    def _estimate_call_cost(
+        self,
+        model_task: str,
+        model: str,
+        messages: list[dict] | None = None,
+    ) -> float:
+        """Estimate cost for a call before it is made.
+
+        Prompt-token estimate priority:
+        1. ``len(concatenated message text) / 4`` when ``messages`` is provided
+           (rough but accurate for typical prompts).
+        2. ``max_prompt_tokens`` from the task budget cap as a fallback when
+           messages are unavailable — this is a conservative upper bound that
+           may produce false positives for small prompts against large budgets.
+
+        Completion tokens always use ``max_completion_tokens`` from the budget
+        (we cannot know actual completion length before the call).
+
+        Returns 0.0 when no cost calculator is available.
+        """
+        if self._cost_calc is None:
+            return 0.0
+        budget = self._resolve_budget(model_task)
+        max_completion = budget.get("max_completion_tokens", 0)
+
+        if messages is not None:
+            # Approximate prompt tokens from actual message content.
+            text = " ".join(
+                m.get("content", "") for m in messages if isinstance(m, dict)
+            )
+            prompt_tokens = max(1, len(text) // 4)
+        else:
+            # Fall back to budget cap — conservative, may block small prompts.
+            prompt_tokens = budget.get("max_prompt_tokens", 0)
+
+        return self._cost_calc.calculate_cost(
+            self._provider_name, model, prompt_tokens, max_completion
+        )
+
     def _calculate_cost(self, model: str, prompt_tokens: int, completion_tokens: int) -> float:
         if self._cost_calc is None:
             return 0.0
@@ -334,6 +399,8 @@ class GovernedLLMClient:
         self._emit_raw("llm_call_start", meta)
 
     def _emit_call_complete(self, result: LLMCallResult, call_id: str | None) -> None:
+        # Required structured log fields (S6-R4.2):
+        # tenant_id and workflow_id are injected by _emit_raw via self._run.
         meta = {
             "model_task": result.model_task,
             "model": result.model,

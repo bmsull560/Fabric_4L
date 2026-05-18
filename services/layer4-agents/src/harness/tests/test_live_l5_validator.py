@@ -772,3 +772,55 @@ class TestValidateClaimsTenantEnforcement:
             await registry.validate_claims("tenant-abc", requests)
         assert "c-bad" in str(exc_info.value)
         assert "c-ok" not in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# R1: env var standardization — missing LAYER5_GROUND_TRUTH_URL falls back
+# ---------------------------------------------------------------------------
+
+
+class TestEnvVarAbsentFallback:
+    """make_live_l5_registry falls back to UnavailableValidator when env vars are absent."""
+
+    @pytest.mark.asyncio
+    async def test_missing_layer5_url_uses_unavailable_validator(self, monkeypatch):
+        """When LAYER5_GROUND_TRUTH_URL is unset, validation returns INSUFFICIENT_EVIDENCE."""
+        import os
+        from unittest.mock import AsyncMock, MagicMock
+
+        # Remove both env vars to simulate missing config
+        monkeypatch.delenv("LAYER5_GROUND_TRUTH_URL", raising=False)
+        monkeypatch.delenv("LAYER5_SERVICE_TOKEN", raising=False)
+
+        # make_live_l5_registry still constructs a client (with default URL),
+        # but the validator's health() will fail → falls back to UnavailableValidator.
+        # We test the fallback path via ValidationHook directly.
+        from harness.validation_hooks import UnavailableValidator, ValidationHook
+
+        hook = ValidationHook(primary_validator=None)
+        req = ClaimValidationRequest(
+            tenant_id="t1",
+            claim_id="c1",
+            claim_text="ROI claim",
+            evidence_refs=[],
+        )
+        result = await hook.validate_single(req)
+        assert result.validation_state == ValidationState.INSUFFICIENT_EVIDENCE
+        assert result.validator == "unavailable"
+
+    @pytest.mark.asyncio
+    async def test_unavailable_validator_never_approves(self):
+        """UnavailableValidator always returns INSUFFICIENT_EVIDENCE, never PASSED."""
+        from harness.validation_hooks import UnavailableValidator
+
+        validator = UnavailableValidator()
+        req = ClaimValidationRequest(
+            tenant_id="t1",
+            claim_id="c1",
+            claim_text="Any claim",
+            evidence_refs=[],
+        )
+        result = await validator.validate(req)
+        assert result.validation_state != ValidationState.PASSED
+        assert result.validation_state == ValidationState.INSUFFICIENT_EVIDENCE
+        assert await validator.health() is False

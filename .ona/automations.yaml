@@ -19,8 +19,6 @@ tasks:
       pnpm install --frozen-lockfile
     triggeredBy:
       - postDevcontainerStart
-    dependsOn:
-      - installPythonDeps
 
 services:
   devStack:
@@ -30,11 +28,19 @@ services:
       Starts PostgreSQL, Redis, Neo4j, Keycloak, Layer 4 Agents,
       Layer 2-5 Signal Refinery, and the Vite frontend (port 3001).
       Auth bypass is enabled — no JWT required for local exploration.
+    triggeredBy:
+      - postDevcontainerStart
     commands:
       start: |
         cp -n .env.example .env 2>/dev/null || true
         docker compose -f docker-compose.dev.yml up --build -d
       ready: |
-        curl -sf http://localhost:3001
+        for attempt in $(seq 1 60); do
+          if curl -sf --max-time 5 http://localhost:3001 >/dev/null; then
+            exit 0
+          fi
+          sleep 5
+        done
+        exit 1
       stop: |
         docker compose -f docker-compose.dev.yml down

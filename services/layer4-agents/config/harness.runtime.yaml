@@ -24,9 +24,12 @@ llm:
 
   models:
     # Together.ai model assignments by task type
+    # reasoning  → Maverick (high-context, multi-step reasoning)
+    # extraction → Scout (fast classification and structured extraction)
+    # narrative  → 70B fallback (stable, cost-effective generation)
     together:
-      reasoning:  "meta-llama/Llama-3.3-70B-Instruct-Turbo"
-      extraction: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+      reasoning:  "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
+      extraction: "meta-llama/Llama-4-Scout-17B-16E-Instruct"
       narrative:  "meta-llama/Llama-3.3-70B-Instruct-Turbo"
       embedding:  "togethercomputer/m2-bert-80M-8k-retrieval"
 

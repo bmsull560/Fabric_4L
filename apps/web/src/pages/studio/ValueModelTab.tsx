@@ -19,7 +19,6 @@ import {
   useWorkspaceTabQuery,
   useGenerateWorkspaceIntelligence,
 } from "@/hooks/useWorkspaceCase";
-import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
 // DIL hooks
@@ -29,6 +28,8 @@ import {
   type ROICalculationResult,
   type IndustryBenchmark,
 } from "@/hooks/useROICalculator";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, Btn } from "@/components/ui/fabric";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 type Scenario = "conservative" | "expected" | "optimistic";

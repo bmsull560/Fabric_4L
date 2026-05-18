@@ -376,15 +376,27 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             "next_steps": "Recommended Next Steps",
         }
 
+        trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id") if state.metadata else None
+        tenant_id_for_run = (
+            state.metadata.get("authenticated_tenant_id") or state.metadata.get("tenant_id", "")
+            if state.metadata else ""
+        )
+
         # Build governed LLM client for section generation
         try:
             registry = get_prompt_registry()
             system_tmpl = registry.get("business_case", "system")
             section_tmpl = registry.get("business_case", "generate_sections")
             provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "business_case_generation",
+                tenant_id=tenant_id_for_run or "unknown",
+                trace_id=trace_id,
+            )
             llm_client = GovernedLLMClient(
                 provider=provider,
                 provider_name=self._resolve_provider_name(),
+                run=harness_run,
             )
             system_msg = {"role": "system", "content": system_tmpl.body}
             use_llm = True
@@ -394,8 +406,6 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             system_msg = None
             section_tmpl = None
             use_llm = False
-
-        trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id") if state.metadata else None
 
         for section_type in requested_sections:
             title = section_titles.get(section_type, section_type.replace("_", " ").title())
@@ -1013,9 +1023,15 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             validate_tmpl = registry.get("business_case", "validate_claims")
 
             provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "business_case_generation",
+                tenant_id=organization_id,
+                trace_id=trace_id,
+            )
             llm_client = GovernedLLMClient(
                 provider=provider,
                 provider_name=self._resolve_provider_name(),
+                run=harness_run,
             )
 
             user_content = validate_tmpl.render(

@@ -10,7 +10,6 @@
  */
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { EmptyState } from "@/components/states";
 import {
   Skeleton,
@@ -36,6 +35,7 @@ import {
   Package, Search, Filter, AlertCircle, RefreshCw, Loader2,
   Upload, Eye, GitCompare, Map, BookOpen, Lightbulb, Layers,
 } from "lucide-react";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 

@@ -34,6 +34,13 @@ export function useHarnessRuns(params?: {
     queryKey: QK.harness.runs(params ?? {}),
     queryFn: () => harnessApi.listRuns(params),
     staleTime: STALE_TIME.list,
+    // Poll while any run in the list is in a non-terminal state
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+      const hasActive = data.items.some((r) => !isTerminalState(r.current_state as HarnessState));
+      return hasActive ? POLL_INTERVALS.workflows : false;
+    },
   });
 }
 
@@ -78,6 +85,17 @@ export function useHarnessGates(runId: string | undefined) {
       const hasPending = data.items.some((g) => g.status === "pending");
       return hasPending ? POLL_INTERVALS.workflows : false;
     },
+  });
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+
+export function useHarnessValidation(runId: string | undefined) {
+  return useQuery({
+    queryKey: QK.harness.validation(runId ?? ""),
+    queryFn: () => harnessApi.getValidation(runId!),
+    enabled: !!runId,
+    staleTime: STALE_TIME.detail,
   });
 }
 

@@ -98,8 +98,8 @@ async def make_live_l5_registry(
     """Return a SqlHarnessRegistry with a live Layer 5 Ground Truth validator.
 
     Reads L5 connection settings from environment variables when not supplied:
-      - L5_BASE_URL (default: http://layer5-ground-truth:8005)
-      - L5_SERVICE_TOKEN
+      - LAYER5_GROUND_TRUTH_URL (default: http://layer5-ground-truth:8005)
+      - LAYER5_SERVICE_TOKEN
 
     The LiveL5Validator is used as the primary validator. On L5 outage,
     validation degrades to INSUFFICIENT_EVIDENCE — never silently approves.
@@ -124,8 +124,8 @@ async def make_live_l5_registry(
     from harness.validation_hooks import ValidationHook
     from integration.layer5_client import Layer5GroundTruthClient
 
-    base_url = l5_base_url or os.environ.get("L5_BASE_URL", "http://layer5-ground-truth:8005")
-    service_token = l5_service_token or os.environ.get("L5_SERVICE_TOKEN")
+    base_url = l5_base_url or os.environ.get("LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005")
+    service_token = l5_service_token or os.environ.get("LAYER5_SERVICE_TOKEN")
 
     # Do not pass tenant_id to the client constructor — tenant scoping is
     # applied per-request via organization_id in list_truths / submit_truth.

@@ -10,8 +10,9 @@
 
 ## Executive Summary
 
-> Canonical launch readiness and launch criteria now live in `docs/readiness/current.md`.
-> Current canonical value: **Launch Readiness: 95%**.
+> **Canonical source:** [`docs/readiness/current.md`](docs/readiness/current.md) is the single source of truth for launch readiness percentage and criteria.
+> Any readiness percentage in this roadmap is **historical/contextual** (audit date: 2026-04-09) and must not be treated as the current launch-readiness value.
+> Do not update percentages here — update `docs/readiness/current.md` with fresh `make verify` evidence instead.
 
 
 The Value Fabric platform has substantial implementation across all 4 original layers:

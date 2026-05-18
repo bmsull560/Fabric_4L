@@ -13,7 +13,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, Plus, Play, Pause, AlertCircle, Info, List, Sparkles } from 'lucide-react';
-import { PageHeader, Btn } from '@/components/WfPrimitives';
 import { TopTabNav } from '@/components/blocks/TopTabNav';
 import {
   SourceCorpusCard,
@@ -49,6 +48,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('IngestionJobs');
 const PAGE_SIZE = 15;

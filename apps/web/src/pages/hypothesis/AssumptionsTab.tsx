@@ -13,10 +13,11 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { useNavigation } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { createNextAction } from "@/components/workspace/nextAction";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard } from "@/components/ui/fabric";
 
 export default function AssumptionsTab() {
   const params = useParams<{ accountId: string }>();

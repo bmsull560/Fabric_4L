@@ -3,13 +3,31 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2, Sparkles, RefreshCw, CheckCircle2, FileText, Send, TrendingUp } from "lucide-react";
+import {
+  Download,
+  Share2,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  RefreshCw,
+  CheckCircle2,
+  FileText,
+  Send,
+  TrendingUp,
+} from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GateStatusBanner } from "@/components/GateStatusBanner";
-import { useBusinessCase, useBusinessCaseExport, useRegenerateBusinessCase } from "@/hooks/useDocuments";
+import {
+  useBusinessCase,
+  useBusinessCaseExport,
+  useRegenerateBusinessCase,
+} from "@/hooks/useDocuments";
 import { useNavigation } from "@/hooks";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
+import { cn } from "@/lib/utils";
 
 function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
   for (const key of keys) {
@@ -153,6 +171,11 @@ export default function BusinessCase() {
   const normalizedStatus = businessCase.status.toLowerCase();
   const isApproved = ["approved", "active", "completed"].includes(normalizedStatus);
   const hasExportDocument = Boolean(businessCase.document_url);
+  const trustState = deriveTrustState(businessCase);
+  const exportAllowed = trustState === "export_ready";
+  const degradedReason = typeof businessCase.case_metadata?.["degraded_reason"] === "string"
+    ? businessCase.case_metadata["degraded_reason"] as string
+    : null;
   const exportState = isApproved && hasExportDocument ? "Export PDF ready" : "Export PDF disabled until approval and document generation complete";
   const accountRouteId =
     metadataString(businessCase.case_metadata, ["external_account_id", "provider_record_id", "account_route_id"]) ||
@@ -187,7 +210,7 @@ export default function BusinessCase() {
             <Btn
               variant="ghost"
               onClick={handleExportPDF}
-              disabled={exportMutation.isPending || !businessCase.document_url}
+              disabled={exportMutation.isPending || !exportAllowed}
             >
               {exportMutation.isPending ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               Export PDF
@@ -203,6 +226,9 @@ export default function BusinessCase() {
 
       {accountRouteId && <GateStatusBanner accountId={accountRouteId} />}
 
+      {/* Trust status row */}
+      <BusinessCaseTrustRow trustState={trustState} degradedReason={degradedReason} />
+
       {/* Export error */}
       {exportMutation.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700 text-sm">
@@ -212,7 +238,7 @@ export default function BusinessCase() {
       )}
 
       <SectionCard title="Business Case Lifecycle" className="mb-5">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               <FileText size={13} />
@@ -226,6 +252,29 @@ export default function BusinessCase() {
               Approval Status
             </div>
             <p className="mt-2 text-[13px] font-semibold text-foreground">{isApproved ? "Approved" : "Draft"}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <CheckCircle2 size={13} />
+              Claim Validation
+            </div>
+            <div className="mt-2">
+              {(() => {
+                const overallState = deriveOverallValidationState(
+                  businessCase.case_metadata?.validation_summary as Record<string, unknown> | undefined
+                );
+                return overallState ? (
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[11px]", validationBadgeClass(overallState))}
+                  >
+                    {validationBadgeLabel(overallState)}
+                  </Badge>
+                ) : (
+                  <p className="text-[13px] text-muted-foreground">Not validated</p>
+                );
+              })()}
+            </div>
           </div>
           <div className="rounded-lg border border-border bg-card p-3">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -266,12 +315,26 @@ export default function BusinessCase() {
       {businessCase.recommendations?.length > 0 && (
         <SectionCard title="Recommendations" className="mb-5">
           <ul className="space-y-2">
-            {businessCase.recommendations.map((rec, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
-                <span className="text-blue-600 font-bold">{idx + 1}.</span>
-                <span>{rec}</span>
-              </li>
-            ))}
+            {businessCase.recommendations.map((rec, idx) => {
+              const claimState = claimValidationState(
+                businessCase.case_metadata?.claim_validations,
+                idx,
+              );
+              return (
+                <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
+                  <span className="text-blue-600 font-bold shrink-0">{idx + 1}.</span>
+                  <span className="flex-1">{rec}</span>
+                  {claimState && (
+                    <Badge
+                      variant="outline"
+                      className={cn("text-[10px] shrink-0 self-start mt-0.5", validationBadgeClass(claimState))}
+                    >
+                      {validationBadgeLabel(claimState)}
+                    </Badge>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </SectionCard>
       )}

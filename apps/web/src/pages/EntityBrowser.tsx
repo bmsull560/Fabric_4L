@@ -14,10 +14,11 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Plus, Loader2, X, Download } from "lucide-react";
 import { useEntities, type Entity, type EntityListResponse, useEntity } from "@/hooks/useEntities";
 import { useEntityUIStore } from "@/stores";
-import {
-  PageHeader, EntityBadge, DataTable, Toolbar, SearchInput, Btn, SectionCard
-} from "@/components/WfPrimitives";
-import type { EntityType } from "@/components/WfPrimitives";
+import type { EntityType } from "@/lib/entity-colors";
+import { Toolbar, SearchInput } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, LegacyDataTable, Btn } from "@/components/ui/fabric";
+import { EntityBadge } from "@/lib/entity-colors";
 
 const CONF_COLORS = (c: number) =>
   c >= 0.9 ? "text-emerald-700 font-semibold" : c >= 0.7 ? "text-amber-700" : "text-red-600";
@@ -217,7 +218,7 @@ export default function EntityBrowser() {
                 <span className="ml-2 text-muted-foreground">Loading entities...</span>
               </div>
             ) : (
-              <DataTable
+              <LegacyDataTable
                 columns={["Entity Name", "Type", "Domain", "Confidence", "Status", "Actions"]}
                 rows={entities.map((e: Entity) => {
                   const isSelected = e.id === selectedEntityId;

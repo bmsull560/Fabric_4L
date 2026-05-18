@@ -21,6 +21,8 @@ allowed_mismatches:
       regular GET with text/event-stream response. Frontend polls instead
       of using SSE today.
     owner: platform
+    # Reviewed 2026-05-18: gap is intentional; SSE vs GET representation is a
+    # tooling limitation, not a real contract mismatch. No action needed.
     review_by: 2026-08-18
 
   - layer: l4
@@ -31,6 +33,7 @@ allowed_mismatches:
       GET with StreamingResponse in FastAPI but flagged by drift script
       because contract map marks it as method="SSE".
     owner: platform
+    # Reviewed 2026-05-18: same as L2 SSE gap above. No action needed.
     review_by: 2026-08-18
 
   - layer: all
@@ -41,6 +44,7 @@ allowed_mismatches:
       the frontend contract map by design. Frontend defines a query key
       but no active hook consumes these endpoints.
     owner: platform
+    # Reviewed 2026-05-18: by design; health endpoints are infra-facing only.
     review_by: 2026-08-18
 
 # Phase 2-3 domain coverage note (Sprint 1B — 2026-05-18):

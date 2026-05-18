@@ -249,7 +249,7 @@ class HarnessRunRepository:
         return run
 
     async def get(self, run_id: str, tenant_id: str) -> HarnessRun:
-        from harness.registry import HarnessRegistryError
+        from harness.registry import RunNotFoundError
 
         result = await self._session.execute(
             select(HarnessRunRow).where(
@@ -259,7 +259,7 @@ class HarnessRunRepository:
         )
         row = result.scalar_one_or_none()
         if row is None:
-            raise HarnessRegistryError(f"Run '{run_id}' not found for tenant '{tenant_id}'")
+            raise RunNotFoundError(f"Run '{run_id}' not found for tenant '{tenant_id}'")
         return _row_to_run(row)
 
     async def update(self, run: HarnessRun) -> HarnessRun:

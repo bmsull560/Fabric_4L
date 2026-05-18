@@ -33,6 +33,77 @@ import pytest
 from unittest.mock import MagicMock
 
 # Stub optional heavy deps before any imports that transitively require them
+
+# neo4j — pulled in by layer3-knowledge services; must be stubbed before any
+# import that transitively reaches layer3-knowledge.
+try:
+    import neo4j  # noqa: F401
+except ImportError:
+    import types as _types
+    _neo4j = _types.ModuleType("neo4j")
+    _neo4j.__path__ = []  # type: ignore[attr-defined]
+    _neo4j.AsyncDriver = MagicMock()
+    _neo4j.AsyncSession = MagicMock()
+    _neo4j.AsyncGraphDatabase = MagicMock()
+    _neo4j_exc = _types.ModuleType("neo4j.exceptions")
+    _neo4j_graph = _types.ModuleType("neo4j.graph")
+    sys.modules["neo4j"] = _neo4j
+    sys.modules["neo4j.exceptions"] = _neo4j_exc
+    sys.modules["neo4j.graph"] = _neo4j_graph
+
+try:
+    import anthropic  # noqa: F401
+except ImportError:
+    import types as _types
+    sys.modules["anthropic"] = _types.ModuleType("anthropic")
+
+# canonical.llm_output_parser and services.llm_output_parser —
+# platform-contract package not installed in the test environment; stub both
+# so governed_llm_client and signal_detection can be imported without the
+# full platform-contract wheel or a services/__init__.py.
+try:
+    from canonical.llm_output_parser import parse_llm_json  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    import types as _types
+    import json as _json
+
+    def _parse_llm_json(text: str):  # type: ignore[return]
+        try:
+            return _json.loads(text)
+        except Exception:
+            return {}
+
+    _canonical = _types.ModuleType("canonical")
+    _canonical.__path__ = []  # type: ignore[attr-defined]
+    _canonical_llm = _types.ModuleType("canonical.llm_output_parser")
+    _canonical_llm.parse_llm_json = _parse_llm_json  # type: ignore[attr-defined]
+    sys.modules["canonical"] = _canonical
+    sys.modules["canonical.llm_output_parser"] = _canonical_llm
+
+# services.llm_output_parser — src/services/ has no __init__.py so the bare
+# `from services.llm_output_parser import parse_llm_json` in governed_llm_client
+# fails unless we stub the module directly.
+# Only create and mutate a new stub; never touch an existing real module.
+try:
+    from services.llm_output_parser import parse_llm_json as _  # noqa: F401
+except (ImportError, ModuleNotFoundError):
+    import types as _types
+    import json as _json2
+
+    def _parse_llm_json2(text: str):  # type: ignore[return]
+        try:
+            return _json2.loads(text)
+        except Exception:
+            return {}
+
+    if "services" not in sys.modules:
+        _svc_pkg = _types.ModuleType("services")
+        _svc_pkg.__path__ = []  # type: ignore[attr-defined]
+        sys.modules["services"] = _svc_pkg
+    _svc_llm = _types.ModuleType("services.llm_output_parser")
+    _svc_llm.parse_llm_json = _parse_llm_json2  # type: ignore[attr-defined]
+    sys.modules["services.llm_output_parser"] = _svc_llm
+
 try:
     import jinja2  # noqa: F401
 except ImportError:

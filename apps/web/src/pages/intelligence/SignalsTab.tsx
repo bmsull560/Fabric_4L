@@ -18,7 +18,6 @@ import { useNavigation } from "@/hooks";
 import { useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
-import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import {
   useValueSignals,
@@ -32,6 +31,8 @@ import {
   type SignalCard,
   type ValueSignalLifecycleState,
 } from "@/types/valueSignal";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { Btn, MetricCard } from "@/components/ui/fabric";
 
 // ---------------------------------------------------------------------------
 // Constants

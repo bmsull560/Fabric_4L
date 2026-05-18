@@ -40,6 +40,16 @@ class HarnessRegistryError(RuntimeError):
     pass
 
 
+class RunNotFoundError(KeyError):
+    """Raised when a run does not exist or is not visible to the requesting tenant.
+
+    Subclasses KeyError so route handlers that catch KeyError → 404 work
+    correctly without modification, parallel to GateNotFoundError(KeyError).
+    """
+
+    pass
+
+
 class HarnessRegistry:
     """
     Top-level harness orchestrator.
@@ -106,9 +116,11 @@ class HarnessRegistry:
         """Get a run with tenant scoping."""
         run = self._runs.get(run_id)
         if run is None:
-            raise HarnessRegistryError(f"Run '{run_id}' not found")
+            raise RunNotFoundError(f"Run '{run_id}' not found")
         if run.tenant_id != tenant_id:
-            raise HarnessRegistryError(
+            # Return the same error shape as a missing run to avoid leaking
+            # the existence of runs belonging to other tenants.
+            raise RunNotFoundError(
                 f"Run '{run_id}' not found for tenant '{tenant_id}'"
             )
         return run
@@ -247,8 +259,12 @@ class HarnessRegistry:
         self,
         tenant_id: str,
         requests: list[ClaimValidationRequest],
+        run_id: str | None = None,
     ) -> list[ClaimValidationResult]:
         """Validate claims through the L5 hook.
+
+        run_id is accepted for interface parity with SqlHarnessRegistry but
+        is not persisted in the in-memory implementation (tests only).
 
         Raises HarnessRegistryError if any request carries a tenant_id that
         does not match the authenticated tenant_id, preventing cross-tenant

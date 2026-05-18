@@ -11,11 +11,12 @@ import {
   Activity, CheckCircle2, AlertCircle, XCircle, Wifi,
   Database, Layers, BarChart3, RefreshCw, Search,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useSystemHealth, useHealthAlerts } from "@/hooks/useHealthMonitor";
 import { useIngestionStats } from "@/hooks/useIngestion";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 // ── Hook Registry ────────────────────────────────────────────────────────────
 // Static registry of all DIL hook families and their endpoint counts

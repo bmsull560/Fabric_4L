@@ -35,6 +35,7 @@ from harness.checkpoints import CheckpointError, CheckpointTenantError
 # when src.database is unavailable (e.g. SQLite test environment).
 from harness.db_models import (
     Base,  # noqa: E402
+    ClaimValidationResultRow,
     HarnessCheckpointRow,
     HarnessRunRow,
     HarnessTraceEventRow,
@@ -59,7 +60,7 @@ from harness.models import (
     ToolRiskLevel,
     ToolSideEffectClass,
 )
-from harness.registry import HarnessRegistryError
+from harness.registry import HarnessRegistryError, RunNotFoundError
 from harness.repositories import (
     CheckpointRepository,
     HarnessRunRepository,
@@ -89,6 +90,7 @@ async def async_engine():
                     HarnessCheckpointRow.__table__,
                     ToolContractRow.__table__,
                     HarnessTraceEventRow.__table__,
+                    ClaimValidationResultRow.__table__,
                 ],
             )
         )
@@ -203,7 +205,7 @@ class TestSqlRunRepository:
         repo = HarnessRunRepository(session)
         run = _make_run(tenant_id=TENANT_A)
         await repo.create(run)
-        with pytest.raises(HarnessRegistryError):
+        with pytest.raises(RunNotFoundError):
             await repo.get(run.id, TENANT_B)
 
     async def test_list_filters_by_tenant(self, session: AsyncSession) -> None:
@@ -596,7 +598,7 @@ class TestSqlHarnessRegistryIntegration:
             workflow_type=HarnessWorkflowType.VALUE_MODEL_GENERATION,
             initiated_by=InitiatedBy.USER,
         )
-        with pytest.raises(HarnessRegistryError):
+        with pytest.raises(RunNotFoundError):
             await reg.get_run(run.id, TENANT_B)
 
     async def test_checkpoint_survives_registry_restart(
@@ -700,6 +702,184 @@ class TestSqlHarnessRegistryIntegration:
         # Confirm the run is still accessible (point lookup didn't corrupt state)
         fetched_run = await reg.get_run(run.id, TENANT_A)
         assert fetched_run.trace_id == run.trace_id
+
+
+# ---------------------------------------------------------------------------
+# SqlClaimValidationStore persistence
+# ---------------------------------------------------------------------------
+
+
+class TestSqlClaimValidationStore:
+    """Verify save_results / get_results_for_run round-trip via SQLite."""
+
+    @pytest.mark.asyncio
+    async def test_save_and_retrieve_results(self, session):
+        from harness.models import ClaimValidationResult, ValidationState
+        from harness.sql_stores import SqlClaimValidationStore
+
+        store = SqlClaimValidationStore(session)
+        run_id = "run-cvr-001"
+        results = [
+            ClaimValidationResult(
+                tenant_id=TENANT_A,
+                claim_id="c1",
+                validation_state=ValidationState.PASSED,
+                evidence_refs=["ref-1"],
+                confidence=0.95,
+                trust_score=0.9,
+                validator="agent",
+                reason="Verified against L5",
+            ),
+            ClaimValidationResult(
+                tenant_id=TENANT_A,
+                claim_id="c2",
+                validation_state=ValidationState.NEEDS_REVIEW,
+                evidence_refs=[],
+                confidence=0.4,
+                trust_score=0.3,
+                validator="unavailable",
+                reason="L5 unreachable",
+            ),
+        ]
+        await store.save_results(run_id, results)
+
+        fetched = await store.get_results_for_run(run_id, TENANT_A)
+        assert len(fetched) == 2
+        states = {r.claim_id: r.validation_state for r in fetched}
+        assert states["c1"] == ValidationState.PASSED
+        assert states["c2"] == ValidationState.NEEDS_REVIEW
+
+    @pytest.mark.asyncio
+    async def test_cross_tenant_isolation(self, session):
+        """Results saved for TENANT_A are not visible to TENANT_B."""
+        from harness.models import ClaimValidationResult, ValidationState
+        from harness.sql_stores import SqlClaimValidationStore
+
+        store = SqlClaimValidationStore(session)
+        run_id = "run-cvr-002"
+        result = ClaimValidationResult(
+            tenant_id=TENANT_A,
+            claim_id="c1",
+            validation_state=ValidationState.PASSED,
+            evidence_refs=[],
+            confidence=1.0,
+            trust_score=1.0,
+            validator="agent",
+            reason="",
+        )
+        await store.save_results(run_id, [result])
+
+        fetched_b = await store.get_results_for_run(run_id, TENANT_B)
+        assert fetched_b == []
+
+    @pytest.mark.asyncio
+    async def test_save_is_idempotent_on_claim_id(self, session):
+        """Re-saving the same claim_id replaces the previous result."""
+        from harness.models import ClaimValidationResult, ValidationState
+        from harness.sql_stores import SqlClaimValidationStore
+
+        store = SqlClaimValidationStore(session)
+        run_id = "run-cvr-003"
+
+        first = ClaimValidationResult(
+            tenant_id=TENANT_A,
+            claim_id="c1",
+            validation_state=ValidationState.NEEDS_REVIEW,
+            evidence_refs=[],
+            confidence=0.5,
+            trust_score=0.5,
+            validator="unavailable",
+            reason="first pass",
+        )
+        await store.save_results(run_id, [first])
+
+        second = ClaimValidationResult(
+            tenant_id=TENANT_A,
+            claim_id="c1",
+            validation_state=ValidationState.PASSED,
+            evidence_refs=["ref-x"],
+            confidence=0.95,
+            trust_score=0.9,
+            validator="agent",
+            reason="second pass",
+        )
+        await store.save_results(run_id, [second])
+
+        fetched = await store.get_results_for_run(run_id, TENANT_A)
+        assert len(fetched) == 1
+        assert fetched[0].validation_state == ValidationState.PASSED
+        assert fetched[0].reason == "second pass"
+
+    @pytest.mark.asyncio
+    async def test_empty_run_returns_empty_list(self, session):
+        """get_results_for_run returns [] when no results have been saved."""
+        from harness.sql_stores import SqlClaimValidationStore
+
+        store = SqlClaimValidationStore(session)
+        fetched = await store.get_results_for_run("run-nonexistent", TENANT_A)
+        assert fetched == []
+
+    @pytest.mark.asyncio
+    async def test_validate_claims_with_run_id_persists(self, session):
+        """SqlHarnessRegistry.validate_claims persists results when run_id is given."""
+        from unittest.mock import AsyncMock
+
+        from harness.models import ClaimValidationResult, ValidationState
+        from harness.sql_stores import (
+            SqlCheckpointManager,
+            SqlHarnessRegistry,
+            SqlHumanGateManager,
+            SqlTelemetryEmitter,
+            SqlToolContractRegistry,
+        )
+        from harness.validation_hooks import ClaimValidationRequest, ValidationHook
+        from harness.state_machine import StateMachine
+
+        # Stub the ValidationHook to return a known PASSED result
+        mock_hook = ValidationHook(primary_validator=None)
+        mock_hook.validate_claims = AsyncMock(
+            return_value=[
+                ClaimValidationResult(
+                    tenant_id=TENANT_A,
+                    claim_id="c1",
+                    validation_state=ValidationState.PASSED,
+                    evidence_refs=[],
+                    confidence=1.0,
+                    trust_score=1.0,
+                    validator="agent",
+                    reason="mocked",
+                )
+            ]
+        )
+
+        registry = SqlHarnessRegistry(
+            session=session,
+            state_machine=StateMachine(),
+            tool_registry=SqlToolContractRegistry(session),
+            gate_manager=SqlHumanGateManager(session),
+            checkpoint_manager=SqlCheckpointManager(session),
+            telemetry=SqlTelemetryEmitter(session),
+            validation_hook=mock_hook,
+        )
+        run = await registry.create_run(
+            tenant_id=TENANT_A,
+            workflow_type=HarnessWorkflowType.BUSINESS_CASE_GENERATION,
+            initiated_by=InitiatedBy.USER,
+        )
+
+        req = ClaimValidationRequest(
+            tenant_id=TENANT_A,
+            claim_id="c1",
+            claim_text="ROI claim",
+            evidence_refs=[],
+        )
+        await registry.validate_claims(TENANT_A, [req], run_id=run.id)
+
+        # Retrieve via get_validation_results
+        stored = await registry.get_validation_results(run.id, TENANT_A)
+        assert len(stored) == 1
+        assert stored[0].claim_id == "c1"
+        assert stored[0].validation_state == ValidationState.PASSED
 
 
 if __name__ == "__main__":

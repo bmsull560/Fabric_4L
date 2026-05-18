@@ -57,7 +57,7 @@ from harness.policies import (
     evaluate_transition_policy,
     requires_approval,
 )
-from harness.registry import HarnessRegistry, HarnessRegistryError
+from harness.registry import HarnessRegistry, HarnessRegistryError, RunNotFoundError
 from harness.state_machine import (
     StateMachine,
     TerminalStateError,
@@ -157,6 +157,7 @@ __all__ = [
     # Registry
     "HarnessRegistry",
     "HarnessRegistryError",
+    "RunNotFoundError",
     # SQL-backed stores
     "SqlCheckpointManager",
     "SqlHarnessRegistry",
