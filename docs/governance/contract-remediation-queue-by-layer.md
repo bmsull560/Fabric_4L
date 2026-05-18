@@ -60,15 +60,31 @@ Targets/deadlines:
 - **2026-06-20:** 70% → 80%
 - **2026-07-11:** 80% → 85%
 
-### Frontend (current score: 67%)
+### Frontend (current score: 67% → 72% as of 2026-05-18)
 Owner: Web Platform Team (`@web-platform`)
 
-- **Cluster FE-C1: Imperative navigation (§2.6)** — OPEN
-- **Cluster FE-C2: URL string concatenation (§2.6)** — OPEN
+- **Cluster FE-C1: Imperative navigation (§2.6)** — ✅ CLOSED 2026-05-18
+  - Audit finding: `HypothesesTab.tsx` used `useNavigate()` directly with router state.
+  - Resolution: `useNavigation()` already supported `state?: Record<string, unknown>` in
+    `NavigationOptions`. Migrated `HypothesesTab.tsx` to `useNavigation()` + `navigateTo(path, { state })`.
+    No hook changes required. Zero `useNavigate()` calls remain outside `apps/web/src/navigation/`.
+- **Cluster FE-C2: URL string concatenation (§2.6)** — ✅ CLOSED 2026-05-18
+  - Audit finding: 12 UI route template-literal concatenation sites across 9 files.
+  - Resolution:
+    - Created `apps/web/src/navigation/deliverableRoutes.ts` — canonical helper for
+      deliverable routes using `getStatePath`. Migrated `ExecutiveView`, `TechnicalView`,
+      `CFOView`.
+    - Migrated `IntelligenceWorkspaceTabs.tsx` → `workspacePath()`.
+    - Migrated `DriverTreeShell`, `CalculatorShell`, `HypothesisShell`, `IntelligenceShell`,
+      `ValueStudioShell` → `buildPath()`.
+    - Migrated `shell/router.tsx` (2 sites) → `workspacePath()` + `buildPath/getStatePath`.
+    - Migrated `Layout.tsx` active-state checks → `isRouteActive()` from `navHelpers.ts`.
+  - Tests added: `deliverableRoutes.test.ts`, `navHelpers.test.ts`, `useNavigation.test.tsx`,
+    additions to `accountRouting.test.ts`.
 
 Targets/deadlines:
-- **2026-05-30:** 67% → 72%
-- **2026-06-20:** 72% → 80%
+- **2026-05-30:** 67% → 72% ✅ (FE-C1 + FE-C2 closed ahead of deadline)
+- **2026-06-20:** 72% → 80% (remaining: type-sync drift, hook architecture gaps)
 - **2026-07-11:** 80% → 85%
 
 ### Layer 3 (current score: 71%)
