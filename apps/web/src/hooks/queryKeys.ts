@@ -368,6 +368,7 @@ export const QK = {
     run: (runId: string) => ["harness", "run", runId] as const,
     checkpoints: (runId: string) => ["harness", "checkpoints", runId] as const,
     gates: (runId: string) => ["harness", "gates", runId] as const,
+    validation: (runId: string) => ["harness", "validation", runId] as const,
     health: () => ["harness", "health"] as const,
   },
 

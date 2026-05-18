@@ -1,11 +1,12 @@
 """SQLAlchemy ORM models for Fabric Harness persistence.
 
-Five tables back the five in-memory harness stores:
-  harness_runs            ← HarnessRun domain model
-  harness_human_gates     ← HumanGate domain model
-  harness_checkpoints     ← HarnessCheckpoint domain model
-  harness_tool_contracts  ← ToolContract domain model
-  harness_trace_events    ← HarnessTraceEvent domain model
+Six tables back the harness stores:
+  harness_runs                    ← HarnessRun domain model
+  harness_human_gates             ← HumanGate domain model
+  harness_checkpoints             ← HarnessCheckpoint domain model
+  harness_tool_contracts          ← ToolContract domain model
+  harness_trace_events            ← HarnessTraceEvent domain model
+  harness_claim_validation_results← ClaimValidationResult domain model
 
 All tables carry tenant_id for Row-Level Security.
 JSONB columns store dict/list payloads (state_payload, tool_calls, metadata).
@@ -17,7 +18,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 # ORM models use generic JSON so they work with both Postgres and SQLite (tests).
@@ -202,4 +203,40 @@ class HarnessTraceEventRow(Base):
         Index("ix_harness_trace_events_run_tenant", "run_id", "tenant_id"),
         Index("ix_harness_trace_events_tenant_type", "tenant_id", "event_type"),
         Index("ix_harness_trace_events_trace_id", "trace_id"),
+    )
+
+
+class ClaimValidationResultRow(Base):
+    """Persistent record for a ClaimValidationResult produced during a harness run.
+
+    Linked to harness_runs via run_id so the GET /validation endpoint can
+    retrieve all results for a given run without re-running validation.
+    """
+
+    __tablename__ = "harness_claim_validation_results"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("harness_runs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(
+        String(255), nullable=False, comment="Tenant identifier for RLS isolation"
+    )
+    claim_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    validation_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    evidence_refs: Mapped[list] = mapped_column(_JsonType, nullable=False, default=list)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    trust_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    validator: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+    __table_args__ = (
+        Index("ix_harness_cvr_run_tenant", "run_id", "tenant_id"),
+        Index("ix_harness_cvr_tenant_state", "tenant_id", "validation_state"),
+        Index("ix_harness_cvr_claim_id", "claim_id"),
     )

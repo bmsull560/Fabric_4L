@@ -1,13 +1,18 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useNavigation } from "@/hooks/useNavigation";
 import {
   BrainCircuit, CheckCircle2, XCircle, RefreshCw, Sparkles, ArrowRight,
   TrendingUp, Shield, Zap, Star
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/blocks";
 import { WorkflowLayout } from "../components/WorkflowLayout";
+import { WorkflowStatusBanner } from "../components/WorkflowStatusBanner";
 import { useWorkflowStore } from "../store/workflowStore";
 import { STEPS } from "../constants";
+import { useHarnessRun } from "@/hooks/useHarness";
+import { cn } from "@/lib/utils";
 
 interface AIHypothesis {
   id: string; useCase: string; hypothesis: string;
@@ -23,11 +28,29 @@ const initialHypotheses: AIHypothesis[] = [
   { id: "h5", useCase: "Cut Changeover Time for Mixed-Model", hypothesis: "IF adaptive mixed-model software THEN EV-to-ICE changeover drops from 45 to 8 minutes", expectedValue: "$580K", confidence: 72, status: "suggested", matchedPain: "45-min changeover hurting agility", evidenceCount: 3 },
 ];
 
+// ── Workflow status badge helpers ─────────────────────────────────────────────
+
+function runStatusBadgeClass(status: string): string {
+  switch (status) {
+    case "completed":        return "bg-emerald-500/15 text-emerald-700 border-emerald-200";
+    case "running":          return "bg-blue-500/15 text-blue-700 border-blue-200";
+    case "failed":           return "bg-red-500/15 text-red-700 border-red-200";
+    case "waiting_for_human": return "bg-amber-500/15 text-amber-700 border-amber-200";
+    case "cancelled":        return "bg-slate-400/15 text-slate-600 border-slate-200";
+    default:                 return "bg-slate-100 text-slate-600 border-slate-200";
+  }
+}
+
 export default function AIModel() {
   const { navigateTo } = useNavigation();
   const { setCurrentStep } = useWorkflowStore();
+  const [searchParams] = useSearchParams();
   const [hypotheses, setHypotheses] = useState<AIHypothesis[]>(initialHypotheses);
   const [generating, setGenerating] = useState(false);
+
+  // Read optional harness run ID from query params (?runId=...)
+  const runId = searchParams.get("runId") ?? undefined;
+  const { data: harnessRun } = useHarnessRun(runId);
 
   const updateStatus = (id: string, status: AIHypothesis["status"]) => {
     setHypotheses((prev) => prev.map((h) => h.id === id ? { ...h, status } : h));
@@ -56,6 +79,20 @@ export default function AIModel() {
             <div>
               <h1 className="text-xl font-bold text-foreground">AI-Generated Value Model</h1>
               <p className="text-sm text-muted-foreground">ValuePilot analyzed Meridian&apos;s profile and generated 5 hypotheses.</p>
+              {harnessRun && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">Workflow:</span>
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[10px]", runStatusBadgeClass(harnessRun.status))}
+                  >
+                    {harnessRun.status.replace(/_/g, " ")}
+                  </Badge>
+                  <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
+                    {harnessRun.current_state}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -67,6 +104,9 @@ export default function AIModel() {
             </button>
           </div>
         </header>
+
+        {/* Live workflow status — sourced from the most recent harness run */}
+        <WorkflowStatusBanner className="mb-1" />
 
         <section className="grid grid-cols-4 gap-3">
           <StatCard label="AI Hypotheses" value={hypotheses.length} sub="Generated" icon={Sparkles} iconClassName="text-primary" iconBgClassName="bg-primary/10" />
@@ -145,6 +185,11 @@ export default function AIModel() {
             );
           })}
         </section>
+
+        {/* Demo data notice */}
+        <p className="text-[11px] text-muted-foreground/60 text-center pt-1">
+          Hypotheses are demo data — backend model generation is not yet wired.
+        </p>
       </main>
     </WorkflowLayout>
   );

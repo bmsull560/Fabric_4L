@@ -25,6 +25,7 @@ from harness.models import (
     HumanGate,
     InitiatedBy,
     ValidationState,
+    ValidationSummary,
 )
 
 # ---------------------------------------------------------------------------
@@ -234,8 +235,27 @@ class ValidationResultResponse(BaseModel):
         return cls(**result.model_dump())
 
 
+class ValidationSummaryResponse(BaseModel):
+    """Aggregate publish decision across all validated claims."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    total: int
+    passed: int
+    failed: int
+    needs_review: int
+    insufficient_evidence: int
+    can_publish: bool
+    requires_human_review: bool
+
+    @classmethod
+    def from_domain(cls, summary: ValidationSummary) -> ValidationSummaryResponse:
+        return cls(**summary.model_dump())
+
+
 class ValidateClaimsResponse(BaseModel):
-    """Response for POST /v1/harness/runs/{run_id}/validate."""
+    """Response for POST /v1/harness/runs/{run_id}/validate
+    and GET /v1/harness/runs/{run_id}/validation."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -245,6 +265,7 @@ class ValidateClaimsResponse(BaseModel):
     failed: int
     needs_review: int
     insufficient_evidence: int
+    summary: ValidationSummaryResponse | None = None
 
 
 # ---------------------------------------------------------------------------

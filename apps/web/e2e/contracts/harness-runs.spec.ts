@@ -13,8 +13,8 @@
  *   AC-06  Detail panel shows run metadata (ID, trace ID, type, status, state)
  *   AC-07  Checkpoints render in chronological order
  *   AC-08  Pending human gate renders approve and reject buttons
- *   AC-09  Approve button calls POST /api/v1/agents/harness/gates/:gateId/decide with { status: "approved" }
- *   AC-10  Reject button calls POST /api/v1/agents/harness/gates/:gateId/decide with { status: "rejected" }
+ *   AC-09  Approve button calls POST /api/v1/agents/harness/gates/:gateId/decide with { decision: "approved" }
+ *   AC-10  Reject button calls POST /api/v1/agents/harness/gates/:gateId/decide with { decision: "rejected" }
  *   AC-11  Buttons are disabled while mutation is pending
  *   AC-12  Terminal gate renders as read-only (no approve/reject buttons)
  *   AC-13  Non-terminal run triggers polling within 6 s
@@ -26,9 +26,8 @@
  * All API routes are mocked — no backend required.
  * Uses the contract-test fixture which auto-installs the API harness.
  *
- * TDD RED PHASE: test.fail() is applied at the describe level so that CI
- * reports these as "expected failures" (green) rather than broken
- * infrastructure. Remove test.fail() once the Harness UI is implemented.
+ * Harness UI is implemented and contract gaps are resolved. All tests are
+ * expected to pass. The TDD red phase (test.fail()) has been removed.
  */
 import { test, expect, type Page } from '../fixtures/contract-test';
 import { setUserTier, clearUserTier } from '../fixtures/tier-helpers';
@@ -124,11 +123,6 @@ async function mockGateDecide(
 // ── Test suite ───────────────────────────────────────────────────────────────
 
 test.describe('Contract: Harness Runs UI', () => {
-  // All tests in this suite are expected to fail until the Harness UI is
-  // implemented. test.fail() inverts pass/fail so CI stays green.
-  // Remove this line once HarnessRunDetail, useHarnessRuns, and the
-  // "Harness Runs" tab are wired.
-  test.fail();
 
   let workflowsPage: AgentWorkflowsPage;
   let detailPage: HarnessRunDetailPage;
@@ -326,7 +320,7 @@ test.describe('Contract: Harness Runs UI', () => {
       );
       await detailPage.clickApprove();
       const req = await decideRequest;
-      expect(JSON.parse(req.postData() ?? '{}')).toMatchObject({ status: 'approved' });
+      expect(JSON.parse(req.postData() ?? '{}')).toMatchObject({ decision: 'approved' });
     });
 
     test('AC-10: reject button calls decide endpoint with "rejected"', async ({ page }) => {
@@ -350,7 +344,7 @@ test.describe('Contract: Harness Runs UI', () => {
       );
       await detailPage.clickReject();
       const req = await decideRequest;
-      expect(JSON.parse(req.postData() ?? '{}')).toMatchObject({ status: 'rejected' });
+      expect(JSON.parse(req.postData() ?? '{}')).toMatchObject({ decision: 'rejected' });
     });
 
     test('AC-11: approve/reject buttons are disabled while mutation is pending', async ({

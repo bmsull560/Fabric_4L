@@ -3,7 +3,7 @@ import { Page, Locator, expect } from '@playwright/test';
 /**
  * Page Object for Business Case screen
  *
- * Route: /deliver/cases
+ * Route: /deliverables/cases
  * Tier: standard (all tiers)
  *
  * Encapsulates interactions with the business case output page including:
@@ -39,6 +39,15 @@ export class BusinessCasePage {
   readonly loadingSkeleton: Locator;
   readonly errorMessage: Locator;
 
+  // Trust status row
+  readonly trustRow: Locator;
+  readonly degradedBadge: Locator;
+  readonly pendingReviewBadge: Locator;
+  readonly validatedBadge: Locator;
+  readonly exportReadyBadge: Locator;
+  readonly exportBlockedBadge: Locator;
+  readonly internalDraftBadge: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -72,13 +81,22 @@ export class BusinessCasePage {
     this.errorMessage = page.getByRole('alert').or(
       page.locator('[class*="error"]').filter({ hasText: /error/i })
     );
+
+    // Trust status row
+    this.trustRow = page.getByTestId('business-case-trust-row');
+    this.degradedBadge = page.getByText('Degraded');
+    this.pendingReviewBadge = page.getByText('Pending Review');
+    this.validatedBadge = page.getByText('Validated');
+    this.exportReadyBadge = page.getByText('Export Ready');
+    this.exportBlockedBadge = page.getByText('Export Blocked');
+    this.internalDraftBadge = page.getByText('Internal draft only');
   }
 
   /**
    * Navigate to Business Cases page
    */
   async goto(): Promise<void> {
-    await this.page.goto('/deliver/cases');
+    await this.page.goto('/deliverables/cases');
     await this.waitForPageLoad();
   }
 
