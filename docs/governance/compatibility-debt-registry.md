@@ -30,6 +30,24 @@ This registry tracks **runtime** compatibility wrappers/shims that exist to pres
 | COMPAT-L4-001 | `services/layer4-agents/src/api/routes/frontend_compat.py` | Route shim | layer4-agents | Preserves historical frontend contract during workflow API consolidation. | 2026-08-31 | Platform Architecture approved 2026-05-12; reviewed 2026-05-12. | PLATARCH-REMOVE-L4-001 |
 | COMPAT-SDK-001 | `sdk/python/src/valuefabric/cli/workflows.py` | CLI compatibility surface | sdk | Backward-compatible CLI workflow commands pending full canonical command migration. | 2026-09-30 | Platform Architecture approved 2026-05-12; reviewed 2026-05-12. | PLATARCH-REMOVE-SDK-001 |
 
+## Known Intentional Behaviors (Not Shims)
+
+These are deliberate v1 design decisions that raise errors rather than silently degrading. They are documented here to prevent future "fixes" that would weaken the intended behavior.
+
+### Vault config source — `VaultSourceNotSupportedError`
+
+| Field | Value |
+|---|---|
+| **Location** | `services/layer3-knowledge/src/config/manager.py` — `ConfigurationManager._load_from_vault()` |
+| **Behavior** | Raises `VaultSourceNotSupportedError` (a `RuntimeError` subclass) when a `ConfigSource` with `type: vault` is loaded. |
+| **Intentional since** | v1 |
+| **Rationale** | Direct Vault API access via `hvac` is not implemented. Silently returning an empty dict would cause misconfigured services to start with missing secrets, which is worse than a hard failure. |
+| **Migration path** | Use External Secrets Operator (ESO) to sync Vault secrets into Kubernetes Secrets, then mount them as environment variables. Change the `ConfigSource` to `type: env`. See `docs/secrets-management.md`. |
+| **Test coverage** | `services/layer3-knowledge/tests/test_vault_config_source.py` (7 tests, all passing) |
+| **Do not "fix" by** | Returning `{}`, catching the exception silently, or adding a partial `hvac` integration without a full secrets-management review. |
+
+---
+
 ## Monthly Prune Procedure
 
 1. Run `pytest tests/ci/test_compatibility_debt_registry.py`.
