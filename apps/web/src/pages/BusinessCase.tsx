@@ -28,7 +28,18 @@ import { useNavigation } from "@/hooks";
 import { SectionCard } from "@/components/blocks/SectionCard";
 import { PageHeader, Btn } from "@/components/ui/fabric";
 import { cn } from "@/lib/utils";
-import type { ValidationState } from "@/api/harness";
+
+function metadataString(metadata: Record<string, unknown> | undefined, keys: string[]): string {
+  for (const key of keys) {
+    const value = metadata?.[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return "";
+}
+
+function metadataBoolean(metadata: Record<string, unknown> | undefined, keys: string[]): boolean {
+  return keys.some((key) => metadata?.[key] === true);
+}
 
 export default function BusinessCase() {
   const { caseId } = useParams<{ caseId: string }>();

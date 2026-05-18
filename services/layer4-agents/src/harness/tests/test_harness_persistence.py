@@ -60,7 +60,7 @@ from harness.models import (
     ToolRiskLevel,
     ToolSideEffectClass,
 )
-from harness.registry import HarnessRegistryError
+from harness.registry import HarnessRegistryError, RunNotFoundError
 from harness.repositories import (
     CheckpointRepository,
     HarnessRunRepository,
@@ -205,7 +205,7 @@ class TestSqlRunRepository:
         repo = HarnessRunRepository(session)
         run = _make_run(tenant_id=TENANT_A)
         await repo.create(run)
-        with pytest.raises(HarnessRegistryError):
+        with pytest.raises(RunNotFoundError):
             await repo.get(run.id, TENANT_B)
 
     async def test_list_filters_by_tenant(self, session: AsyncSession) -> None:
@@ -598,7 +598,7 @@ class TestSqlHarnessRegistryIntegration:
             workflow_type=HarnessWorkflowType.VALUE_MODEL_GENERATION,
             initiated_by=InitiatedBy.USER,
         )
-        with pytest.raises(HarnessRegistryError):
+        with pytest.raises(RunNotFoundError):
             await reg.get_run(run.id, TENANT_B)
 
     async def test_checkpoint_survives_registry_restart(

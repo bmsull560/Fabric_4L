@@ -38,6 +38,7 @@ from harness import (
     HarnessCheckpoint,
     HarnessRegistry,
     HarnessRegistryError,
+    RunNotFoundError,
     HarnessRun,
     HarnessRunStatus,
     HarnessState,
@@ -1085,7 +1086,7 @@ class TestTenantIsolation:
             initiated_by=InitiatedBy.USER,
         )
         run = harness.list_runs(tenant_id=tenant_id)[0]
-        with pytest.raises(HarnessRegistryError):
+        with pytest.raises(RunNotFoundError):
             harness.get_run(run.id, other_tenant)
 
     def test_run_list_is_tenant_scoped(
@@ -1423,7 +1424,7 @@ class TestAPIBehavior:
             workflow_type=HarnessWorkflowType.VALUE_MODEL_GENERATION,
             initiated_by=InitiatedBy.USER,
         )
-        with pytest.raises(HarnessRegistryError) as exc_info:
+        with pytest.raises(RunNotFoundError) as exc_info:
             harness.get_run(run.id, other_tenant)
         assert "not found" in str(exc_info.value).lower()
 
