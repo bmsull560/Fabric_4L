@@ -5,7 +5,7 @@
 **Deprecation IDs:** DEP-IMPERATIVE-NAV-009, DEP-URL-CONCAT-010  
 **ESLint rules:** `fabric-contracts/no-imperative-navigation`, `fabric-contracts/no-url-concatenation`
 
----
+<!-- ARCHIVED: Security Audit spec (F-01 through F-25) superseded 2026-05-18. Implemented in PR #398. -->
 
 ## Problem Statement
 
@@ -167,8 +167,6 @@ Full `make verify` run + per-layer mypy, platform_contract_lint, launch blocker 
 | P1-007 | OPEN — security suite CI artifact not attached |
 | P1-008 | OPEN — journey SLO report not generated |
 | RLS test coverage | GAP — migration 033's 8 tables have no enforcement test |
-
----
 
 ## Sprint 1 — Unblock `make verify` (Days 1–2)
 
