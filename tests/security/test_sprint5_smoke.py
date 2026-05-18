@@ -13,11 +13,7 @@ All checks are AST/source-level or unit-level to stay under 2 minutes.
 from __future__ import annotations
 
 import ast
-import logging
-import os
 import pathlib
-import time
-import unittest.mock as mock
 
 import pytest
 
