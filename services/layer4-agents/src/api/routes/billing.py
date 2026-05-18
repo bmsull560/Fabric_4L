@@ -109,9 +109,26 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...services.billing_service import BillingService
 from ...services.overage_service import OverageService
-from ...services.stripe_client import StripeError
+from ...services.stripe_client import StripeError, StripeNotConfiguredError
 from ...services.usage_service import UsageService, UsageValidationError
 from ..common.db import get_route_db
+
+# ---------------------------------------------------------------------------
+# Billing not-configured response helper
+# ---------------------------------------------------------------------------
+
+_BILLING_NOT_CONFIGURED_RESPONSE = {
+    "error": "billing_not_configured",
+    "message": "Stripe is not configured. Set STRIPE_SECRET_KEY to enable billing.",
+}
+
+
+def _billing_not_configured() -> HTTPException:
+    """Return a consistent HTTP 402 when Stripe is not configured."""
+    return HTTPException(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        detail=_BILLING_NOT_CONFIGURED_RESPONSE,
+    )
 
 
 class get_subscriptionResult(TypedDictModel):

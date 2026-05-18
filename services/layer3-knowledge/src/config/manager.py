@@ -22,6 +22,33 @@ class ConfigurationManager__load_from_fileResult(TypedDictModel):
 logger = logging.getLogger(__name__)
 
 
+class VaultSourceNotSupportedError(RuntimeError):
+    """Raised when a Vault config source is configured but not supported.
+
+    Vault direct integration is intentionally not implemented in v1.
+    The recommended path is ExternalSecrets Operator (ESO), which syncs
+    Vault secrets into Kubernetes Secrets that the application reads via
+    environment variables or mounted files.
+
+    Migration path:
+      1. Configure ESO ClusterSecretStore pointing at your Vault instance.
+      2. Create ExternalSecret resources in k8s/base/externalsecrets/.
+      3. Reference the resulting Kubernetes Secrets via env source type.
+
+    See: k8s/base/externalsecrets/clustersecretstore.yaml
+         docs/governance/compatibility-debt-registry.md
+    """
+
+    def __init__(self, source_name: str) -> None:
+        self.source_name = source_name
+        super().__init__(
+            f"Config source '{source_name}' uses type 'vault', which is not supported in v1. "
+            "Use ExternalSecrets Operator (ESO) to sync Vault secrets into Kubernetes Secrets, "
+            "then reference them via the 'env' or 'file' source type. "
+            "See docs/governance/compatibility-debt-registry.md for the migration path."
+        )
+
+
 class Environment(str, Enum):
     """Deployment environments."""
 
@@ -540,18 +567,16 @@ class ConfigurationManager:
         return env_config
 
     def _load_from_vault(self, source: ConfigSource) -> dict[str, Any]:
-        """Load configuration from Vault.
+        """Raise VaultSourceNotSupportedError — Vault direct integration is not implemented in v1.
 
-        Args:
-            source: Vault configuration source
+        The recommended path is ExternalSecrets Operator (ESO), which syncs Vault
+        secrets into Kubernetes Secrets. Reference those via the 'env' or 'file'
+        source type instead.
 
-        Returns:
-            Configuration data
+        Raises:
+            VaultSourceNotSupportedError: Always. This is intentional v1 behaviour.
         """
-        # Placeholder for Vault integration
-        # In production, this would use hvac or similar library
-        logger.warning("Vault integration not implemented")
-        return ConfigurationManager__load_from_vaultResult.model_validate({})
+        raise VaultSourceNotSupportedError(source.name)
 
     def _convert_env_value(self, value: str) -> Any:
         """Convert environment variable value to appropriate type.
