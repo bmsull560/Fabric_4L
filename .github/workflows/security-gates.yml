@@ -10,9 +10,9 @@ name: Security Gates
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop, staging, production]
   push:
-    branches: [main]
+    branches: [main, develop, staging, production]
   schedule:
     # Run weekly on Mondays at 9 AM UTC
     - cron: '0 9 * * 1'

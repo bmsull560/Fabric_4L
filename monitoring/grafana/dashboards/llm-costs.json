@@ -3,7 +3,11 @@
     "id": null,
     "uid": "llm-costs",
     "title": "LLM Costs",
-    "tags": ["llm", "cost", "value-fabric"],
+    "tags": [
+      "llm",
+      "cost",
+      "value-fabric"
+    ],
     "timezone": "utc",
     "schemaVersion": 38,
     "panels": [
@@ -17,11 +21,19 @@
             "legendFormat": "Total Cost ($/s)"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        },
         "fieldConfig": {
           "defaults": {
             "unit": "currencyUSD",
-            "custom": {"lineWidth": 2, "fillOpacity": 20}
+            "custom": {
+              "lineWidth": 2,
+              "fillOpacity": 20
+            }
           }
         }
       },
@@ -35,21 +47,45 @@
             "legendFormat": "{{ provider }}"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
       },
       {
         "id": 3,
         "title": "Cost by Model",
-        "type": "timeseries",
+        "type": "bargauge",
         "targets": [
           {
             "expr": "sum by (model) (rate(vf_llm_cost_usd_total[5m]))",
             "legendFormat": "{{ model }}"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 8
+        },
         "fieldConfig": {
-          "defaults": {"unit": "currencyUSD"}
+          "defaults": {
+            "unit": "currencyUSD",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "sum"
+            ]
+          },
+          "displayMode": "gradient"
         }
       },
       {
@@ -62,9 +98,16 @@
             "legendFormat": "Tenant {{ tenant_id }}"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 8
+        },
         "fieldConfig": {
-          "defaults": {"unit": "currencyUSD"}
+          "defaults": {
+            "unit": "currencyUSD"
+          }
         }
       },
       {
@@ -77,9 +120,16 @@
             "legendFormat": "{{ token_type }}"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        },
         "fieldConfig": {
-          "defaults": {"unit": "short"}
+          "defaults": {
+            "unit": "short"
+          }
         }
       },
       {
@@ -92,13 +142,91 @@
             "legendFormat": "Cost / hr"
           }
         ],
-        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        },
         "fieldConfig": {
-          "defaults": {"unit": "currencyUSD"}
+          "defaults": {
+            "unit": "currencyUSD"
+          }
         }
+      },
+      {
+        "id": 7,
+        "title": "Token Usage by Workflow",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum by (workflow_type) (vf_llm_tokens_total)",
+            "legendFormat": "{{ workflow_type }}",
+            "instant": true
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 24,
+          "x": 0,
+          "y": 24
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Value"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Total Tokens"
+                }
+              ]
+            }
+          ]
+        },
+        "options": {
+          "sortBy": [
+            {
+              "displayName": "Total Tokens",
+              "desc": true
+            }
+          ],
+          "footer": {
+            "show": true,
+            "reducer": [
+              "sum"
+            ],
+            "fields": ""
+          }
+        },
+        "transformations": [
+          {
+            "id": "labelsToFields",
+            "options": {
+              "mode": "columns"
+            }
+          },
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "workflow_type": "Workflow Type"
+              }
+            }
+          }
+        ]
       }
     ],
-    "time": {"from": "now-1h", "to": "now"},
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
     "refresh": "30s"
   }
 }

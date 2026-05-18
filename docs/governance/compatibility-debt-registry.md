@@ -43,7 +43,7 @@ These are deliberate v1 design decisions that raise errors rather than silently 
 | **Intentional since** | v1 |
 | **Rationale** | Direct Vault API access via `hvac` is not implemented. Silently returning an empty dict would cause misconfigured services to start with missing secrets, which is worse than a hard failure. |
 | **Migration path** | Use External Secrets Operator (ESO) to sync Vault secrets into Kubernetes Secrets, then mount them as environment variables. Change the `ConfigSource` to `type: env`. See `docs/secrets-management.md`. |
-| **Test coverage** | `services/layer3-knowledge/tests/test_vault_config_source.py` (7 tests, all passing) |
+| **Test coverage** | `services/layer3-knowledge/tests/test_vault_config_source.py` (7 tests, all passing — verified Sprint 6 2026-05-18) |
 | **Do not "fix" by** | Returning `{}`, catching the exception silently, or adding a partial `hvac` integration without a full secrets-management review. |
 
 ---

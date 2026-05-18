@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { PageHeader, SectionCard, DataTable } from "@/components/WfPrimitives";
 import {
   useTruths,
   useTruthAuditTrail,
   type TruthStatus,
 } from "@/hooks/useGroundTruthGovernance";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, LegacyDataTable } from "@/components/ui/fabric";
 
 export default function GovernanceChangeHistory() {
   const [statusFilter, setStatusFilter] = useState<TruthStatus | "all">("all");
@@ -78,7 +79,7 @@ export default function GovernanceChangeHistory() {
             <Loader2 className="h-4 w-4 animate-spin" /> Loading change history…
           </div>
         ) : (
-          <DataTable
+          <LegacyDataTable
             columns={[
               "From Status",
               "To Status",

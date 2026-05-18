@@ -109,6 +109,9 @@ eggs/
 artifacts/zero-trust/
 artifacts/backup-drill/
 artifacts/performance/
+
+# Generated Docker Compose artifact — produced by docker compose config
+compose-resolved.yml
 .env.dev
 
 # Additional cache directories (cleanup Phase 2)

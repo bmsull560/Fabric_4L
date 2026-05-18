@@ -19,7 +19,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from value_fabric.shared.identity.context import RequestContext
-from value_fabric.shared.identity.dependencies import require_authenticated
+from value_fabric.shared.identity.dependencies import require_authenticated, require_content_admin
 
 from ...database import get_db_from_context
 from ...harness.api_models import (
@@ -72,6 +72,8 @@ async def get_harness_registry(
 
 HarnessRegistryDep = Annotated[SqlHarnessRegistry, Depends(get_harness_registry)]
 AuthCtxDep = Annotated[RequestContext, Depends(require_authenticated)]
+# Gate decisions require content_admin or higher (reviewer/admin role).
+ContentAdminCtxDep = Annotated[RequestContext, Depends(require_content_admin)]
 
 
 # ---------------------------------------------------------------------------
@@ -347,9 +349,14 @@ async def decide_gate(
     gate_id: str,
     body: GateDecisionRequest,
     registry: HarnessRegistryDep,
-    ctx: AuthCtxDep,
+    ctx: ContentAdminCtxDep,
 ) -> GateResponse:
-    """Approve, reject, modify, or expire a human gate."""
+    """Approve, reject, modify, or expire a human gate.
+
+    Requires content_admin, tenant_admin, or super_admin role.
+    decision_by is always server-derived from ctx.user_id — any
+    body-supplied value is ignored to prevent spoofing.
+    """
     try:
         _gate = await registry.get_gate(gate_id, ctx.tenant_id)
     except KeyError:
@@ -364,12 +371,15 @@ async def decide_gate(
         "expired": GateStatus.EXPIRED,
     }
 
+    # decision_by is always server-derived — never from request body.
+    server_decision_by = ctx.user_id or ctx.tenant_id
+
     try:
         updated_gate = await registry.decide_gate(
             gate_id=gate_id,
             tenant_id=ctx.tenant_id,
             decision=decision_map[body.decision],
-            decision_by=ctx.user_id or ctx.tenant_id,
+            decision_by=server_decision_by,
             decision_reason=body.decision_reason,
         )
     except (ValueError, HarnessRegistryError) as exc:

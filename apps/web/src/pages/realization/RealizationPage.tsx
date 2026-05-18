@@ -26,13 +26,14 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, ErrorState } from "@/components/states";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { useAccountHypotheses } from "@/hooks/useHypotheses";
 import { useProducts } from "@/hooks/useProducts";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useNavigation } from "@/hooks";
 import { createNextAction } from "@/components/workspace/nextAction";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard } from "@/components/ui/fabric";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

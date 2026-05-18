@@ -10,7 +10,6 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import { useNavigation } from "@/hooks/useNavigation";
-import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -37,6 +36,7 @@ import {
   Key,
   Shield,
 } from "lucide-react";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 function Integrations() {
   const location = useLocation();

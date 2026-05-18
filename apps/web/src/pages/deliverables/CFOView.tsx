@@ -12,11 +12,12 @@ import {
   DollarSign, TrendingUp, Clock, BarChart3, Download,
   AlertCircle, Loader2, ArrowLeft, Shield,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport } from "@/hooks/useDocuments";
 
 import { cn } from "@/lib/utils";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 function fmt(n: number | undefined, prefix = "$"): string {
   if (n == null) return "—";

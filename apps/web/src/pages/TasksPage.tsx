@@ -1,12 +1,12 @@
 import { FormEvent, useState } from 'react';
 import { CheckCircle2, Loader2, Plus, RefreshCw } from 'lucide-react';
-import { PageHeader, Btn, StatusBadge } from '@/components/WfPrimitives';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/states';
 import { useCreateTask, useTasks, useUpdateTask, type TaskRecord } from '@/hooks/useTasks';
+import { PageHeader, Btn, StatusBadge } from "@/components/ui/fabric";
 
 function TaskStatusBadge({ status }: { status: TaskRecord['status'] }) {
   if (status === 'completed') return <StatusBadge status="completed" />;
