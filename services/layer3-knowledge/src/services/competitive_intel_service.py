@@ -41,6 +41,7 @@ from value_fabric.layer3.services.cypher_scope_guard import (
     validate_tenant_scoped_cypher,
 )
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from ..db.query_execution import run_validated_query
 
 
 class CompetitiveIntelService_add_competitorResult(TypedDictModel):
@@ -174,7 +175,7 @@ class CompetitiveIntelService:
             raise RuntimeError("tenant_id is required for CompetitiveIntelService cypher execution")
         self._validate_query_scope(query)
         validated_session = ValidatedNeo4jSession(session, tenant_id=str(tenant_id), strict=True)
-        return await validated_session.run(query, params)
+        return await run_validated_query(validated_session, query, params)
 
     # ------------------------------------------------------------------
     # Competitor CRUD
