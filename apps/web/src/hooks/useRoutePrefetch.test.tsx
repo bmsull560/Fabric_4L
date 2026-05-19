@@ -36,8 +36,36 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 describe("useRoutePrefetch", () => {
-  let setTimeoutSpy: any;
-  let clearTimeoutSpy: any;
+  interface MockApiResponse<TData> {
+    data: TData;
+  }
+
+  interface AccountDetailResponse {
+    id: string;
+    name?: string;
+  }
+
+  type SetTimeoutSpy = ReturnType<typeof vi.spyOn<typeof window, "setTimeout">>;
+  type ClearTimeoutSpy = ReturnType<typeof vi.spyOn<typeof window, "clearTimeout">>;
+
+  const mockApiGet = () => vi.mocked(apiClient.get);
+
+  function setApiGetResolvedValue<TData>(data: TData) {
+    const response: MockApiResponse<TData> = { data };
+    mockApiGet().mockResolvedValue(response);
+  }
+
+  function setApiGetRejectedValue(error: Error) {
+    mockApiGet().mockRejectedValue(error);
+  }
+
+  function setMatchMediaReturnValue(matches: boolean) {
+    // Centralize loose cast to one helper because mocked DOM APIs are intentionally partial.
+    matchMediaMock.mockReturnValue({ matches } as MediaQueryList);
+  }
+
+  let setTimeoutSpy: SetTimeoutSpy;
+  let clearTimeoutSpy: ClearTimeoutSpy;
   let queryClient: QueryClient;
 
   beforeEach(() => {
@@ -78,7 +106,7 @@ describe("useRoutePrefetch", () => {
   }
 
   it("should prefetch account detail after debounce delay", async () => {
-    (apiClient.get as any).mockResolvedValue({ data: { id: "acc-001", name: "Test Account" } });
+    setApiGetResolvedValue<AccountDetailResponse>({ id: "acc-001", name: "Test Account" });
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
@@ -89,10 +117,12 @@ describe("useRoutePrefetch", () => {
     await waitFor(() => {
       expect(apiClient.get).toHaveBeenCalledWith("l4", "/accounts/acc-001");
     });
+    const firstCallResponse = await mockApiGet().mock.results[0]?.value;
+    expect(firstCallResponse).toHaveProperty("data.id");
   });
 
   it("should prefetch business case detail after debounce delay", async () => {
-    (apiClient.get as any).mockResolvedValue({ data: { id: "case-001", name: "Test Case" } });
+    setApiGetResolvedValue<AccountDetailResponse>({ id: "case-001", name: "Test Case" });
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
@@ -103,6 +133,8 @@ describe("useRoutePrefetch", () => {
     await waitFor(() => {
       expect(apiClient.get).toHaveBeenCalledWith("l4", "/workflows/case-001/result");
     });
+    const firstCallResponse = await mockApiGet().mock.results[0]?.value;
+    expect(firstCallResponse).toHaveProperty("data.id");
   });
 
   it("should cancel pending prefetch", () => {
@@ -115,7 +147,7 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should skip prefetch on mobile devices", () => {
-    (window.matchMedia as any).mockReturnValue({ matches: true });
+    setMatchMediaReturnValue(true);
 
     const { result } = renderHook(() => useRoutePrefetch({ skipMobile: true }), {
       wrapper: createWrapper(),
@@ -148,7 +180,7 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should handle prefetch failures silently", async () => {
-    (apiClient.get as any).mockRejectedValue(new Error("Network error"));
+    setApiGetRejectedValue(new Error("Network error"));
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
@@ -162,7 +194,7 @@ describe("useRoutePrefetch", () => {
   });
 
   it("should deduplicate prefetches for the same ID", async () => {
-    (apiClient.get as any).mockResolvedValue({ data: { id: "acc-001" } });
+    setApiGetResolvedValue<AccountDetailResponse>({ id: "acc-001" });
 
     const { result } = renderHook(() => useRoutePrefetch(), { wrapper: createWrapper() });
 
