@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import pytest
+from unittest.mock import AsyncMock, patch
 
 from layer2_extraction.extraction.cache import ExtractionCache, _InMemoryLRUCache
 
@@ -133,3 +135,61 @@ class TestExtractionCacheMakeKey:
         k1 = cache._make_key("text", "entities", temperature=0.0)
         k2 = cache._make_key("text", "entities", temperature=0.5)
         assert k1 != k2
+
+
+class TestExtractionCacheFailureBehavior:
+    @pytest.mark.asyncio
+    async def test_redis_read_failure_logs_and_uses_fallback(self, caplog: pytest.LogCaptureFixture):
+        mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(side_effect=RuntimeError("redis down"))
+
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            cache = ExtractionCache(redis_url="redis://localhost:6379")
+
+        cache._fallback.set(cache._make_key("text", "entities"), {"ok": True})
+        caplog.set_level(logging.WARNING, logger="layer2_extraction.extraction.cache")
+
+        result = await cache.get(
+            "text",
+            "entities",
+            context={"tenant_id": "tenant-a", "job_id": "job-1", "correlation_id": "corr-1"},
+        )
+
+        assert result == {"ok": True}
+        assert "Cache operation failed; continuing without cache" in caplog.text
+        assert any(getattr(record, "operation", None) == "read" for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_redis_write_failure_logs_and_does_not_crash(self, caplog: pytest.LogCaptureFixture):
+        mock_redis = AsyncMock()
+        mock_redis.setex = AsyncMock(side_effect=RuntimeError("redis down"))
+
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            cache = ExtractionCache(redis_url="redis://localhost:6379")
+
+        caplog.set_level(logging.WARNING, logger="layer2_extraction.extraction.cache")
+        await cache.set(
+            "text",
+            "entities",
+            {"fallback": "written"},
+            context={"tenant_id": "tenant-a", "job_id": "job-2", "correlation_id": "corr-2"},
+        )
+
+        result = await cache.get("text", "entities")
+        assert result == {"fallback": "written"}
+        assert "Cache operation failed; continuing without cache" in caplog.text
+        assert any(getattr(record, "operation", None) == "write" for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_redis_close_failure_logs_and_does_not_crash(self, caplog: pytest.LogCaptureFixture):
+        mock_redis = AsyncMock()
+        mock_redis.close = AsyncMock(side_effect=RuntimeError("close failed"))
+
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            cache = ExtractionCache(redis_url="redis://localhost:6379")
+
+        caplog.set_level(logging.WARNING, logger="layer2_extraction.extraction.cache")
+        await cache.close()
+
+        assert "Cache operation failed; continuing without cache" in caplog.text
+        assert any(getattr(record, "operation", None) == "invalidate" for record in caplog.records)

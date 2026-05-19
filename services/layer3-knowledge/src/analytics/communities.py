@@ -10,6 +10,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..config import Settings, get_settings
 from ..db.query_execution import run_scoped_query
+from ..db.query_execution import run_validated_query
 
 
 class CommunityDetector__fallback_community_detectionResult(TypedDictModel):
@@ -127,7 +128,7 @@ class CommunityDetector:
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Check if GDS is available
             try:
-                await session.run("RETURN gds.version() as version")
+                await run_validated_query(session, "RETURN gds.version() as version")
             except Exception as e:
                 logger.warning(f"GDS not available: {e}")
                 return await self._fallback_community_detection(
@@ -144,7 +145,7 @@ class CommunityDetector:
                 )
 
                 # Run Louvain
-                result = await session.run(
+                result = await run_validated_query(session,
                     """
                     CALL gds.louvain.stream($graph_name, {
                         maxLevels: $max_levels,
@@ -203,7 +204,7 @@ class CommunityDetector:
             finally:
                 # Cleanup graph projection
                 try:
-                    await session.run(
+                    await run_validated_query(session,
                         "CALL gds.graph.drop($graph_name)",
                         {"graph_name": graph_name},
                     )
@@ -234,7 +235,7 @@ class CommunityDetector:
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             try:
-                await session.run("RETURN gds.version() as version")
+                await run_validated_query(session, "RETURN gds.version() as version")
             except Exception as e:
                 logger.warning(f"GDS not available: {e}")
                 return await self._fallback_community_detection(
@@ -249,7 +250,7 @@ class CommunityDetector:
                 )
 
                 # Run Leiden
-                result = await session.run(
+                result = await run_validated_query(session,
                     """
                     CALL gds.leiden.stream($graph_name, {
                         concurrency: 4
@@ -300,7 +301,7 @@ class CommunityDetector:
 
             finally:
                 try:
-                    await session.run(
+                    await run_validated_query(session,
                         "CALL gds.graph.drop($graph_name)",
                         {"graph_name": graph_name},
                     )
@@ -480,7 +481,7 @@ class CommunityDetector:
     ) -> float:
         """Calculate modularity score for community quality."""
         try:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 CALL gds.modularity.stream($graph_name, {
                     communityProperty: 'communityId'

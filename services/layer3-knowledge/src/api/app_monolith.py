@@ -98,7 +98,9 @@ from .metrics_state import get_system_metrics, set_app_metrics
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
-    from . import dependencies_tenant as _dependencies_tenant  # noqa: F401
+    from . import (
+        dependencies_tenant_secured as _dependencies_tenant_secured,  # noqa: F401
+    )
     NEO4J_TENANT_AVAILABLE = True
 except ImportError:
     NEO4J_TENANT_AVAILABLE = False

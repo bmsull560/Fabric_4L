@@ -16,12 +16,10 @@ Endpoints:
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..cache import cached
 from ..config import get_settings
@@ -33,6 +31,7 @@ from ..services.state_machine import (
     InvalidTransitionError,
     TransitionConflictError,
 )
+from ..services.freshness_monitor import FreshnessCheckResponse, FreshnessSummaryResponse
 from ..services.truth_service import (
     add_source,
     create_truth_object,
@@ -47,6 +46,8 @@ from .schemas import (
     MaturityLadderResponse,
     MaturityLevelDetail,
     TruthObjectCreate,
+    StaleTruthsResponse,
+    SyncToKgResponse,
     TruthObjectListResponse,
     TruthObjectResponse,
     TruthObjectSummary,
@@ -56,18 +57,6 @@ from .schemas import (
     ValidationEventResponse,
 )
 
-
-class sync_to_kgResult(TypedDictModel):
-    failed: Any
-    synced: Any
-    total_pending: Any
-
-class list_staleResult(TypedDictModel):
-    has_more: bool
-    items: Any
-    limit: Any
-    offset: Any
-    total: Any
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +232,7 @@ async def list_truths(
 
 @router.post(
     "/truths/sync-kg",
+    response_model=SyncToKgResponse,
     summary="Sync approved TruthObjects to Layer 3 Knowledge Graph",
     description=(
         "Triggers a bulk sync of all APPROVED TruthObjects that have not yet "
@@ -252,7 +242,7 @@ async def list_truths(
 async def sync_to_kg(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
+) -> SyncToKgResponse:
     authorize_action("layer5.truths.sync_kg", caller)
     tenant_id = caller.tenant_id
     from sqlalchemy import and_, select
@@ -294,7 +284,7 @@ async def sync_to_kg(
         else:
             failed += 1
 
-    return sync_to_kgResult.model_validate({
+    return SyncToKgResponse.model_validate({
         "synced": synced,
         "failed": failed,
         "total_pending": len(pending),
@@ -313,6 +303,7 @@ async def sync_to_kg(
         "Manually trigger the freshness monitor to check for and mark "
         "expired TruthObjects as stale. Can be run in dry-run mode to preview."
     ),
+    response_model=FreshnessCheckResponse,
     responses={
         200: {"description": "Freshness check completed"},
     },
@@ -321,7 +312,7 @@ async def check_stale(
     dry_run: bool = Query(default=False, description="Preview only, don't mark stale"),
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
+) -> FreshnessCheckResponse:
     authorize_action("layer5.truths.check_stale", caller)
     from ..services.freshness_monitor import check_freshness
 
@@ -341,6 +332,7 @@ async def check_stale(
 
 @router.get(
     "/truths/stale",
+    response_model=StaleTruthsResponse,
     summary="List stale TruthObjects",
     description="Returns all TruthObjects marked as stale for the organization.",
 )
@@ -349,7 +341,7 @@ async def list_stale(
     db: AsyncSession = Depends(get_db_from_context),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
-) -> dict:
+) -> StaleTruthsResponse:
     authorize_action("layer5.truths.list_stale", caller)
     from ..services.freshness_monitor import get_stale_truths
     from .schemas import TruthObjectSummary
@@ -379,7 +371,7 @@ async def list_stale(
         for t in items
     ]
 
-    return list_staleResult.model_validate({
+    return StaleTruthsResponse.model_validate({
         "items": summaries,
         "total": total,
         "limit": limit,
@@ -395,20 +387,21 @@ async def list_stale(
 
 @router.get(
     "/truths/freshness-summary",
+    response_model=FreshnessSummaryResponse,
     summary="Get freshness status summary",
     description="Returns counts of stale, fresh, and expiring-soon TruthObjects.",
 )
 async def freshness_summary(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
+) -> FreshnessSummaryResponse:
     authorize_action("layer5.truths.freshness_summary", caller)
     from ..services.freshness_monitor import FreshnessMonitor
 
     tenant_id = caller.tenant_id
     monitor = FreshnessMonitor()
     result = await monitor.get_freshness_summary(db, tenant_id)
-    return result.model_dump() if hasattr(result, "model_dump") else dict(result)
+    return FreshnessSummaryResponse.model_validate(result)
 
 
 # ---------------------------------------------------------------------------
