@@ -16,7 +16,6 @@ Endpoints:
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -57,17 +56,18 @@ from .schemas import (
 )
 
 
-class sync_to_kgResult(TypedDictModel):
-    failed: Any
-    synced: Any
-    total_pending: Any
+class SyncToKgResult(TypedDictModel):
+    failed: int
+    synced: int
+    total_pending: int
 
-class list_staleResult(TypedDictModel):
+
+class ListStaleResult(TypedDictModel):
     has_more: bool
-    items: Any
-    limit: Any
-    offset: Any
-    total: Any
+    items: list[TruthObjectSummary]
+    limit: int
+    offset: int
+    total: int
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +243,7 @@ async def list_truths(
 
 @router.post(
     "/truths/sync-kg",
+    response_model=SyncToKgResult,
     summary="Sync approved TruthObjects to Layer 3 Knowledge Graph",
     description=(
         "Triggers a bulk sync of all APPROVED TruthObjects that have not yet "
@@ -252,7 +253,7 @@ async def list_truths(
 async def sync_to_kg(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
+) -> SyncToKgResult:
     authorize_action("layer5.truths.sync_kg", caller)
     tenant_id = caller.tenant_id
     from sqlalchemy import and_, select
@@ -294,7 +295,7 @@ async def sync_to_kg(
         else:
             failed += 1
 
-    return sync_to_kgResult.model_validate({
+    return SyncToKgResult.model_validate({
         "synced": synced,
         "failed": failed,
         "total_pending": len(pending),
@@ -321,7 +322,7 @@ async def check_stale(
     dry_run: bool = Query(default=False, description="Preview only, don't mark stale"),
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
-) -> dict:
+ ) -> dict:
     authorize_action("layer5.truths.check_stale", caller)
     from ..services.freshness_monitor import check_freshness
 
@@ -341,6 +342,7 @@ async def check_stale(
 
 @router.get(
     "/truths/stale",
+    response_model=ListStaleResult,
     summary="List stale TruthObjects",
     description="Returns all TruthObjects marked as stale for the organization.",
 )
@@ -349,7 +351,7 @@ async def list_stale(
     db: AsyncSession = Depends(get_db_from_context),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
-) -> dict:
+) -> ListStaleResult:
     authorize_action("layer5.truths.list_stale", caller)
     from ..services.freshness_monitor import get_stale_truths
     from .schemas import TruthObjectSummary
@@ -379,7 +381,7 @@ async def list_stale(
         for t in items
     ]
 
-    return list_staleResult.model_validate({
+    return ListStaleResult.model_validate({
         "items": summaries,
         "total": total,
         "limit": limit,
