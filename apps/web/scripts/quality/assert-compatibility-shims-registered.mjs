@@ -24,7 +24,12 @@ function walk(dir) {
 }
 
 const registryRaw = fs.readFileSync(registryPath, 'utf8');
-const registeredPaths = new Set([...registryRaw.matchAll(/`(apps\/web\/src\/[^`]+)`/g)].map((m) => m[1]));
+// Match only paths in the second column of COMPAT table rows (pipe-delimited, backtick-wrapped).
+// This avoids false-negatives from canonical replacement paths that also appear in backticks
+// elsewhere in the document (e.g. "Frontend Shim Inventory" canonical-replacement cells).
+const registeredPaths = new Set(
+  [...registryRaw.matchAll(/^\|\s*COMPAT-\S+\s*\|\s*`(apps\/web\/src\/[^`]+)`/gm)].map((m) => m[1])
+);
 
 const findings = [];
 for (const file of walk(srcRoot)) {
