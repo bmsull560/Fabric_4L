@@ -596,6 +596,7 @@ class Neo4jLoader:
         """
 
         try:
+            # tenant_id is carried per relationship in rel_data and matched on both endpoints.
             result = await session.run(query, rel_data)
             record = await result.single()
             return record["loaded"] if record else 0

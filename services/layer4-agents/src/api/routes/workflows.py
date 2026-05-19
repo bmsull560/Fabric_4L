@@ -13,16 +13,14 @@ import asyncio
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 from value_fabric.shared.audit import AuditAction
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
-from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
@@ -32,29 +30,36 @@ from ..common.errors import raise_normalized, raise_normalized_with_log
 from ..schemas.workflow_progress import WorkflowProgressSchema, normalize_workflow_progress
 
 
-class get_workflow_resultResult(TypedDictModel):
-    completed_at: Any
-    errors: Any
-    output: Any
-    status: Any
-    workflow_id: Any
-
-class cancel_workflowResult(TypedDictModel):
-    status: str
-    workflow_id: Any
-
-class list_available_workflowsResult(TypedDictModel):
-    workflows: Any
-
-class list_active_workflowsResult(TypedDictModel):
-    has_more: Any
-    items: Any
-    limit: Any
-    offset: Any
-    total: Any
+JsonObject = dict[str, JsonValue]
 
 
 WorkflowStatusValue = Literal["pending", "running", "paused", "interrupted", "completed", "failed", "cancelled"]
+
+WorkflowErrorValue = str | JsonObject
+
+
+class WorkflowResultResponse(BaseModel):
+    workflow_id: str
+    status: WorkflowStatusValue
+    output: JsonObject | None = None
+    errors: list[WorkflowErrorValue] = Field(default_factory=list)
+    completed_at: str | None = None
+
+
+class WorkflowCancelResponse(BaseModel):
+    workflow_id: str
+    status: Literal["cancelled"]
+
+
+class AvailableWorkflow(BaseModel):
+    type: str
+    name: str
+    description: str
+
+
+class AvailableWorkflowsResponse(BaseModel):
+    workflows: list[AvailableWorkflow]
+
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -101,8 +106,8 @@ class WorkflowInputs(BaseModel):
     prospect_id: str | None = None
     prospect_company: str | None = None
     use_case_ids: list[str] | None = None
-    prospect_metrics: dict[str, Any] | None = None
-    custom_data: dict[str, Any] | None = Field(default_factory=dict)
+    prospect_metrics: JsonObject | None = None
+    custom_data: JsonObject | None = Field(default_factory=dict)
 
 
 VALID_WORKFLOW_TYPES = (
@@ -179,7 +184,7 @@ class WorkflowStatusResponse(BaseModel):
     completed_at: str | None = None
     error_count: int = 0
     has_output: bool = False
-    results: dict[str, Any] | None = None
+    results: JsonObject | None = None
     tenant_id: str | None = None
     user_id: str | None = None
     priority: int | None = None
@@ -218,7 +223,7 @@ class WorkflowEvent(BaseModel):
     event_type: str
     timestamp: str
     message: str
-    payload: dict[str, Any] | None = None
+    payload: JsonObject | None = None
     trace_id: str | None = Field(default=None, description="Canonical lineage key for cross-layer audit correlation")
     correlation_id: str | None = Field(default=None, description="Deprecated alias of trace_id; when present must match trace_id")
 
@@ -228,7 +233,7 @@ class WorkflowEventPayload(BaseModel):
     status: WorkflowStatusValue
     progress: float = Field(default=0.0, ge=0.0, le=100.0)
     current_node: str | None = None
-    normalized_progress: dict[str, Any] | None = None
+    normalized_progress: JsonObject | None = None
     trace_id: str | None = Field(default=None, description="Canonical lineage key for the workflow lifecycle")
     correlation_id: str | None = Field(default=None, description="Deprecated alias of trace_id")
 
@@ -241,7 +246,7 @@ class WorkflowResumeRequest(BaseModel):
     """
 
     user_id: str = Field(..., description="User resuming the workflow")
-    resume_data: dict[str, Any] | None = Field(
+    resume_data: JsonObject | None = Field(
         default_factory=dict, description="Optional user decision/input data"
     )
     tenant_id: str | None = None
@@ -362,7 +367,7 @@ async def _filter_and_paginate_workflows(
     status: str | None,
     workflow_type: str | None,
     include_completed: bool = False,
-) -> dict[str, Any]:
+) -> WorkflowListResponse:
     """Shared helper: filter and paginate workflows for a tenant."""
     workflows = await executor.list_workflows(tenant_id=tenant_id)
 
@@ -397,13 +402,13 @@ async def _filter_and_paginate_workflows(
     ]
     has_more = (offset + limit) < total
 
-    return {
-        "items": [p.model_dump() for p in paginated],
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": has_more,
-    }
+    return WorkflowListResponse(
+        items=paginated,
+        total=total,
+        limit=limit,
+        offset=offset,
+        has_more=has_more,
+    )
 
 
 @router.get("/workflows")
@@ -424,7 +429,7 @@ async def list_workflows(
     result = await _filter_and_paginate_workflows(
         executor, _ctx.tenant_id, limit, offset, status, type, include_completed
     )
-    return WorkflowListResponse.model_validate(result)
+    return result
 
 
 @router.get("/workflows/active")
@@ -444,15 +449,15 @@ async def list_active_workflows(
     result = await _filter_and_paginate_workflows(
         executor, _ctx.tenant_id, limit, offset, status, workflow_type, include_completed=False
     )
-    return WorkflowListResponse.model_validate(result)
+    return result
 
 
-@router.get("/workflows/types")
-async def list_available_workflows() -> dict[str, Any]:
+@router.get("/workflows/types", response_model=AvailableWorkflowsResponse)
+async def list_available_workflows() -> AvailableWorkflowsResponse:
     """List available workflow types."""
     types = list_workflow_types()
 
-    return list_available_workflowsResult.model_validate({
+    return AvailableWorkflowsResponse.model_validate({
         "workflows": [
             {"type": key, "name": info["name"], "description": info["description"]}
             for key, info in types.items()
@@ -505,12 +510,12 @@ async def get_workflow_status(
     )
 
 
-@router.get("/workflows/{workflow_id}/result")
+@router.get("/workflows/{workflow_id}/result", response_model=WorkflowResultResponse)
 async def get_workflow_result(
     workflow_id: str,
     executor: OrchestrationController = Depends(get_executor),
     _ctx: RequestContext = Depends(require_authenticated),
-) -> dict[str, Any]:
+) -> WorkflowResultResponse:
     """Get result of a completed workflow."""
     status = await executor.get_workflow_status(workflow_id)
 
@@ -535,22 +540,22 @@ async def get_workflow_result(
     if not result:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} result not found")
 
-    response = get_workflow_resultResult.model_validate({
+    response = WorkflowResultResponse.model_validate({
         "workflow_id": workflow_id,
         "status": status.get("status"),
         "output": result.get("output"),
         "errors": status.get("errors", []),
         "completed_at": status.get("completed_at"),
     })
-    return response.model_dump(mode="json")
+    return response
 
 
-@router.delete("/workflows/{workflow_id}")
+@router.delete("/workflows/{workflow_id}", response_model=WorkflowCancelResponse)
 async def cancel_workflow(
     workflow_id: str,
     executor: OrchestrationController = Depends(get_executor),
     _ctx: RequestContext = Depends(require_authenticated),
-) -> dict[str, Any]:
+) -> WorkflowCancelResponse:
     """Cancel a running workflow - OpenAPI spec compliant (DELETE method)."""
     status = await executor.get_workflow_status(workflow_id)
 
@@ -572,7 +577,7 @@ async def cancel_workflow(
             status_code=400, detail=f"Workflow {workflow_id} could not be cancelled"
         )
 
-    return cancel_workflowResult.model_validate({"workflow_id": workflow_id, "status": "cancelled"})
+    return WorkflowCancelResponse(workflow_id=workflow_id, status="cancelled")
 
 
 @router.post("/workflows/{workflow_id}/resume", response_model=WorkflowResumeResponse)
@@ -840,7 +845,7 @@ async def get_workflow_events(
 class ArchiveWorkflowResponse(BaseModel):
     """Archive workflow response."""
 
-    workflow_id: Any
+    workflow_id: str
     status: str
     archived_at: str
 

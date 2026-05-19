@@ -76,6 +76,7 @@ jobs:
             tests/security/test_tenant_mismatch.py
             tests/security/test_privileged_audit.py
             tests/security/test_layer3_ingest_tenant_hint_hostile.py
+            tests/security/test_cross_layer_tenant_isolation_matrix.py
           )
 
           expected=$(python -m pytest --collect-only -q "${TARGET_FILES[@]}" | rg -c "::")
@@ -87,6 +88,16 @@ jobs:
           fi
 
           python -m pytest -v -m tenant_boundary "${TARGET_FILES[@]}" --maxfail=1
+
+
+          matrix_expected=$(python -m pytest --collect-only -q tests/security/test_cross_layer_tenant_isolation_matrix.py | rg -c "::")
+          matrix_selected=$(python -m pytest --collect-only -q -m tenant_matrix tests/security/test_cross_layer_tenant_isolation_matrix.py | rg -c "::")
+          if [[ "$matrix_selected" -ne "$matrix_expected" ]]; then
+            echo "ERROR: tenant_matrix marker coverage mismatch (selected=$matrix_selected expected=$matrix_expected)"
+            exit 1
+          fi
+
+          python -m pytest -v -m tenant_matrix tests/security/test_cross_layer_tenant_isolation_matrix.py --maxfail=1
       - uses: actions/upload-artifact@v4
         with:
           name: security-artifacts

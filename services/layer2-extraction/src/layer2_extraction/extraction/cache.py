@@ -14,6 +14,13 @@ from typing import Any
 
 LLM_CACHE_TTL_SECONDS = int(os.getenv("LLM_CACHE_TTL_SECONDS", "3600"))
 
+try:
+    from redis.exceptions import RedisError
+except ImportError:
+    _REDIS_ERRORS = ()
+else:
+    _REDIS_ERRORS = (RedisError,)
+
 
 class _InMemoryLRUCache:
     """Thread-safe-ish in-memory LRU cache with TTL emulation."""
@@ -52,7 +59,9 @@ class ExtractionCache:
             try:
                 import redis.asyncio as aioredis
                 self._redis = aioredis.from_url(redis_url, decode_responses=False)
-            except Exception:
+            except ImportError:
+                self._fallback = _InMemoryLRUCache()
+            except _REDIS_ERRORS:
                 self._fallback = _InMemoryLRUCache()
         else:
             self._fallback = _InMemoryLRUCache()
@@ -82,7 +91,7 @@ class ExtractionCache:
                 raw = await self._redis.get(key)
                 if raw:
                     return pickle.loads(raw)
-            except Exception:
+            except _REDIS_ERRORS:
                 pass
         if self._fallback is not None:
             return self._fallback.get(key)
@@ -103,7 +112,7 @@ class ExtractionCache:
             try:
                 await self._redis.setex(key, ttl, pickle.dumps(value))
                 return
-            except Exception:
+            except _REDIS_ERRORS:
                 pass
         if self._fallback is not None:
             self._fallback.set(key, value)
@@ -112,5 +121,5 @@ class ExtractionCache:
         if self._redis is not None:
             try:
                 await self._redis.close()
-            except Exception:
+            except _REDIS_ERRORS:
                 pass

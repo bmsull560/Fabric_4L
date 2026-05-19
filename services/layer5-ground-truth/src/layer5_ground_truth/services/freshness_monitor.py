@@ -17,23 +17,10 @@ from uuid import UUID
 from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
 from ..config import get_settings
 from ..models.truth_object import ClaimType, TruthObject, ValidationEvent
+from .freshness_contracts import FreshnessCheckResponse, FreshnessSummaryResponse
 
-
-class FreshnessMonitor_check_and_mark_staleResult(TypedDictModel):
-    checked: Any
-    dry_run: Any
-    marked_stale: Any
-    timestamp: Any
-
-class FreshnessMonitor_get_freshness_summaryResult(TypedDictModel):
-    summary: dict[str, Any]
-    tenant_id: Any
-    timestamp: Any
-    warning_threshold_days: Any
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +34,7 @@ async def run_freshness_check_with_leader_lock(
     *,
     tenant_id: UUID | None = None,
     dry_run: bool = False,
-) -> dict[str, Any] | None:
+) -> FreshnessCheckResponse | None:
     """Run freshness reconciliation only for the elected leader worker.
 
     Returns None when lock is not acquired (another worker is leader).
@@ -143,7 +130,7 @@ class FreshnessMonitor:
         db: AsyncSession,
         tenant_id: UUID | None = None,
         dry_run: bool = False,
-    ) -> dict[str, Any]:
+    ) -> FreshnessCheckResponse:
         """
         Query for expired truths and mark them as stale.
 
@@ -237,7 +224,7 @@ class FreshnessMonitor:
                 marked_count,
             )
 
-        return FreshnessMonitor_check_and_mark_staleResult.model_validate({
+        return FreshnessCheckResponse.model_validate({
             "checked": len(expired_truths),
             "marked_stale": marked_count if not dry_run else 0,
             "dry_run": dry_run,
@@ -305,7 +292,7 @@ class FreshnessMonitor:
         self,
         db: AsyncSession,
         tenant_id: UUID,
-    ) -> dict[str, Any]:
+    ) -> FreshnessSummaryResponse:
         """
         Get a summary of freshness status for an organization.
 
@@ -335,7 +322,7 @@ class FreshnessMonitor:
         expiring_soon_result = await db.execute(expiring_soon_stmt)
         expiring_soon_count = expiring_soon_result.scalar() or 0
 
-        return FreshnessMonitor_get_freshness_summaryResult.model_validate({
+        return FreshnessSummaryResponse.model_validate({
             "tenant_id": str(tenant_id),
             "timestamp": now.isoformat(),
             "summary": {
@@ -374,7 +361,7 @@ async def check_freshness(
     db: AsyncSession,
     tenant_id: UUID | None = None,
     dry_run: bool = False,
-) -> dict[str, Any]:
+) -> FreshnessCheckResponse:
     """
     Convenience function to run a freshness check.
 
@@ -388,7 +375,7 @@ async def check_freshness(
     """
     monitor = FreshnessMonitor()
     result = await run_freshness_check_with_leader_lock(db, monitor, tenant_id=tenant_id, dry_run=dry_run)
-    return result or {"checked": 0, "marked_stale": 0, "dry_run": dry_run, "timestamp": datetime.now(UTC).isoformat()}
+    return result or FreshnessCheckResponse.model_validate({"checked": 0, "marked_stale": 0, "dry_run": dry_run, "timestamp": datetime.now(UTC).isoformat()})
 
 
 async def get_stale_truths(

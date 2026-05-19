@@ -12,11 +12,12 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from auth.api_keys import APIKey
-from auth.middleware import get_current_api_key, require_admin_role
-from api.dependencies_tenant import create_neo4j_tenant_session
 from logging_config import get_logger
-from api.routes._utils import semver_key
+
+from ...api.dependencies_tenant_secured import create_neo4j_tenant_session
+from ...api.routes._utils import semver_key
+from ...auth.api_keys import APIKey
+from ...auth.middleware import get_current_api_key, require_admin_role
 
 logger = get_logger(__name__)
 

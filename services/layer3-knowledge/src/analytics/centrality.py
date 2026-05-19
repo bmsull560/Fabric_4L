@@ -10,6 +10,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from config import Settings, get_settings
 from db.query_execution import run_scoped_query
+from db.query_execution import run_validated_query
 
 
 class CentralityAnalyzer__fallback_centralityResult(TypedDictModel):
@@ -124,7 +125,7 @@ class CentralityAnalyzer:
         async with driver.session(database=self.settings.neo4j_database) as session:
             try:
                 # Check for GDS
-                await session.run("RETURN gds.version() as version")
+                await run_validated_query(session, "RETURN gds.version() as version")
             except Exception:
                 logger.warning("GDS not available, using fallback")
                 return await self._fallback_centrality(
@@ -140,7 +141,7 @@ class CentralityAnalyzer:
                 )
 
                 # Calculate PageRank
-                result = await session.run(
+                result = await run_validated_query(session,
                     """
                     CALL gds.pageRank.stream($graph_name, {
                         maxIterations: 20,
@@ -195,7 +196,7 @@ class CentralityAnalyzer:
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             try:
-                await session.run("RETURN gds.version() as version")
+                await run_validated_query(session, "RETURN gds.version() as version")
             except Exception:
                 return await self._fallback_centrality(
                     session, node_labels, "betweenness", top_k, tenant_id=tenant_id
@@ -208,7 +209,7 @@ class CentralityAnalyzer:
                     session, graph_name, node_labels, relationship_types, tenant_id=tenant_id
                 )
 
-                result = await session.run(
+                result = await run_validated_query(session,
                     """
                     CALL gds.betweenness.stream($graph_name, {
                         concurrency: 4
@@ -479,7 +480,7 @@ class CentralityAnalyzer:
     async def _drop_graph(self, session, graph_name: str) -> None:
         """Drop GDS graph projection."""
         try:
-            await session.run(
+            await run_validated_query(session,
                 "CALL gds.graph.drop($graph_name)",
                 {"graph_name": graph_name},
             )

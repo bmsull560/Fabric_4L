@@ -88,3 +88,17 @@ Each cluster is only marked closed when all are merged together:
 2. Updated schema/type artifacts.
 3. Updated consumers (frontend and/or downstream service).
 4. Regression tests proving non-reintroduction.
+
+
+## Tenant Isolation Coverage Remediation Queue (endpoint-level)
+
+Last updated: 2026-05-18.
+
+| Layer | Uncovered endpoint/route-group backlog | Owner | Due date | Notes |
+|---|---|---|---|---|
+| L1 | Ingestion exports/admin compatibility surfaces not yet in hostile matrix | @layer1-ingestion | 2026-05-30 | Add route-level hostile tests + matrix row updates. |
+| L2 | Secondary extraction admin/reporting routes missing explicit cross-tenant/missing-context assertions | @layer2-extraction | 2026-06-13 | Extend matrix to include remaining status/admin endpoints. |
+| L3 | Non-product graph search/subgraph endpoints missing route-level hostile tests in matrix | @layer3-knowledge | 2026-06-20 | Add tenant-hostile coverage for list/read/search variants. |
+| L4 | Workflow adjunct endpoints (stream/replay/archive variants) require full matrix mapping | @layer4-agents | 2026-06-06 | Align with existing security invariants suite; add missing fail-closed cases. |
+| L5 | Bulk/sync expansion endpoints need explicit endpoint rows tied to hostile tests | @layer5-ground-truth | 2026-06-06 | Keep matrix current for new bulk/sync operations. |
+| L6 | Compare/industry-list/validation endpoint families not fully represented in cross-layer matrix | @layer6-benchmarks | 2026-06-27 | Add route-specific hostile + missing-context tests. |

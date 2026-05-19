@@ -1,4 +1,4 @@
-"""ContextGatheringService — Real data fetcher for ValuePilot conversations.
+"""ContextGatheringService - real data fetcher for ValuePilot conversations.
 
 When the GATE ConversationAgent is unavailable, this service queries
 PostgreSQL (accounts) and Neo4j (signals, hypotheses, evidence) to build
@@ -14,14 +14,34 @@ Design principles:
 from __future__ import annotations
 
 import logging
+from collections.abc import Hashable
 from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
+
+from .tenant_query_helper import run_tenant_validated_query
 
 logger = logging.getLogger(__name__)
 
 MAX_SIGNALS = 10
 MAX_HYPOTHESES = 8
+
+
+def _hypothesis_dedup_key(hypothesis: dict[str, Any]) -> Hashable:
+    """Return a deterministic de-duplication key for hypothesis rows."""
+    hypothesis_id = hypothesis.get("id")
+    if hypothesis_id:
+        return f"id:{hypothesis_id}"
+
+    return (
+        "fallback",
+        hypothesis.get("hypothesis_text"),
+        hypothesis.get("status"),
+        hypothesis.get("confidence_score"),
+        hypothesis.get("value_path_category"),
+        hypothesis.get("capability_name"),
+        hypothesis.get("signal_name"),
+    )
 
 
 class ContextGathererResult(TypedDictModel):
@@ -72,7 +92,6 @@ class ContextGatheringService:
             "evidence": evidence,
         }
 
-        # Strip None values to keep prompt compact
         return {k: v for k, v in result.items() if v is not None}
 
     async def _gather_parallel(
@@ -81,7 +100,12 @@ class ContextGatheringService:
         account_id: str,
         tenant_id: str,
         industry: str | None,
-    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None]:
+    ) -> tuple[
+        dict[str, Any] | None,
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+        dict[str, Any] | None,
+    ]:
         """Run independent queries concurrently."""
         import asyncio
 
@@ -116,6 +140,7 @@ class ContextGatheringService:
 
         try:
             from uuid import UUID
+
             from ..services.account_service import AccountService
 
             service = AccountService(self._db)
@@ -157,13 +182,15 @@ class ContextGatheringService:
             ORDER BY s.confidence_score DESC
             LIMIT $limit
             """
-            async with self._driver.session() as session:
-                result = await session.run(query, {
-                    "tenant_id": tenant_id,
+            records = await run_tenant_validated_query(
+                driver=self._driver,
+                query=query,
+                tenant_id=tenant_id,
+                params={
                     "account_id": account_id,
                     "limit": MAX_SIGNALS,
-                })
-                records = [record async for record in result]
+                },
+            )
 
             return [
                 {
@@ -197,13 +224,15 @@ class ContextGatheringService:
             ORDER BY vh.confidence_score DESC
             LIMIT $limit
             """
-            async with self._driver.session() as session:
-                result = await session.run(query, {
-                    "tenant_id": tenant_id,
+            records = await run_tenant_validated_query(
+                driver=self._driver,
+                query=query,
+                tenant_id=tenant_id,
+                params={
                     "account_id": account_id,
                     "limit": MAX_HYPOTHESES,
-                })
-                records = [record async for record in result]
+                },
+            )
 
             return [
                 {
@@ -216,8 +245,8 @@ class ContextGatheringService:
                     "capability": h.get("capability_name"),
                     "signal": h.get("signal_name"),
                 }
-                for r in records
-                if (h := r.get("hypothesis"))
+                for record in records
+                if (h := record.get("hypothesis"))
             ]
         except Exception as e:
             logger.warning("Failed to load account hypotheses: %s", e)
@@ -237,7 +266,7 @@ class ContextGatheringService:
             MATCH (e:Evidence {tenant_id: $tenant_id})
             WHERE e.evidence_type = 'case_study'
             """
-            params: dict[str, Any] = {"tenant_id": tenant_id}
+            params: dict[str, Any] = {}
 
             if industry:
                 query += " AND e.industry = $industry"
@@ -249,9 +278,13 @@ class ContextGatheringService:
                    avg(COALESCE(e.time_to_value_days, 180)) AS avg_ttv
             """
 
-            async with self._driver.session() as session:
-                result = await session.run(query, params)
-                record = await result.single()
+            records = await run_tenant_validated_query(
+                driver=self._driver,
+                query=query,
+                tenant_id=tenant_id,
+                params=params,
+            )
+            record = records[0] if records else None
 
             if not record:
                 return None

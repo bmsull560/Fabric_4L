@@ -24,9 +24,10 @@ from pydantic import BaseModel, Field
 from value_fabric.shared.models.typed_dict import TypedDictModel
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
-from services.case_study_service import CaseStudy, CaseStudyService
-from services.evidence_search import EvidenceSearchService
-from api.dependencies import get_neo4j_driver
+from ...api.dependencies import get_neo4j_driver
+from ...services.case_study_service import CaseStudy, CaseStudyService
+from ...services.evidence_search import EvidenceSearchService
+from ...db.query_execution import run_validated_query
 
 
 class delete_case_studyResult(TypedDictModel):
@@ -341,7 +342,7 @@ async def link_evidence_to_driver(
     """
     try:
         async with driver.session() as session:
-            result = await session.run(query, {
+            result = await run_validated_query(session, query, {
                 "evidence_id": request.evidence_id,
                 "driver_id": request.driver_id,
                 "tenant_id": tenant_id,
@@ -380,7 +381,7 @@ async def unlink_evidence_from_driver(
     """
     try:
         async with driver.session() as session:
-            result = await session.run(query, {
+            result = await run_validated_query(session, query, {
                 "evidence_id": evidence_id,
                 "driver_id": driver_id,
                 "tenant_id": tenant_id,
@@ -407,7 +408,7 @@ async def list_evidence_links(
     """
     try:
         async with driver.session() as session:
-            result = await session.run(query, {"driver_id": driver_id, "tenant_id": tenant_id})
+            result = await run_validated_query(session, query, {"driver_id": driver_id, "tenant_id": tenant_id})
             records = await result.data()
             return {
                 "driver_id": driver_id,

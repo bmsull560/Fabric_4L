@@ -1,5 +1,4 @@
 import { apiClient } from './client';
-import type { LayerKey } from './client';
 
 // ── L4 Workflow Types ────────────────────────────────────────────────────────
 
@@ -61,6 +60,24 @@ export interface WorkflowStatusResponse {
 
 export type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'interrupted';
 
+export interface WorkflowListItem {
+  id: string;
+  name: string;
+  workflow_type: string;
+  status: WorkflowStatus;
+  progress: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface WorkflowListResponse {
+  items: WorkflowListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
 export interface WorkflowEvent {
   event_id: string;
   event_type: string;
@@ -85,10 +102,25 @@ export interface WorkflowResumeResponse {
 
 export interface WorkflowResultResponse {
   workflow_id: string;
-  status: string;
+  status: WorkflowStatus;
   output: Record<string, unknown> | null;
-  errors: string[];
+  errors: (string | Record<string, unknown>)[];
   completed_at: string | null;
+}
+
+export interface WorkflowCancelResponse {
+  workflow_id: string;
+  status: 'cancelled';
+}
+
+export interface AvailableWorkflow {
+  type: string;
+  name: string;
+  description: string;
+}
+
+export interface AvailableWorkflowsResponse {
+  workflows: AvailableWorkflow[];
 }
 
 // ── Analysis Types ───────────────────────────────────────────────────────────
@@ -137,10 +169,13 @@ export const workflowApi = {
     apiClient.get(L4, `/workflows/${workflowId}/result`).then(r => r.data as WorkflowResultResponse),
 
   listActive: () =>
-    apiClient.get(L4, '/workflows/active').then(r => r.data as WorkflowStatusResponse[]),
+    apiClient.get(L4, '/workflows/active').then(r => r.data as WorkflowListResponse),
+
+  listTypes: () =>
+    apiClient.get(L4, '/workflows/types').then(r => r.data as AvailableWorkflowsResponse),
 
   cancel: (workflowId: string) =>
-    apiClient.delete(L4, `/workflows/${workflowId}`).then(r => r.data as { workflow_id: string; status: string }),
+    apiClient.delete(L4, `/workflows/${workflowId}`).then(r => r.data as WorkflowCancelResponse),
 
   resume: (workflowId: string, data: WorkflowResumeRequest) =>
     apiClient.post(L4, `/workflows/${workflowId}/resume`, data).then(r => r.data as WorkflowResumeResponse),

@@ -416,3 +416,38 @@ class TestHealth:
         assert data["database"] == "ok"
         assert "version" in data
         assert "timestamp" in data
+
+
+class TestContractShapes:
+    @pytest.mark.asyncio
+    async def test_sync_to_kg_required_fields(self, client):
+        resp = await client.post(f"/api/v1/truths/sync-kg{ORG_PARAM}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert set(data.keys()) == {"synced", "failed", "total_pending"}
+        assert isinstance(data["synced"], int)
+        assert isinstance(data["failed"], int)
+        assert isinstance(data["total_pending"], int)
+
+    @pytest.mark.asyncio
+    async def test_transition_conflict_error_envelope_shape(self, client):
+        create_resp = await client.post(
+            f"/api/v1/truths{ORG_PARAM}",
+            json=make_truth_payload(confidence=0.9, sources=[make_source_payload(), make_source_payload(source_url="https://conflict.example")]),
+        )
+        truth_id = create_resp.json()["id"]
+
+        first = await client.post(
+            f"/api/v1/truths/{truth_id}/validate{ORG_PARAM}",
+            json={"action": "approve", "actor": "reviewer@company.com", "actor_type": "human", "expected_current_status": "corroborated"},
+        )
+        assert first.status_code == 200
+
+        conflict = await client.post(
+            f"/api/v1/truths/{truth_id}/validate{ORG_PARAM}",
+            json={"action": "approve", "actor": "reviewer@company.com", "actor_type": "human", "expected_current_status": "corroborated"},
+        )
+        assert conflict.status_code == 409
+        detail = conflict.json()["detail"]
+        assert set(detail.keys()) == {"code", "message", "expected", "actual"}
+        assert detail["code"] == "TRANSITION_CONFLICT"

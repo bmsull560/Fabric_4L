@@ -65,16 +65,6 @@ const OidcFlowStateSchema = z.object({
 export type SessionMeta = z.infer<typeof SessionMetaSchema>;
 export type OidcFlowState = z.infer<typeof OidcFlowStateSchema>;
 
-/**
- * @deprecated Use SessionMeta. Kept for callers that still reference SessionSnapshot.
- * accessToken is always an empty string — the real token is in the httpOnly cookie.
- */
-export type SessionSnapshot = {
-  accessToken: string;
-  tenantId: string;
-  user: UserInfo;
-};
-
 function getWindowStorage(kind: 'sessionStorage'): StorageLike | null {
   if (typeof window === 'undefined') return null;
   return window[kind];
@@ -144,28 +134,6 @@ export class SessionService {
     ss.removeItem(SESSION_META_KEY);
   }
 
-  // ---------------------------------------------------------------------------
-  // Compatibility shim — callers that used getSessionSnapshot / persistSession
-  // ---------------------------------------------------------------------------
-
-  /**
-   * @deprecated Use getSessionMeta(). Returns a SessionSnapshot with an empty
-   * accessToken so existing callers don't break while being migrated.
-   */
-  getSessionSnapshot(): SessionSnapshot | null {
-    const meta = this.getSessionMeta();
-    if (!meta) return null;
-    return { accessToken: '', tenantId: meta.tenantId, user: meta.user };
-  }
-
-  /**
-   * @deprecated Use persistSessionMeta(). The accessToken parameter is ignored.
-   */
-  persistSession(_accessToken: string, user: UserInfo, tenantId: string): SessionSnapshot {
-    const meta = this.persistSessionMeta(user, tenantId);
-    return { accessToken: '', tenantId: meta.tenantId, user: meta.user };
-  }
-
   getCurrentUser(): UserInfo | null {
     return this.getSessionMeta()?.user ?? null;
   }
@@ -187,7 +155,7 @@ export class SessionService {
    * Returns true when session metadata is present; the backend will return 401
    * when the cookie has expired.
    */
-  isSessionValid(_snapshot?: SessionSnapshot | null): boolean {
+  isSessionValid(): boolean {
     return !!this.getSessionMeta();
   }
 

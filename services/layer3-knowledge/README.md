@@ -117,6 +117,57 @@ Related governance references:
 - Layer runtime parity checks: `tests/contract/test_layer_runtime_parity.py`
 - Service entrypoint smoke checks: `tests/contract/test_layer_service_entrypoint_smoke.py`
 
+## Route dependency import inventory (as of 2026-05-19)
+
+Inventory command:
+
+```bash
+rg "from \\.\\.\\.api\.dependencies_tenant(_secured)? import" services/layer3-knowledge/src/api/routes -n
+```
+
+Result: every route under `services/layer3-knowledge/src/api/routes` imports Neo4j tenant dependencies from `dependencies_tenant_secured` only; zero route imports target `dependencies_tenant`.
+
+## Canonical Neo4j tenant dependency
+
+Layer 3 route modules must import tenant-scoped Neo4j dependencies only from
+`services/layer3-knowledge/src/api/dependencies_tenant_secured.py`. This secured
+wrapper is the **single approved route dependency** because it:
+
+- derives tenant context from `RequestContext` or an already-authenticated route helper;
+- creates `Neo4jTenantSessionSecured` sessions with query validation enabled;
+- force-injects the authenticated `tenant_id` and `_tenant_id` into query parameters; and
+- supports `TenantScopedCypher` / `ScopedQuery` objects for builder-generated Cypher.
+
+Approved imports:
+
+```python
+from ...api.dependencies_tenant_secured import (
+    Neo4jTenantSession,
+    create_neo4j_tenant_session,
+    get_neo4j_with_tenant,
+)
+```
+
+Do not import `services/layer3-knowledge/src/api/dependencies_tenant.py` from new
+code. That file is a compatibility shim only, logs deprecation warnings on import,
+and is hard-removal targeted for **2026-09-30**. CI enforces this with:
+
+```bash
+python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
+```
+
+Current route inventory (all canonical imports):
+
+- `src/api/routes/benchmarks.py` → `create_neo4j_tenant_session`
+- `src/api/routes/calculators.py` → `create_neo4j_tenant_session`
+- `src/api/routes/entities.py` → `Neo4jTenantSession`, `get_neo4j_with_tenant`
+- `src/api/routes/formula_governance.py` → `create_neo4j_tenant_session`
+- `src/api/routes/formulas.py` → `create_neo4j_tenant_session`
+- `src/api/routes/knowledge.py` → `create_neo4j_tenant_session`
+- `src/api/routes/models_router.py` → `create_neo4j_tenant_session`
+- `src/api/routes/signals.py` → `Neo4jTenantSession`, `get_neo4j_with_tenant`
+- `src/api/routes/variables.py` → `create_neo4j_tenant_session`
+
 ## Scheduled removals & deprecations
 
 Layer 3 follows Value Fabric deprecation policy:

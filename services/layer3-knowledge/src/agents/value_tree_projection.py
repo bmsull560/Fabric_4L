@@ -18,6 +18,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from agents.base import AgentResult, BaseAgent
+from db.query_execution import run_validated_query
 
 
 class ValueTreeProjectionAgent__upward_traversalResult(TypedDictModel):
@@ -266,7 +267,7 @@ class ValueTreeProjectionAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 query, {"start_id": start_node_id, "max_hops": max_hops, "tenant_id": tenant_id}
             )
             records = [record async for record in result]
@@ -321,7 +322,7 @@ class ValueTreeProjectionAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 query, {"start_id": start_node_id, "max_hops": max_hops, "tenant_id": tenant_id}
             )
             records = [record async for record in result]

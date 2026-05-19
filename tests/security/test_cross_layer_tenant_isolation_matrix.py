@@ -17,6 +17,8 @@ from fastapi import HTTPException, Request, Response
 from value_fabric.shared.identity.context import RequestContext
 
 
+pytestmark = [pytest.mark.security, pytest.mark.tenant_boundary, pytest.mark.tenant_matrix]
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ARTIFACT_PATH = REPO_ROOT / "artifacts" / "mandatory_security" / "cross_layer_tenant_isolation_matrix.json"
 

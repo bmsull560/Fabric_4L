@@ -815,7 +815,7 @@ export const handlers = [
   }),
 
   http.get('/api/v1/agents/ground-truth/truths/freshness-summary', () => {
-    return HttpResponse.json({ fresh: 1, stale: 1, expiring_soon: 0, total: mockTruthItems.length });
+    return HttpResponse.json({ tenant_id: 'tenant-demo', timestamp: '2026-01-02T00:00:00Z', summary: { fresh: 1, stale: 1, expiring_soon: 0, total: mockTruthItems.length }, warning_threshold_days: 14 });
   }),
 
   http.get('/api/v1/agents/ground-truth/truths/stale', () => {
@@ -848,7 +848,7 @@ export const handlers = [
 
   // Compatibility aliases for direct governance tests and legacy fetch hooks
   http.get('/api/v1/truths/freshness-summary', () => {
-    return HttpResponse.json({ fresh: 1, stale: 1, expiring_soon: 0, total: mockTruthItems.length });
+    return HttpResponse.json({ tenant_id: 'tenant-demo', timestamp: '2026-01-02T00:00:00Z', summary: { fresh: 1, stale: 1, expiring_soon: 0, total: mockTruthItems.length }, warning_threshold_days: 14 });
   }),
 
   http.get('/api/v1/truths/stale', () => {

@@ -29,7 +29,16 @@ from value_fabric.layer3.models.valuepack import (
     ValuePackResponse,
     ValuePackUpdate,
 )
-from api.routes._utils import increment_patch_version
+from value_fabric.shared.models.typed_dict import TypedDictModel
+
+from logging_config import get_logger
+
+from ...api.routes._utils import increment_patch_version
+from ...api.routes.formulas import evaluate_expression
+from ...auth.api_keys import APIKey
+from ...auth.middleware import get_current_api_key
+from ...db.driver import get_driver
+from ...db.query_execution import run_validated_query
 
 
 class _build_fork_paramsResult(TypedDictModel):
@@ -319,7 +328,7 @@ async def _update_relationships(
         if tenant_id:
             params["tenant_id"] = tenant_id
         # strict-scoped-query-execution: helper requires tenant_id on every target node match
-        result = await tx.run(check_query, params)
+        result = await run_validated_query(tx, check_query, params)
         record = await result.single()
         found_ids = set(record["found_ids"]) if record else set()
         missing = set(target_ids) - found_ids
@@ -336,7 +345,7 @@ async def _update_relationships(
     DELETE r
     """
     # strict-scoped-query-execution: relationship delete starts from tenant-scoped ValuePack
-    await tx.run(delete_query, pack_id=pack_id, tenant_id=tenant_id)
+    await run_validated_query(tx, delete_query, pack_id=pack_id, tenant_id=tenant_id)
 
     # Create new relationships with tenant scoping
     create_query = f"""
@@ -346,7 +355,7 @@ async def _update_relationships(
     CREATE (vp)-[:{rel_type}]->(t)
     """
     # strict-scoped-query-execution: relationship creation requires tenant_id on both endpoints
-    await tx.run(create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
+    await run_validated_query(tx, create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
 
 
 async def _get_pack_detail(
@@ -373,7 +382,7 @@ async def _get_pack_detail(
     """
 
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, query, pack_id=pack_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -491,7 +500,7 @@ async def list_packs(
     """
 
     async with driver.session() as session:
-        result = await session.run(query, **params)
+        result = await run_validated_query(session, query, **params)
         records = await result.data()
 
         return [
@@ -587,7 +596,7 @@ async def create_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            result = await tx.run(
+            result = await run_validated_query(tx,
                 query,
                 pack_id=pack_id,
                 name=request.name,
@@ -737,7 +746,7 @@ async def update_pack(
     # SECURITY: Verify pack exists with tenant scoping
     check_query = "MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id}) RETURN vp"
     async with driver.session() as session:
-        result = await session.run(check_query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, check_query, pack_id=pack_id, tenant_id=tenant_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Pack not found")
 
@@ -752,7 +761,7 @@ async def update_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            await tx.run(update_query, **params)
+            await run_validated_query(tx, update_query, **params)
             await _update_pack_relationships(tx, pack_id, request, tenant_id)
 
         # Re-query for consistent view with relationships
@@ -778,7 +787,7 @@ async def _get_pack_formulas(
            f.name as name
     """
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, query, pack_id=pack_id, tenant_id=tenant_id)
         records = await result.data()
         return records
 
@@ -885,7 +894,7 @@ async def execute_pack(
     """
 
     async with driver.session() as session:
-        result = await session.run(
+        result = await run_validated_query(session,
             create_query,
             pack_id=pack_id,
             execution_id=execution_id,
@@ -954,7 +963,7 @@ async def execute_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            await tx.run(
+            await run_validated_query(tx,
                 complete_query,
                 execution_id=execution_id,
                 status=execution_status,
@@ -983,7 +992,7 @@ async def _get_original_pack(
     """
     query = "// strict-scoped-query-execution: fork source pack is tenant-scoped\nMATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id}) RETURN vp"
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, query, pack_id=pack_id, tenant_id=tenant_id)
         record = await result.single()
         if not record:
             raise HTTPException(status_code=404, detail="Pack not found")
@@ -1065,7 +1074,7 @@ async def _execute_fork(
     """
 
     async with driver.session() as session:
-        result = await session.run(fork_query, **params)
+        result = await run_validated_query(session, fork_query, **params)
         record = await result.single()
         if not record:
             raise HTTPException(status_code=500, detail="Failed to fork pack")
@@ -1503,7 +1512,7 @@ async def seed_valuepack_data(
     
     async with driver.session() as session:
         # strict-scoped-query-execution: seeding cypher MERGEs all tenant-owned nodes with tenant_id
-        result = await session.run(cypher, **params)
+        result = await run_validated_query(session, cypher, **params)
         record = await result.single()
         if not record:
             raise HTTPException(status_code=500, detail="Failed to seed ValuePack data")

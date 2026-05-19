@@ -10,6 +10,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from config import Settings, get_settings
 from retrieval.vector_store import VectorStore
+from db.query_execution import run_validated_query
 
 
 class SimilarityAnalyzer_compare_entitiesResult(TypedDictModel):
@@ -169,7 +170,7 @@ class SimilarityAnalyzer:
                 operation="similarity.find_similar_by_type",
                 labels=("Entity", target_type),
             )
-            graph_result = await session.run(*self._query_tuple(graph_query))
+            graph_result = await run_validated_query(session, *self._query_tuple(graph_query))
 
             graph_results = []
             async for record in graph_result:
@@ -244,7 +245,7 @@ class SimilarityAnalyzer:
                 operation="similarity.compare_entities.lookup",
                 labels=("Entity",),
             )
-            result = await session.run(*self._query_tuple(entity_query))
+            result = await run_validated_query(session, *self._query_tuple(entity_query))
             record = await result.single()
 
             if not record:
@@ -279,7 +280,7 @@ class SimilarityAnalyzer:
                 operation="similarity.compare_entities.common_neighbors",
                 labels=("Entity",),
             )
-            common_result = await session.run(*self._query_tuple(common_query))
+            common_result = await run_validated_query(session, *self._query_tuple(common_query))
             common_record = await common_result.single()
 
             if common_record:
@@ -311,7 +312,7 @@ class SimilarityAnalyzer:
                 operation="similarity.compare_entities.path",
                 labels=("Entity",),
             )
-            path_result = await session.run(*self._query_tuple(path_query))
+            path_result = await run_validated_query(session, *self._query_tuple(path_query))
             path_record = await path_result.single()
 
             path_info = {
@@ -385,7 +386,7 @@ class SimilarityAnalyzer:
                 operation="similarity.jaccard",
                 labels=("Entity",),
             )
-            result = await session.run(*self._query_tuple(query))
+            result = await run_validated_query(session, *self._query_tuple(query))
 
             return [
                 {
@@ -431,7 +432,7 @@ class SimilarityAnalyzer:
                 operation="similarity.adamic_adar",
                 labels=("Entity",),
             )
-            result = await session.run(*self._query_tuple(query))
+            result = await run_validated_query(session, *self._query_tuple(query))
 
             return [
                 {
@@ -503,7 +504,7 @@ class SimilarityAnalyzer:
                 operation="similarity.path",
                 labels=("ValueDriver",),
             )
-            result = await session.run(*self._query_tuple(query))
+            result = await run_validated_query(session, *self._query_tuple(query))
 
             return [
                 {
@@ -584,7 +585,7 @@ class SimilarityAnalyzer:
                     operation="similarity.combined.enrich",
                     labels=("Entity",),
                 )
-                result = await session.run(*self._query_tuple(enrich_query))
+                result = await run_validated_query(session, *self._query_tuple(enrich_query))
                 record = await result.single()
                 if record:
                     entity["name"] = record["name"]

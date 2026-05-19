@@ -20,6 +20,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -113,21 +114,162 @@ EXPORT_ENV: dict[str, str] = {
     "LAYER6_API_URL": "http://localhost:8006",
 }
 
+def _module_stub(name: str, **attrs: Any) -> ModuleType:
+    """Create an importable module stub for OpenAPI export subprocesses."""
+
+    module = ModuleType(name)
+    module.__dict__.update(attrs)
+    module.__spec__ = importlib.util.spec_from_loader(name, loader=None)
+    sys.modules[name] = module
+    return module
+
+
 class _MockPsycopg2:
     paramstyle = "pyformat"
     extras = type("MockModule", (), {})()
 
-sys.modules["psycopg2"] = _MockPsycopg2()
-sys.modules["psycopg2.extras"] = _MockPsycopg2.extras
 
 class _MockLanggraphCheckpoint:
+    class BaseCheckpointSaver:
+        pass
+
     class AsyncPostgresSaver:
         pass
 
-import sys
-sys.modules["langgraph.checkpoint.postgres"] = type("MockModule", (), {})()
-sys.modules["langgraph.checkpoint.postgres.aio"] = type("MockModule", (), {"AsyncPostgresSaver": _MockLanggraphCheckpoint.AsyncPostgresSaver})()
 
+class _MockStateGraph:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_node(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_edge(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_conditional_edges(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def set_entry_point(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def compile(self, *args: Any, **kwargs: Any) -> Any:
+        return self
+
+    async def ainvoke(self, value: Any, *args: Any, **kwargs: Any) -> Any:
+        return value
+
+
+class _MockAsyncGraphDatabase:
+    @staticmethod
+    def driver(*args: Any, **kwargs: Any) -> Any:
+        return None
+
+
+class _MockS3Client:
+    def put_object(self, *args: Any, **kwargs: Any) -> dict[str, str]:
+        return {"ETag": "mock"}
+
+    def generate_presigned_url(self, *args: Any, **kwargs: Any) -> str:
+        return "https://example.com/mock"
+
+
+class _MockConfig:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+
+def _mock_retry(*args: Any, **kwargs: Any) -> Any:
+    def decorator(func: Any) -> Any:
+        return func
+
+    return decorator
+
+
+def _mock_policy(*args: Any, **kwargs: Any) -> Any:
+    return None
+
+
+def _install_email_validator_shim() -> None:
+    """Keep Pydantic EmailStr schema generation working in slim export envs."""
+
+    if importlib.util.find_spec("email_validator") is not None:
+        return
+
+    from pydantic import networks as pydantic_networks
+
+    class _MockEmailParts:
+        def __init__(self, email: str) -> None:
+            self.normalized = email
+            self.local_part = email.split("@", 1)[0]
+
+    class _MockEmailValidator:
+        class EmailNotValidError(ValueError):
+            pass
+
+        @staticmethod
+        def validate_email(email: str, check_deliverability: bool = False) -> _MockEmailParts:
+            return _MockEmailParts(email)
+
+    pydantic_networks.email_validator = _MockEmailValidator
+    pydantic_networks.import_email_validator = lambda: None
+
+
+def _install_common_openapi_dependency_shims() -> None:
+    """Install only the dependency shims required inside export subprocesses."""
+
+    if importlib.util.find_spec("psycopg2") is None:
+        psycopg2 = _MockPsycopg2()
+        psycopg2.__spec__ = importlib.util.spec_from_loader("psycopg2", loader=None)  # type: ignore[attr-defined]
+        sys.modules["psycopg2"] = psycopg2
+        sys.modules["psycopg2.extras"] = _MockPsycopg2.extras
+
+    _install_email_validator_shim()
+
+
+def _install_layer4_openapi_dependency_shims() -> None:
+    """Shim optional Layer 4 runtime integrations for schema-only export."""
+
+    if importlib.util.find_spec("langgraph") is None:
+        _module_stub("langgraph")
+        _module_stub("langgraph.checkpoint")
+        _module_stub("langgraph.checkpoint.base", BaseCheckpointSaver=_MockLanggraphCheckpoint.BaseCheckpointSaver)
+        _module_stub("langgraph.checkpoint.postgres")
+        _module_stub("langgraph.checkpoint.postgres.aio", AsyncPostgresSaver=_MockLanggraphCheckpoint.AsyncPostgresSaver)
+        _module_stub("langgraph.graph", StateGraph=_MockStateGraph)
+
+    if importlib.util.find_spec("neo4j") is None:
+        _module_stub("neo4j", AsyncGraphDatabase=_MockAsyncGraphDatabase)
+
+    if importlib.util.find_spec("boto3") is None:
+        class _MockBoto3(ModuleType):
+            @staticmethod
+            def client(*args: Any, **kwargs: Any) -> _MockS3Client:
+                return _MockS3Client()
+
+        boto3 = _MockBoto3("boto3")
+        boto3.__spec__ = importlib.util.spec_from_loader("boto3", loader=None)
+        sys.modules["boto3"] = boto3
+
+    if importlib.util.find_spec("botocore") is None:
+        _module_stub("botocore")
+        _module_stub("botocore.client", BaseClient=_MockS3Client)
+        _module_stub("botocore.config", Config=_MockConfig)
+
+    if importlib.util.find_spec("tenacity") is None:
+        _module_stub(
+            "tenacity",
+            retry=_mock_retry,
+            retry_if_exception_type=_mock_policy,
+            stop_after_attempt=_mock_policy,
+            wait_exponential=_mock_policy,
+        )
+
+
+def _install_openapi_dependency_shims(spec: OpenApiExportSpec) -> None:
+    _install_common_openapi_dependency_shims()
+    if spec.output_filename == "layer4-agents.json":
+        _install_layer4_openapi_dependency_shims()
 
 
 def _spec_by_output(output_filename: str) -> OpenApiExportSpec:
@@ -146,9 +288,15 @@ def _package_root(spec: OpenApiExportSpec) -> Path:
 
 def _install_synthetic_package(name: str, package_path: Path) -> None:
     module = ModuleType(name)
-    module.__file__ = str(package_path / "__init__.py")
+    init_path = package_path / "__init__.py"
+    module.__file__ = str(init_path)
     module.__package__ = name
     module.__path__ = [str(package_path)]  # type: ignore[attr-defined]
+    if init_path.exists():
+        init_text = init_path.read_text(encoding="utf-8")
+        version_match = re.search(r"^__version__\s*=\s*['\"]([^'\"]+)['\"]", init_text, flags=re.MULTILINE)
+        if version_match:
+            module.__version__ = version_match.group(1)  # type: ignore[attr-defined]
     sys.modules[name] = module
 
 
@@ -232,6 +380,8 @@ def _export_service_in_process(spec: OpenApiExportSpec) -> bool:
 
     for path in (spec.src_path, SHARED_SRC, REPO_ROOT):
         sys.path.insert(0, str(path))
+
+    _install_openapi_dependency_shims(spec)
 
     try:
         if spec.canonical_module is not None:

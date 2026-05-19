@@ -216,10 +216,6 @@ export class AuthClient {
     return sessionService.getCurrentUser();
   }
 
-  persistSession(_token: string, user: UserInfo, tenantId: string): void {
-    sessionService.persistSessionMeta(user, tenantId);
-  }
-
   clearSession(): void {
     sessionService.clearSession();
   }

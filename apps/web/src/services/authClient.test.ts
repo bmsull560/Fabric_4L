@@ -141,12 +141,12 @@ describe('AuthClient', () => {
     });
   });
 
-  // ── Token storage — no localStorage ───────────────────────────────────────
+  // ── Session metadata storage — no localStorage token persistence ──────────
 
   describe('token storage', () => {
-    it('persistSession does NOT write to localStorage', () => {
+    it('session metadata persistence does NOT write tokens to localStorage', () => {
       const user = authFixtures.user({ role: 'analyst', tenantSlug: 'tenant' });
-      client.persistSession('some-token', user, 'tenant-123');
+      sessionService.persistSessionMeta(user, 'tenant-123');
 
       // localStorage must remain empty — token is in the httpOnly cookie
       expect(localStorage.getItem('accessToken')).toBeNull();
@@ -156,7 +156,7 @@ describe('AuthClient', () => {
 
     it('getAccessToken always returns null', () => {
       const user = authFixtures.user();
-      client.persistSession('some-token', user, 'tenant-123');
+      sessionService.persistSessionMeta(user, 'tenant-123');
 
       expect(sessionService.getAccessToken()).toBeNull();
     });

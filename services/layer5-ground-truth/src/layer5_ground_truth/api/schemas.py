@@ -11,9 +11,15 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, JsonValue, field_validator, model_validator
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 # Re-export enums so API consumers only need to import from schemas
+from ..services.freshness_contracts import (
+    FreshnessCheckResponse,
+    FreshnessCounts,
+    FreshnessSummaryResponse,
+)
 from ..models.truth_object import (
     ClaimType,
     DisputeReason,
@@ -35,6 +41,8 @@ __all__ = [
     "TruthStatus",
     # Request models
     "TruthSourceCreate",
+    "TruthValue",
+    "TruthAppliesTo",
     "TruthObjectCreate",
     "ValidateRequest",
     "AddSourceRequest",
@@ -50,6 +58,11 @@ __all__ = [
     "TruthObjectResponse",
     "TruthObjectSummary",
     "TruthObjectListResponse",
+    "StaleTruthsResponse",
+    "FreshnessCheckResponse",
+    "FreshnessCounts",
+    "FreshnessSummaryResponse",
+    "SyncToKgResponse",
     "ValidateResponse",
     "HealthResponse",
     "MaturityLadderResponse",
@@ -63,6 +76,37 @@ __all__ = [
     "ModelEvaluationResponse",
     "ModelEvaluationListResponse",
 ]
+
+
+
+JsonObject = dict[str, JsonValue]
+
+
+class TruthValue(BaseModel):
+    """Structured value payload attached to a truth claim."""
+
+    amount: float | str | None = None
+    unit: str | None = None
+    currency: str | None = None
+    period: str | None = None
+    model_config = {"extra": "allow"}
+
+
+class TruthAppliesTo(BaseModel):
+    """Scope metadata for where a truth claim applies."""
+
+    opportunity_id: str | None = None
+    account_id: str | None = None
+    industry: str | None = None
+    product_line: str | None = None
+    geography: str | None = None
+    model_config = {"extra": "allow"}
+
+
+class SyncToKgResponse(TypedDictModel):
+    synced: int
+    failed: int
+    total_pending: int
 
 
 # ---------------------------------------------------------------------------
@@ -111,7 +155,7 @@ class TruthSourceCreate(BaseModel):
         default=None,
         description="Date the source was published or captured",
     )
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: JsonObject = Field(default_factory=dict)
 
 
 class TruthSourceResponse(TruthSourceCreate):
@@ -123,13 +167,13 @@ class TruthSourceResponse(TruthSourceCreate):
     created_at: datetime
     created_by: str | None = None
     # Map from SQLAlchemy's extra_metadata column
-    metadata: dict[str, Any] = Field(default_factory=dict, alias="extra_metadata")
+    metadata: JsonObject = Field(default_factory=dict, alias="extra_metadata")
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
     @field_validator("metadata", mode="before")
     @classmethod
-    def extract_metadata(cls, v: Any) -> dict[str, Any]:
+    def extract_metadata(cls, v: Any) -> JsonObject:
         """Handle both dict values and SQLAlchemy MetaData objects."""
         if isinstance(v, dict):
             return v
@@ -175,7 +219,7 @@ class MaturityHistoryResponse(BaseModel):
     to_level: int
     trigger: str | None = None
     triggered_by: str | None = None
-    context: dict[str, Any] | None = None
+    context: JsonObject | None = None
     recorded_at: datetime
 
     model_config = {"from_attributes": True}
@@ -212,7 +256,7 @@ class TruthObjectCreate(BaseModel):
         description="Extraction model confidence score",
         examples=[0.82],
     )
-    value: dict[str, Any] | None = Field(
+    value: TruthValue | None = Field(
         default=None,
         description=(
             "Structured value: {amount, unit, currency, period} "
@@ -220,7 +264,7 @@ class TruthObjectCreate(BaseModel):
         ),
         examples=[{"amount": 20, "unit": "hours", "period": "month"}],
     )
-    applies_to: dict[str, Any] | None = Field(
+    applies_to: TruthAppliesTo | None = Field(
         default=None,
         description="Scope: {opportunity_id, account_id, industry, product_line, geography}",
         examples=[{"opportunity_id": "opp-123", "account_id": "acct-456"}],
@@ -235,7 +279,7 @@ class TruthObjectCreate(BaseModel):
         max_length=128,
         description="LLM / model version used for extraction",
     )
-    raw_extraction_data: dict[str, Any] | None = Field(
+    raw_extraction_data: JsonObject | None = Field(
         default=None,
         description="Original extraction payload for reproducibility",
     )
@@ -266,8 +310,8 @@ class TruthObjectResponse(BaseModel):
     tenant_id: UUID
     claim: str
     claim_type: str
-    value: dict[str, Any] | None = None
-    confidence: float
+    value: TruthValue | None = None
+    confidence: float = Field(..., ge=0.0, le=1.0)
     status: str
     maturity_level: int
     approved_by: str | None = None
@@ -276,7 +320,7 @@ class TruthObjectResponse(BaseModel):
     freshness: datetime
     expires_at: datetime | None = None
     is_stale: bool
-    applies_to: dict[str, Any] | None = None
+    applies_to: TruthAppliesTo | None = None
     dispute_reason: str | None = None
     dispute_notes: str | None = None
     disputed_by: str | None = None
@@ -302,7 +346,7 @@ class TruthObjectSummary(BaseModel):
     id: UUID
     claim: str
     claim_type: str
-    confidence: float
+    confidence: float = Field(..., ge=0.0, le=1.0)
     status: str
     maturity_level: int
     is_stale: bool
@@ -322,6 +366,10 @@ class TruthObjectListResponse(BaseModel):
     limit: int
     offset: int
     has_more: bool
+
+
+class StaleTruthsResponse(TruthObjectListResponse):
+    """Paginated list of stale TruthObjects."""
 
 
 # ---------------------------------------------------------------------------
@@ -444,8 +492,6 @@ class MaturityLadderResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 # Re-export enums
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
 from ..models.model_registry import (
     DeploymentEnvironment,
     DeploymentStatus,
