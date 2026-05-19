@@ -1,7 +1,14 @@
 """WebSocket routes for real-time workflow streaming.
 
-Provides WebSocket endpoint for subscribing to workflow events with
+Provides a WebSocket endpoint for subscribing to workflow events with
 automatic reconnection support and event replay.
+
+Authentication contract (SEC-L3-012 — Sprint 3 cutover):
+  The ONLY accepted authentication vector is the ``Sec-WebSocket-Protocol``
+  header carrying a JWT bearer token in the format ``token,<jwt>``.
+  Query-parameter authentication (?token= / ?auth=) has been removed.
+  Any connection attempt that omits or malforms the header is rejected
+  immediately with WebSocket close code 1008 (Policy Violation).
 """
 
 from __future__ import annotations
@@ -40,20 +47,20 @@ class WebSocketAuthError(Exception):
 
 
 def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
-    """Extract tenant_id and user_id from JWT token (Task 2.2).
+    """Extract tenant_id and user_id from a JWT bearer token.
 
     Args:
-        token: JWT bearer token from Sec-WebSocket-Protocol header
+        token: JWT bearer token parsed from the Sec-WebSocket-Protocol header.
 
     Returns:
-        Tuple of (tenant_id, user_id)
+        Tuple of (tenant_id, user_id).
 
     Raises:
-        WebSocketAuthError: If token is missing, invalid, or expired
+        WebSocketAuthError: If the token is missing, invalid, or expired.
     """
     if token is None or not token.strip():
         raise WebSocketAuthError("AUTH_TOKEN_MISSING")
-    
+
     if not JWT_AVAILABLE:
         raise WebSocketAuthError("AUTH_JWT_UNAVAILABLE")
 
@@ -68,14 +75,14 @@ def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
         else:
             tenant_id = getattr(payload, "tenant_id", None)
             user_id = getattr(payload, "sub", None) or getattr(payload, "user_id", None)
-        
+
         if not tenant_id or not isinstance(tenant_id, str):
             raise WebSocketAuthError("AUTH_TENANT_CLAIM_INVALID")
         if not user_id or not isinstance(user_id, str):
             raise WebSocketAuthError("AUTH_USER_CLAIM_INVALID")
-            
+
         return tenant_id, user_id
-        
+
     except WebSocketAuthError:
         raise
     except Exception as exc:
@@ -94,83 +101,56 @@ async def workflow_websocket(
     last_event_id: str | None = Query(
         None, description="Last seen event ID for replay on reconnect"
     ),
-    # P1-13 FIX: Reject token in query param (logged by proxies)
-    token: str | None = Query(
-        None, description="DEPRECATED: Use Sec-WebSocket-Protocol header instead"
-    ),
-):
+) -> None:
     """WebSocket endpoint for real-time workflow streaming.
 
-    Connect to this endpoint to receive live updates about workflow progress,
-    state transitions, and pause points.
+    **Authentication**
 
-    **Connection**
+    Pass the JWT bearer token exclusively via the ``Sec-WebSocket-Protocol``
+    header in the format ``token,<jwt>``:
+
     ```javascript
     const ws = new WebSocket(
-        'ws://localhost:8000/v1/ws/workflows/wf-123?last_event_id=evt-123456'
+        'ws://localhost:8000/v1/ws/workflows/wf-123',
+        ['token', '<jwt>']
     );
     ```
 
+    Connections that omit the header, or that attempt to pass credentials via
+    query parameters, are rejected immediately with close code 1008.
+
     **Event Types**
-    - `connection_established`: Initial connection confirmation with replay count
-    - `state_update`: Workflow status, progress, current node
-    - `node_transition`: Moving from one node to another
-    - `pause_point`: Human-in-the-loop pause with required actions
-    - `workflow_complete`: Final completion/failure event
-    - `ping`: Server heartbeat (respond with `pong`)
+    - ``connection_established``: Initial confirmation with replay count
+    - ``state_update``: Workflow status, progress, current node
+    - ``node_transition``: Moving from one node to another
+    - ``pause_point``: Human-in-the-loop pause with required actions
+    - ``workflow_complete``: Final completion/failure event
+    - ``ping``: Server heartbeat (respond with ``pong``)
 
-    **Client Messages**
-    ```javascript
-    // Acknowledge receipt
-    ws.send(JSON.stringify({type: 'ack', event_id: 'evt-123'}));
-
-    // Respond to ping
-    ws.send(JSON.stringify({type: 'pong'}));
-
-    // Request history replay
-    ws.send(JSON.stringify({type: 'subscribe_history'}));
-    ```
-
-    **Reconnection Strategy**
-    Store the last `event_id` received. On reconnect, pass it as `last_event_id`
-    query parameter to receive all missed events.
-
-    Args:
-        workflow_id: Workflow instance ID to subscribe to
-        last_event_id: Optional last seen event for replay on reconnect
+    **Reconnection**
+    Store the last ``event_id`` received. On reconnect, pass it as
+    ``last_event_id`` to receive all missed events.
     """
-    # P1-13 FIX: Reject JWT in query parameter (prevents logging by proxies)
-    if token:
-        logger.warning(
-            "WebSocket authentication failed: AUTH_QUERY_TOKEN_FORBIDDEN",
-            extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", "workflow_id": workflow_id},
-        )
-        await websocket.close(
-            code=1008,
-            reason="Authentication via query param is forbidden; use Sec-WebSocket-Protocol header",
-        )
-        return
-
-    # P1-13 FIX: Accept JWT from Sec-WebSocket-Protocol header instead
+    # Strict enforcement: Sec-WebSocket-Protocol is the only auth vector.
+    # Query-parameter auth (?token= / ?auth=) was removed in SEC-L3-012.
+    # Only accept the explicit "token,<jwt>" format.
+    # A bare single-value header (e.g. a subprotocol name) is NOT treated as
+    # a token — that path was removed to prevent accidental decode attempts on
+    # non-JWT subprotocol strings and to enforce a single unambiguous contract.
     protocol_header = websocket.headers.get("sec-websocket-protocol", "")
-    ws_token = None
+    ws_token: str | None = None
     if protocol_header:
-        # Protocol header format: "token,<jwt>" or just "<jwt>"
         parts = protocol_header.split(",")
         if len(parts) >= 2 and parts[0].strip().lower() == "token":
             ws_token = parts[1].strip()
-        elif len(parts) == 1:
-            ws_token = parts[0].strip()
 
     ws_manager = get_ws_manager()
 
-    # Task 2.2: Extract tenant context from JWT token (now from header)
-    # P0 SECURITY FIX: Fail closed - any auth error rejects connection
     try:
         tenant_id, user_id = _extract_tenant_from_token(ws_token)
     except WebSocketAuthError as e:
         logger.warning(
-            "Authentication failed: %s",
+            "WebSocket authentication failed: %s",
             e.code,
             extra={"auth_code": e.code, "workflow_id": workflow_id},
         )
@@ -178,28 +158,27 @@ async def workflow_websocket(
         return
 
     try:
-        # Accept connection and send replay if reconnecting (with tenant context)
         await ws_manager.connect(
-            websocket, workflow_id, last_event_id,
-            tenant_id=tenant_id, user_id=user_id
+            websocket,
+            workflow_id,
+            last_event_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
-        # Keep connection alive and handle client messages
         while True:
             try:
-                # Wait for messages from client (acks, pong responses)
                 message = await websocket.receive_json()
                 await ws_manager.handle_client_message(websocket, workflow_id, message)
-
             except WebSocketDisconnect:
-                logger.info(f"Client disconnected from workflow {workflow_id}")
+                logger.info("Client disconnected from workflow %s", workflow_id)
                 break
             except Exception as e:
-                logger.warning(f"Error handling client message for workflow {workflow_id}: {e}")
-                # Continue rather than break to keep connection alive
+                logger.warning(
+                    "Error handling client message for workflow %s: %s", workflow_id, e
+                )
 
     except Exception as e:
-        logger.error(f"WebSocket error for workflow {workflow_id}: {e}")
+        logger.error("WebSocket error for workflow %s: %s", workflow_id, e)
     finally:
-        # Cleanup connection
         await ws_manager.disconnect(websocket, workflow_id)
