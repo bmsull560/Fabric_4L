@@ -542,6 +542,31 @@ jobs:
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
 
+      - name: Enforce Layer 3 monolith code freeze (ARCH-L3-007)
+        working-directory: ${{ github.workspace }}
+        run: |
+          python scripts/ci/check_l3_monolith_freeze.py \
+            --diff-only \
+            --base-ref "origin/${{ github.base_ref || 'main' }}"
+
+      - name: Check Layer 3 V2 contract drift against V1 snapshot (DOC-ARCH-010)
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p artifacts
+          python scripts/ci/check_l3_contract_drift.py \
+            --snapshot docs/api/v1_snapshot.yaml \
+            --current contracts/openapi/layer3-knowledge.json \
+            --json-out artifacts/l3-contract-drift.json
+
+      - name: Upload Layer 3 contract drift report
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: l3-contract-drift-report
+          path: artifacts/l3-contract-drift.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Run tests with coverage
         run: |
           uv run pytest tests/ -v --tb=short \

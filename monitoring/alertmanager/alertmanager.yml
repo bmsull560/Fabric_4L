@@ -46,6 +46,19 @@ route:
       continue: true
       repeat_interval: 10m
 
+    # Security: cross-tenant WebSocket probe (critical volume) → PagerDuty + security Slack
+    - match:
+        alertname: WebSocketCrossTenantProbeCritical
+      receiver: 'pagerduty-critical'
+      continue: true
+      repeat_interval: 10m
+
+    # Security: cross-tenant WebSocket probe (warning threshold) → security Slack
+    - match:
+        alertname: WebSocketCrossTenantProbeDetected
+      receiver: 'slack-security'
+      repeat_interval: 5m
+
     # Critical alerts: PagerDuty + Slack (escalation)
     - match:
         severity: critical
@@ -160,6 +173,22 @@ receivers:
           - type: button
             text: 'Review in App'
             url: 'https://valuefabric.com/admin/content/approvals'
+
+  # Slack for security alerts (OBS-L4-009: BOLA/IDOR probe detection)
+  - name: 'slack-security'
+    slack_configs:
+      - channel: '#vf-security-alerts'
+        send_resolved: false
+        title: ':lock: SECURITY: {{ .CommonAnnotations.summary }}'
+        text: |
+          *Alert:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+          *Runbook:* {{ .CommonAnnotations.runbook_url }}
+          *Tenant bucket:* {{ .GroupLabels.actor_tenant_tier }}
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .CommonAnnotations.runbook_url }}'
 
 # Inhibition rules: prevent notification storms
 inhibit_rules:

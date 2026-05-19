@@ -1,95 +1,32 @@
 """WebSocket routes for real-time workflow streaming.
 
-Provides WebSocket endpoint for subscribing to workflow events with
-automatic reconnection support and event replay.
+Authentication transport (canonical):
+    Sec-WebSocket-Protocol: base64url.bearer.authorization, <jwt>
+
+Legacy query-parameter auth is accepted with a deprecation warning and
+will be removed in v2.0 (SEC-L3-012).
+
+Reconnection:
+    Pass ``last_event_id`` query parameter to replay missed events.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from value_fabric.shared.observability.trace_context import resolve_trace_context
 
+from .auth import (
+    WebSocketAuthError,
+    decode_ws_token,
+    extract_token_from_protocol_header,
+    extract_token_from_query_param,
+)
 from .manager import get_ws_manager
-
-if TYPE_CHECKING:
-    from ...engine.executor import OrchestrationController
-
-try:
-    from value_fabric.shared.identity.jwt import decode_jwt
-    JWT_AVAILABLE = True
-except ImportError:
-    JWT_AVAILABLE = False
-    decode_jwt = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 websocket_router = APIRouter()
-
-
-_TOKEN_EXCEPTION_CODE_MAP = {
-    "ExpiredSignatureError": "AUTH_TOKEN_EXPIRED",
-    "InvalidTokenError": "AUTH_TOKEN_INVALID",
-    "DecodeError": "AUTH_TOKEN_DECODE_FAILED",
-    "InvalidSignatureError": "AUTH_TOKEN_SIGNATURE_INVALID",
-}
-
-
-class WebSocketAuthError(Exception):
-    """Raised when WebSocket authentication fails."""
-
-    def __init__(self, code: str):
-        self.code = code
-        super().__init__(code)
-
-
-def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
-    """Extract tenant_id and user_id from JWT token (Task 2.2).
-
-    Args:
-        token: JWT bearer token from Sec-WebSocket-Protocol header
-
-    Returns:
-        Tuple of (tenant_id, user_id)
-
-    Raises:
-        WebSocketAuthError: If token is missing, invalid, or expired
-    """
-    if token is None or not token.strip():
-        raise WebSocketAuthError("AUTH_TOKEN_MISSING")
-    
-    if not JWT_AVAILABLE:
-        raise WebSocketAuthError("AUTH_JWT_UNAVAILABLE")
-
-    try:
-        payload = decode_jwt(token)
-        if not payload:
-            raise WebSocketAuthError("AUTH_INVALID_PAYLOAD")
-
-        if isinstance(payload, dict):
-            tenant_id = payload.get("tenant_id")
-            user_id = payload.get("sub") or payload.get("user_id")
-        else:
-            tenant_id = getattr(payload, "tenant_id", None)
-            user_id = getattr(payload, "sub", None) or getattr(payload, "user_id", None)
-        
-        if not tenant_id or not isinstance(tenant_id, str):
-            raise WebSocketAuthError("AUTH_TENANT_CLAIM_INVALID")
-        if not user_id or not isinstance(user_id, str):
-            raise WebSocketAuthError("AUTH_USER_CLAIM_INVALID")
-            
-        return tenant_id, user_id
-        
-    except WebSocketAuthError:
-        raise
-    except Exception as exc:
-        error_code = _TOKEN_EXCEPTION_CODE_MAP.get(
-            exc.__class__.__name__,
-            "AUTH_TOKEN_DECODE_FAILED",
-        )
-        logger.warning("WebSocket JWT decode failed", extra={"auth_code": error_code})
-        raise WebSocketAuthError(error_code)
 
 
 async def _verify_workflow_ownership(workflow_id: str, tenant_id: str) -> bool:
@@ -108,11 +45,12 @@ async def _verify_workflow_ownership(workflow_id: str, tenant_id: str) -> bool:
         True if the workflow is owned by the tenant, False otherwise.
     """
     try:
-        from ...api.routes.workflows import get_executor  # local import — avoids circular dep at module load
+        # Local import — avoids circular dependency at module load time.
+        from ...api.routes.workflows import get_executor
+
         executor = get_executor()
         status = await executor.get_workflow_status(workflow_id)
         if not status:
-            # Workflow not found — deny to prevent enumeration
             logger.warning(
                 "Workflow ownership check: workflow not found",
                 extra={"workflow_id": workflow_id, "tenant_id": tenant_id},
@@ -120,7 +58,6 @@ async def _verify_workflow_ownership(workflow_id: str, tenant_id: str) -> bool:
             return False
         workflow_tenant = status.get("tenant_id")
         if not workflow_tenant:
-            # No tenant recorded — deny; this should not happen in production
             logger.warning(
                 "Workflow ownership check: workflow has no tenant_id",
                 extra={"workflow_id": workflow_id},
@@ -142,97 +79,74 @@ async def workflow_websocket(
     last_event_id: str | None = Query(
         None, description="Last seen event ID for replay on reconnect"
     ),
-    # P1-13 FIX: Reject token in query param (logged by proxies)
+    # DEPRECATED (v2.0 removal: SEC-L3-012): use Sec-WebSocket-Protocol header.
     token: str | None = Query(
-        None, description="DEPRECATED: Use Sec-WebSocket-Protocol header instead"
+        None,
+        include_in_schema=False,
+        description="DEPRECATED: use Sec-WebSocket-Protocol header",
     ),
-):
+) -> None:
     """WebSocket endpoint for real-time workflow streaming.
 
-    Connect to this endpoint to receive live updates about workflow progress,
-    state transitions, and pause points.
+    **Authentication**
 
-    **Connection**
-    ```javascript
-    const ws = new WebSocket(
-        'ws://localhost:8000/v1/ws/workflows/wf-123?last_event_id=evt-123456'
-    );
+    Preferred (canonical):
+    ```
+    Sec-WebSocket-Protocol: base64url.bearer.authorization, <jwt>
+    ```
+
+    Legacy (deprecated, removed in v2.0):
+    ```
+    ws://host/v1/ws/workflows/<id>?token=<jwt>
     ```
 
     **Event Types**
-    - `connection_established`: Initial connection confirmation with replay count
+    - `connection_established`: Initial confirmation with replay count
     - `state_update`: Workflow status, progress, current node
-    - `node_transition`: Moving from one node to another
+    - `node_transition`: Node-to-node transition
     - `pause_point`: Human-in-the-loop pause with required actions
     - `workflow_complete`: Final completion/failure event
     - `ping`: Server heartbeat (respond with `pong`)
 
     **Client Messages**
-    ```javascript
-    // Acknowledge receipt
-    ws.send(JSON.stringify({type: 'ack', event_id: 'evt-123'}));
-
-    // Respond to ping
-    ws.send(JSON.stringify({type: 'pong'}));
-
-    // Request history replay
-    ws.send(JSON.stringify({type: 'subscribe_history'}));
+    ```json
+    {"type": "ack",               "event_id": "evt-123"}
+    {"type": "pong"}
+    {"type": "subscribe_history"}
     ```
 
-    **Reconnection Strategy**
-    Store the last `event_id` received. On reconnect, pass it as `last_event_id`
-    query parameter to receive all missed events.
-
-    Args:
-        workflow_id: Workflow instance ID to subscribe to
-        last_event_id: Optional last seen event for replay on reconnect
+    **Reconnection**
+    Store the last `event_id` received. On reconnect pass it as
+    `last_event_id` to receive all missed events.
     """
     # OBS-L4-004: Resolve correlation ID at the HTTP upgrade stage.
     # Inherits X-Request-ID / X-Correlation-ID from the client if present,
-    # otherwise generates a new one. All subsequent log calls in this session
-    # include this ID so WebSocket events are traceable end-to-end.
+    # otherwise generates a new one so all log calls in this session are traceable.
     trace_ctx = resolve_trace_context(websocket.headers)
     correlation_id = trace_ctx.trace_id
-    _log = {"workflow_id": workflow_id, "correlation_id": correlation_id}
+    _log: dict = {"workflow_id": workflow_id, "correlation_id": correlation_id}
 
-    # P1-13 FIX: Reject JWT in query parameter (prevents logging by proxies)
-    if token:
-        logger.warning(
-            "WebSocket authentication failed: AUTH_QUERY_TOKEN_FORBIDDEN",
-            extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", **_log},
-        )
-        await websocket.close(
-            code=1008,
-            reason="Authentication via query param is forbidden; use Sec-WebSocket-Protocol header",
-        )
-        return
-
-    # P1-13 FIX: Accept JWT from Sec-WebSocket-Protocol header instead
+    # --- Token extraction (canonical header first, legacy fallback) ----------
     protocol_header = websocket.headers.get("sec-websocket-protocol", "")
-    ws_token = None
-    if protocol_header:
-        # Protocol header format: "token,<jwt>" or just "<jwt>"
-        parts = protocol_header.split(",")
-        if len(parts) >= 2 and parts[0].strip().lower() == "token":
-            ws_token = parts[1].strip()
-        elif len(parts) == 1:
-            ws_token = parts[0].strip()
+    ws_token = extract_token_from_protocol_header(protocol_header)
 
-    ws_manager = get_ws_manager()
+    if ws_token is None and token:
+        # Legacy path: query-parameter token.  Emits DEPRECATION [SEC-L3-012] warning.
+        ws_token = extract_token_from_query_param(token, correlation_id=correlation_id)
 
-    # Task 2.2: Extract tenant context from JWT token (now from header)
-    # P0 SECURITY FIX: Fail closed - any auth error rejects connection
+    # --- Authentication (fail-closed) ----------------------------------------
     try:
-        tenant_id, user_id = _extract_tenant_from_token(ws_token)
-    except WebSocketAuthError as e:
+        tenant_id, user_id = decode_ws_token(ws_token)
+    except WebSocketAuthError as exc:
         logger.warning(
-            "WebSocket authentication failed",
-            extra={"auth_code": e.code, **_log},
+            "WebSocket authentication failed: %s",
+            exc.code,
+            extra={"auth_code": exc.code, **_log},
         )
         await websocket.close(code=1008, reason="Authentication failed")
         return
 
-    # Bind tenant context to the log dict now that we have it
+    # Bind tenant context to the log dict now that we have it.
     _log["tenant_id"] = tenant_id
 
     # SEC-L4-WS-001: Verify the requested workflow belongs to the authenticated tenant.
@@ -244,32 +158,34 @@ async def workflow_websocket(
 
     logger.info("WebSocket workflow session started", extra=_log)
 
+    ws_manager = get_ws_manager()
+
     try:
-        # Accept connection and send replay if reconnecting (with tenant context)
         await ws_manager.connect(
-            websocket, workflow_id, last_event_id,
-            tenant_id=tenant_id, user_id=user_id
+            websocket,
+            workflow_id,
+            last_event_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            correlation_id=correlation_id,
         )
 
-        # Keep connection alive and handle client messages
         while True:
             try:
-                # Wait for messages from client (acks, pong responses)
                 message = await websocket.receive_json()
                 await ws_manager.handle_client_message(websocket, workflow_id, message)
-
             except WebSocketDisconnect:
                 logger.info("WebSocket client disconnected", extra=_log)
                 break
-            except Exception as e:
+            except Exception as exc:
                 logger.warning(
                     "WebSocket client message error",
-                    extra={**_log, "error": str(e)},
+                    extra={**_log, "error": str(exc)},
                 )
                 # Continue rather than break to keep connection alive
 
-    except Exception as e:
-        logger.error("WebSocket session error", extra={**_log, "error": str(e)})
+    except Exception as exc:
+        logger.error("WebSocket session error", extra={**_log, "error": str(exc)})
     finally:
         logger.info("WebSocket workflow session ended", extra=_log)
         await ws_manager.disconnect(websocket, workflow_id)

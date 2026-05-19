@@ -1,4 +1,43 @@
 groups:
+  - name: security_websocket_alerts
+    interval: 30s
+    rules:
+      # OBS-L4-009: Alert when a single tenant bucket generates > 5 cross-tenant
+      # WebSocket access denials within a 5-minute rolling window.
+      # This pattern is consistent with BOLA/IDOR probing behaviour.
+      - alert: WebSocketCrossTenantProbeDetected
+        expr: |
+          increase(security_websocket_tenant_mismatch_total[5m]) > 5
+        for: 0m
+        labels:
+          severity: warning
+          owner: platform-security
+          layer: layer4
+        annotations:
+          summary: "Cross-tenant WebSocket probe detected"
+          description: >
+            Tenant bucket {{ $labels.actor_tenant_tier }} generated
+            {{ $value | printf "%.0f" }} cross-tenant WebSocket access denials
+            in the last 5 minutes. Possible BOLA/IDOR probing (OBS-L4-009).
+            Review structured logs for actor_tenant_id and targeted workflow_ids.
+          runbook_url: "https://docs.valuefabric.internal/runbooks/security/ws-tenant-probe"
+
+      - alert: WebSocketCrossTenantProbeCritical
+        expr: |
+          increase(security_websocket_tenant_mismatch_total[5m]) > 20
+        for: 0m
+        labels:
+          severity: critical
+          owner: platform-security
+          layer: layer4
+        annotations:
+          summary: "High-volume cross-tenant WebSocket probe detected"
+          description: >
+            Tenant bucket {{ $labels.actor_tenant_tier }} generated
+            {{ $value | printf "%.0f" }} cross-tenant WebSocket access denials
+            in the last 5 minutes. Likely active BOLA/IDOR attack (OBS-L4-009).
+          runbook_url: "https://docs.valuefabric.internal/runbooks/security/ws-tenant-probe"
+
   - name: journey_slo_alerts
     interval: 30s
     rules:
