@@ -123,8 +123,8 @@ async def workflow_websocket(
     # Inherits X-Request-ID / X-Correlation-ID from the client if present,
     # otherwise generates a new one so all log calls in this session are traceable.
     trace_ctx = resolve_trace_context(websocket.headers)
-    correlation_id = trace_ctx.trace_id
-    _log: dict = {"workflow_id": workflow_id, "correlation_id": correlation_id}
+    trace_id = trace_ctx.trace_id
+    _log: dict = {"workflow_id": workflow_id, "trace_id": trace_id, "request_id": trace_id}
 
     # --- Token extraction (canonical header first, legacy fallback) ----------
     protocol_header = websocket.headers.get("sec-websocket-protocol", "")
@@ -132,7 +132,7 @@ async def workflow_websocket(
 
     if ws_token is None and token:
         # Legacy path: query-parameter token.  Emits DEPRECATION [SEC-L3-012] warning.
-        ws_token = extract_token_from_query_param(token, correlation_id=correlation_id)
+        ws_token = extract_token_from_query_param(token, correlation_id=trace_id)
 
     # --- Authentication (fail-closed) ----------------------------------------
     try:
@@ -167,12 +167,13 @@ async def workflow_websocket(
             last_event_id,
             tenant_id=tenant_id,
             user_id=user_id,
-            correlation_id=correlation_id,
+            correlation_id=trace_id,
         )
 
         while True:
             try:
                 message = await websocket.receive_json()
+                logger.debug("WebSocket client message received", extra={**_log, "message_type": message.get("type")})
                 await ws_manager.handle_client_message(websocket, workflow_id, message)
             except WebSocketDisconnect:
                 logger.info("WebSocket client disconnected", extra=_log)

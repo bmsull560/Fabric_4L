@@ -83,6 +83,7 @@ class WorkflowConnection:
     # Multi-tenancy context (Task 2.2)
     tenant_id: str | None = None
     user_id: str | None = None
+    trace_id: str | None = None
 
     def __hash__(self) -> int:
         return hash(self._conn_id)
@@ -244,7 +245,7 @@ class WorkflowWebSocketManager:
             last_event_id: Optional last seen event ID for replay
             tenant_id: Tenant identifier for authorization
             user_id: User identifier for ownership verification
-            correlation_id: X-Request-ID for structured log correlation
+            correlation_id: X-Request-ID / trace_id for structured log correlation
         """
         # --- Tenant ownership enforcement (OBS-L4-009) ----------------------
         owner_tenant_id = self._workflow_tenant_registry.get(workflow_id)
@@ -266,6 +267,7 @@ class WorkflowWebSocketManager:
             last_event_id=last_event_id,
             tenant_id=tenant_id,
             user_id=user_id,
+            trace_id=correlation_id,
         )
 
         async with self._lock:
@@ -297,10 +299,19 @@ class WorkflowWebSocketManager:
                 "workflow_id": workflow_id,
                 "message": f"Subscribed to workflow {workflow_id}",
                 "replay_count": len(missed_events) if last_event_id else 0,
+                "correlation": {
+                    "trace_id": correlation_id,
+                    "request_id": correlation_id,
+                    "header_name": "X-Request-ID",
+                },
             }
         )
 
-        logger.info(f"WebSocket connected for workflow {workflow_id}")
+        logger.info(
+            "WebSocket connected for workflow %s",
+            workflow_id,
+            extra={"workflow_id": workflow_id, "trace_id": correlation_id},
+        )
 
     async def disconnect(self, websocket: WebSocket, workflow_id: str) -> None:
         """Remove a WebSocket connection."""
@@ -322,7 +333,11 @@ class WorkflowWebSocketManager:
                         del self._workflow_connections[workflow_id]
                         # Note: we keep _event_stores[workflow_id] for reconnection replay
 
-        logger.info(f"WebSocket disconnected for workflow {workflow_id}")
+        logger.info(
+            "WebSocket disconnected for workflow %s",
+            workflow_id,
+            extra={"workflow_id": workflow_id, "trace_id": conn_to_remove.trace_id if conn_to_remove else None},
+        )
 
     async def cleanup_workflow(self, workflow_id: str) -> None:
         """Remove event store and tenant registry entry for completed workflows.
@@ -577,6 +592,13 @@ class WorkflowWebSocketManager:
     ) -> None:
         """Handle messages from client (acknowledgments, ping responses, etc.)."""
         msg_type = message.get("type")
+        trace_id: str | None = None
+        async with self._lock:
+            if workflow_id in self._workflow_connections:
+                for conn in self._workflow_connections[workflow_id]:
+                    if conn.websocket == websocket:
+                        trace_id = conn.trace_id
+                        break
 
         if msg_type == "pong":
             # Client responded to ping, mark connection alive
@@ -590,7 +612,12 @@ class WorkflowWebSocketManager:
         elif msg_type == "ack":
             # Client acknowledged event receipt
             event_id = message.get("event_id")
-            logger.debug(f"Client acknowledged event {event_id} for workflow {workflow_id}")
+            logger.debug(
+                "Client acknowledged event %s for workflow %s",
+                event_id,
+                workflow_id,
+                extra={"workflow_id": workflow_id, "trace_id": trace_id, "event_id": event_id},
+            )
 
         elif msg_type == "subscribe_history":
             # Client requesting full history
@@ -606,7 +633,11 @@ class WorkflowWebSocketManager:
 
         elif msg_type == "workflow_complete_ack":
             # Client acknowledged workflow completion - safe to cleanup
-            logger.debug(f"Client acknowledged completion for workflow {workflow_id}")
+            logger.debug(
+                "Client acknowledged completion for workflow %s",
+                workflow_id,
+                extra={"workflow_id": workflow_id, "trace_id": trace_id},
+            )
             # Schedule cleanup after a delay to allow other clients to reconnect
             asyncio.create_task(self._delayed_cleanup(workflow_id, delay_seconds=300))
 

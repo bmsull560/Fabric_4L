@@ -172,7 +172,7 @@ async def test_route_accepts_canonical_header(monkeypatch):
         lambda _t: {"tenant_id": "t-1", "sub": "u-1"},
     )
 
-    ws = _make_websocket("base64url.bearer.authorization, valid.jwt.token")
+    ws = _make_websocket("base64url.bearer.authorization, valid.jwt.token", request_id="req-ws-123")
     mock_manager = MagicMock()
     mock_manager.connect = AsyncMock()
     mock_manager.disconnect = AsyncMock()
@@ -186,6 +186,7 @@ async def test_route_accepts_canonical_header(monkeypatch):
     call_kwargs = mock_manager.connect.call_args
     assert call_kwargs.kwargs["tenant_id"] == "t-1"
     assert call_kwargs.kwargs["user_id"] == "u-1"
+    assert call_kwargs.kwargs["correlation_id"] == "req-ws-123"
     ws.close.assert_not_awaited()
 
 

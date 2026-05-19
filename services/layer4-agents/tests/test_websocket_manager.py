@@ -257,7 +257,7 @@ class TestConnectionManagement:
     ):
         """Connect should send connection established event to client."""
         # Act
-        await started_manager.connect(mock_websocket, "wf-1")
+        await started_manager.connect(mock_websocket, "wf-1", correlation_id="req-conn-1")
         
         # Assert
         calls = mock_websocket.send_json.call_args_list
@@ -266,6 +266,9 @@ class TestConnectionManagement:
         assert first_call["event_type"] == "connection_established"
         assert first_call["workflow_id"] == "wf-1"
         assert "replay_count" in first_call
+        assert first_call["correlation"]["trace_id"] == "req-conn-1"
+        assert first_call["correlation"]["request_id"] == "req-conn-1"
+        assert first_call["correlation"]["header_name"] == "X-Request-ID"
     
     @pytest.mark.asyncio
     async def test_connect_replays_missed_events_on_reconnect(
@@ -565,7 +568,7 @@ class TestClientMessageHandling:
     async def test_handle_ack_logs_debug(self, started_manager, mock_websocket):
         """Ack message should log debug information."""
         # Arrange
-        await started_manager.connect(mock_websocket, "wf-1")
+        await started_manager.connect(mock_websocket, "wf-1", correlation_id="req-ack-1")
         
         # Act & Assert (no error)
         with patch("src.api.websocket.manager.logger") as mock_logger:
@@ -573,6 +576,7 @@ class TestClientMessageHandling:
                 mock_websocket, "wf-1", {"type": "ack", "event_id": "evt-123"}
             )
             mock_logger.debug.assert_called_once()
+            assert mock_logger.debug.call_args.kwargs["extra"]["trace_id"] == "req-ack-1"
     
     @pytest.mark.asyncio
     async def test_handle_subscribe_history_sends_events(
