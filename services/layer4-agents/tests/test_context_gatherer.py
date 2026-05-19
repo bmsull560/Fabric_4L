@@ -172,3 +172,45 @@ async def test_tenant_validated_helper_rejects_mismatched_tenant_parameters() ->
         )
 
     assert session.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("operation", "query", "params"),
+    [
+        (
+            "context_gatherer.account_signals",
+            """
+            MATCH (s:Signal {tenant_id: $tenant_id})
+            WHERE s.account_id = $account_id OR s.target_account_id = $account_id
+            RETURN s {.*} AS signal
+            """,
+            {"tenant_id": "tenant-b", "account_id": "acct-1"},
+        ),
+        (
+            "context_gatherer.account_hypotheses",
+            """
+            MATCH (vh:ValueHypothesis {tenant_id: $tenant_id, account_id: $account_id})
+            RETURN vh {.*} AS hypothesis
+            """,
+            {"tenant_id": "tenant-b", "account_id": "acct-1"},
+        ),
+    ],
+)
+async def test_context_queries_reject_mismatched_tenant_context(
+    operation: str,
+    query: str,
+    params: dict[str, Any],
+) -> None:
+    session = MockSession({"tenant-b": [{"signal": {"id": "sig-b"}}]})
+
+    with pytest.raises(TenantCypherValidationError):
+        await fetch_tenant_validated_records(
+            driver=MockDriver(session),
+            query=query,
+            params=params,
+            tenant_id="tenant-a",
+            operation=operation,
+        )
+
+    assert session.calls == []
