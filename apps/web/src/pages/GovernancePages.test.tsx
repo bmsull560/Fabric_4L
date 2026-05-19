@@ -51,10 +51,10 @@ function useGovernanceHandlers() {
     }),
     http.get('/api/v1/truths/freshness-summary', () => {
       return HttpResponse.json({
-        stale_count: 0,
-        fresh_count: 1,
-        expiring_soon_count: 0,
-        total_count: 1,
+        tenant_id: "tenant-demo",
+        timestamp: "2026-01-02T00:00:00Z",
+        summary: { stale: 0, fresh: 1, expiring_soon: 0, total: 1 },
+        warning_threshold_days: 14,
       });
     }),
     http.get('/api/v1/truths/stale', () => {

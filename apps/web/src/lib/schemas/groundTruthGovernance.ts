@@ -70,12 +70,21 @@ export const ValidationEventListResponseSchema = z.array(
   ValidationEventResponseSchema
 );
 
+export const FreshnessCountsSchema = z
+  .object({
+    stale: z.number().int().nonnegative(),
+    fresh: z.number().int().nonnegative(),
+    expiring_soon: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+  })
+  .passthrough();
+
 export const FreshnessSummaryResponseSchema = z
   .object({
-    stale_count: z.number().int().nonnegative().optional(),
-    fresh_count: z.number().int().nonnegative().optional(),
-    expiring_soon_count: z.number().int().nonnegative().optional(),
-    total_count: z.number().int().nonnegative().optional(),
+    tenant_id: z.string(),
+    timestamp: z.string(),
+    summary: FreshnessCountsSchema,
+    warning_threshold_days: z.number().int().nonnegative(),
   })
   .passthrough();
 
