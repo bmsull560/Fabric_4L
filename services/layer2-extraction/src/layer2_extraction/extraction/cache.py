@@ -87,6 +87,7 @@ class ExtractionCache:
         context = context or {}
         logger.warning(
             "Cache operation failed; continuing without cache",
+            exc_info=exc,
             extra={
                 "operation": operation,
                 "tenant_id": context.get("tenant_id"),
