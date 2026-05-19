@@ -162,7 +162,8 @@ async def get_all_tenants(
 
 ## Layer 3 Neo4j Tenant Dependency
 
-Layer 3 Neo4j route access has one approved dependency module:
+Layer 3 Neo4j route access has one approved dependency module (single canonical
+route dependency):
 `services/layer3-knowledge/src/api/dependencies_tenant_secured.py`. Route code must
 import `Neo4jTenantSession`, `get_neo4j_with_tenant`, or
 `create_neo4j_tenant_session` from that module so every Neo4j operation is routed

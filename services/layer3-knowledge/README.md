@@ -121,7 +121,7 @@ Related governance references:
 
 Layer 3 route modules must import tenant-scoped Neo4j dependencies only from
 `services/layer3-knowledge/src/api/dependencies_tenant_secured.py`. This secured
-wrapper is the single approved route dependency because it:
+wrapper is the **single approved route dependency** because it:
 
 - derives tenant context from `RequestContext` or an already-authenticated route helper;
 - creates `Neo4jTenantSessionSecured` sessions with query validation enabled;
