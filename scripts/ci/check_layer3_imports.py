@@ -32,6 +32,7 @@ LEGACY_NAMESPACE_PATTERNS = [
     re.compile(r"\bfrom\s+value_fabric\.layer3_knowledge\b"),
     re.compile(r"\bimport\s+value_fabric\.layer3_knowledge\b"),
 ]
+LEGACY_TENANT_DEP_PATTERN = re.compile(r"\bfrom\s+.*dependencies_tenant\s+import\b")
 
 # Directories that must remain empty (or not exist) after cleanup.
 DEAD_DIRECTORIES = {
@@ -147,6 +148,12 @@ def _find_violations(*, scan_roots: list[Path]) -> list[str]:
                     if pattern.search(content):
                         violations.append(f"{rel_path}: imports dead namespace (layer3_knowledge)")
                         break
+                if rel_path != "services/layer3-knowledge/src/api/dependencies_tenant.py":
+                    if LEGACY_TENANT_DEP_PATTERN.search(content):
+                        violations.append(
+                            f"{rel_path}: imports deprecated Layer 3 tenant dependency shim "
+                            "(use dependencies_tenant_secured)"
+                        )
     return violations
 
 

@@ -5,6 +5,15 @@ Runtime code in ``services/layer3-knowledge/src`` must not call
 non-migration execution should enter Neo4j through one of these wrappers:
 
 * ``run_scoped_query(session, scoped_query)`` for queries produced by
+<<<<<<< HEAD
+  ``TenantScopedCypher`` / ``SystemCypher``. Tenant scoped queries require a
+  tenant id on the ``ScopedQuery`` and force it into both ``tenant_id`` and
+  ``_tenant_id`` parameters before execution.
+* ``run_validated_query(session, query, parameters, tenant_id=...)`` for legacy
+  modules that are still migrating to strict ``ScopedQuery`` builders. This
+  wrapper performs fail-closed structural validation for tenant-owned labels and
+  force-assigns the provided execution tenant over caller-supplied parameters.
+=======
   ``TenantScopedCypher`` / ``SystemCypher``. Tenant scoped queries force the
   authenticated tenant into both ``tenant_id`` and ``_tenant_id`` parameters
   before execution.
@@ -12,27 +21,41 @@ non-migration execution should enter Neo4j through one of these wrappers:
   modules that are still migrating to strict ``ScopedQuery`` builders. This
   wrapper performs fail-closed structural validation for tenant-owned labels and
   also lets context tenant IDs override caller-supplied tenant parameters.
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 Only schema, bootstrap, and migration code paths may remain explicit
 system-scoped allowlist entries; this execution module is the wrapper boundary.
 High-risk runtime folders (``api/routes``, ``services``, ``agents``, and
+<<<<<<< HEAD
+``analytics``) are statically guarded so direct Neo4j ``run(...)`` calls fail CI
+unless they are moved behind this boundary.
+=======
 ``analytics``) are statically guarded so direct ``session.run(...)`` calls fail
 CI unless they are moved behind this boundary.
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 from value_fabric.shared.identity.isolation import QueryScope, ScopedQuery
 
+<<<<<<< HEAD
+SYSTEM_SCOPES = {QueryScope.SYSTEM, QueryScope.SCHEMA, QueryScope.MIGRATION, QueryScope.BACKUP}
+
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 class TenantQueryValidationError(ValueError):
     """Raised when Cypher execution violates tenant isolation requirements."""
 
 
+<<<<<<< HEAD
+_FALLBACK_TENANT_OWNED_LABELS = {
+=======
 _MATCH_PATTERN = re.compile(r"\bMATCH\b", re.IGNORECASE)
 _CLAUSE_PATTERN = re.compile(r"\b(MATCH|OPTIONAL\s+MATCH|CALL\s*\{|UNION(?:\s+ALL)?|WITH)\b", re.IGNORECASE)
 _MATCH_CLAUSE_PATTERN = re.compile(
@@ -46,6 +69,7 @@ _TENANT_PREDICATE_PATTERN = re.compile(
     r"(?i)\b(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\.tenant_id\s*(?:=|IN)\s*[$A-Za-z_]"
 )
 _TENANT_OWNED_LABELS = {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "Account",
     "Battlecard",
     "Benchmark",
@@ -88,32 +112,79 @@ _TENANT_OWNED_LABELS = {
     "ValueLever",
     "ValueModel",
     "ValuePack",
+<<<<<<< HEAD
+    "ValueTree",
+    "Variable",
+=======
     "ValueSignal",
     "ValueTree",
     "Variable",
+    "Workflow",
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 }
+
+
+def _load_tenant_owned_labels() -> set[str]:
+    """Load tenant-owned labels from the shared registry with a local fallback."""
+
+    try:
+        from value_fabric.shared.identity.isolation import DEFAULT_TENANT_LABEL_POLICY
+
+        return set(DEFAULT_TENANT_LABEL_POLICY.tenant_labels)
+    except Exception:
+        return set(_FALLBACK_TENANT_OWNED_LABELS)
+
+
+_TENANT_OWNED_LABELS = _load_tenant_owned_labels()
+_CLAUSE_KEYWORD_PATTERN = re.compile(r"\b(MATCH|OPTIONAL\s+MATCH|MERGE|CREATE)\b", re.IGNORECASE)
+_TENANT_LABEL_PATTERN = re.compile(
+    r"\(\s*(?P<alias>[A-Za-z_][A-Za-z0-9_]*)?\s*:\s*"
+    r"(?P<label>[A-Za-z_][A-Za-z0-9_]*)"
+    r"(?:\s*:\s*[A-Za-z_][A-Za-z0-9_]*)*\s*"
+    r"(?P<props>\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*)?",
+    re.DOTALL,
+)
+_TENANT_PREDICATE_PATTERN = re.compile(
+    r"(?i)\b(?P<alias>[A-Za-z_][A-Za-z0-9_]*)\.tenant_id\s*(?:=|IN)\s*[$A-Za-z_]"
+)
+_CLAUSE_PATTERN = re.compile(r"\b(MATCH|OPTIONAL\s+MATCH|CALL\s*\{|UNION(?:\s+ALL)?|WITH)\b", re.IGNORECASE)
 
 
 def _tenant_scoped_aliases(query: str) -> set[str]:
     return {match.group("alias") for match in _TENANT_PREDICATE_PATTERN.finditer(query)}
 
 
-def _structural_tenant_scope_errors(query: str) -> list[str]:
+def _parameter_map_has_tenant_id(prop_token: str, params: Mapping[str, Any]) -> bool:
+    """Return True when a dynamic Cypher property map parameter carries tenant_id."""
+
+    param_name = prop_token[1:]
+    value = params.get(param_name)
+    return isinstance(value, Mapping) and "tenant_id" in value
+
+
+def _structural_tenant_scope_errors(query: str, params: Mapping[str, Any]) -> list[str]:
     scoped_aliases = _tenant_scoped_aliases(query)
     errors: list[str] = []
 
-    for match_clause in _MATCH_CLAUSE_PATTERN.findall(query):
-        for alias, label, props in _NODE_PATTERN.findall(match_clause):
-            if label not in _TENANT_OWNED_LABELS:
-                continue
-            prop_block = props or ""
-            alias_name = alias.strip() if alias else ""
-            has_tenant_in_props = bool(re.search(r"(?i)\btenant_id\b", prop_block))
-            has_tenant_predicate = bool(alias_name) and alias_name in scoped_aliases
-            if not has_tenant_in_props and not has_tenant_predicate:
-                errors.append(f"{label}({alias_name or '?'})")
+    for match in _TENANT_LABEL_PATTERN.finditer(query):
+        label = match.group("label")
+        if label not in _TENANT_OWNED_LABELS:
+            continue
+
+        alias = (match.group("alias") or "").strip()
+        prop_token = (match.group("props") or "").strip()
+        has_tenant_in_props = bool(re.search(r"(?i)\btenant_id\b", prop_token))
+        has_tenant_param_map = prop_token.startswith("$") and _parameter_map_has_tenant_id(prop_token, params)
+        has_tenant_predicate = bool(alias) and alias in scoped_aliases
+
+        if not (has_tenant_in_props or has_tenant_param_map or has_tenant_predicate):
+            errors.append(f"{label}({alias or '?'})")
 
     return errors
+
+
+def _touches_tenant_owned_label(query: str) -> bool:
+    return any(match.group("label") in _TENANT_OWNED_LABELS for match in _TENANT_LABEL_PATTERN.finditer(query))
 
 
 @dataclass(frozen=True)
@@ -137,7 +208,10 @@ class TenantQueryExecutor:
     ) -> Any:
         params = dict(parameters or {})
         if context.tenant_id:
+<<<<<<< HEAD
+=======
             # Force-assign: context tenant_id always wins over caller-supplied value.
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             params["tenant_id"] = context.tenant_id
             params["_tenant_id"] = context.tenant_id
 
@@ -145,9 +219,24 @@ class TenantQueryExecutor:
         return await run_callable(query, params)
 
     @classmethod
-    def _validate(cls, query: str, params: dict[str, Any], context: TenantExecutionContext) -> None:
+    def _validate(cls, query: str, params: Mapping[str, Any], context: TenantExecutionContext) -> None:
         if context.is_bypass:
             return
+<<<<<<< HEAD
+
+        touches_tenant_data = _touches_tenant_owned_label(query)
+        if touches_tenant_data and not context.tenant_id and not context.allow_system_query:
+            raise TenantQueryValidationError("Tenant context is required for tenant-owned Cypher execution")
+
+        structural_errors = _structural_tenant_scope_errors(query, params) if touches_tenant_data else []
+        if structural_errors and not context.allow_system_query:
+            details = ", ".join(structural_errors)
+            raise TenantQueryValidationError(
+                f"Denied Cypher query due to missing tenant scoping in tenant-owned path: {details}"
+            )
+
+        if _CLAUSE_KEYWORD_PATTERN.search(query):
+=======
 
         structural_errors = _structural_tenant_scope_errors(query) if _MATCH_PATTERN.search(query) else []
         if structural_errors and not context.allow_system_query:
@@ -160,6 +249,7 @@ class TenantQueryExecutor:
             raise TenantQueryValidationError("Tenant context is required for tenant-owned Cypher execution")
 
         if _MATCH_PATTERN.search(query):
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             clause_tokens = [m.group(1).upper() for m in _CLAUSE_PATTERN.finditer(query)]
             ambiguous = (
                 clause_tokens.count("MATCH") + clause_tokens.count("OPTIONAL MATCH") > 1
@@ -200,6 +290,12 @@ async def run_scoped_query(
     system, schema, migration, backup, and health scopes may execute without a
     tenant only when their ``QueryScope`` explicitly declares that intent.
     """
+<<<<<<< HEAD
+
+    if scoped_query.scope == QueryScope.TENANT and not scoped_query.tenant_id and not is_bypass:
+        raise TenantQueryValidationError("Tenant context is required for tenant-scoped Cypher execution")
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
     allow_system_query = scoped_query.scope != QueryScope.TENANT
     context = TenantExecutionContext(
@@ -230,7 +326,11 @@ async def run_validated_query(
 
     This compatibility wrapper is the approved temporary surface for migrated
     high-risk runtime modules that still hold raw Cypher strings. It merges
+<<<<<<< HEAD
+    positional and keyword parameters, derives the tenant from the explicit
+=======
     positional and keyword parameters, derives the tenant from the authenticated
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     ``tenant_id`` argument or existing ``tenant_id`` / ``_tenant_id`` parameters,
     and rejects any tenant-owned label query missing explicit tenant predicates
     before delegating to the Neo4j session.
@@ -250,3 +350,53 @@ async def run_validated_query(
     except TenantQueryValidationError as exc:
         name = f" '{query_name}'" if query_name else ""
         raise TenantQueryValidationError(f"Denied Cypher query{name}: {exc}") from exc
+<<<<<<< HEAD
+
+
+async def run_tenant_query(
+    session_or_run_callable,
+    query: str,
+    parameters: dict[str, Any] | None = None,
+    *,
+    tenant_id: str,
+    is_bypass: bool = False,
+    query_name: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    """Execute an explicitly tenant-scoped ad-hoc Cypher query."""
+
+    return await run_validated_query(
+        session_or_run_callable,
+        query,
+        parameters,
+        tenant_id=tenant_id,
+        is_bypass=is_bypass,
+        query_name=query_name,
+        **kwargs,
+    )
+
+
+async def run_system_query(
+    session_or_run_callable,
+    query: str,
+    parameters: dict[str, Any] | None = None,
+    *,
+    scope: QueryScope = QueryScope.SYSTEM,
+    query_name: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    """Execute an explicitly system-scoped Cypher query through the same gateway."""
+
+    if scope not in SYSTEM_SCOPES:
+        raise TenantQueryValidationError(f"Unsupported system scope: {scope}")
+
+    return await run_validated_query(
+        session_or_run_callable,
+        query,
+        parameters,
+        allow_system_query=True,
+        query_name=query_name,
+        **kwargs,
+    )
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee

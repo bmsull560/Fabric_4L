@@ -2,6 +2,12 @@
 
 Provides pub/sub-style event broadcasting to connected clients with
 connection resilience, last-event-ID replay, and workflow-scoped channels.
+
+Security (OBS-L4-009):
+- Tenant ownership of workflow_id is enforced at connect time.
+- Cross-tenant access denials emit ``security_websocket_tenant_mismatch_total``
+  and a structured WARNING log with actor_tenant_id, workflow_id, and
+  correlation_id for BOLA/IDOR alerting.
 """
 
 from __future__ import annotations
@@ -17,6 +23,14 @@ from fastapi import WebSocket
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..schemas.workflow_progress import normalize_workflow_progress
+
+try:
+    from ...metrics.prometheus_metrics import PrometheusMetrics as _PrometheusMetrics
+
+    _METRICS_AVAILABLE = True
+except ImportError:
+    _METRICS_AVAILABLE = False
+    _PrometheusMetrics = None  # type: ignore[assignment,misc]
 
 
 class WorkflowWebSocketManager__summarize_outputResult(TypedDictModel):
@@ -101,23 +115,75 @@ class WorkflowWebSocketManager:
     - Last-event-ID replay for reconnection recovery
     - Heartbeat/ping-pong for connection health
     - Event persistence in memory (configurable Redis backend)
+    - Tenant ownership enforcement with BOLA/IDOR probe detection (OBS-L4-009)
     """
 
-    def __init__(self, redis_client=None):
+    def __init__(self, redis_client=None, metrics=None):
         """Initialize WebSocket manager.
 
         Args:
             redis_client: Optional Redis client for cross-instance pub/sub
+            metrics: Optional PrometheusMetrics instance for security counters
         """
         self.redis = redis_client
+        self._metrics = metrics
         # workflow_id -> set of connections
         self._workflow_connections: dict[str, set[WorkflowConnection]] = {}
         # workflow_id -> event history for replay
         self._event_stores: dict[str, EventStore] = {}
+        # workflow_id -> owning tenant_id (populated on first broadcast)
+        self._workflow_tenant_registry: dict[str, str] = {}
         # Global connection lock
         self._lock = asyncio.Lock()
         self._cleanup_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
+
+    def record_workflow_tenant(self, workflow_id: str, tenant_id: str) -> None:
+        """Register the owning tenant for a workflow.
+
+        Call this when a workflow is created or first receives events so that
+        subsequent WebSocket subscriptions can be validated against the owner.
+
+        Args:
+            workflow_id: Workflow instance ID.
+            tenant_id: Tenant that owns the workflow.
+        """
+        self._workflow_tenant_registry[workflow_id] = tenant_id
+
+    def _emit_tenant_mismatch(
+        self,
+        *,
+        actor_tenant_id: str,
+        workflow_id: str,
+        workflow_owner_tenant_id: str,
+        correlation_id: str | None,
+    ) -> None:
+        """Emit metric + structured log for a cross-tenant access denial (OBS-L4-009).
+
+        The log payload includes all fields required for BOLA/IDOR alerting:
+        actor_tenant_id, workflow_id, workflow_owner_tenant_id, and correlation_id.
+        """
+        logger.warning(
+            "security.websocket.tenant_mismatch: cross-tenant WebSocket access denied "
+            "actor_tenant_id=%s workflow_id=%s owner_tenant_id=%s correlation_id=%s",
+            actor_tenant_id,
+            workflow_id,
+            workflow_owner_tenant_id,
+            correlation_id,
+            extra={
+                "event": "security.websocket.tenant_mismatch",
+                "actor_tenant_id": actor_tenant_id,
+                "workflow_id": workflow_id,
+                "owner_tenant_id": workflow_owner_tenant_id,
+                "correlation_id": correlation_id,
+                "security_signal": "BOLA_IDOR_PROBE",
+            },
+        )
+        if self._metrics is not None:
+            try:
+                self._metrics.increment_ws_tenant_mismatch(actor_tenant_id)
+            except Exception:
+                pass  # Never let metric emission break the security path
 
     async def start(self) -> None:
         """Start background tasks for connection management."""
@@ -164,16 +230,34 @@ class WorkflowWebSocketManager:
         last_event_id: str | None = None,
         tenant_id: str | None = None,
         user_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> None:
         """Accept a new WebSocket connection for a workflow.
+
+        Enforces tenant ownership: if the workflow is registered to a different
+        tenant, the connection is rejected and a security metric is emitted
+        (OBS-L4-009).
 
         Args:
             websocket: FastAPI WebSocket instance
             workflow_id: Workflow to subscribe to
             last_event_id: Optional last seen event ID for replay
-            tenant_id: Tenant identifier for authorization (Task 2.2)
-            user_id: User identifier for ownership verification (Task 2.2)
+            tenant_id: Tenant identifier for authorization
+            user_id: User identifier for ownership verification
+            correlation_id: X-Request-ID for structured log correlation
         """
+        # --- Tenant ownership enforcement (OBS-L4-009) ----------------------
+        owner_tenant_id = self._workflow_tenant_registry.get(workflow_id)
+        if owner_tenant_id and tenant_id and owner_tenant_id != tenant_id:
+            self._emit_tenant_mismatch(
+                actor_tenant_id=tenant_id,
+                workflow_id=workflow_id,
+                workflow_owner_tenant_id=owner_tenant_id,
+                correlation_id=correlation_id,
+            )
+            await websocket.close(code=4403, reason="Access denied")
+            return
+
         await websocket.accept()
 
         conn = WorkflowConnection(
@@ -241,7 +325,7 @@ class WorkflowWebSocketManager:
         logger.info(f"WebSocket disconnected for workflow {workflow_id}")
 
     async def cleanup_workflow(self, workflow_id: str) -> None:
-        """Remove event store for completed workflows to prevent memory leak.
+        """Remove event store and tenant registry entry for completed workflows.
 
         Call this when a workflow completes and no longer needs replay capability.
         """
@@ -255,14 +339,33 @@ class WorkflowWebSocketManager:
                 del self._event_stores[workflow_id]
                 logger.info(f"Cleaned up event store for workflow {workflow_id}")
 
+            self._workflow_tenant_registry.pop(workflow_id, None)
+
     async def broadcast_to_workflow(
-        self, workflow_id: str, event_type: str, payload: dict[str, Any], message: str | None = None
+        self,
+        workflow_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        message: str | None = None,
+        tenant_id: str | None = None,
     ) -> int:
         """Broadcast an event to all connections for a workflow.
 
+        Args:
+            workflow_id: Target workflow.
+            event_type: Event type string.
+            payload: Event payload dict.
+            message: Human-readable message (defaults to event_type).
+            tenant_id: Owning tenant — registers workflow ownership on first
+                       broadcast so subsequent connect() calls can enforce it.
+
         Returns:
-            Number of successful deliveries
+            Number of successful deliveries.
         """
+        # Register workflow ownership on first broadcast (OBS-L4-009)
+        if tenant_id and workflow_id not in self._workflow_tenant_registry:
+            self.record_workflow_tenant(workflow_id, tenant_id)
+
         event = {
             "event_id": f"evt-{datetime.now(UTC).timestamp()}-{uuid.uuid4().hex[:8]}",
             "event_type": event_type,
