@@ -1,4 +1,4 @@
-"""Generated HTTP client for Layer 4: Agentic Workflow Engine."""
+"""Generated HTTP client for Layer 4: Agentic Workflow Orchestrator."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import httpx
 
 
 class L4Client:
-    """HTTP client for Layer 4: Agentic Workflow Engine.
+    """HTTP client for Layer 4: Agentic Workflow Orchestrator.
 
     Generated from OpenAPI spec at layer4-agents.json
     """

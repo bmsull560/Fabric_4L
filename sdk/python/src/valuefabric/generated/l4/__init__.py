@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, RootModel
@@ -44,6 +44,42 @@ class ActorSummary(BaseModel):
     permissions: list[str] = Field(..., title='Permissions')
     api_key_id: str | None = Field(..., title='Api Key Id')
     service_account_id: str | None = Field(..., title='Service Account Id')
+
+
+class AddInvoiceItemRequest(BaseModel):
+    """
+    Request to add an invoice line item.
+    """
+
+    description: str = Field(
+        ..., description='Line item description', title='Description'
+    )
+    amount_cents: int = Field(
+        ..., description='Amount in cents', ge=0, title='Amount Cents'
+    )
+    quantity: float | None = Field(
+        1.0, description='Quantity', gt=0.0, title='Quantity'
+    )
+    unit_amount_cents: int | None = Field(
+        None, description='Price per unit in cents', title='Unit Amount Cents'
+    )
+    type: str | None = Field(
+        'one_time',
+        description='Item type: subscription, metered, one_time, proration',
+        title='Type',
+    )
+    usage_quantity: float | None = Field(
+        None, description='Usage quantity for metered items', title='Usage Quantity'
+    )
+    usage_metric: str | None = Field(
+        None, description='Usage metric for metered items', title='Usage Metric'
+    )
+    tax_cents: int | None = Field(
+        0, description='Tax amount in cents', ge=0, title='Tax Cents'
+    )
+    discount_cents: int | None = Field(
+        0, description='Discount amount in cents', ge=0, title='Discount Cents'
+    )
 
 
 class AgentGovernanceMetadata(BaseModel):
@@ -155,7 +191,7 @@ class ArchiveWorkflowResponse(BaseModel):
     Archive workflow response.
     """
 
-    workflow_id: Any = Field(..., title='Workflow Id')
+    workflow_id: str = Field(..., title='Workflow Id')
     status: str = Field(..., title='Status')
     archived_at: str = Field(..., title='Archived At')
 
@@ -226,6 +262,16 @@ class AuthorityWeight(Enum):
     high = 'high'
     medium = 'medium'
     low = 'low'
+
+
+class AvailableWorkflow(BaseModel):
+    type: str = Field(..., title='Type')
+    name: str = Field(..., title='Name')
+    description: str = Field(..., title='Description')
+
+
+class AvailableWorkflowsResponse(BaseModel):
+    workflows: list[AvailableWorkflow] = Field(..., title='Workflows')
 
 
 class BatchEnrichRequest(BaseModel):
@@ -383,6 +429,22 @@ class CaseListResponse(BaseModel):
     total: int = Field(..., title='Total')
 
 
+class CheckoutRequest(BaseModel):
+    """
+    Request to create a checkout session.
+    """
+
+    plan_id: str = Field(
+        ..., description='Plan to subscribe to (pro, enterprise)', title='Plan Id'
+    )
+    success_url: str = Field(
+        ..., description='Redirect URL after successful checkout', title='Success Url'
+    )
+    cancel_url: str = Field(
+        ..., description='Redirect URL if checkout canceled', title='Cancel Url'
+    )
+
+
 class CheckpointInfo(BaseModel):
     """
     Information about a single checkpoint.
@@ -404,17 +466,27 @@ class CheckpointInfo(BaseModel):
     )
 
 
-class CheckpointListResponse(BaseModel):
+class ClaimValidationRequest(BaseModel):
     """
-    Response containing checkpoint timeline.
+    A single claim to validate.
     """
 
-    workflow_id: str = Field(..., title='Workflow Id')
-    checkpoints: list[CheckpointInfo] = Field(..., title='Checkpoints')
-    total_count: int = Field(..., title='Total Count')
-    current_checkpoint_id: str | None = Field(
-        None, description='Most recent checkpoint ID', title='Current Checkpoint Id'
+    model_config = ConfigDict(
+        extra='forbid',
     )
+    claim_id: str = Field(..., title='Claim Id')
+    claim_text: str = Field(..., title='Claim Text')
+    evidence_refs: list[str] | None = Field(None, title='Evidence Refs')
+    value_pack_id: str | None = Field(None, title='Value Pack Id')
+    account_id: str | None = Field(None, title='Account Id')
+
+
+class Validator(Enum):
+    agent = 'agent'
+    human = 'human'
+    policy = 'policy'
+    benchmark = 'benchmark'
+    unavailable = 'unavailable'
 
 
 class CommentRecord(BaseModel):
@@ -666,6 +738,32 @@ class CreateCommentRequest(BaseModel):
     body: str = Field(..., max_length=4000, min_length=1, title='Body')
 
 
+class CreateInvoiceRequest(BaseModel):
+    """
+    Request to create a new invoice.
+    """
+
+    customer_id: str = Field(
+        ..., description='Customer being invoiced', title='Customer Id'
+    )
+    period_start: AwareDatetime = Field(
+        ..., description='Billing period start', title='Period Start'
+    )
+    period_end: AwareDatetime = Field(
+        ..., description='Billing period end', title='Period End'
+    )
+    invoice_number: str | None = Field(
+        None, description='Optional invoice number', title='Invoice Number'
+    )
+    subscription_id: str | None = Field(
+        None, description='Optional subscription link', title='Subscription Id'
+    )
+    currency: str | None = Field('USD', description='Currency code', title='Currency')
+    description: str | None = Field(
+        None, description='Invoice description', title='Description'
+    )
+
+
 class CreateNotificationRequest(BaseModel):
     account_id: str | None = Field(None, title='Account Id')
     subject_id: str | None = Field(None, title='Subject Id')
@@ -720,6 +818,15 @@ class CurrentTenantSettingsUpdateResponse(BaseModel):
     name: str = Field(..., title='Name')
     settings: dict[str, Any] = Field(..., title='Settings')
     updated_at: str = Field(..., title='Updated At')
+
+
+class CustomerSyncRequest(BaseModel):
+    """
+    Request to sync customer with Stripe.
+    """
+
+    email: str = Field(..., description='Customer email address', title='Email')
+    name: str | None = Field(None, description='Customer name', title='Name')
 
 
 class DismissBadgeRequest(BaseModel):
@@ -853,10 +960,7 @@ class EvalRunRequest(BaseModel):
 class EvidenceDecisionRequest(BaseModel):
     account_id: str = Field(..., title='Account Id')
     case_id: str = Field(..., title='Case Id')
-    decision: str = Field(
-        ..., description='accepted|rejected|attached_to_driver', title='Decision'
-    )
-    driver_id: str | None = Field(None, title='Driver Id')
+    decision: str = Field(..., title='Decision')
     decision_note: str | None = Field(None, title='Decision Note')
 
 
@@ -865,11 +969,15 @@ class EvidenceDecisionResponse(BaseModel):
     account_id: str = Field(..., title='Account Id')
     case_id: str = Field(..., title='Case Id')
     decision: str = Field(..., title='Decision')
-    driver_id: str | None = Field(None, title='Driver Id')
-    reviewed_by: str | None = Field(None, title='Reviewed By')
+    reviewed_by: str = Field(..., title='Reviewed By')
     reviewed_at: str = Field(..., title='Reviewed At')
     provenance: dict[str, Any] | None = Field(None, title='Provenance')
-    confidence: float | None = Field(0.0, title='Confidence')
+    confidence: float | None = Field(None, title='Confidence')
+
+
+class EvidenceDriverLinkRequest(BaseModel):
+    account_id: str = Field(..., title='Account Id')
+    case_id: str = Field(..., title='Case Id')
 
 
 class ExportAuditRecord(BaseModel):
@@ -930,6 +1038,48 @@ class FieldInfo(BaseModel):
     description: str | None = Field(None, title='Description')
 
 
+class Decision1(Enum):
+    approved = 'approved'
+    rejected = 'rejected'
+    modified = 'modified'
+    expired = 'expired'
+
+
+class GateDecisionRequest(BaseModel):
+    """
+    Request body for POST /v1/harness/gates/{gate_id}/decide.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    decision: Decision1 = Field(..., title='Decision')
+    decision_reason: str | None = Field(None, title='Decision Reason')
+
+
+class GateStatus(Enum):
+    """
+    Human gate status.
+    """
+
+    pending = 'pending'
+    approved = 'approved'
+    rejected = 'rejected'
+    modified = 'modified'
+    expired = 'expired'
+
+
+class GateType(Enum):
+    """
+    Type of human gate.
+    """
+
+    approve_claims = 'approve_claims'
+    approve_assumptions = 'approve_assumptions'
+    approve_customer_output = 'approve_customer_output'
+    resolve_conflict = 'resolve_conflict'
+
+
 class GenerateHypothesesRequest(BaseModel):
     """
     Request to generate value hypotheses for an account.
@@ -959,6 +1109,81 @@ class HTTPValidationError(BaseModel):
     details: dict[str, Any] | None = Field(
         None, description='Optional sanitized error details'
     )
+
+
+class Status1(Enum):
+    ok = 'ok'
+    degraded = 'degraded'
+
+
+class HarnessHealthResponse(BaseModel):
+    """
+    Response for GET /v1/harness/health.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    status: Status1 = Field(..., title='Status')
+    validation_available: bool = Field(..., title='Validation Available')
+    l5_healthy: bool = Field(..., title='L5 Healthy')
+    db_healthy: bool = Field(..., title='Db Healthy')
+
+
+class HarnessRunStatus(Enum):
+    """
+    Run status reflects execution disposition.
+    """
+
+    queued = 'queued'
+    running = 'running'
+    waiting_for_human = 'waiting_for_human'
+    failed = 'failed'
+    completed = 'completed'
+    cancelled = 'cancelled'
+
+
+class HarnessState(Enum):
+    """
+    Canonical workflow states.
+
+    State flow (happy path):
+      INIT → RESOLVE_CONTEXT → LOAD_VALUE_PACK → RETRIEVE_KNOWLEDGE
+      → GENERATE_HYPOTHESES → MATCH_EVIDENCE → QUANTIFY_IMPACT
+      → VALIDATE_CLAIMS → HUMAN_REVIEW → PUBLISH_OUTPUT → DONE
+
+    Terminal states: DONE, FAILED, CANCELLED.
+    """
+
+    init = 'INIT'
+    resolve_context = 'RESOLVE_CONTEXT'
+    load_value_pack = 'LOAD_VALUE_PACK'
+    retrieve_knowledge = 'RETRIEVE_KNOWLEDGE'
+    generate_hypotheses = 'GENERATE_HYPOTHESES'
+    match_evidence = 'MATCH_EVIDENCE'
+    quantify_impact = 'QUANTIFY_IMPACT'
+    validate_claims = 'VALIDATE_CLAIMS'
+    human_review = 'HUMAN_REVIEW'
+    publish_output = 'PUBLISH_OUTPUT'
+    done = 'DONE'
+    failed = 'FAILED'
+    cancelled = 'CANCELLED'
+
+
+class HarnessWorkflowType(Enum):
+    """
+    Canonical workflow types.
+    """
+
+    signal_extraction = 'signal_extraction'
+    account_intelligence = 'account_intelligence'
+    value_model_generation = 'value_model_generation'
+    evidence_matching = 'evidence_matching'
+    value_tree_generation = 'value_tree_generation'
+    roi_calculator_generation = 'roi_calculator_generation'
+    business_case_generation = 'business_case_generation'
+    renewal_risk_analysis = 'renewal_risk_analysis'
+    expansion_opportunity_analysis = 'expansion_opportunity_analysis'
 
 
 class HealthBadgeInfo(BaseModel):
@@ -1003,6 +1228,17 @@ class ICPSourceType(Enum):
     paste = 'paste'
     generated_from_website = 'generated_from_website'
     manual = 'manual'
+
+
+class InitiatedBy(Enum):
+    """
+    Who or what initiated the run.
+    """
+
+    user = 'user'
+    system = 'system'
+    agent = 'agent'
+    scheduled_job = 'scheduled_job'
 
 
 class IntegrationCreateRequest(BaseModel):
@@ -1342,6 +1578,16 @@ class Permission(Enum):
     admin_system = 'admin:system'
 
 
+class PortalRequest(BaseModel):
+    """
+    Request to create a customer portal session.
+    """
+
+    return_url: str = Field(
+        ..., description='URL to return to after portal session', title='Return Url'
+    )
+
+
 class ProcessingMetadata(BaseModel):
     """
     Metadata about signal processing.
@@ -1614,6 +1860,35 @@ class RankHypothesesRequest(BaseModel):
     )
 
 
+class RecordChargeRequest(BaseModel):
+    """
+    Request to record a charge.
+    """
+
+    customer_id: str = Field(
+        ..., description='Customer being charged', title='Customer Id'
+    )
+    amount_cents: int = Field(
+        ..., description='Charge amount in cents', gt=0, title='Amount Cents'
+    )
+    status: str | None = Field('succeeded', description='Charge status', title='Status')
+    invoice_id: str | None = Field(
+        None, description='Linked invoice ID', title='Invoice Id'
+    )
+    stripe_charge_id: str | None = Field(
+        None, description='Stripe charge ID', title='Stripe Charge Id'
+    )
+    payment_method_id: str | None = Field(
+        None, description='Payment method ID', title='Payment Method Id'
+    )
+    payment_method_type: str | None = Field(
+        None, description='Payment method type', title='Payment Method Type'
+    )
+    description: str | None = Field(
+        None, description='Charge description', title='Description'
+    )
+
+
 class RegenerateBusinessCaseRequest(BaseModel):
     """
     Regenerate request with lineage to an existing case.
@@ -1675,6 +1950,7 @@ class RequestContext(BaseModel):
     org_id: Any = Field(None, title='Org Id')
     workspace_id: Any = Field(None, title='Workspace Id')
     tenant_role: str | None = Field(None, title='Tenant Role')
+    trace_id: str | None = Field(None, title='Trace Id')
     isolation_tier: str | None = Field('shared', title='Isolation Tier')
     service_account_id: str | None = Field(None, title='Service Account Id')
     service_account_scopes: list[str] | None = Field(
@@ -1739,7 +2015,7 @@ class RetryProvisioningResponse(BaseModel):
     status: str = Field(..., title='Status')
 
 
-class Status1(Enum):
+class Status2(Enum):
     submitted = 'submitted'
     in_review = 'in_review'
     approved = 'approved'
@@ -1754,7 +2030,7 @@ class SubjectType(Enum):
 
 class ReviewRequest(BaseModel):
     review_id: str = Field(..., title='Review Id')
-    status: Status1 = Field(..., title='Status')
+    status: Status2 = Field(..., title='Status')
     subject_type: SubjectType = Field(..., title='Subject Type')
     submitted_at: AwareDatetime = Field(..., title='Submitted At')
     lineage: LineageRef
@@ -1788,6 +2064,27 @@ class Role(Enum):
     analyst = 'analyst'
     read_only = 'read_only'
     system = 'system'
+
+
+class RunResponse(BaseModel):
+    """
+    Single run in API responses.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: str = Field(..., title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    account_id: str | None = Field(..., title='Account Id')
+    workflow_type: HarnessWorkflowType
+    initiated_by: InitiatedBy
+    status: HarnessRunStatus
+    current_state: HarnessState
+    value_pack_id: str | None = Field(..., title='Value Pack Id')
+    trace_id: str = Field(..., title='Trace Id')
+    created_at: AwareDatetime = Field(..., title='Created At')
+    updated_at: AwareDatetime = Field(..., title='Updated At')
 
 
 class SalesforceOAuthAuthorizeRequest(BaseModel):
@@ -2064,6 +2361,19 @@ class StatusUpdateRequest(BaseModel):
     )
 
 
+class SubscriptionResponse(BaseModel):
+    """
+    Subscription status response.
+    """
+
+    id: str | None = Field(..., title='Id')
+    plan_id: str = Field(..., title='Plan Id')
+    status: str = Field(..., title='Status')
+    current_period_start: str | None = Field(..., title='Current Period Start')
+    current_period_end: str | None = Field(..., title='Current Period End')
+    cancel_at_period_end: bool = Field(..., title='Cancel At Period End')
+
+
 class SyncAccountsRequest(BaseModel):
     """
     Manual sync trigger request.
@@ -2307,11 +2617,89 @@ class ToolSchemaResponse(BaseModel):
     requires_auth: bool = Field(..., title='Requires Auth')
 
 
+class TraceEventResponse(BaseModel):
+    """
+    Trace event emitted on state transitions.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    trace_id: str = Field(..., title='Trace Id')
+    run_id: str = Field(..., title='Run Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    from_state: HarnessState | None
+    to_state: HarnessState | None
+    event_type: str = Field(..., title='Event Type')
+    timestamp: AwareDatetime = Field(..., title='Timestamp')
+
+
+class TransitionResponse(BaseModel):
+    """
+    Response for a successful state transition.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    run: RunResponse
+    trace_event: TraceEventResponse | None = None
+
+
 class UpdateTaskRequest(BaseModel):
     status: TaskStatus | None = None
     assignee: Assignee | None = Field(None, title='Assignee')
     due_date: str | None = Field(None, title='Due Date')
     stage: Stage1 | None = Field(None, title='Stage')
+
+
+class Unit(RootModel[str]):
+    root: str = Field(..., description='Unit of measure', max_length=32, title='Unit')
+
+
+class UsageEventRequest(BaseModel):
+    """
+    Request body for ingesting a single usage event.
+    """
+
+    event_id: str = Field(
+        ...,
+        description='Idempotency key',
+        max_length=128,
+        min_length=1,
+        title='Event Id',
+    )
+    customer_id: str = Field(
+        ...,
+        description='Customer identifier',
+        max_length=64,
+        min_length=1,
+        title='Customer Id',
+    )
+    event_name: str = Field(
+        ...,
+        description='Logical event name',
+        max_length=128,
+        min_length=1,
+        title='Event Name',
+    )
+    metric_name: str = Field(
+        ...,
+        description='Metered metric name',
+        max_length=64,
+        min_length=1,
+        title='Metric Name',
+    )
+    quantity: float = Field(
+        ..., description='Quantity to record', ge=0.0, title='Quantity'
+    )
+    unit: Unit | None = Field(None, description='Unit of measure', title='Unit')
+    timestamp: AwareDatetime = Field(
+        ..., description='Event timestamp (UTC)', title='Timestamp'
+    )
+    metadata: dict[str, Any] | None = Field(
+        None, description='Optional metadata', title='Metadata'
+    )
 
 
 class UsageMetricsResponse(BaseModel):
@@ -2354,6 +2742,17 @@ class UserUpdateRequest(BaseModel):
     display_name: str | None = Field(None, title='Display Name')
     role: Role | None = None
     status: UserStatus | None = None
+
+
+class ValidateClaimsRequest(BaseModel):
+    """
+    Request body for POST /v1/harness/runs/{run_id}/validate.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    claims: list[ClaimValidationRequest] = Field(..., title='Claims')
 
 
 class ValidateHypothesisRequest(BaseModel):
@@ -2434,6 +2833,34 @@ class ValidationSessionRequest(BaseModel):
     expires_in_seconds: int | None = Field(
         3600, ge=60, le=86400, title='Expires In Seconds'
     )
+
+
+class ValidationState(Enum):
+    """
+    Result of claim validation.
+    """
+
+    passed = 'passed'
+    failed = 'failed'
+    needs_review = 'needs_review'
+    insufficient_evidence = 'insufficient_evidence'
+
+
+class ValidationSummaryResponse(BaseModel):
+    """
+    Aggregate publish decision across all validated claims.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    total: int = Field(..., title='Total')
+    passed: int = Field(..., title='Passed')
+    failed: int = Field(..., title='Failed')
+    needs_review: int = Field(..., title='Needs Review')
+    insufficient_evidence: int = Field(..., title='Insufficient Evidence')
+    can_publish: bool = Field(..., title='Can Publish')
+    requires_human_review: bool = Field(..., title='Requires Human Review')
 
 
 class ValueExtractionRecordResponse(BaseModel):
@@ -2584,6 +3011,11 @@ class WhitespaceAnalysisResponse(BaseModel):
     recommendations: list[str] = Field(..., title='Recommendations')
 
 
+class WorkflowCancelResponse(BaseModel):
+    workflow_id: str = Field(..., title='Workflow Id')
+    status: Literal['cancelled'] = Field(..., title='Status')
+
+
 class WorkflowType(Enum):
     """
     Type of workflow to run
@@ -2625,7 +3057,7 @@ class WorkflowInputs(BaseModel):
     custom_data: dict[str, Any] | None = Field(None, title='Custom Data')
 
 
-class Status2(Enum):
+class Status3(Enum):
     pending = 'pending'
     running = 'running'
     paused = 'paused'
@@ -2639,7 +3071,7 @@ class WorkflowListItem(BaseModel):
     id: str = Field(..., title='Id')
     name: str = Field(..., title='Name')
     workflow_type: str = Field(..., title='Workflow Type')
-    status: Status2 = Field(..., title='Status')
+    status: Status3 = Field(..., title='Status')
     progress: float | None = Field(0.0, ge=0.0, le=100.0, title='Progress')
     created_at: str | None = Field(None, title='Created At')
     updated_at: str | None = Field(None, title='Updated At')
@@ -2651,6 +3083,20 @@ class WorkflowListResponse(BaseModel):
     limit: int = Field(..., title='Limit')
     offset: int = Field(..., title='Offset')
     has_more: bool = Field(..., title='Has More')
+
+
+class WorkflowOutput(BaseModel):
+    """
+    Structured workflow output envelope for completed workflow results.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    data: Any | None = None
+    summary: str | None = Field(None, title='Summary')
+    artifacts: list[dict[str, Any]] | None = Field(None, title='Artifacts')
+    metrics: dict[str, Any] | None = Field(None, title='Metrics')
 
 
 class WorkflowPauseRequest(BaseModel):
@@ -2691,7 +3137,7 @@ class WorkflowProgressActionableState(BaseModel):
     next_action: str | None = Field(None, title='Next Action')
 
 
-class Status3(Enum):
+class Status4(Enum):
     pending = 'pending'
     running = 'running'
     paused = 'paused'
@@ -2707,13 +3153,31 @@ class WorkflowProgressSchema(BaseModel):
     """
 
     step_id: str | None = Field(None, title='Step Id')
-    status: Status3 = Field(..., title='Status')
+    status: Status4 = Field(..., title='Status')
     percent: float | None = Field(0.0, ge=0.0, le=100.0, title='Percent')
     message: str = Field(..., title='Message')
     started_at: str | None = Field(None, title='Started At')
     updated_at: str = Field(..., title='Updated At')
     completed_at: str | None = Field(None, title='Completed At')
     actionable_next_state: WorkflowProgressActionableState
+
+
+class Status5(Enum):
+    pending = 'pending'
+    running = 'running'
+    paused = 'paused'
+    interrupted = 'interrupted'
+    completed = 'completed'
+    failed = 'failed'
+    cancelled = 'cancelled'
+
+
+class WorkflowResultResponse(BaseModel):
+    workflow_id: str = Field(..., title='Workflow Id')
+    status: Status5 = Field(..., title='Status')
+    output: WorkflowOutput | None = None
+    errors: list[str | dict[str, Any]] | None = Field(None, title='Errors')
+    completed_at: str | None = Field(None, title='Completed At')
 
 
 class WorkflowResumeRequest(BaseModel):
@@ -2760,16 +3224,6 @@ class WorkflowStartStatus(Enum):
     failed = 'failed'
 
 
-class Status4(Enum):
-    pending = 'pending'
-    running = 'running'
-    paused = 'paused'
-    interrupted = 'interrupted'
-    completed = 'completed'
-    failed = 'failed'
-    cancelled = 'cancelled'
-
-
 class WorkflowStatusResponse(BaseModel):
     """
     Workflow status response - OpenAPI spec compliant.
@@ -2787,7 +3241,7 @@ class WorkflowStatusResponse(BaseModel):
 
     id: str = Field(..., title='Id')
     workflow_type: str = Field(..., title='Workflow Type')
-    status: Status4 = Field(..., title='Status')
+    status: Status5 = Field(..., title='Status')
     current_state: str | None = Field(None, title='Current State')
     current_node: str | None = Field(None, title='Current Node')
     progress: float | None = Field(0.0, ge=0.0, le=100.0, title='Progress')
@@ -2847,6 +3301,19 @@ class Layer4AgentsApiRoutesAuditAuditLogResponse(BaseModel):
     total: int = Field(..., title='Total')
     page: int = Field(..., title='Page')
     per_page: int = Field(..., title='Per Page')
+
+
+class Layer4AgentsApiRoutesCheckpointsCheckpointListResponse(BaseModel):
+    """
+    Response containing checkpoint timeline.
+    """
+
+    workflow_id: str = Field(..., title='Workflow Id')
+    checkpoints: list[CheckpointInfo] = Field(..., title='Checkpoints')
+    total_count: int = Field(..., title='Total Count')
+    current_checkpoint_id: str | None = Field(
+        None, description='Most recent checkpoint ID', title='Current Checkpoint Id'
+    )
 
 
 class Layer4AgentsApiRoutesFrontendCompatRegisterTenantRequest(BaseModel):
@@ -3217,6 +3684,31 @@ class BodyApiUpdateUserV1UsersUserIdPatch(BaseModel):
     context: RequestContext | None = None
 
 
+class BodyCreateAuditExportV1GovernanceAuditExportsPost(BaseModel):
+    request: AuditExportCreateRequest
+    context: RequestContext | None = None
+
+
+class BodyCreateDecisionV1GovernanceReviewsReviewIdDecisionsPost(BaseModel):
+    decision: ApprovalDecision
+    context: RequestContext | None = None
+
+
+class BodyCreateReviewV1GovernanceReviewsPost(BaseModel):
+    request: ReviewRequest
+    context: RequestContext | None = None
+
+
+class BodyCreateVersionV1GovernanceVersionsPost(BaseModel):
+    version: VersionRecord
+    context: RequestContext | None = None
+
+
+class BodyDecideGateV1HarnessGatesGateIdDecidePost(BaseModel):
+    body: GateDecisionRequest
+    context: RequestContext | None = None
+
+
 class BodyUpdateTenantSettingsV1TenantsTenantIdSettingsPatch(BaseModel):
     update: Layer4AgentsTenantsApiRoutesAdminTenantSettingsUpdate
     context: RequestContext | None = None
@@ -3240,6 +3732,43 @@ class BuyerRoleInferenceResult(BaseModel):
 
 class CRMSyncJobListResponse(BaseModel):
     jobs: list[CRMSyncJobResponse] = Field(..., title='Jobs')
+
+
+class CheckpointResponse(BaseModel):
+    """
+    Single checkpoint in API responses.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: str = Field(..., title='Id')
+    run_id: str = Field(..., title='Run Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    state_name: HarnessState
+    input_hash: str = Field(..., title='Input Hash')
+    output_hash: str | None = Field(..., title='Output Hash')
+    created_at: AwareDatetime = Field(..., title='Created At')
+
+
+class ClaimValidationResult(BaseModel):
+    """
+    Result of validating a single claim through L5 or fallback.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: str | None = Field(None, title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    claim_id: str = Field(..., title='Claim Id')
+    validation_state: ValidationState
+    evidence_refs: list[str] | None = Field(None, title='Evidence Refs')
+    confidence: float = Field(..., ge=0.0, le=1.0, title='Confidence')
+    trust_score: float = Field(..., ge=0.0, le=1.0, title='Trust Score')
+    validator: Validator = Field(..., title='Validator')
+    reason: str | None = Field('', title='Reason')
+    created_at: AwareDatetime | None = Field(None, title='Created At')
 
 
 class CommentListResponse(BaseModel):
@@ -3275,6 +3804,31 @@ class CompanyKnowledgeProfileResponse(BaseModel):
     approved_by: UUID | None = Field(None, title='Approved By')
 
 
+class CreateGateRequest(BaseModel):
+    """
+    Request body for POST /v1/harness/runs/{run_id}/gates.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    gate_type: GateType
+
+
+class CreateRunRequest(BaseModel):
+    """
+    Request body for POST /v1/harness/runs.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    workflow_type: HarnessWorkflowType
+    initiated_by: InitiatedBy | None = 'user'
+    account_id: str | None = Field(None, title='Account Id')
+    value_pack_id: str | None = Field(None, title='Value Pack Id')
+
+
 class CrmMatchResult(BaseModel):
     """
     Result of CRM opportunity matching (never fabricated).
@@ -3284,6 +3838,25 @@ class CrmMatchResult(BaseModel):
     opportunity_id: str | None = Field(None, title='Opportunity Id')
     confidence: float | None = Field(None, title='Confidence')
     source: str | None = Field(None, title='Source')
+
+
+class GateResponse(BaseModel):
+    """
+    Single gate in API responses.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: str = Field(..., title='Id')
+    run_id: str = Field(..., title='Run Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    gate_type: GateType
+    status: GateStatus
+    decision_by: str | None = Field(..., title='Decision By')
+    decision_reason: str | None = Field(..., title='Decision Reason')
+    created_at: AwareDatetime = Field(..., title='Created At')
+    decided_at: AwareDatetime | None = Field(..., title='Decided At')
 
 
 class ICPProfileCreateRequest(BaseModel):
@@ -3457,6 +4030,21 @@ class OnboardingStatusResponse(BaseModel):
     )
 
 
+class RunListResponse(BaseModel):
+    """
+    Paginated list of runs.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: list[RunResponse] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
+    limit: int = Field(..., title='Limit')
+    offset: int = Field(..., title='Offset')
+    has_more: bool = Field(..., title='Has More')
+
+
 class StartAnalysisResponse(BaseModel):
     """
     Response from starting prospect analysis.
@@ -3553,6 +4141,36 @@ class ToolCategoriesResponse(BaseModel):
     categories: list[ToolCategoryItem] = Field(..., title='Categories')
 
 
+class TransitionRequest(BaseModel):
+    """
+    Request body for POST /v1/harness/runs/{run_id}/transition.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    to_state: HarnessState
+    human_override: bool | None = Field(False, title='Human Override')
+    state_payload: dict[str, Any] | None = Field(None, title='State Payload')
+    validation_results: list[ClaimValidationResult] | None = Field(
+        None, title='Validation Results'
+    )
+
+
+class UsageBatchRequest(BaseModel):
+    """
+    Request body for batch ingestion of usage events.
+    """
+
+    events: list[UsageEventRequest] = Field(
+        ...,
+        description='Events to ingest',
+        max_length=1000,
+        min_length=1,
+        title='Events',
+    )
+
+
 class UserModel(BaseModel):
     """
     Read-only representation of a user (returned by API — no password).
@@ -3602,6 +4220,26 @@ class ValidationAuthContextSeedRequest(BaseModel):
     )
 
 
+class ValidationResultResponse(BaseModel):
+    """
+    Single validation result in API responses.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: str = Field(..., title='Id')
+    tenant_id: str = Field(..., title='Tenant Id')
+    claim_id: str = Field(..., title='Claim Id')
+    validation_state: ValidationState
+    evidence_refs: list[str] = Field(..., title='Evidence Refs')
+    confidence: float = Field(..., title='Confidence')
+    trust_score: float = Field(..., title='Trust Score')
+    validator: str = Field(..., title='Validator')
+    reason: str = Field(..., title='Reason')
+    created_at: AwareDatetime = Field(..., title='Created At')
+
+
 class ValueExtractionRecordListResponse(BaseModel):
     """
     Paginated extraction records.
@@ -3635,6 +4273,30 @@ class WorkflowCreateRequest(BaseModel):
     )
 
 
+class Layer4AgentsHarnessApiModelsCheckpointListResponse(BaseModel):
+    """
+    List of checkpoints for a run.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: list[CheckpointResponse] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
+
+
+class GateListResponse(BaseModel):
+    """
+    List of gates for a run.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    items: list[GateResponse] = Field(..., title='Items')
+    total: int = Field(..., title='Total')
+
+
 class KnowledgeSourceListResponse(BaseModel):
     """
     Paginated knowledge sources.
@@ -3650,3 +4312,21 @@ class KnowledgeSourceListResponse(BaseModel):
 class TaskListResponse(BaseModel):
     items: list[TaskRecord] = Field(..., title='Items')
     total: int = Field(..., title='Total')
+
+
+class ValidateClaimsResponse(BaseModel):
+    """
+    Response for POST /v1/harness/runs/{run_id}/validate
+    and GET /v1/harness/runs/{run_id}/validation.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    results: list[ValidationResultResponse] = Field(..., title='Results')
+    total: int = Field(..., title='Total')
+    passed: int = Field(..., title='Passed')
+    failed: int = Field(..., title='Failed')
+    needs_review: int = Field(..., title='Needs Review')
+    insufficient_evidence: int = Field(..., title='Insufficient Evidence')
+    summary: ValidationSummaryResponse | None = None
