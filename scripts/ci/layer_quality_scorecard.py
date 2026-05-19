@@ -36,6 +36,8 @@ LAYER_SCOPES = {
         "scope_tokens": ["layer6", "benchmark", "benchmarks"],
     },
 }
+for scope in LAYER_SCOPES.values():
+    scope["scope_tokens"] = [token.lower() for token in scope["scope_tokens"]]
 
 @dataclass
 class CheckDef:
@@ -71,8 +73,6 @@ def _find_any_text(paths: list[str], snippets: list[str]) -> bool:
 
 
 def _find_scoped_support_text(scope_tokens: list[str], snippets: list[str]) -> bool:
-    scoped_tokens = [token.lower() for token in scope_tokens]
-
     for root_name in SCOPED_SUPPORT_ROOTS:
         root = ROOT / root_name
         if not root.exists():
@@ -81,7 +81,7 @@ def _find_scoped_support_text(scope_tokens: list[str], snippets: list[str]) -> b
             if not file_path.is_file() or file_path.suffix.lower() not in TEXT_SUFFIXES:
                 continue
             rel = str(file_path.relative_to(ROOT)).lower()
-            if not any(token in rel for token in scoped_tokens):
+            if not any(token in rel for token in scope_tokens):
                 continue
             try:
                 text = file_path.read_text(encoding="utf-8", errors="ignore").lower()

@@ -261,6 +261,11 @@ class EvidenceDocs:
 
     @staticmethod
     def _score(results: list[EvidenceResult]) -> float:
+        """Return a numeric readiness percentage for machine-readable summaries.
+
+        Empty collections intentionally return 0.0 so downstream JSON/markdown
+        consumers can treat "no eligible evidence" as "no readiness proven yet."
+        """
         if not results:
             return 0.0
         return round((sum(result.status == "passed" for result in results) / len(results)) * 100, 1)

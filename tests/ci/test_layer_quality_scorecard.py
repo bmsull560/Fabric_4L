@@ -34,6 +34,10 @@ def test_compute_scopes_support_files_to_matching_layer(tmp_path: Path, monkeypa
         encoding="utf-8",
     )
     (tmp_path / "docs").mkdir(parents=True)
+    (tmp_path / "docs" / "shared-quality-notes.md").write_text(
+        "tenant isolation unauthorized forbidden auth schema migration docs",
+        encoding="utf-8",
+    )
     (tmp_path / "docs" / "layer2-extraction-contracts.md").write_text(
         "Layer 2 docs contract freshness schema docs",
         encoding="utf-8",
