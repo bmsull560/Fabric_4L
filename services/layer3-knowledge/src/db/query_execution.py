@@ -91,6 +91,7 @@ _TENANT_OWNED_LABELS = {
     "ValueSignal",
     "ValueTree",
     "Variable",
+    "Workflow",
 }
 
 

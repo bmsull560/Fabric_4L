@@ -58,13 +58,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-xdist pytest-timeout pytest-cov httpx pytest-asyncio
+          uv pip install pytest pytest-xdist pytest-timeout pytest-cov httpx pytest-asyncio --system
           if [ -f "packages/shared/pyproject.toml" ]; then
-            pip install -e packages/shared/
+            uv pip install -e packages/shared/ --system
           fi
 
       - name: Wait for services to be healthy

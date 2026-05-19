@@ -178,7 +178,8 @@ async def test_route_accepts_canonical_header(monkeypatch):
     mock_manager.disconnect = AsyncMock()
     ws.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
 
-    with patch("value_fabric.layer4.api.websocket.routes.get_ws_manager", return_value=mock_manager):
+    with patch("value_fabric.layer4.api.websocket.routes.get_ws_manager", return_value=mock_manager), \
+         patch("value_fabric.layer4.api.websocket.routes._verify_workflow_ownership", return_value=True):
         await workflow_websocket(websocket=ws, workflow_id="wf-2", token=None)
 
     mock_manager.connect.assert_awaited_once()
@@ -208,6 +209,9 @@ async def test_route_legacy_query_param_emits_deprecation_and_connects(monkeypat
         with patch(
             "value_fabric.layer4.api.websocket.routes.get_ws_manager",
             return_value=mock_manager,
+        ), patch(
+            "value_fabric.layer4.api.websocket.routes._verify_workflow_ownership",
+            return_value=True,
         ):
             await workflow_websocket(websocket=ws, workflow_id="wf-3", token="legacy.jwt")
 
