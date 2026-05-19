@@ -29,7 +29,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import type { NavItem, UserTier } from "@/navigation/navHelpers";
+import type { NavItem, UserTier } from "@/navigation/navigationService";
 import type { Account } from "@/hooks/useAccounts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ import {
   resolveWorkspacePath,
   isItemVisible,
   isRouteActive,
-} from "@/navigation/navHelpers";
+} from "@/navigation/navigationService";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 

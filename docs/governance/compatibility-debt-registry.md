@@ -32,7 +32,7 @@ This registry tracks **runtime** compatibility wrappers/shims that exist to pres
 
 | COMPAT-WEB-002 | `apps/web/src/services/sessionService.ts` | Frontend session API shim | web-platform | Legacy `SessionSnapshot` / `getSessionSnapshot` / `persistSession` compatibility wrappers were removed on 2026-05-18; remaining shim is `getAccessToken()` null-return helper while cookie auth migration finishes. Canonical API is `SessionMeta` via `getSessionMeta()`/`persistSessionMeta()`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-002 |
 | COMPAT-WEB-003 | `apps/web/src/hooks/useAgentStream.ts` | Hook compatibility wrapper | web-platform | Deprecated hook retained while callers migrate to canonical `@/agui/useAgentEvents`. | 2026-07-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-003 |
-| COMPAT-WEB-004 | `apps/web/src/navigation/navHelpers.ts` | Type/export alias shim | web-platform | Re-export shim during navigation service migration. Canonical exports live in `apps/web/src/navigation/navigationService.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-004 |
+| ~~COMPAT-WEB-004~~ | ~~`apps/web/src/navigation/navHelpers.ts`~~ | ~~Type/export alias shim~~ | ~~web-platform~~ | Removed 2026-05-19 — callers migrated to `apps/web/src/navigation/navigationService.ts`; shim file deleted. | ~~2026-06-30~~ | Removed ahead of schedule. | PLATARCH-REMOVE-WEB-004 ✅ |
 | COMPAT-WEB-005 | `apps/web/src/hooks/useApiShared.ts` | Constant alias shim | web-platform | Backward-compatible stale-time aliases preserved for legacy hook imports; canonical keys are the non-legacy names in the same module. | 2026-07-15 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-005 |
 | COMPAT-WEB-006 | `apps/web/src/hooks/useBenchmarks.ts` | Type export shim | web-platform | Backward-compatible type re-export to avoid import churn; canonical types are in `apps/web/src/schemas/benchmark.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-006 |
 | COMPAT-WEB-007 | `apps/web/src/hooks/useFormulas.ts` | Type export shim | web-platform | Backward-compatible type re-export for formula consumers; canonical types are in `apps/web/src/schemas/formula.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-007 |
@@ -87,7 +87,7 @@ These are deliberate v1 design decisions that raise errors rather than silently 
 |---|---|---|---|---|
 | `apps/web/src/services/sessionService.ts` (`getSessionSnapshot`/`persistSession` family) | `SessionMeta` APIs in `apps/web/src/services/sessionService.ts` | **Removed on 2026-05-18** (no runtime callers) | Low | Completed in Sprint 6 (2026-05-18) |
 | `apps/web/src/hooks/useAgentStream.ts` | `apps/web/src/agui/useAgentEvents.ts` | `apps/web/src/agui/useAgentEvents.ts` (default actions helper) | Medium | Sprint 7 AG-UI convergence |
-| `apps/web/src/navigation/navHelpers.ts` | `apps/web/src/navigation/navigationService.ts` | `GlobalLayout`, `MobileNavigation`, `MobilePersistentSidebar`, `TieredNav` | Medium | Sprint 7 navigation unification |
+| `apps/web/src/navigation/navHelpers.ts` | `apps/web/src/navigation/navigationService.ts` | **Removed on 2026-05-19** (callers migrated; file deleted) | Low | Completed in Sprint 6 (2026-05-19) |
 | `apps/web/src/components/ui/fabric/LoadingSkeleton.tsx` | `apps/web/src/components/ui/skeleton.tsx`, `apps/web/src/components/ui/SkeletonViews.tsx` | `apps/web/src/components/ui/fabric/index.ts` and downstream fabric imports | Low | Sprint 7 UI primitive migration |
 | `apps/web/src/components/blocks/SectionCard.tsx` (`subtitle` alias) | `description` prop on same component | Pages still passing `subtitle` (e.g., `pages/value-case/ValueCasePage.tsx`) | Low | Sprint 7 card-prop cleanup |
 | `apps/web/src/hooks/useApiShared.ts` (legacy stale-time aliases) | Canonical `STALE_TIME` keys in same module | shared hook consumers across `apps/web/src/hooks/` | Medium | Sprint 8 hooks API freeze |
@@ -95,6 +95,15 @@ These are deliberate v1 design decisions that raise errors rather than silently 
 | `apps/web/src/stores/userTierStore.ts` (legacy redirects) | canonical route map in same store/module | navigation flows that still hit legacy routes | Medium | Sprint 8 route canonicalization |
 
 ## Frontend Compatibility Shim Migration Runbook
+
+### Alias-to-Canonical API Migration
+
+- Start with the compatibility registry row and copy the canonical replacement path into your task notes.
+- Use `rg -n "<shim symbol or import path>" apps/web/src` to enumerate all direct and transitive callers.
+- Migrate one feature slice at a time (component + hook + tests) to reduce blast radius and ease rollback.
+- After each slice, run targeted checks (`pnpm --dir apps/web test -- <suite>` and shim registry check) before deleting shim exports.
+- Only remove the shim once callers are zero and the registry row is updated to a dated removal record.
+
 
 1. **Identify shim usage**: run `rg -n "<alias-or-deprecated-api>" apps/web/src` and collect all callsites.
 2. **Switch to canonical API**: replace alias imports/props/hooks with canonical path from this registry, then update nearby tests in the same feature slice.

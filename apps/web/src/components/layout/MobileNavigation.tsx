@@ -1,6 +1,6 @@
 import { MobilePersistentSidebar } from "@/components/navigation/MobilePersistentSidebar";
 import { NAV_SPINE } from "@/components/navigation/TieredNav";
-import type { UserTier } from "@/navigation/navHelpers";
+import type { UserTier } from "@/navigation/navigationService";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useAccounts } from "@/hooks";
 import { useAuthContext } from "@/contexts/AuthContext";

@@ -9,7 +9,7 @@ import { AgentChat } from "./AgentChat";
 import { AgentSidePanel } from "./AgentSidePanel";
 import { MobileNavigation } from "./MobileNavigation";
 import type { AgentChatMode } from "@/types/layout";
-import type { UserTier } from "@/navigation/navHelpers";
+import type { UserTier } from "@/navigation/navigationService";
 
 // ── Workspace Layout Wrapper ──────────────────────────────────────────────────
 // Workspace routes (intelligence, hypothesis, drivers, calculator, etc.) need

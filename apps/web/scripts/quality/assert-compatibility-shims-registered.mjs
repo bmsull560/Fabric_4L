@@ -5,11 +5,18 @@ const repoRoot = path.resolve(import.meta.dirname, '../../../..');
 const srcRoot = path.resolve(repoRoot, 'apps/web/src');
 const registryPath = path.resolve(repoRoot, 'docs/governance/compatibility-debt-registry.md');
 
-const shimMarkers = [/\b@deprecated\b/i, /backward compatibility/i, /compatibility shim/i, /legacy compatibility shims/i];
+const shimMarkers = [
+  /\b@deprecated\b/i,
+  /backward compatibility/i,
+  /compatibility shim/i,
+  /legacy compatibility shims/i,
+  /re-export.*backward compatibility/i,
+];
 const ignoredPatterns = [
   /re-exports?\s+the\s+intelligence\s+workspace/i,
   /re-export\s+types?\s+for\s+convenience/i,
   /re-export\s+from\s+.*for\s+convenience/i,
+  /re-export\s+for\s+convenience/i,
 ];
 
 function walk(dir) {
@@ -24,9 +31,6 @@ function walk(dir) {
 }
 
 const registryRaw = fs.readFileSync(registryPath, 'utf8');
-// Match only paths in the second column of COMPAT table rows (pipe-delimited, backtick-wrapped).
-// This avoids false-negatives from canonical replacement paths that also appear in backticks
-// elsewhere in the document (e.g. "Frontend Shim Inventory" canonical-replacement cells).
 const registeredPaths = new Set(
   [...registryRaw.matchAll(/^\|\s*COMPAT-\S+\s*\|\s*`(apps\/web\/src\/[^`]+)`/gm)].map((m) => m[1])
 );
