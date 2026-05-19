@@ -1,3 +1,12 @@
+"""Approved Layer 3 Neo4j execution boundary.
+
+Runtime modules must execute Cypher via this module instead of calling
+``session.run(...)`` directly. The approved surface is:
+- ``run_scoped_query`` for ``ScopedQuery`` payloads
+- ``run_tenant_query`` for validated tenant-scoped ad-hoc calls
+- ``run_system_query`` for explicit schema/bootstrap/migration paths
+"""
+
 from __future__ import annotations
 
 import re
@@ -120,7 +129,7 @@ class TenantQueryExecutor:
 
 
 async def run_scoped_query(run_callable, scoped_query: ScopedQuery, *, is_bypass: bool = False) -> Any:
-    """Central execution gateway for mandatory tenant-scope validation."""
+    """Execute a ``ScopedQuery`` through tenant/system validation gates."""
 
     allow_system_query = scoped_query.scope != QueryScope.TENANT
     context = TenantExecutionContext(
@@ -134,3 +143,15 @@ async def run_scoped_query(run_callable, scoped_query: ScopedQuery, *, is_bypass
         scoped_query.params,
         context=context,
     )
+
+
+async def run_tenant_query(session, query: str, params: dict[str, Any] | None, *, tenant_id: str) -> Any:
+    """Execute ad-hoc tenant query via approved validated boundary."""
+    scoped = ScopedQuery(cypher=query, params=params or {}, tenant_id=tenant_id, scope=QueryScope.TENANT)
+    return await run_scoped_query(session.run, scoped)
+
+
+async def run_system_query(session, query: str, params: dict[str, Any] | None = None, *, scope: QueryScope = QueryScope.SYSTEM) -> Any:
+    """Execute explicit system-scoped query for bootstrap/schema/migration code."""
+    scoped = ScopedQuery(cypher=query, params=params or {}, scope=scope)
+    return await run_scoped_query(session.run, scoped)

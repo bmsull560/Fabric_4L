@@ -85,6 +85,7 @@ ALLOWED_PATH_FRAGMENTS = (
     "/migrations/",
     "/backup/",
     "query_validator.py",
+    "db/query_execution.py",
 )
 
 SYSTEM_SCOPE_MARKERS = (
@@ -121,7 +122,7 @@ MATCH_LABEL_PATTERN = re.compile(
     r"\b(?:MATCH|OPTIONAL\s+MATCH|MERGE|CREATE)\s*\([^)]*:\s*([A-Za-z_][A-Za-z0-9_]*)",
     re.IGNORECASE | re.DOTALL,
 )
-RUN_CALL_PATTERN = re.compile(r"\.run\s*\(")
+RUN_CALL_PATTERN = re.compile(r"\bsession\s*\.\s*run\s*\(")
 CYPHER_KEYWORDS = re.compile(
     r"\b(MATCH|OPTIONAL\s+MATCH|MERGE|CREATE|DELETE|DETACH\s+DELETE|CALL\s+gds|CALL\s+db\.index)\b",
     re.IGNORECASE,
@@ -231,8 +232,8 @@ def scan_file(path: Path, root: Path) -> list[Finding]:
             Finding(
                 path=path,
                 line=line,
-                severity="WARN",
-                message="session.run call lacks nearby scoped-query or tenant-scope marker",
+                severity="ERROR",
+                message="direct session.run usage is forbidden outside approved wrappers/allowlist",
                 snippet=text.splitlines()[line - 1].strip()[:240],
             )
         )
