@@ -21,6 +21,7 @@ from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCyph
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..agents.base import AgentResult, BaseAgent
+from ..db.query_execution import run_validated_query
 
 
 class ROICalculationAgent__run_sensitivity_analysisResult(TypedDictModel):
@@ -393,7 +394,7 @@ class ROICalculationAgent(BaseAgent):
         formulas = []
 
         async with self._driver.session() as session:
-            result = await session.run(*self._query_tuple(query))
+            result = await run_validated_query(session, *self._query_tuple(query))
             async for record in result:
                 if record["formula_id"]:
                     formulas.append(
@@ -447,7 +448,7 @@ class ROICalculationAgent(BaseAgent):
         )
 
         async with self._driver.session() as session:
-            result = await session.run(*self._query_tuple(query))
+            result = await run_validated_query(session, *self._query_tuple(query))
             record = await result.single()
 
             if record:

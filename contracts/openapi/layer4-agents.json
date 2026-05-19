@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Layer 4: Agentic Workflow Engine",
+    "title": "Layer 4: Agentic Workflow Orchestrator",
     "description": "LangGraph-powered workflow orchestration for Value Fabric with multi-agent support",
     "version": "0.2.0"
   },
@@ -330,9 +330,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response List Available Workflows V1 Workflows Types Get"
+                  "$ref": "#/components/schemas/AvailableWorkflowsResponse"
                 }
               }
             }
@@ -406,9 +404,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Cancel Workflow V1 Workflows  Workflow Id  Delete"
+                  "$ref": "#/components/schemas/WorkflowCancelResponse"
                 }
               }
             }
@@ -451,9 +447,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Workflow Result V1 Workflows  Workflow Id  Result Get"
+                  "$ref": "#/components/schemas/WorkflowResultResponse"
                 }
               }
             }
@@ -2723,13 +2717,13 @@
         }
       }
     },
-    "/v1/evidence/{evidence_id}/decisions": {
-      "post": {
+    "/v1/evidence/{evidence_id}/decision": {
+      "patch": {
         "tags": [
           "signals"
         ],
         "summary": "Decide Evidence",
-        "operationId": "decide_evidence_v1_evidence__evidence_id__decisions_post",
+        "operationId": "decide_evidence_v1_evidence__evidence_id__decision_patch",
         "parameters": [
           {
             "name": "evidence_id",
@@ -2758,6 +2752,69 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EvidenceDecisionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/evidence/{evidence_id}/drivers/{driver_id}": {
+      "post": {
+        "tags": [
+          "signals"
+        ],
+        "summary": "Link Evidence Driver",
+        "operationId": "link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post",
+        "parameters": [
+          {
+            "name": "evidence_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Evidence Id"
+            }
+          },
+          {
+            "name": "driver_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Driver Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvidenceDriverLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Link Evidence Driver V1 Evidence  Evidence Id  Drivers  Driver Id  Post"
                 }
               }
             }
@@ -3595,7 +3652,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckpointListResponse"
+                  "$ref": "#/components/schemas/layer4_agents__api__routes__checkpoints__CheckpointListResponse"
                 }
               }
             }
@@ -8884,7 +8941,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReviewRequest"
+                "$ref": "#/components/schemas/Body_create_review_v1_governance_reviews_post"
               }
             }
           }
@@ -9061,7 +9118,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ApprovalDecision"
+                "$ref": "#/components/schemas/Body_create_decision_v1_governance_reviews__review_id__decisions_post"
               }
             }
           }
@@ -9143,7 +9200,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VersionRecord"
+                "$ref": "#/components/schemas/Body_create_version_v1_governance_versions_post"
               }
             }
           },
@@ -9235,7 +9292,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AuditExportCreateRequest"
+                "$ref": "#/components/schemas/Body_create_audit_export_v1_governance_audit_exports_post"
               }
             }
           },
@@ -9332,6 +9389,1486 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LineageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/subscription": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Subscription",
+        "description": "Get current subscription status for a customer.\n\nArgs:\n    customer_id: Internal customer/user ID\n\nReturns:\n    Subscription details including plan and status",
+        "operationId": "get_subscription_v1_billing_subscription_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/checkout": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Create Checkout",
+        "description": "Create a Stripe checkout session for subscription.\n\nArgs:\n    customer_id: Internal customer/user ID\n    request: Checkout session parameters\n\nReturns:\n    Session ID and checkout URL",
+        "operationId": "create_checkout_v1_billing_checkout_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Checkout V1 Billing Checkout Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/portal": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Create Portal",
+        "description": "Create a Stripe customer portal session.\n\nArgs:\n    customer_id: Internal customer/user ID\n    request: Portal session parameters\n\nReturns:\n    Portal URL for customer to manage billing",
+        "operationId": "create_portal_v1_billing_portal_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Portal V1 Billing Portal Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/entitlements": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Entitlements",
+        "description": "Get all feature entitlements for a customer.\n\nArgs:\n    customer_id: Internal customer/user ID\n\nReturns:\n    Plan details and feature availability map",
+        "operationId": "get_entitlements_v1_billing_entitlements_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Entitlements V1 Billing Entitlements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/check-feature": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Check Feature",
+        "description": "Check if a customer has access to a specific feature.\n\nArgs:\n    customer_id: Internal customer/user ID\n    feature_id: Feature identifier to check\n\nReturns:\n    Feature access status",
+        "operationId": "check_feature_v1_billing_check_feature_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "feature_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Feature Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Feature V1 Billing Check Feature Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/sync-customer": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Sync Customer",
+        "description": "Sync customer with Stripe (create or update).\n\nArgs:\n    customer_id: Internal customer/user ID\n    request: Customer details\n\nReturns:\n    Customer record with Stripe ID if available",
+        "operationId": "sync_customer_v1_billing_sync_customer_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerSyncRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sync Customer V1 Billing Sync Customer Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/webhook": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Stripe Webhook",
+        "description": "Handle Stripe webhook events.\n\nProcesses subscription lifecycle events from Stripe with idempotency.\nMust configure webhook secret in STRIPE_WEBHOOK_SECRET env var.\n\nSECURITY: Validates request originates from Stripe IP ranges AND\nhas valid Stripe-Signature header. Dual verification for defense-in-depth.\n\nHeaders:\n    Stripe-Signature: Webhook signature for verification\n\nReturns:\n    Processing status",
+        "operationId": "stripe_webhook_v1_billing_webhook_post",
+        "parameters": [
+          {
+            "name": "Stripe-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stripe-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Stripe Webhook V1 Billing Webhook Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/events": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Ingest Usage Event",
+        "description": "Ingest a single usage event for billing.\n\nArgs:\n    request: Usage event details\n\nReturns:\n    Ingested event with ID and status\n\nRaises:\n    400: Validation error\n    409: Duplicate event (idempotency conflict)",
+        "operationId": "ingest_usage_event_v1_billing_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsageEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ingest Usage Event V1 Billing Events Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/events/batch": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Ingest Usage Batch",
+        "description": "Ingest multiple usage events in a batch.\n\nArgs:\n    request: Batch of usage events (max 1000)\n\nReturns:\n    Summary with counts of created, duplicate, and error events\n\nRaises:\n    400: Batch validation error",
+        "operationId": "ingest_usage_batch_v1_billing_events_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsageBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Ingest Usage Batch V1 Billing Events Batch Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{customer_id}/summary": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Usage Summary",
+        "description": "Get aggregated usage summary for a customer and metric.\n\nArgs:\n    customer_id: Customer to query\n    metric_name: Metric to aggregate\n    start_date: Start of period (ISO format)\n    end_date: End of period (ISO format)\n\nReturns:\n    Usage summary with total quantity and event count",
+        "operationId": "get_usage_summary_v1_billing_usage__customer_id__summary_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "metric_name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Metric Name"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Usage Summary V1 Billing Usage  Customer Id  Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{customer_id}/events": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "List Usage Events",
+        "description": "List individual usage events for a customer.\n\nArgs:\n    customer_id: Customer to query\n    metric_name: Optional metric filter\n    start_date: Optional start date filter\n    end_date: Optional end date filter\n    limit: Maximum results (1-1000)\n    offset: Pagination offset\n\nReturns:\n    List of usage events",
+        "operationId": "list_usage_events_v1_billing_usage__customer_id__events_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "metric_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metric Name"
+            }
+          },
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Usage Events V1 Billing Usage  Customer Id  Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{customer_id}/sync": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Sync Usage To Stripe",
+        "description": "Sync pending usage events to Stripe MeterEvents.\n\nAggregates pending usage and reports to Stripe for metered billing.\nRequires Stripe customer to be linked and STRIPE_METER_EVENTS_ENABLED=true.\n\nArgs:\n    customer_id: Customer to sync usage for\n    metric_name: Optional metric filter (syncs all if omitted)\n\nReturns:\n    Sync summary with counts and Stripe responses\n\nRaises:\n    400: Validation error or no Stripe customer linked\n    402: Stripe not configured",
+        "operationId": "sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "metric_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metric Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sync Usage To Stripe V1 Billing Usage  Customer Id  Sync Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/limits/{customer_id}": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Usage Limits",
+        "description": "Get current usage and limits for a customer.\n\nReturns all configured limits and current usage percentages.\nUse this to show progress bars or warnings in the UI.\n\nArgs:\n    customer_id: Customer to check\n\nReturns:\n    Usage limits and current consumption for all metrics",
+        "operationId": "get_usage_limits_v1_billing_limits__customer_id__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Usage Limits V1 Billing Limits  Customer Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/limits/{customer_id}/check": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Check Request Allowed",
+        "description": "Check if a request should be allowed based on usage limits.\n\nUse this endpoint before processing expensive operations to validate\nthat the customer has quota remaining. Returns 402 Payment Required\nif the hard limit is exceeded.\n\nArgs:\n    customer_id: Customer making the request\n    metric_name: Metric being consumed\n    quantity: Amount to be consumed\n\nReturns:\n    Validation result with allow/deny decision\n\nRaises:\n    402: Hard limit exceeded (upgrade required)\n    400: Invalid request",
+        "operationId": "check_request_allowed_v1_billing_limits__customer_id__check_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "metric_name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Metric Name"
+            }
+          },
+          {
+            "name": "quantity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "default": 1.0,
+              "title": "Quantity"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Request Allowed V1 Billing Limits  Customer Id  Check Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/plans/{plan_id}/limits": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Plan Limits",
+        "description": "Get the configured usage limits for a plan.\n\nReturns the limits configuration without customer-specific usage data.\nUseful for displaying plan details in pricing pages.\n\nArgs:\n    plan_id: Plan identifier (free, pro, enterprise)\n\nReturns:\n    Plan limits configuration",
+        "operationId": "get_plan_limits_v1_billing_plans__plan_id__limits_get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Plan Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Plan Limits V1 Billing Plans  Plan Id  Limits Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "List Invoices",
+        "description": "List invoices with optional filters.\n\nReturns paginated list of invoices for the tenant, optionally filtered\nby customer and status.",
+        "operationId": "list_invoices_v1_billing_invoices_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Invoices V1 Billing Invoices Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Create Invoice",
+        "description": "Create a new invoice.\n\nCreates a draft invoice for the specified customer and billing period.\nAdd line items via POST /invoices/{id}/items, then finalize via POST /invoices/{id}/finalize.",
+        "operationId": "create_invoice_v1_billing_invoices_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Invoice V1 Billing Invoices Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Invoice",
+        "description": "Get invoice details including line items and charges.",
+        "operationId": "get_invoice_v1_billing_invoices__invoice_id__get",
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Invoice V1 Billing Invoices  Invoice Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}/items": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Add Invoice Item",
+        "description": "Add a line item to an invoice.",
+        "operationId": "add_invoice_item_v1_billing_invoices__invoice_id__items_post",
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddInvoiceItemRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Invoice Item V1 Billing Invoices  Invoice Id  Items Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}/finalize": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Finalize Invoice",
+        "description": "Finalize a draft invoice (make it open/payable).\n\nRecalculates totals from line items and changes status to 'open'.",
+        "operationId": "finalize_invoice_v1_billing_invoices__invoice_id__finalize_post",
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Finalize Invoice V1 Billing Invoices  Invoice Id  Finalize Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}/void": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Void Invoice",
+        "description": "Void an invoice.",
+        "operationId": "void_invoice_v1_billing_invoices__invoice_id__void_post",
+        "parameters": [
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Void reason",
+              "title": "Reason"
+            },
+            "description": "Void reason"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Void Invoice V1 Billing Invoices  Invoice Id  Void Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/charges": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "List Charges",
+        "description": "List charge records.",
+        "operationId": "list_charges_v1_billing_charges_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "invoice_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Invoice Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Charges V1 Billing Charges Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Record Charge",
+        "description": "Record a charge attempt.",
+        "operationId": "record_charge_v1_billing_charges_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordChargeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Record Charge V1 Billing Charges Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/reports/revenue": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Revenue Summary",
+        "description": "Get revenue summary for a period.\n\nReturns aggregated invoice and charge totals for the specified period.",
+        "operationId": "get_revenue_summary_v1_billing_reports_revenue_get",
+        "parameters": [
+          {
+            "name": "period_start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Period Start"
+            }
+          },
+          {
+            "name": "period_end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Period End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Revenue Summary V1 Billing Reports Revenue Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/customers/{customer_id}/balance": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Customer Balance",
+        "description": "Get customer balance summary.\n\nReturns open invoice amounts and lifetime payment totals.",
+        "operationId": "get_customer_balance_v1_billing_customers__customer_id__balance_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Customer Balance V1 Billing Customers  Customer Id  Balance Get"
                 }
               }
             }
@@ -10368,15 +11905,12 @@
     "/v1/harness/runs": {
       "post": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Create a harness run",
-        "operationId": "create_harness_run_v1_harness_runs_post",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Create a new HarnessRun for the authenticated tenant.",
+        "operationId": "create_run_v1_harness_runs_post",
         "requestBody": {
           "required": true,
           "content": {
@@ -10389,7 +11923,7 @@
         },
         "responses": {
           "201": {
-            "description": "Run created",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10399,7 +11933,7 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10412,15 +11946,12 @@
       },
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "List harness runs",
-        "operationId": "list_harness_runs_v1_harness_runs_get",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "List harness runs for the authenticated tenant.",
+        "operationId": "list_runs_v1_harness_runs_get",
         "parameters": [
           {
             "name": "status",
@@ -10429,12 +11960,13 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/HarnessRunStatus"
                 },
                 {
                   "type": "null"
                 }
-              ]
+              ],
+              "title": "Status"
             }
           },
           {
@@ -10444,12 +11976,13 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/components/schemas/HarnessWorkflowType"
                 },
                 {
                   "type": "null"
                 }
-              ]
+              ],
+              "title": "Workflow Type"
             }
           },
           {
@@ -10458,7 +11991,10 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 20
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
             }
           },
           {
@@ -10467,17 +12003,29 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "default": 0
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Paginated run list",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RunListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -10488,28 +12036,26 @@
     "/v1/harness/runs/{run_id}": {
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Get a harness run",
-        "operationId": "get_harness_run_v1_harness_runs__run_id__get",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Get a single harness run by ID.",
+        "operationId": "get_run_v1_harness_runs__run_id__get",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Run detail",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10518,8 +12064,50 @@
               }
             }
           },
-          "404": {
-            "description": "Run not found"
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "harness",
+          "harness"
+        ],
+        "summary": "Cancel a harness run",
+        "description": "Cancel (transition to CANCELLED) a harness run.",
+        "operationId": "cancel_run_v1_harness_runs__run_id__delete",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -10527,22 +12115,20 @@
     "/v1/harness/runs/{run_id}/transition": {
       "post": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Advance run state",
-        "operationId": "transition_harness_run_v1_harness_runs__run_id__transition_post",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Advance the state machine for a harness run.",
+        "operationId": "transition_run_v1_harness_runs__run_id__transition_post",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
@@ -10558,7 +12144,7 @@
         },
         "responses": {
           "200": {
-            "description": "Transition applied",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10567,50 +12153,15 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid transition"
-          },
-          "404": {
-            "description": "Run not found"
-          }
-        }
-      }
-    },
-    "/v1/harness/runs/{run_id}/cancel": {
-      "post": {
-        "tags": [
-          "Harness"
-        ],
-        "summary": "Cancel a harness run",
-        "operationId": "cancel_harness_run_v1_harness_runs__run_id__cancel_post",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "run_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Run cancelled",
+          "422": {
+            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RunResponse"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
-          },
-          "404": {
-            "description": "Run not found"
           }
         }
       }
@@ -10618,32 +12169,40 @@
     "/v1/harness/runs/{run_id}/checkpoints": {
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "List checkpoints for a run",
-        "operationId": "list_harness_checkpoints_v1_harness_runs__run_id__checkpoints_get",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "List all checkpoints for a harness run.",
+        "operationId": "list_checkpoints_v1_harness_runs__run_id__checkpoints_get",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Checkpoint list",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CheckpointListResponse"
+                  "$ref": "#/components/schemas/layer4_agents__harness__api_models__CheckpointListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -10654,28 +12213,26 @@
     "/v1/harness/runs/{run_id}/checkpoints/latest": {
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Get latest checkpoint for a run",
+        "description": "Get the most recent checkpoint for a harness run.",
         "operationId": "get_latest_checkpoint_v1_harness_runs__run_id__checkpoints_latest_get",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Latest checkpoint",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10684,8 +12241,15 @@
               }
             }
           },
-          "404": {
-            "description": "No checkpoint found"
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -10693,32 +12257,40 @@
     "/v1/harness/runs/{run_id}/gates": {
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "List gates for a run",
-        "operationId": "list_harness_gates_v1_harness_runs__run_id__gates_get",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "List all human gates for a harness run.",
+        "operationId": "list_gates_v1_harness_runs__run_id__gates_get",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Gate list",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GateListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -10727,22 +12299,20 @@
       },
       "post": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Create a human gate",
-        "operationId": "create_harness_gate_v1_harness_runs__run_id__gates_post",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Create a human gate for a harness run.",
+        "operationId": "create_gate_v1_harness_runs__run_id__gates_post",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
@@ -10758,11 +12328,21 @@
         },
         "responses": {
           "201": {
-            "description": "Gate created",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/GateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -10773,23 +12353,20 @@
     "/v1/harness/gates/{gate_id}/decide": {
       "post": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Decide a human gate",
-        "description": "Approve, reject, modify, or expire a human gate. decision_by is taken from the authenticated user context.",
-        "operationId": "decide_harness_gate_v1_harness_gates__gate_id__decide_post",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Approve, reject, modify, or expire a human gate.\n\nRequires content_admin, tenant_admin, or super_admin role.\ndecision_by is always server-derived from ctx.user_id \u2014 any\nbody-supplied value is ignored to prevent spoofing.",
+        "operationId": "decide_gate_v1_harness_gates__gate_id__decide_post",
         "parameters": [
           {
             "name": "gate_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Gate Id"
             }
           }
         ],
@@ -10798,14 +12375,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GateDecisionRequest"
+                "$ref": "#/components/schemas/Body_decide_gate_v1_harness_gates__gate_id__decide_post"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Gate decision recorded",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10814,11 +12391,15 @@
               }
             }
           },
-          "400": {
-            "description": "Invalid decision"
-          },
-          "404": {
-            "description": "Gate not found"
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -10826,23 +12407,20 @@
     "/v1/harness/runs/{run_id}/validate": {
       "post": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Validate claims for a run",
-        "description": "Submit claims for L5 Ground Truth validation. Results are persisted and returned with an aggregate summary.",
-        "operationId": "validate_harness_claims_v1_harness_runs__run_id__validate_post",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Validate a list of claims through the L5 ValidationHook.",
+        "operationId": "validate_claims_v1_harness_runs__run_id__validate_post",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
@@ -10858,7 +12436,7 @@
         },
         "responses": {
           "200": {
-            "description": "Validation results with aggregate summary",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10867,11 +12445,15 @@
               }
             }
           },
-          "400": {
-            "description": "Tenant mismatch or invalid request"
-          },
-          "404": {
-            "description": "Run not found"
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -10879,29 +12461,26 @@
     "/v1/harness/runs/{run_id}/validation": {
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Get validation results for a run",
-        "description": "Return stored validation results for a run. Returns an empty summary when no claims have been validated yet. Tenant-scoped.",
-        "operationId": "get_harness_run_validation_v1_harness_runs__run_id__validation_get",
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
+        "description": "Return the stored validation results for a run.\n\nReturns an empty summary when no claims have been validated yet.\nTenant-scoped: 403 if run belongs to a different tenant.",
+        "operationId": "get_run_validation_v1_harness_runs__run_id__validation_get",
         "parameters": [
           {
             "name": "run_id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "title": "Run Id"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Stored validation results with aggregate summary",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -10910,11 +12489,15 @@
               }
             }
           },
-          "403": {
-            "description": "Run belongs to a different tenant"
-          },
-          "404": {
-            "description": "Run not found"
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
         }
       }
@@ -10922,13 +12505,15 @@
     "/v1/harness/health": {
       "get": {
         "tags": [
-          "Harness"
+          "harness",
+          "harness"
         ],
         "summary": "Harness health check",
+        "description": "Return harness health: validation availability and L5 connectivity.",
         "operationId": "harness_health_v1_harness_health_get",
         "responses": {
           "200": {
-            "description": "Health status",
+            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
@@ -11931,6 +13516,91 @@
         ],
         "title": "ActorSummary"
       },
+      "AddInvoiceItemRequest": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Line item description"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Amount Cents",
+            "description": "Amount in cents"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity",
+            "description": "Quantity",
+            "default": 1.0
+          },
+          "unit_amount_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Amount Cents",
+            "description": "Price per unit in cents"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Item type: subscription, metered, one_time, proration",
+            "default": "one_time"
+          },
+          "usage_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Quantity",
+            "description": "Usage quantity for metered items"
+          },
+          "usage_metric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Metric",
+            "description": "Usage metric for metered items"
+          },
+          "tax_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tax Cents",
+            "description": "Tax amount in cents",
+            "default": 0
+          },
+          "discount_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Discount Cents",
+            "description": "Discount amount in cents",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "amount_cents"
+        ],
+        "title": "AddInvoiceItemRequest",
+        "description": "Request to add an invoice line item."
+      },
       "AgentGovernanceMetadata": {
         "properties": {
           "trace_id": {
@@ -12246,6 +13916,7 @@
       "ArchiveWorkflowResponse": {
         "properties": {
           "workflow_id": {
+            "type": "string",
             "title": "Workflow Id"
           },
           "status": {
@@ -12520,6 +14191,45 @@
         "title": "AuthorityWeight",
         "description": "How authoritative this source is considered."
       },
+      "AvailableWorkflow": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "name",
+          "description"
+        ],
+        "title": "AvailableWorkflow"
+      },
+      "AvailableWorkflowsResponse": {
+        "properties": {
+          "workflows": {
+            "items": {
+              "$ref": "#/components/schemas/AvailableWorkflow"
+            },
+            "type": "array",
+            "title": "Workflows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflows"
+        ],
+        "title": "AvailableWorkflowsResponse"
+      },
       "BatchEnrichRequest": {
         "properties": {
           "limit": {
@@ -12793,6 +14503,116 @@
           "request"
         ],
         "title": "Body_api_update_user_v1_users__user_id__patch"
+      },
+      "Body_create_audit_export_v1_governance_audit_exports_post": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/AuditExportCreateRequest"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "Body_create_audit_export_v1_governance_audit_exports_post"
+      },
+      "Body_create_decision_v1_governance_reviews__review_id__decisions_post": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ApprovalDecision"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "Body_create_decision_v1_governance_reviews__review_id__decisions_post"
+      },
+      "Body_create_review_v1_governance_reviews_post": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ReviewRequest"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "Body_create_review_v1_governance_reviews_post"
+      },
+      "Body_create_version_v1_governance_versions_post": {
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/VersionRecord"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "Body_create_version_v1_governance_versions_post"
+      },
+      "Body_decide_gate_v1_harness_gates__gate_id__decide_post": {
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/GateDecisionRequest"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "Body_decide_gate_v1_harness_gates__gate_id__decide_post"
       },
       "Body_update_tenant_settings_v1_tenants__tenant_id__settings_patch": {
         "properties": {
@@ -13392,6 +15212,33 @@
         "title": "CaseListResponse",
         "description": "List of cases for an account."
       },
+      "CheckoutRequest": {
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id",
+            "description": "Plan to subscribe to (pro, enterprise)"
+          },
+          "success_url": {
+            "type": "string",
+            "title": "Success Url",
+            "description": "Redirect URL after successful checkout"
+          },
+          "cancel_url": {
+            "type": "string",
+            "title": "Cancel Url",
+            "description": "Redirect URL if checkout canceled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_id",
+          "success_url",
+          "cancel_url"
+        ],
+        "title": "CheckoutRequest",
+        "description": "Request to create a checkout session."
+      },
       "CheckpointInfo": {
         "properties": {
           "checkpoint_id": {
@@ -13436,24 +15283,28 @@
         "title": "CheckpointInfo",
         "description": "Information about a single checkpoint."
       },
-      "CheckpointListResponse": {
+      "CheckpointResponse": {
         "properties": {
-          "workflow_id": {
+          "id": {
             "type": "string",
-            "title": "Workflow Id"
+            "title": "Id"
           },
-          "checkpoints": {
-            "items": {
-              "$ref": "#/components/schemas/CheckpointInfo"
-            },
-            "type": "array",
-            "title": "Checkpoints"
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
           },
-          "total_count": {
-            "type": "integer",
-            "title": "Total Count"
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
           },
-          "current_checkpoint_id": {
+          "state_name": {
+            "$ref": "#/components/schemas/HarnessState"
+          },
+          "input_hash": {
+            "type": "string",
+            "title": "Input Hash"
+          },
+          "output_hash": {
             "anyOf": [
               {
                 "type": "string"
@@ -13462,18 +15313,147 @@
                 "type": "null"
               }
             ],
-            "title": "Current Checkpoint Id",
-            "description": "Most recent checkpoint ID"
+            "title": "Output Hash"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "workflow_id",
-          "checkpoints",
-          "total_count"
+          "id",
+          "run_id",
+          "tenant_id",
+          "state_name",
+          "input_hash",
+          "output_hash",
+          "created_at"
         ],
-        "title": "CheckpointListResponse",
-        "description": "Response containing checkpoint timeline."
+        "title": "CheckpointResponse",
+        "description": "Single checkpoint in API responses."
+      },
+      "ClaimValidationRequest": {
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "title": "Claim Id"
+          },
+          "claim_text": {
+            "type": "string",
+            "title": "Claim Text"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs"
+          },
+          "value_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Pack Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claim_id",
+          "claim_text"
+        ],
+        "title": "ClaimValidationRequest",
+        "description": "A single claim to validate."
+      },
+      "ClaimValidationResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "claim_id": {
+            "type": "string",
+            "title": "Claim Id"
+          },
+          "validation_state": {
+            "$ref": "#/components/schemas/ValidationState"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          },
+          "trust_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Trust Score"
+          },
+          "validator": {
+            "type": "string",
+            "enum": [
+              "agent",
+              "human",
+              "policy",
+              "benchmark",
+              "unavailable"
+            ],
+            "title": "Validator"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "claim_id",
+          "validation_state",
+          "confidence",
+          "trust_score",
+          "validator"
+        ],
+        "title": "ClaimValidationResult",
+        "description": "Result of validating a single claim through L5 or fallback."
       },
       "CommentListResponse": {
         "properties": {
@@ -14461,6 +16441,91 @@
         ],
         "title": "CreateCommentRequest"
       },
+      "CreateGateRequest": {
+        "properties": {
+          "gate_type": {
+            "$ref": "#/components/schemas/GateType"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gate_type"
+        ],
+        "title": "CreateGateRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/gates."
+      },
+      "CreateInvoiceRequest": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id",
+            "description": "Customer being invoiced"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Billing period start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Billing period end"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number",
+            "description": "Optional invoice number"
+          },
+          "subscription_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscription Id",
+            "description": "Optional subscription link"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "Currency code",
+            "default": "USD"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Invoice description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "period_start",
+          "period_end"
+        ],
+        "title": "CreateInvoiceRequest",
+        "description": "Request to create a new invoice."
+      },
       "CreateNotificationRequest": {
         "properties": {
           "account_id": {
@@ -14522,6 +16587,46 @@
           "message"
         ],
         "title": "CreateNotificationRequest"
+      },
+      "CreateRunRequest": {
+        "properties": {
+          "workflow_type": {
+            "$ref": "#/components/schemas/HarnessWorkflowType"
+          },
+          "initiated_by": {
+            "$ref": "#/components/schemas/InitiatedBy",
+            "default": "user"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "value_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Pack Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "workflow_type"
+        ],
+        "title": "CreateRunRequest",
+        "description": "Request body for POST /v1/harness/runs."
       },
       "CreateTaskRequest": {
         "properties": {
@@ -14730,6 +16835,33 @@
           "updated_at"
         ],
         "title": "CurrentTenantSettingsUpdateResponse"
+      },
+      "CustomerSyncRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Customer email address"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Customer name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "CustomerSyncRequest",
+        "description": "Request to sync customer with Stripe."
       },
       "DismissBadgeRequest": {
         "properties": {
@@ -15127,19 +17259,7 @@
           },
           "decision": {
             "type": "string",
-            "title": "Decision",
-            "description": "accepted|rejected|attached_to_driver"
-          },
-          "driver_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Driver Id"
+            "title": "Decision"
           },
           "decision_note": {
             "anyOf": [
@@ -15179,26 +17299,8 @@
             "type": "string",
             "title": "Decision"
           },
-          "driver_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Driver Id"
-          },
           "reviewed_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "string",
             "title": "Reviewed By"
           },
           "reviewed_at": {
@@ -15211,9 +17313,15 @@
             "title": "Provenance"
           },
           "confidence": {
-            "type": "number",
-            "title": "Confidence",
-            "default": 0.0
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
           }
         },
         "type": "object",
@@ -15222,9 +17330,28 @@
           "account_id",
           "case_id",
           "decision",
+          "reviewed_by",
           "reviewed_at"
         ],
         "title": "EvidenceDecisionResponse"
+      },
+      "EvidenceDriverLinkRequest": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "title": "Account Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "case_id"
+        ],
+        "title": "EvidenceDriverLinkRequest"
       },
       "ExportAuditRecord": {
         "properties": {
@@ -15497,6 +17624,160 @@
         "title": "FieldInfo",
         "description": "Information about a state field."
       },
+      "GateDecisionRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "modified",
+              "expired"
+            ],
+            "title": "Decision"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "GateDecisionRequest",
+        "description": "Request body for POST /v1/harness/gates/{gate_id}/decide."
+      },
+      "GateListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GateResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "GateListResponse",
+        "description": "List of gates for a run."
+      },
+      "GateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "gate_type": {
+            "$ref": "#/components/schemas/GateType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GateStatus"
+          },
+          "decision_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision By"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "run_id",
+          "tenant_id",
+          "gate_type",
+          "status",
+          "decision_by",
+          "decision_reason",
+          "created_at",
+          "decided_at"
+        ],
+        "title": "GateResponse",
+        "description": "Single gate in API responses."
+      },
+      "GateStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "modified",
+          "expired"
+        ],
+        "title": "GateStatus",
+        "description": "Human gate status."
+      },
+      "GateType": {
+        "type": "string",
+        "enum": [
+          "approve_claims",
+          "approve_assumptions",
+          "approve_customer_output",
+          "resolve_conflict"
+        ],
+        "title": "GateType",
+        "description": "Type of human gate."
+      },
       "GenerateHypothesesRequest": {
         "properties": {
           "account_id": {
@@ -15569,6 +17850,89 @@
           }
         },
         "description": "Deprecated compatibility alias for ErrorResponse. Use ErrorResponse for new clients."
+      },
+      "HarnessHealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "validation_available": {
+            "type": "boolean",
+            "title": "Validation Available"
+          },
+          "l5_healthy": {
+            "type": "boolean",
+            "title": "L5 Healthy"
+          },
+          "db_healthy": {
+            "type": "boolean",
+            "title": "Db Healthy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "validation_available",
+          "l5_healthy",
+          "db_healthy"
+        ],
+        "title": "HarnessHealthResponse",
+        "description": "Response for GET /v1/harness/health."
+      },
+      "HarnessRunStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "waiting_for_human",
+          "failed",
+          "completed",
+          "cancelled"
+        ],
+        "title": "HarnessRunStatus",
+        "description": "Run status reflects execution disposition."
+      },
+      "HarnessState": {
+        "type": "string",
+        "enum": [
+          "INIT",
+          "RESOLVE_CONTEXT",
+          "LOAD_VALUE_PACK",
+          "RETRIEVE_KNOWLEDGE",
+          "GENERATE_HYPOTHESES",
+          "MATCH_EVIDENCE",
+          "QUANTIFY_IMPACT",
+          "VALIDATE_CLAIMS",
+          "HUMAN_REVIEW",
+          "PUBLISH_OUTPUT",
+          "DONE",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "title": "HarnessState",
+        "description": "Canonical workflow states.\n\nState flow (happy path):\n  INIT \u2192 RESOLVE_CONTEXT \u2192 LOAD_VALUE_PACK \u2192 RETRIEVE_KNOWLEDGE\n  \u2192 GENERATE_HYPOTHESES \u2192 MATCH_EVIDENCE \u2192 QUANTIFY_IMPACT\n  \u2192 VALIDATE_CLAIMS \u2192 HUMAN_REVIEW \u2192 PUBLISH_OUTPUT \u2192 DONE\n\nTerminal states: DONE, FAILED, CANCELLED."
+      },
+      "HarnessWorkflowType": {
+        "type": "string",
+        "enum": [
+          "signal_extraction",
+          "account_intelligence",
+          "value_model_generation",
+          "evidence_matching",
+          "value_tree_generation",
+          "roi_calculator_generation",
+          "business_case_generation",
+          "renewal_risk_analysis",
+          "expansion_opportunity_analysis"
+        ],
+        "title": "HarnessWorkflowType",
+        "description": "Canonical workflow types."
       },
       "HealthBadgeInfo": {
         "properties": {
@@ -16153,6 +18517,17 @@
         "title": "ICPSourceType",
         "description": "How the ICP was provided."
       },
+      "InitiatedBy": {
+        "type": "string",
+        "enum": [
+          "user",
+          "system",
+          "agent",
+          "scheduled_job"
+        ],
+        "title": "InitiatedBy",
+        "description": "Who or what initiated the run."
+      },
       "IntegrationCreateRequest": {
         "properties": {
           "enabled": {
@@ -16380,6 +18755,7 @@
         "title": "IntegrationStatusResponse",
         "description": "Integration with sync status (response only)."
       },
+      "JsonValue": {},
       "KnowledgeSourceCreateRequest": {
         "properties": {
           "profile_id": {
@@ -17551,6 +19927,21 @@
         "title": "Permission",
         "description": "Fine-grained permissions enforced at endpoint level."
       },
+      "PortalRequest": {
+        "properties": {
+          "return_url": {
+            "type": "string",
+            "title": "Return Url",
+            "description": "URL to return to after portal session"
+          }
+        },
+        "type": "object",
+        "required": [
+          "return_url"
+        ],
+        "title": "PortalRequest",
+        "description": "Request to create a customer portal session."
+      },
       "ProcessingMetadata": {
         "properties": {
           "extraction_duration_ms": {
@@ -18311,6 +20702,94 @@
         "title": "RankHypothesesRequest",
         "description": "Request to re-rank hypotheses."
       },
+      "RecordChargeRequest": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id",
+            "description": "Customer being charged"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Cents",
+            "description": "Charge amount in cents"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Charge status",
+            "default": "succeeded"
+          },
+          "invoice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Id",
+            "description": "Linked invoice ID"
+          },
+          "stripe_charge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stripe Charge Id",
+            "description": "Stripe charge ID"
+          },
+          "payment_method_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Id",
+            "description": "Payment method ID"
+          },
+          "payment_method_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Method Type",
+            "description": "Payment method type"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Charge description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "amount_cents"
+        ],
+        "title": "RecordChargeRequest",
+        "description": "Request to record a charge."
+      },
       "RegenerateBusinessCaseRequest": {
         "properties": {
           "account_id": {
@@ -18523,6 +21002,17 @@
               }
             ],
             "title": "Tenant Role"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
           },
           "isolation_tier": {
             "type": "string",
@@ -18798,6 +21288,121 @@
         ],
         "title": "Role",
         "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+      },
+      "RunListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "RunListResponse",
+        "description": "Paginated list of runs."
+      },
+      "RunResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "workflow_type": {
+            "$ref": "#/components/schemas/HarnessWorkflowType"
+          },
+          "initiated_by": {
+            "$ref": "#/components/schemas/InitiatedBy"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HarnessRunStatus"
+          },
+          "current_state": {
+            "$ref": "#/components/schemas/HarnessState"
+          },
+          "value_pack_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Pack Id"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "account_id",
+          "workflow_type",
+          "initiated_by",
+          "status",
+          "current_state",
+          "value_pack_id",
+          "trace_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RunResponse",
+        "description": "Single run in API responses."
       },
       "SalesforceOAuthAuthorizeRequest": {
         "properties": {
@@ -19523,6 +22128,66 @@
         ],
         "title": "StatusUpdateRequest",
         "description": "Request to update narrative status."
+      },
+      "SubscriptionResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "current_period_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period Start"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean",
+            "title": "Cancel At Period End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "plan_id",
+          "status",
+          "current_period_start",
+          "current_period_end",
+          "cancel_at_period_end"
+        ],
+        "title": "SubscriptionResponse",
+        "description": "Subscription status response."
       },
       "SyncAccountsRequest": {
         "properties": {
@@ -20358,6 +23023,126 @@
         "title": "ToolSchemaResponse",
         "description": "Typed response model for a single tool schema."
       },
+      "TraceEventResponse": {
+        "properties": {
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "from_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HarnessState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HarnessState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "trace_id",
+          "run_id",
+          "tenant_id",
+          "from_state",
+          "to_state",
+          "event_type",
+          "timestamp"
+        ],
+        "title": "TraceEventResponse",
+        "description": "Trace event emitted on state transitions."
+      },
+      "TransitionRequest": {
+        "properties": {
+          "to_state": {
+            "$ref": "#/components/schemas/HarnessState"
+          },
+          "human_override": {
+            "type": "boolean",
+            "title": "Human Override",
+            "default": false
+          },
+          "state_payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "State Payload"
+          },
+          "validation_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ClaimValidationResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "to_state"
+        ],
+        "title": "TransitionRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/transition."
+      },
+      "TransitionResponse": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/RunResponse"
+          },
+          "trace_event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceEventResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run"
+        ],
+        "title": "TransitionResponse",
+        "description": "Response for a successful state transition."
+      },
       "UpdateTaskRequest": {
         "properties": {
           "status": {
@@ -20408,6 +23193,107 @@
         },
         "type": "object",
         "title": "UpdateTaskRequest"
+      },
+      "UsageBatchRequest": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/UsageEventRequest"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Events",
+            "description": "Events to ingest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "UsageBatchRequest",
+        "description": "Request body for batch ingestion of usage events."
+      },
+      "UsageEventRequest": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Id",
+            "description": "Idempotency key"
+          },
+          "customer_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Customer Id",
+            "description": "Customer identifier"
+          },
+          "event_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Name",
+            "description": "Logical event name"
+          },
+          "metric_name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Metric Name",
+            "description": "Metered metric name"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Quantity",
+            "description": "Quantity to record"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Unit of measure"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "Event timestamp (UTC)"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "description": "Optional metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "customer_id",
+          "event_name",
+          "metric_name",
+          "quantity",
+          "timestamp"
+        ],
+        "title": "UsageEventRequest",
+        "description": "Request body for ingesting a single usage event."
       },
       "UsageMetricsResponse": {
         "properties": {
@@ -20605,6 +23491,77 @@
         "title": "UserUpdateRequest",
         "description": "Update a user's role or status."
       },
+      "ValidateClaimsRequest": {
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimValidationRequest"
+            },
+            "type": "array",
+            "title": "Claims"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claims"
+        ],
+        "title": "ValidateClaimsRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/validate."
+      },
+      "ValidateClaimsResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationResultResponse"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "needs_review": {
+            "type": "integer",
+            "title": "Needs Review"
+          },
+          "insufficient_evidence": {
+            "type": "integer",
+            "title": "Insufficient Evidence"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "results",
+          "total",
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence"
+        ],
+        "title": "ValidateClaimsResponse",
+        "description": "Response for POST /v1/harness/runs/{run_id}/validate\nand GET /v1/harness/runs/{run_id}/validation."
+      },
       "ValidateHypothesisRequest": {
         "properties": {
           "feedback": {
@@ -20795,6 +23752,69 @@
         ],
         "title": "ValidationError"
       },
+      "ValidationResultResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "claim_id": {
+            "type": "string",
+            "title": "Claim Id"
+          },
+          "validation_state": {
+            "$ref": "#/components/schemas/ValidationState"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "trust_score": {
+            "type": "number",
+            "title": "Trust Score"
+          },
+          "validator": {
+            "type": "string",
+            "title": "Validator"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "claim_id",
+          "validation_state",
+          "evidence_refs",
+          "confidence",
+          "trust_score",
+          "validator",
+          "reason",
+          "created_at"
+        ],
+        "title": "ValidationResultResponse",
+        "description": "Single validation result in API responses."
+      },
       "ValidationSeededApiKey": {
         "properties": {
           "key_id": {
@@ -20888,6 +23908,62 @@
         "type": "object",
         "title": "ValidationSessionRequest",
         "description": "Non-production browser session payload for backend-integrated Playwright validation."
+      },
+      "ValidationState": {
+        "type": "string",
+        "enum": [
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence"
+        ],
+        "title": "ValidationState",
+        "description": "Result of claim validation."
+      },
+      "ValidationSummaryResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "needs_review": {
+            "type": "integer",
+            "title": "Needs Review"
+          },
+          "insufficient_evidence": {
+            "type": "integer",
+            "title": "Insufficient Evidence"
+          },
+          "can_publish": {
+            "type": "boolean",
+            "title": "Can Publish"
+          },
+          "requires_human_review": {
+            "type": "boolean",
+            "title": "Requires Human Review"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence",
+          "can_publish",
+          "requires_human_review"
+        ],
+        "title": "ValidationSummaryResponse",
+        "description": "Aggregate publish decision across all validated claims."
       },
       "ValueExtractionRecordListResponse": {
         "properties": {
@@ -21389,6 +24465,25 @@
         "title": "WhitespaceAnalysisResponse",
         "description": "Whitespace analysis response."
       },
+      "WorkflowCancelResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "cancelled",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "status"
+        ],
+        "title": "WorkflowCancelResponse"
+      },
       "WorkflowCreateRequest": {
         "properties": {
           "workflow_type": {
@@ -21500,7 +24595,9 @@
           "prospect_metrics": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
                 "type": "object"
               },
               {
@@ -21512,7 +24609,9 @@
           "custom_data": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
                 "type": "object"
               },
               {
@@ -21627,6 +24726,45 @@
           "has_more"
         ],
         "title": "WorkflowListResponse"
+      },
+      "WorkflowOutput": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "artifacts": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Metrics"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "WorkflowOutput",
+        "description": "Structured workflow output envelope for completed workflow results."
       },
       "WorkflowPauseRequest": {
         "properties": {
@@ -21824,6 +24962,71 @@
         "title": "WorkflowProgressSchema",
         "description": "Frontend-facing normalized progress model shared by polling/streaming."
       },
+      "WorkflowResultResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "paused",
+              "interrupted",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "errors": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/JsonValue"
+                  },
+                  "type": "object"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "status"
+        ],
+        "title": "WorkflowResultResponse"
+      },
       "WorkflowResumeRequest": {
         "properties": {
           "user_id": {
@@ -21834,7 +25037,9 @@
           "resume_data": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
                 "type": "object"
               },
               {
@@ -22003,7 +25208,9 @@
           "results": {
             "anyOf": [
               {
-                "additionalProperties": true,
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/JsonValue"
+                },
                 "type": "object"
               },
               {
@@ -22285,6 +25492,45 @@
         "title": "AuditLogResponse",
         "description": "Audit log query response."
       },
+      "layer4_agents__api__routes__checkpoints__CheckpointListResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "checkpoints": {
+            "items": {
+              "$ref": "#/components/schemas/CheckpointInfo"
+            },
+            "type": "array",
+            "title": "Checkpoints"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "current_checkpoint_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Checkpoint Id",
+            "description": "Most recent checkpoint ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "checkpoints",
+          "total_count"
+        ],
+        "title": "CheckpointListResponse",
+        "description": "Response containing checkpoint timeline."
+      },
       "layer4_agents__api__routes__frontend_compat__RegisterTenantRequest": {
         "properties": {
           "name": {
@@ -22399,6 +25645,29 @@
         "type": "object",
         "title": "TenantSettingsUpdate",
         "description": "Update tenant settings."
+      },
+      "layer4_agents__harness__api_models__CheckpointListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CheckpointResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CheckpointListResponse",
+        "description": "List of checkpoints for a run."
       },
       "layer4_agents__tenants__api__routes__admin__AuditLogResponse": {
         "properties": {
@@ -22603,646 +25872,6 @@
               }
             ],
             "description": "Optional sanitized error details"
-          }
-        }
-      },
-      "ClaimValidationRequest_Harness": {
-        "type": "object",
-        "title": "ClaimValidationRequest",
-        "description": "A single claim submitted for L5 validation.",
-        "required": [
-          "claim_id",
-          "claim_text"
-        ],
-        "properties": {
-          "claim_id": {
-            "type": "string"
-          },
-          "claim_text": {
-            "type": "string"
-          },
-          "evidence_refs": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "default": []
-          },
-          "value_pack_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "ValidateClaimsRequest": {
-        "type": "object",
-        "title": "ValidateClaimsRequest",
-        "description": "Request body for POST /v1/harness/runs/{run_id}/validate.",
-        "required": [
-          "claims"
-        ],
-        "properties": {
-          "claims": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClaimValidationRequest_Harness"
-            }
-          }
-        }
-      },
-      "ValidationResultResponse": {
-        "type": "object",
-        "title": "ValidationResultResponse",
-        "description": "Single claim validation result.",
-        "required": [
-          "id",
-          "tenant_id",
-          "claim_id",
-          "validation_state",
-          "evidence_refs",
-          "confidence",
-          "trust_score",
-          "validator",
-          "reason",
-          "created_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "claim_id": {
-            "type": "string"
-          },
-          "validation_state": {
-            "type": "string",
-            "enum": [
-              "passed",
-              "failed",
-              "needs_review",
-              "insufficient_evidence"
-            ]
-          },
-          "evidence_refs": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "confidence": {
-            "type": "number",
-            "minimum": 0.0,
-            "maximum": 1.0
-          },
-          "trust_score": {
-            "type": "number",
-            "minimum": 0.0,
-            "maximum": 1.0
-          },
-          "validator": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "ValidationSummaryResponse": {
-        "type": "object",
-        "title": "ValidationSummaryResponse",
-        "description": "Aggregate publish decision across all validated claims for a run.",
-        "required": [
-          "total",
-          "passed",
-          "failed",
-          "needs_review",
-          "insufficient_evidence",
-          "can_publish",
-          "requires_human_review"
-        ],
-        "properties": {
-          "total": {
-            "type": "integer"
-          },
-          "passed": {
-            "type": "integer"
-          },
-          "failed": {
-            "type": "integer"
-          },
-          "needs_review": {
-            "type": "integer"
-          },
-          "insufficient_evidence": {
-            "type": "integer"
-          },
-          "can_publish": {
-            "type": "boolean",
-            "description": "True only when all claims passed."
-          },
-          "requires_human_review": {
-            "type": "boolean",
-            "description": "True when any claim is needs_review or insufficient_evidence."
-          }
-        }
-      },
-      "ValidateClaimsResponse": {
-        "type": "object",
-        "title": "ValidateClaimsResponse",
-        "description": "Response for POST /v1/harness/runs/{run_id}/validate and GET /v1/harness/runs/{run_id}/validation.",
-        "required": [
-          "results",
-          "total",
-          "passed",
-          "failed",
-          "needs_review",
-          "insufficient_evidence"
-        ],
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ValidationResultResponse"
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "passed": {
-            "type": "integer"
-          },
-          "failed": {
-            "type": "integer"
-          },
-          "needs_review": {
-            "type": "integer"
-          },
-          "insufficient_evidence": {
-            "type": "integer"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ValidationSummaryResponse"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null
-          }
-        }
-      },
-      "CreateRunRequest": {
-        "type": "object",
-        "title": "CreateRunRequest",
-        "required": [
-          "workflow_type"
-        ],
-        "properties": {
-          "workflow_type": {
-            "type": "string"
-          },
-          "initiated_by": {
-            "type": "string",
-            "default": "user"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "value_pack_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "RunResponse": {
-        "type": "object",
-        "title": "RunResponse",
-        "required": [
-          "id",
-          "tenant_id",
-          "workflow_type",
-          "initiated_by",
-          "status",
-          "current_state",
-          "trace_id",
-          "created_at",
-          "updated_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "account_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "workflow_type": {
-            "type": "string"
-          },
-          "initiated_by": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "current_state": {
-            "type": "string"
-          },
-          "value_pack_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "trace_id": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "RunListResponse": {
-        "type": "object",
-        "title": "RunListResponse",
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset",
-          "has_more"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RunResponse"
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "has_more": {
-            "type": "boolean"
-          }
-        }
-      },
-      "TransitionRequest": {
-        "type": "object",
-        "title": "TransitionRequest",
-        "required": [
-          "to_state"
-        ],
-        "properties": {
-          "to_state": {
-            "type": "string"
-          },
-          "human_override": {
-            "type": "boolean",
-            "default": false
-          },
-          "state_payload": {
-            "type": "object",
-            "default": {}
-          },
-          "validation_results": {
-            "anyOf": [
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/ValidationResultResponse"
-                }
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "TraceEventResponse": {
-        "type": "object",
-        "title": "TraceEventResponse",
-        "required": [
-          "trace_id",
-          "run_id",
-          "tenant_id",
-          "event_type",
-          "timestamp"
-        ],
-        "properties": {
-          "trace_id": {
-            "type": "string"
-          },
-          "run_id": {
-            "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "from_state": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "to_state": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "event_type": {
-            "type": "string"
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "TransitionResponse": {
-        "type": "object",
-        "title": "TransitionResponse",
-        "required": [
-          "run"
-        ],
-        "properties": {
-          "run": {
-            "$ref": "#/components/schemas/RunResponse"
-          },
-          "trace_event": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TraceEventResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "CheckpointResponse": {
-        "type": "object",
-        "title": "CheckpointResponse",
-        "required": [
-          "id",
-          "run_id",
-          "tenant_id",
-          "state_name",
-          "input_hash",
-          "created_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "run_id": {
-            "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "state_name": {
-            "type": "string"
-          },
-          "input_hash": {
-            "type": "string"
-          },
-          "output_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "CreateGateRequest": {
-        "type": "object",
-        "title": "CreateGateRequest",
-        "required": [
-          "gate_type"
-        ],
-        "properties": {
-          "gate_type": {
-            "type": "string"
-          }
-        }
-      },
-      "GateResponse": {
-        "type": "object",
-        "title": "GateResponse",
-        "required": [
-          "id",
-          "run_id",
-          "tenant_id",
-          "gate_type",
-          "status",
-          "created_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "run_id": {
-            "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "gate_type": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "decision_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "decision_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "decided_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "GateListResponse": {
-        "type": "object",
-        "title": "GateListResponse",
-        "required": [
-          "items",
-          "total"
-        ],
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GateResponse"
-            }
-          },
-          "total": {
-            "type": "integer"
-          }
-        }
-      },
-      "GateDecisionRequest": {
-        "type": "object",
-        "title": "GateDecisionRequest",
-        "required": [
-          "decision"
-        ],
-        "properties": {
-          "decision": {
-            "type": "string",
-            "enum": [
-              "approved",
-              "rejected",
-              "modified",
-              "expired"
-            ]
-          },
-          "decision_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      },
-      "HarnessHealthResponse": {
-        "type": "object",
-        "title": "HarnessHealthResponse",
-        "required": [
-          "status",
-          "validation_available",
-          "l5_healthy",
-          "db_healthy"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "ok",
-              "degraded"
-            ]
-          },
-          "validation_available": {
-            "type": "boolean"
-          },
-          "l5_healthy": {
-            "type": "boolean"
-          },
-          "db_healthy": {
-            "type": "boolean"
           }
         }
       }

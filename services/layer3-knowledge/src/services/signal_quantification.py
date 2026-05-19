@@ -16,6 +16,7 @@ from typing import Any
 
 from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from ..db.query_execution import run_validated_query
 
 
 class SignalQuantificationService__select_formulaResult(TypedDictModel):
@@ -287,7 +288,7 @@ class SignalQuantificationService:
             LIMIT 1
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "formula_ids": candidate_ids,
