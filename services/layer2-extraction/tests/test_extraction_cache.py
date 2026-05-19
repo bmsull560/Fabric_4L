@@ -158,6 +158,7 @@ class TestExtractionCacheFailureBehavior:
         assert result == {"ok": True}
         assert "Cache operation failed; continuing without cache" in caplog.text
         assert any(getattr(record, "operation", None) == "read" for record in caplog.records)
+        assert any(getattr(record, "exception_class", None) == "RuntimeError" for record in caplog.records)
 
     @pytest.mark.asyncio
     async def test_redis_write_failure_logs_and_does_not_crash(self, caplog: pytest.LogCaptureFixture):
@@ -179,6 +180,7 @@ class TestExtractionCacheFailureBehavior:
         assert result == {"fallback": "written"}
         assert "Cache operation failed; continuing without cache" in caplog.text
         assert any(getattr(record, "operation", None) == "write" for record in caplog.records)
+        assert any(getattr(record, "exception_class", None) == "RuntimeError" for record in caplog.records)
 
     @pytest.mark.asyncio
     async def test_redis_close_failure_logs_and_does_not_crash(self, caplog: pytest.LogCaptureFixture):
@@ -193,3 +195,70 @@ class TestExtractionCacheFailureBehavior:
 
         assert "Cache operation failed; continuing without cache" in caplog.text
         assert any(getattr(record, "operation", None) == "invalidate" for record in caplog.records)
+        assert any(getattr(record, "exception_class", None) == "RuntimeError" for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_cache_read_failure_does_not_interrupt_core_extraction_flow(
+        self, caplog: pytest.LogCaptureFixture
+    ):
+        mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(side_effect=RuntimeError("redis down"))
+        mock_redis.setex = AsyncMock(return_value=True)
+
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            cache = ExtractionCache(redis_url="redis://localhost:6379")
+
+        async def core_extraction(text: str, endpoint: str):
+            cached = await cache.get(
+                text,
+                endpoint,
+                context={"tenant_id": "tenant-a", "job_id": "job-read", "correlation_id": "corr-read"},
+            )
+            if cached is not None:
+                return cached
+            computed = {"entities": ["alpha"]}
+            await cache.set(
+                text,
+                endpoint,
+                computed,
+                context={"tenant_id": "tenant-a", "job_id": "job-read", "correlation_id": "corr-read"},
+            )
+            return computed
+
+        caplog.set_level(logging.WARNING, logger="layer2_extraction.extraction.cache")
+        result = await core_extraction("text", "entities")
+        assert result == {"entities": ["alpha"]}
+        assert any(getattr(record, "operation", None) == "read" for record in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_cache_write_failure_does_not_interrupt_core_extraction_flow(
+        self, caplog: pytest.LogCaptureFixture
+    ):
+        mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(return_value=None)
+        mock_redis.setex = AsyncMock(side_effect=RuntimeError("redis down"))
+
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            cache = ExtractionCache(redis_url="redis://localhost:6379")
+
+        async def core_extraction(text: str, endpoint: str):
+            cached = await cache.get(
+                text,
+                endpoint,
+                context={"tenant_id": "tenant-a", "job_id": "job-write", "correlation_id": "corr-write"},
+            )
+            if cached is not None:
+                return cached
+            computed = {"entities": ["beta"]}
+            await cache.set(
+                text,
+                endpoint,
+                computed,
+                context={"tenant_id": "tenant-a", "job_id": "job-write", "correlation_id": "corr-write"},
+            )
+            return computed
+
+        caplog.set_level(logging.WARNING, logger="layer2_extraction.extraction.cache")
+        result = await core_extraction("text", "entities")
+        assert result == {"entities": ["beta"]}
+        assert any(getattr(record, "operation", None) == "write" for record in caplog.records)
