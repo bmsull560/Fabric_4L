@@ -18,6 +18,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..agents.base import AgentResult, BaseAgent
+from ..db.query_execution import run_validated_query
 
 
 class WhitespaceAnalysisAgent__identify_gapsResult(TypedDictModel):
@@ -230,7 +231,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
 
         async with self._driver.session() as session:
             for pain_id in pain_points:
-                result = await session.run(
+                result = await run_validated_query(session,
                     missing_query,
                     {
                         "pain_id": pain_id,
@@ -294,7 +295,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
 
         async with self._driver.session() as session:
             for cap_id in capabilities:
-                result = await session.run(maturity_query, {"cap_id": cap_id, "tenant_id": tenant_id})
+                result = await run_validated_query(session, maturity_query, {"cap_id": cap_id, "tenant_id": tenant_id})
                 record = await result.single()
 
                 if record:
@@ -366,7 +367,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
         pathways = []
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 expansion_query, {"cap_id": target_capability_id, "tenant_id": tenant_id}
             )
             async for record in result:

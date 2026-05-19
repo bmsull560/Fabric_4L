@@ -85,7 +85,7 @@ async function fetchTruthAuditTrail(
 }
 
 async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
-  const response = await apiGet<unknown>(
+  const response = await apiGet<l5.components["schemas"]["FreshnessSummaryResponse"]>(
     "l4",
     "/ground-truth/truths/freshness-summary"
   );
@@ -95,7 +95,7 @@ async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
 async function fetchStaleTruths(
   params: Pick<TruthListFilters, "limit" | "offset">
 ): Promise<StaleTruthsResponse> {
-  const response = await apiGet<unknown>(
+  const response = await apiGet<l5.components["schemas"]["StaleTruthsResponse"]>(
     "l4",
     `/ground-truth/truths/stale${toQueryString(params)}`
   );
