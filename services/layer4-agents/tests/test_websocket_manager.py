@@ -691,5 +691,134 @@ class TestIntegrationScenarios:
         assert first_event["replay_count"] == 0  # No new events since last_event_id
 
 
+class TestTenantMismatchEnforcement:
+    """Cross-tenant access denial and metric emission (OBS-L4-009)."""
+
+    @pytest.mark.asyncio
+    async def test_connect_denied_when_tenant_mismatch(self, ws_manager, mock_websocket):
+        """Connection is rejected when actor tenant differs from workflow owner."""
+        ws_manager.record_workflow_tenant("wf-owned", "tenant-owner")
+
+        await ws_manager.connect(
+            mock_websocket,
+            "wf-owned",
+            tenant_id="tenant-attacker",
+            correlation_id="cid-001",
+        )
+
+        mock_websocket.close.assert_awaited_once_with(code=4403, reason="Access denied")
+        mock_websocket.accept.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_connect_allowed_for_correct_tenant(self, ws_manager, mock_websocket):
+        """Connection proceeds when actor tenant matches workflow owner."""
+        ws_manager.record_workflow_tenant("wf-owned", "tenant-owner")
+
+        await ws_manager.connect(
+            mock_websocket,
+            "wf-owned",
+            tenant_id="tenant-owner",
+        )
+
+        mock_websocket.accept.assert_awaited_once()
+        mock_websocket.close.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_connect_allowed_when_no_owner_registered(self, ws_manager, mock_websocket):
+        """Connection proceeds when workflow has no registered owner (not yet broadcast)."""
+        await ws_manager.connect(
+            mock_websocket,
+            "wf-unknown",
+            tenant_id="tenant-any",
+        )
+
+        mock_websocket.accept.assert_awaited_once()
+        mock_websocket.close.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_mismatch_emits_metric(self, ws_manager, mock_websocket):
+        """Tenant mismatch increments the security metric."""
+        mock_metrics = MagicMock()
+        ws_manager._metrics = mock_metrics
+        ws_manager.record_workflow_tenant("wf-owned", "tenant-owner")
+
+        await ws_manager.connect(
+            mock_websocket,
+            "wf-owned",
+            tenant_id="tenant-attacker",
+            correlation_id="cid-002",
+        )
+
+        mock_metrics.increment_ws_tenant_mismatch.assert_called_once_with("tenant-attacker")
+
+    @pytest.mark.asyncio
+    async def test_mismatch_emits_structured_log(self, ws_manager, mock_websocket, caplog):
+        """Tenant mismatch produces a structured WARNING with required fields."""
+        import logging
+
+        ws_manager.record_workflow_tenant("wf-owned", "tenant-owner")
+
+        with caplog.at_level(logging.WARNING):
+            await ws_manager.connect(
+                mock_websocket,
+                "wf-owned",
+                tenant_id="tenant-attacker",
+                correlation_id="cid-003",
+            )
+
+        assert "security.websocket.tenant_mismatch" in caplog.text
+        assert "tenant-attacker" in caplog.text
+        assert "wf-owned" in caplog.text
+        assert "cid-003" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_broadcast_registers_workflow_tenant(self, ws_manager):
+        """First broadcast to a workflow registers its owning tenant."""
+        assert "wf-new" not in ws_manager._workflow_tenant_registry
+
+        await ws_manager.broadcast_to_workflow(
+            "wf-new", "state_update", {}, tenant_id="tenant-owner"
+        )
+
+        assert ws_manager._workflow_tenant_registry["wf-new"] == "tenant-owner"
+
+    @pytest.mark.asyncio
+    async def test_broadcast_does_not_overwrite_existing_owner(self, ws_manager):
+        """Subsequent broadcasts do not change the registered owner."""
+        ws_manager.record_workflow_tenant("wf-existing", "tenant-original")
+
+        await ws_manager.broadcast_to_workflow(
+            "wf-existing", "state_update", {}, tenant_id="tenant-other"
+        )
+
+        assert ws_manager._workflow_tenant_registry["wf-existing"] == "tenant-original"
+
+    @pytest.mark.asyncio
+    async def test_cleanup_removes_tenant_registry_entry(self, ws_manager):
+        """cleanup_workflow removes the tenant registry entry."""
+        ws_manager.record_workflow_tenant("wf-done", "tenant-owner")
+        # No active connections — cleanup should proceed
+        await ws_manager.cleanup_workflow("wf-done")
+
+        assert "wf-done" not in ws_manager._workflow_tenant_registry
+
+    @pytest.mark.asyncio
+    async def test_metric_failure_does_not_break_rejection(self, ws_manager, mock_websocket):
+        """A broken metrics instance must not prevent the security rejection."""
+        broken_metrics = MagicMock()
+        broken_metrics.increment_ws_tenant_mismatch.side_effect = RuntimeError("metrics down")
+        ws_manager._metrics = broken_metrics
+        ws_manager.record_workflow_tenant("wf-owned", "tenant-owner")
+
+        # Should not raise — rejection still happens
+        await ws_manager.connect(
+            mock_websocket,
+            "wf-owned",
+            tenant_id="tenant-attacker",
+        )
+
+        mock_websocket.close.assert_awaited_once_with(code=4403, reason="Access denied")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

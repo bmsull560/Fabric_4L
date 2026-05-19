@@ -4,8 +4,14 @@ Owner: layer3-knowledge
 Removal/migration target: 2026-09-30
 Reason: FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
 
+# FROZEN — do not add new @app.<method> routes (ARCH-L3-007).
+# New endpoints belong in services/layer3-knowledge/src/api/routers/.
+# CI enforces this via scripts/ci/check_l3_monolith_freeze.py.
+# Full removal tracked in ARCH-L3-011 (Sprint 3).
+
 Migration ledger:
 - moved groups: operational system routes (/health,/metrics) and query/search implementations to api/routes modules.
+- moved to v2 bounded routers: entities (entities_v2.py), value packs (value_packs_v2.py).
 - remaining groups: legacy aliases, deprecation header compatibility, and incremental endpoint extraction backlog.
 """
 
