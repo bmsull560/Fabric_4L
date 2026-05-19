@@ -49,21 +49,21 @@ export default function GovernanceCompliance() {
         <div className="grid gap-3 md:grid-cols-4 mb-5">
           <MetricCard
             label="Fresh truths"
-            value={String(freshnessSummary?.fresh_count ?? 0)}
+            value={String(freshnessSummary?.summary.fresh ?? 0)}
           />
           <MetricCard
             label="Stale truths"
             value={String(
-              freshnessSummary?.stale_count ?? staleTruths?.items.length ?? 0
+              freshnessSummary?.summary.stale ?? staleTruths?.items.length ?? 0
             )}
           />
           <MetricCard
             label="Expiring soon"
-            value={String(freshnessSummary?.expiring_soon_count ?? 0)}
+            value={String(freshnessSummary?.summary.expiring_soon ?? 0)}
           />
           <MetricCard
             label="Total truths"
-            value={String(truths?.total ?? freshnessSummary?.total_count ?? 0)}
+            value={String(truths?.total ?? freshnessSummary?.summary.total ?? 0)}
           />
         </div>
       )}
