@@ -59,7 +59,7 @@ class ExtractionCache:
             try:
                 import redis.asyncio as aioredis
                 self._redis = aioredis.from_url(redis_url, decode_responses=False)
-            except (ImportError, ModuleNotFoundError, RedisError) as exc:
+            except (ImportError, RedisError) as exc:
                 logger.warning(
                     "Cache backend unavailable; falling back to in-memory cache",
                     extra={
