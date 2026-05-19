@@ -432,9 +432,15 @@ export default function HypothesesTab() {
                           if (linkages[0]?.linkage_id) {
                             query.set("linkage_id", linkages[0].linkage_id);
                           }
-                          navigate({
-                            pathname: `/drivers/${accountId}/evidence`,
-                            search: `?${query.toString()}`,
+                          const qs = query.toString();
+                          const path = `/drivers/${accountId}/evidence${qs ? `?${qs}` : ""}`;
+                          navigateTo(path, {
+                            state: {
+                              hypothesisId: h.id,
+                              accountId,
+                              driverId: drivers[0].id,
+                              linkageId: linkages[0]?.linkage_id ?? null,
+                            },
                           });
                         }
                       },
