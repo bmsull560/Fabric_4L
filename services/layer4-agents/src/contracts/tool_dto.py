@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TypeAlias
 
 from pydantic import BaseModel, Field
 
 from ..models.tool_schemas import ToolCategory
 
-JsonValue = Any
-ToolSchemaDocument = dict[str, JsonValue]
+JsonScalar: TypeAlias = str | int | float | bool | None
+JsonValue: TypeAlias = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
+ToolSchemaDocument: TypeAlias = dict[str, JsonValue]
 
 
 class ToolSchemaExample(BaseModel):
