@@ -25,6 +25,17 @@ import {
   useEntityTraversal,
 } from './useGraphQuery';
 
+interface GraphQueryRequest {
+  query: string;
+  max_hops?: number;
+  max_results?: number;
+}
+
+interface EntityTraversalRequest {
+  entity_id: string;
+  direction: 'up' | 'down';
+}
+
 // ============================================================================
 // INTEGRATION SETUP - Simulated Backend Services
 // ============================================================================
@@ -320,7 +331,14 @@ describe('useSubgraph Integration [L2-Integration]', () => {
 
   describe('idempotency tests', () => {
     it('produces identical results for identical requests', async () => {
-      const responses: any[] = [];
+      interface SubgraphResponseSnapshot {
+        root_entity_id: string;
+        nodes: unknown[];
+        edges: unknown[];
+        depth: number;
+        stats: { total_nodes: number; total_edges: number; density: number };
+      }
+      const responses: SubgraphResponseSnapshot[] = [];
 
       server.use(
         http.get('/api/v1/graph/subgraph', () => {
@@ -477,7 +495,8 @@ describe('useGraphQuery Integration [L2-Integration]', () => {
     it('executes complex graph query with processing time', async () => {
       server.use(
         http.post('/api/v1/graph/query/graph', async ({ request }) => {
-          const body = (await request.json()) as any;
+          const body = (await request.json()) as GraphQueryRequest;
+          expect(body).toHaveProperty('query');
 
           // Simulate processing delay
           await new Promise((resolve) => setTimeout(resolve, 50));
@@ -505,6 +524,8 @@ describe('useGraphQuery Integration [L2-Integration]', () => {
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(result.current.data).toHaveProperty('entities');
+      expect(result.current.data).toHaveProperty('sources');
       expect(result.current.data?.processingTimeMs).toBeGreaterThanOrEqual(0);
       expect(result.current.data?.sources).toBeInstanceOf(Array);
     });
@@ -522,7 +543,9 @@ describe('useEntityTraversal Integration [L2-Integration]', () => {
     it('traverses complete value path', async () => {
       server.use(
         http.post('/api/v1/graph/entity/traverse', async ({ request }) => {
-          const body = (await request.json()) as any;
+          const body = (await request.json()) as EntityTraversalRequest;
+          expect(body).toHaveProperty('entity_id');
+          expect(body).toHaveProperty('direction');
 
           const driver = testStore.entities.get('driver-integration-1');
           const cap = testStore.entities.get('cap-integration-1');
@@ -555,6 +578,7 @@ describe('useEntityTraversal Integration [L2-Integration]', () => {
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
+      expect(result.current.data).toHaveProperty('paths');
       expect(result.current.data?.paths[0].valueScore).toBeGreaterThan(0);
     });
   });

@@ -35,6 +35,7 @@ from ...api.routes.formulas import evaluate_expression
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
+from ...db.query_execution import run_validated_query
 
 
 class _build_fork_paramsResult(TypedDictModel):
@@ -378,7 +379,7 @@ async def _get_pack_detail(
     """
 
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, query, pack_id=pack_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
@@ -496,7 +497,7 @@ async def list_packs(
     """
 
     async with driver.session() as session:
-        result = await session.run(query, **params)
+        result = await run_validated_query(session, query, **params)
         records = await result.data()
 
         return [
@@ -742,7 +743,7 @@ async def update_pack(
     # SECURITY: Verify pack exists with tenant scoping
     check_query = "MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id}) RETURN vp"
     async with driver.session() as session:
-        result = await session.run(check_query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, check_query, pack_id=pack_id, tenant_id=tenant_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Pack not found")
 
@@ -783,7 +784,7 @@ async def _get_pack_formulas(
            f.name as name
     """
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, query, pack_id=pack_id, tenant_id=tenant_id)
         records = await result.data()
         return records
 
@@ -890,7 +891,7 @@ async def execute_pack(
     """
 
     async with driver.session() as session:
-        result = await session.run(
+        result = await run_validated_query(session,
             create_query,
             pack_id=pack_id,
             execution_id=execution_id,
@@ -988,7 +989,7 @@ async def _get_original_pack(
     """
     query = "// strict-scoped-query-execution: fork source pack is tenant-scoped\nMATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id}) RETURN vp"
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
+        result = await run_validated_query(session, query, pack_id=pack_id, tenant_id=tenant_id)
         record = await result.single()
         if not record:
             raise HTTPException(status_code=404, detail="Pack not found")
@@ -1070,7 +1071,7 @@ async def _execute_fork(
     """
 
     async with driver.session() as session:
-        result = await session.run(fork_query, **params)
+        result = await run_validated_query(session, fork_query, **params)
         record = await result.single()
         if not record:
             raise HTTPException(status_code=500, detail="Failed to fork pack")
@@ -1508,7 +1509,7 @@ async def seed_valuepack_data(
     
     async with driver.session() as session:
         # strict-scoped-query-execution: seeding cypher MERGEs all tenant-owned nodes with tenant_id
-        result = await session.run(cypher, **params)
+        result = await run_validated_query(session, cypher, **params)
         record = await result.single()
         if not record:
             raise HTTPException(status_code=500, detail="Failed to seed ValuePack data")

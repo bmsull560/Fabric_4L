@@ -23,6 +23,7 @@ from value_fabric.layer3.services.cypher_scope_guard import (
     validate_tenant_scoped_cypher,
 )
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from ..db.query_execution import run_validated_query
 
 
 class ProductService_create_productResult(TypedDictModel):
@@ -148,7 +149,7 @@ class ProductService:
             raise RuntimeError("tenant_id is required for ProductService cypher execution")
         self._validate_query_scope(query)
         validated_session = ValidatedNeo4jSession(session, tenant_id=str(tenant_id), strict=True)
-        return await validated_session.run(query, params)
+        return await run_validated_query(validated_session, query, params)
 
     # ------------------------------------------------------------------
     # Product CRUD
@@ -183,7 +184,7 @@ class ProductService:
                    .created_at} AS product
         """
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query,
                 {
                     "id": product_id,
@@ -225,7 +226,7 @@ class ProductService:
         """
         self._validate_query_scope(query)
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query,
                 {"product_id": product_id, "tenant_id": tenant_id},
             )
@@ -353,7 +354,7 @@ class ProductService:
         RETURN count(p) AS deleted
         """
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query, {"product_id": product_id, "tenant_id": tenant_id}
             )
             record = await result.single()
@@ -390,7 +391,7 @@ class ProductService:
         RETURN f {.id, .name, .description, .feature_type, .maturity} AS feature
         """
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query,
                 {
                     "product_id": product_id,
@@ -428,7 +429,7 @@ class ProductService:
         RETURN true AS removed
         """
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query,
                 {
                     "product_id": product_id,
@@ -461,7 +462,7 @@ class ProductService:
         RETURN c {.id, .name} AS capability, r.strength AS strength
         """
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query,
                 {
                     "product_id": product_id,
@@ -491,7 +492,7 @@ class ProductService:
         RETURN true AS removed
         """
         async with self._driver.session() as session:
-            result = await self._run_cypher(session, 
+            result = await self._run_cypher(session,
                 query,
                 {
                     "product_id": product_id,

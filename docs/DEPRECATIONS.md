@@ -45,6 +45,19 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 4. Update all call sites to remove tenantId argument
 5. Remove parameter from function signature
 
+### Anti-Pattern: Layer 3 legacy Neo4j tenant dependency imports
+
+| Field | Value |
+|-------|-------|
+| **Deprecated Pattern** | Importing `services/layer3-knowledge/src/api/dependencies_tenant.py` |
+| **Canonical Replacement** | `services/layer3-knowledge/src/api/dependencies_tenant_secured.py` |
+| **Migration Strategy** | Adapter shim with import-time deprecation logging |
+| **Target Removal** | 2026-09-30 |
+| **Status** | 🔄 In Progress |
+| **Owning Team** | Layer 3 Knowledge |
+
+New imports are blocked by `python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py`.
+
 ---
 
 ### Anti-Pattern: Direct Header Access for Tenant ID

@@ -76,6 +76,11 @@ jobs:
             owner: "@value-fabric/architects"
             escalation: "@value-fabric/maintainers"
             command: "python scripts/ci/check_layer3_imports.py --strict"
+          - id: layer3-tenant-dependency-imports
+            service: layer3
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/backend-leads"
+            command: "python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py"
           - id: adr027-layer4-imports
             service: layer4
             owner: "@value-fabric/architects"
