@@ -18,7 +18,7 @@
 ---
 
 
-## Fixes Applied Today (2026-05-05)
+## Archived Fixes Applied on 2026-05-05
 
 ### 1. `tests/security/test_cross_tenant_api.py` — Stale file paths
 **Root cause:** Hardcoded paths pointed to `value_fabric/layer4/...` after repo restructuring moved files to `services/layer4-agents/src/...`.  
