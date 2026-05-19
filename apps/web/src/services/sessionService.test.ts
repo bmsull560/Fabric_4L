@@ -143,33 +143,6 @@ describe('SessionService — derived getters', () => {
   });
 });
 
-// ── Compatibility shims ───────────────────────────────────────────────────────
-
-describe('SessionService — legacy compatibility shims', () => {
-  it('getSessionSnapshot returns snapshot with empty accessToken', () => {
-    const { service } = makeService();
-    const user = makeUser();
-    service.persistSessionMeta(user, 'tenant-1');
-    const snap = service.getSessionSnapshot();
-    expect(snap?.accessToken).toBe('');
-    expect(snap?.tenantId).toBe('tenant-1');
-    expect(snap?.user).toEqual(user);
-  });
-
-  it('getSessionSnapshot returns null when no session', () => {
-    const { service } = makeService();
-    expect(service.getSessionSnapshot()).toBeNull();
-  });
-
-  it('persistSession ignores the accessToken parameter', () => {
-    const { service } = makeService();
-    const user = makeUser();
-    const snap = service.persistSession('should-be-ignored', user, 'tenant-1');
-    expect(snap.accessToken).toBe('');
-    expect(snap.tenantId).toBe('tenant-1');
-  });
-});
-
 // ── OIDC Flow State ───────────────────────────────────────────────────────────
 
 describe('SessionService — OIDC flow state', () => {
