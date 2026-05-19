@@ -55,6 +55,16 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+SECURITY_ERROR_CODES = frozenset(
+    {
+        "AUTH_REQUIRED",
+        "AUTH_INVALID_TOKEN",
+        "AUTH_TOKEN_EXPIRED",
+        "AUTH_INVALID_TENANT",
+        "AUTH_HEADER_TENANT_MISMATCH",
+        "INSUFFICIENT_SCOPE",
+    }
+)
 
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
@@ -375,6 +385,62 @@ def create_app() -> FastAPI:
         strict_mode=True,
     )
     add_security_middleware(app, config=_security_config_l5)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+        error_code = str(detail.get("error_code") or detail.get("code") or "HTTP_EXCEPTION")
+        ctx = getattr(request.state, "governance_context", None)
+        tenant_id = (
+            str(getattr(ctx, "tenant_id", "")) if ctx and getattr(ctx, "tenant_id", None) else
+            request.headers.get("X-Tenant-ID")
+        )
+        request_id = request.headers.get("X-Request-ID")
+        is_security_error = exc.status_code in (401, 403) or error_code in SECURITY_ERROR_CODES
+        logger.warning(
+            "security error response" if is_security_error else "operational http error response",
+            extra={
+                "error_code": error_code,
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "path": request.url.path,
+                "status_code": exc.status_code,
+            },
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "error": "security_error" if is_security_error else "operational_error",
+                "error_code": error_code,
+                "message": detail.get("message") or detail.get("detail") or str(exc.detail),
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        request_id = request.headers.get("X-Request-ID")
+        ctx = getattr(request.state, "governance_context", None)
+        tenant_id = (
+            str(getattr(ctx, "tenant_id", "")) if ctx and getattr(ctx, "tenant_id", None) else
+            request.headers.get("X-Tenant-ID")
+        )
+        logger.exception(
+            "unhandled operational error",
+            extra={
+                "error_code": "L5_UNHANDLED_ERROR",
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "path": request.url.path,
+            },
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "operational_error",
+                "error_code": "L5_UNHANDLED_ERROR",
+                "message": "Internal server error",
+            },
+        )
 
     class _AppStateRateLimiterProxy:
         def __init__(self, application: FastAPI):
