@@ -10,7 +10,7 @@
 
 Layer 3 has strong tenant isolation infrastructure:
 
-- `Neo4jTenantSession` automatically injects `tenant_id` and `_tenant_id` into all query params via `setdefault` — routes using this session wrapper are safe even when they omit `tenant_id` from the explicit params dict.
+- `Neo4jTenantSessionSecured` in `api/dependencies_tenant_secured.py` force-injects `tenant_id` and `_tenant_id` into all query params — routes using this canonical session wrapper are safe even when they omit `tenant_id` from the explicit params dict.
 - `TenantScopedCypher` builder enforces `WHERE n.tenant_id = $_tenant_id` in all generated queries.
 - `_resolve_tenant_id()` in retrieval classes (`HybridSearch`, `GraphRAG`, `VectorStore`, `CentralityAnalyzer`, `CommunityDetector`) raises `ValueError`/`RuntimeError` if no tenant is provided — fail-closed.
 - `db/tenant_queries.py` provides tenant-mandatory helpers for all common entity operations.
@@ -80,4 +80,4 @@ async def test_hybrid_search_raises_without_tenant():
 ## Residual Risk
 
 - `api/app_monolith.py` is a compatibility shim being migrated to canonical route files. The `_create_entity` fix above addresses the only unscoped write found. As migration continues, each function moved out of `app_monolith.py` should be verified for tenant scoping before the shim is removed.
-- The `Neo4jTenantSession` auto-injection is a safety net, not the primary control. Routes should pass `tenant_id` explicitly in query params where possible to make the scoping visible in code review.
+- The `Neo4jTenantSessionSecured` auto-injection is a safety net, not the primary control. Routes should pass `tenant_id` explicitly in query params where possible to make the scoping visible in code review. Route modules must import it from `api/dependencies_tenant_secured.py`; `api/dependencies_tenant.py` is a warning-only compatibility shim until hard removal on **2026-09-30**.
