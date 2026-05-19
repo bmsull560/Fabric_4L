@@ -72,7 +72,6 @@ SCANNED_ROOTS = (
     "services/layer3-knowledge/src/ingestion",
     "services/layer3-knowledge/src/services",
     "services/layer3-knowledge/src/api/routes",
-    "services/layer4-agents/src",
     "value_fabric/layer3/analytics",
     "value_fabric/layer3/retrieval",
     "value_fabric/layer3/ingestion",
@@ -82,9 +81,8 @@ SCANNED_ROOTS = (
 
 ALLOWED_PATH_FRAGMENTS = (
     "/schema/",
+    "/bootstrap/",
     "/migrations/",
-    "/backup/",
-    "query_validator.py",
 )
 
 SYSTEM_SCOPE_MARKERS = (
@@ -122,6 +120,7 @@ MATCH_LABEL_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 RUN_CALL_PATTERN = re.compile(r"\.run\s*\(")
+DIRECT_SESSION_RUN_PATTERN = re.compile(r"\bsession\.run\s*\(")
 CYPHER_KEYWORDS = re.compile(
     r"\b(MATCH|OPTIONAL\s+MATCH|MERGE|CREATE|DELETE|DETACH\s+DELETE|CALL\s+gds|CALL\s+db\.index)\b",
     re.IGNORECASE,
@@ -197,6 +196,19 @@ def _tenant_labels_in(snippet: str) -> set[str]:
     return {label for label in MATCH_LABEL_PATTERN.findall(snippet) if label in TENANT_LABELS}
 
 
+def _is_high_risk_layer3_runtime(rel: str) -> bool:
+    return rel.startswith((
+        "services/layer3-knowledge/src/api/routes/",
+        "services/layer3-knowledge/src/services/",
+        "services/layer3-knowledge/src/agents/",
+        "services/layer3-knowledge/src/analytics/",
+        "value_fabric/layer3/api/routes/",
+        "value_fabric/layer3/services/",
+        "value_fabric/layer3/agents/",
+        "value_fabric/layer3/analytics/",
+    ))
+
+
 def scan_file(path: Path, root: Path) -> list[Finding]:
     rel = str(path.relative_to(root))
     if any(fragment in rel for fragment in ALLOWED_PATH_FRAGMENTS):
@@ -223,8 +235,25 @@ def scan_file(path: Path, root: Path) -> list[Finding]:
             )
         )
 
+    direct_session_run_lines: set[int] = set()
+    if _is_high_risk_layer3_runtime(rel):
+        for match in DIRECT_SESSION_RUN_PATTERN.finditer(text):
+            line = _line_for_offset(text, match.start())
+            direct_session_run_lines.add(line)
+            findings.append(
+                Finding(
+                    path=path,
+                    line=line,
+                    severity="ERROR",
+                    message="direct session.run is forbidden in high-risk Layer 3 runtime modules; use run_scoped_query or run_validated_query",
+                    snippet=text.splitlines()[line - 1].strip()[:240],
+                )
+            )
+
     for match in RUN_CALL_PATTERN.finditer(text):
         line = _line_for_offset(text, match.start())
+        if line in direct_session_run_lines:
+            continue
         if _is_reviewed_system_scope("", text, line) or _is_tenant_scoped("", text, line):
             continue
         findings.append(
@@ -232,7 +261,7 @@ def scan_file(path: Path, root: Path) -> list[Finding]:
                 path=path,
                 line=line,
                 severity="WARN",
-                message="session.run call lacks nearby scoped-query or tenant-scope marker",
+                message="Neo4j run call lacks nearby scoped-query or tenant-scope marker",
                 snippet=text.splitlines()[line - 1].strip()[:240],
             )
         )

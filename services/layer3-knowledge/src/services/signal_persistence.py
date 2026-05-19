@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 
 from neo4j import AsyncDriver
+from ..db.query_execution import run_validated_query
 
 try:
     from value_fabric.shared.identity.context import require_context
@@ -109,7 +110,7 @@ class SignalPersistenceService:
             RETURN s.id as signal_id
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "id": signal_id,
@@ -157,7 +158,7 @@ class SignalPersistenceService:
                 RETURN count(r) as created
                 """
 
-                result = await session.run(
+                result = await run_validated_query(session,
                     query,
                     {
                         "signal_id": signal_id,
@@ -200,7 +201,7 @@ class SignalPersistenceService:
             RETURN count(r) > 0 as created
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "signal_id": signal_id,
@@ -265,7 +266,7 @@ class SignalPersistenceService:
                     "limit": limit,
                 }
 
-            result = await session.run(query, params)
+            result = await run_validated_query(session, query, params)
             records = await result.data()
             return [r["signal"] for r in records]
 
@@ -301,7 +302,7 @@ class SignalPersistenceService:
             } as signal
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {"signal_id": signal_id, "tenant_id": tenant_id},
             )
@@ -341,7 +342,7 @@ class SignalPersistenceService:
             RETURN count(s) > 0 as updated
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "signal_id": signal_id,

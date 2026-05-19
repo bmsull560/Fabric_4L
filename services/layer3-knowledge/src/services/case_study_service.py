@@ -38,6 +38,7 @@ from uuid import uuid4
 import structlog
 from value_fabric.shared.error_handling.exceptions import AuthorizationError
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from ..db.query_execution import run_validated_query
 
 try:
     from value_fabric.shared.identity.context import require_context
@@ -237,7 +238,7 @@ class CaseStudyService:
         props = case_study.to_node_properties()
 
         async with self.driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 // strict-scoped-query-execution: props includes required tenant_id for Evidence
                 CREATE (e:Evidence $props)
@@ -250,7 +251,7 @@ class CaseStudyService:
             # Create relationships to products if specified
             if case_study.products_used:
                 for product_name in case_study.products_used:
-                    await session.run(
+                    await run_validated_query(session,
                         """
                         MATCH (e:Evidence {id: $evidence_id, tenant_id: $tenant_id})
                         MATCH (p:Product {name: $product_name, tenant_id: $tenant_id})
@@ -264,7 +265,7 @@ class CaseStudyService:
             # Create relationships to pain signals if specified
             if case_study.pain_signals_addressed:
                 for signal_name in case_study.pain_signals_addressed:
-                    await session.run(
+                    await run_validated_query(session,
                         """
                         MATCH (e:Evidence {id: $evidence_id, tenant_id: $tenant_id})
                         MATCH (ps:PainSignal {name: $signal_name, tenant_id: $tenant_id})
@@ -294,7 +295,7 @@ class CaseStudyService:
     async def get(self, tenant_id: str, case_study_id: str) -> dict[str, Any] | None:
         """Get a case study by ID."""
         async with self.driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 MATCH (e:Evidence {id: $id, tenant_id: $tenant_id, evidence_type: 'case_study'})
                 OPTIONAL MATCH (p:Product {tenant_id: $tenant_id})-[:DEMONSTRATES]->(e)
@@ -329,7 +330,7 @@ class CaseStudyService:
         safe_updates["updated_at"] = datetime.now(UTC).isoformat()
 
         async with self.driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 MATCH (e:Evidence {id: $id, tenant_id: $tenant_id, evidence_type: 'case_study'})
                 SET e += $updates
@@ -349,7 +350,7 @@ class CaseStudyService:
     async def delete(self, tenant_id: str, case_study_id: str) -> bool:
         """Delete a case study and its relationships."""
         async with self.driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 MATCH (e:Evidence {id: $id, tenant_id: $tenant_id, evidence_type: 'case_study'})
                 DETACH DELETE e
@@ -409,7 +410,7 @@ class CaseStudyService:
                 "// strict-scoped-query-execution: where_str includes e.tenant_id = $tenant_id\n"
                 f"MATCH (e:Evidence) WHERE {where_str} RETURN count(e) AS total"
             )
-            count_result = await session.run(count_query, **params)
+            count_result = await run_validated_query(session, count_query, **params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
@@ -423,7 +424,7 @@ class CaseStudyService:
                 ORDER BY e.published_date DESC
                 SKIP $offset LIMIT $limit
                 """
-            result = await session.run(search_query, **params)
+            result = await run_validated_query(session, search_query, **params)
 
             records = [record async for record in result]
             items = []
@@ -455,7 +456,7 @@ class CaseStudyService:
     async def get_by_industry(self, tenant_id: str) -> dict[str, int]:
         """Get case study counts grouped by industry."""
         async with self.driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 MATCH (e:Evidence {tenant_id: $tenant_id, evidence_type: 'case_study'})
                 RETURN e.industry AS industry, count(e) AS count
@@ -469,7 +470,7 @@ class CaseStudyService:
     async def get_by_product(self, tenant_id: str) -> dict[str, int]:
         """Get case study counts grouped by product."""
         async with self.driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 """
                 MATCH (p:Product {tenant_id: $tenant_id})-[:DEMONSTRATES]->(e:Evidence {evidence_type: 'case_study'})
                 RETURN p.name AS product, count(e) AS count
