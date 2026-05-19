@@ -1,0 +1,102 @@
+# SEC-L3-CYPHER-003: Cypher dynamic construction safety rules.
+#
+# These rules block PRs that introduce unparameterized or unregistered dynamic
+# Cypher query construction in Layer 3 service code.
+#
+# Enforcement model:
+#   UNSAFE  — blocked by CI; must be refactored before merge
+#   SAFE    — annotated with `# cypher-dynamic-safe: <reason>` on the same line
+#   UNKNOWN — treated as UNSAFE until classified
+#
+# To mark a dynamic query as reviewed and safe, add the annotation:
+#   query = f"MATCH (n:{label}) ..."  # cypher-dynamic-safe: label from _ALLOWED_TARGET_LABELS
+#
+# To add a new dynamic pattern, update this file and the allowlist in value_packs.py.
+
+rules:
+  # ── Rule 1: f-string Cypher with label/rel interpolation ──────────────────
+  # Detects f-strings that embed a variable directly into a Cypher MATCH or
+  # CREATE clause as a node label or relationship type. These are injection
+  # vectors unless the variable is validated against an allowlist.
+  - id: cypher-dynamic-label-injection
+    patterns:
+      - pattern: |
+          $QUERY = f"... MATCH ($ALIAS:$LABEL ...) ..."
+      - pattern-not-regex: '# cypher-dynamic-safe:'
+    message: >
+      Dynamic Cypher label interpolation detected in f-string.
+      Node labels and relationship types cannot be parameterized in Cypher —
+      they must be validated against an explicit allowlist before interpolation.
+      Either use a hardcoded string literal, or validate the variable against
+      an allowlist (e.g. _ALLOWED_TARGET_LABELS) and annotate the line with:
+        # cypher-dynamic-safe: <reason>
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-943: Improper Neutralization of Special Elements in Data Query Logic"
+      sprint_task: SEC-L3-CYPHER-003
+      layer: layer3-knowledge
+
+  # ── Rule 2: f-string Cypher with relationship type interpolation ───────────
+  - id: cypher-dynamic-rel-type-injection
+    patterns:
+      - pattern: |
+          $QUERY = f"... -[$ALIAS:$REL_TYPE]-> ..."
+      - pattern-not-regex: '# cypher-dynamic-safe:'
+    message: >
+      Dynamic Cypher relationship type interpolation detected in f-string.
+      Relationship types must be validated against an explicit allowlist
+      (e.g. _ALLOWED_REL_TYPES) before interpolation, or use a hardcoded literal.
+      Annotate reviewed safe uses with: # cypher-dynamic-safe: <reason>
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
+      cwe: "CWE-943: Improper Neutralization of Special Elements in Data Query Logic"
+      sprint_task: SEC-L3-CYPHER-003
+      layer: layer3-knowledge
+
+  # ── Rule 3: WHERE clause built from string concatenation ──────────────────
+  # Detects patterns where a WHERE clause is assembled via string join/concat
+  # and then interpolated into a Cypher query. The where_clause variable itself
+  # must only contain hardcoded predicate strings (never user input).
+  - id: cypher-dynamic-where-clause
+    patterns:
+      - pattern: |
+          $WHERE = " AND ".join($CLAUSES)
+          ...
+          $QUERY = f"... WHERE {$WHERE} ..."
+      - pattern-not-regex: '# cypher-dynamic-safe:'
+    message: >
+      Dynamic Cypher WHERE clause assembled via string join and interpolated
+      into a query. Verify that all elements of the joined list are hardcoded
+      string literals (never user-controlled values). If confirmed safe, annotate
+      the query line with: # cypher-dynamic-safe: where_clauses are hardcoded literals
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-943: Improper Neutralization of Special Elements in Data Query Logic"
+      sprint_task: SEC-L3-CYPHER-003
+      layer: layer3-knowledge
+
+  # ── Rule 4: SET clause built from list join ────────────────────────────────
+  - id: cypher-dynamic-set-clause
+    patterns:
+      - pattern: |
+          $SET = ", ".join($CLAUSES)
+          ...
+          $QUERY = f"... SET {$SET} ..."
+      - pattern-not-regex: '# cypher-dynamic-safe:'
+    message: >
+      Dynamic Cypher SET clause assembled via string join and interpolated
+      into a query. Verify that all elements are hardcoded string literals.
+      If confirmed safe, annotate with: # cypher-dynamic-safe: set_clauses are hardcoded literals
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+      cwe: "CWE-943: Improper Neutralization of Special Elements in Data Query Logic"
+      sprint_task: SEC-L3-CYPHER-003
+      layer: layer3-knowledge

@@ -36,6 +36,14 @@ from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
 from ...db.query_execution import run_validated_query
+<<<<<<< HEAD
+=======
+from ...utils.cypher_security import (
+    ALLOWED_REL_TYPES,
+    ALLOWED_TARGET_LABELS,
+    validate_cypher_identifier,
+)
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 class _build_fork_paramsResult(TypedDictModel):
@@ -298,6 +306,11 @@ class PackForkResponse(BaseModel):
 
 # Helper functions
 
+# SEC-L3-CYPHER-003 / GOV-L3-006: Allowlists for dynamic Cypher label and
+# relationship-type interpolation are now the canonical source of truth in
+# utils.cypher_security (ALLOWED_REL_TYPES, ALLOWED_TARGET_LABELS).
+# Imported above — do not redefine locally.
+
 
 async def _update_relationships(
     tx,
@@ -310,9 +323,17 @@ async def _update_relationships(
     """Update pack relationships, validating target entities exist.
 
     SECURITY: All queries include tenant_id filtering to prevent cross-tenant access.
+    SECURITY: rel_type and target_label are validated against allowlists before
+    interpolation to prevent Cypher injection (SEC-L3-CYPHER-003).
 
     Raises HTTPException if any target_id doesn't exist.
+    Raises ValueError if rel_type or target_label are not in the allowlist.
     """
+    # SEC-L3-CYPHER-003 / GOV-L3-006: Validate interpolated identifiers against
+    # the canonical allowlists in utils.cypher_security before building the query.
+    validate_cypher_identifier(rel_type, ALLOWED_REL_TYPES, kind="rel_type")
+    validate_cypher_identifier(target_label, ALLOWED_TARGET_LABELS, kind="target_label")
+
     # Validate all targets exist with tenant scoping
     if target_ids:
         # SECURITY: Add tenant_id filter if available
@@ -325,7 +346,7 @@ async def _update_relationships(
         if tenant_id:
             params["tenant_id"] = tenant_id
         # strict-scoped-query-execution: helper requires tenant_id on every target node match
-        result = await tx.run(check_query, params)
+        result = await run_validated_query(tx, check_query, params)
         record = await result.single()
         found_ids = set(record["found_ids"]) if record else set()
         missing = set(target_ids) - found_ids
@@ -342,7 +363,7 @@ async def _update_relationships(
     DELETE r
     """
     # strict-scoped-query-execution: relationship delete starts from tenant-scoped ValuePack
-    await tx.run(delete_query, pack_id=pack_id, tenant_id=tenant_id)
+    await run_validated_query(tx, delete_query, pack_id=pack_id, tenant_id=tenant_id)
 
     # Create new relationships with tenant scoping
     create_query = f"""
@@ -352,7 +373,7 @@ async def _update_relationships(
     CREATE (vp)-[:{rel_type}]->(t)
     """
     # strict-scoped-query-execution: relationship creation requires tenant_id on both endpoints
-    await tx.run(create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
+    await run_validated_query(tx, create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
 
 
 async def _get_pack_detail(
@@ -477,12 +498,12 @@ async def list_packs(
         )
         params["search"] = search
 
-    where_clause = " AND ".join(where_clauses)
+    where_clause = " AND ".join(where_clauses)  # cypher-dynamic-safe: where_clauses are hardcoded literals
 
     # SECURITY: All related nodes filtered by tenant_id
     query = f"""
     MATCH (vp:ValuePack)
-    WHERE {where_clause}
+    WHERE {where_clause}  
     OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver {{tenant_id: $tenant_id}})
     OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula {{tenant_id: $tenant_id}})
     OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset {{tenant_id: $tenant_id}})
@@ -593,7 +614,7 @@ async def create_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            result = await tx.run(
+            result = await run_validated_query(tx,
                 query,
                 pack_id=pack_id,
                 name=request.name,
@@ -751,14 +772,14 @@ async def update_pack(
     set_clauses, params = _build_update_params(request, pack_id)
     update_query = f"""
     MATCH (vp:ValuePack {{id: $pack_id, tenant_id: $tenant_id}})
-    SET {", ".join(set_clauses)}
+    SET {", ".join(set_clauses)}  # cypher-dynamic-safe: set_clauses are hardcoded literals from _build_update_params
     RETURN vp
     """
     params["tenant_id"] = tenant_id
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            await tx.run(update_query, **params)
+            await run_validated_query(tx, update_query, **params)
             await _update_pack_relationships(tx, pack_id, request, tenant_id)
 
         # Re-query for consistent view with relationships
@@ -960,7 +981,7 @@ async def execute_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            await tx.run(
+            await run_validated_query(tx,
                 complete_query,
                 execution_id=execution_id,
                 status=execution_status,

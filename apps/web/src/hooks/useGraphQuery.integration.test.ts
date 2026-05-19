@@ -41,9 +41,22 @@ interface EntityTraversalRequest {
 // ============================================================================
 
 // In-memory test store simulating Neo4j + PostgreSQL
+interface TestGraphEntity {
+  id: string;
+  name: string;
+  entity_type: string;
+  confidence_score: number;
+}
+
+interface TestGraphRelationship {
+  source: string;
+  target: string;
+  type: string;
+}
+
 const testStore = {
-  entities: new Map<string, any>(),
-  relationships: new Map<string, any[]>(),
+  entities: new Map<string, TestGraphEntity>(),
+  relationships: new Map<string, TestGraphRelationship[]>(),
 
   reset() {
     this.entities.clear();

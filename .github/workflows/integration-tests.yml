@@ -45,14 +45,14 @@ jobs:
           NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          docker compose -f docker-compose.full.yml up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
+          docker compose -f docker-compose.dev.yml up -d neo4j redis postgres layer2-5 layer4
 
       - name: Wait for services to be healthy
         run: |
           echo "Waiting for services to be healthy..."
           for i in $(seq 1 $HEALTH_CHECK_MAX_RETRIES); do
             sleep $HEALTH_CHECK_INTERVAL_SECONDS
-            healthy=$(docker compose -f docker-compose.full.yml ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
+            healthy=$(docker compose -f docker-compose.dev.yml ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
             echo "Check $i/$HEALTH_CHECK_MAX_RETRIES: $healthy services healthy"
             if [ "$healthy" -ge "$EXPECTED_SERVICES" ]; then
               echo "✅ All $EXPECTED_SERVICES services healthy!"
@@ -60,7 +60,7 @@ jobs:
             fi
           done
           echo "❌ Services failed to become healthy within timeout"
-          docker compose -f docker-compose.full.yml ps
+          docker compose -f docker-compose.dev.yml ps
           exit 1
         timeout-minutes: 6
 
@@ -105,7 +105,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p artifacts/logs
-          docker compose -f docker-compose.full.yml logs > artifacts/logs/docker-compose.log
+          docker compose -f docker-compose.dev.yml logs > artifacts/logs/docker-compose.log
 
       - name: Upload smoke report
         if: always()
@@ -125,7 +125,7 @@ jobs:
 
       - name: Tear down
         if: always()
-        run: docker compose -f docker-compose.full.yml down -v
+        run: docker compose -f docker-compose.dev.yml down -v
 
   frontend-e2e-backend-integrated:
     name: Frontend E2E Backend-Integrated

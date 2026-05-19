@@ -111,6 +111,35 @@ def _contract_service_gate(request: pytest.FixtureRequest):
     (which use live-service client fixtures). Static architecture tests always
     check service availability regardless of mock mode.
     """
+<<<<<<< HEAD
+    if "contract_static_no_service" in request.keywords:
+        return
+
+    is_service_required = "service_required" in request.keywords
+    is_static = "contract_static" in request.keywords
+
+    if not is_service_required and not is_static:
+        return
+
+    source = os.environ
+    if source.get("CONTRACT_TEST_MODE", "").lower() == "mock" and is_service_required:
+        return
+
+    env = source if source.get("CONTRACT_TEST_MODE", "").lower() != "mock" else dict(source, CONTRACT_TEST_MODE="")
+    _, missing_services, strict_mode = _evaluate_services_availability(env)
+    if not missing_services:
+        return
+
+    if strict_mode:
+        pytest.fail(
+            "Contract test strict mode is enabled (CI/CONTRACT_TEST_ENFORCE/CONTRACT_TEST_STRICT) "
+            f"and required services are unavailable. Missing: {missing_services}"
+        )
+    pytest.skip(
+        "Required contract services are unavailable in local/non-strict mode. "
+        f"Missing: {missing_services}"
+    )
+=======
     is_service_required = "service_required" in request.keywords
     is_static = "contract_static" in request.keywords
 
@@ -139,6 +168,7 @@ def _contract_service_gate(request: pytest.FixtureRequest):
                 f"Missing: {missing_services}"
             )
         pytest.skip(f"Required services unavailable: {missing_services}")
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 def _is_truthy(value: str | None) -> bool:
     """Return True when an environment flag is set to a truthy value."""
@@ -194,10 +224,24 @@ def _evaluate_services_availability(env: Mapping[str, str] | None = None) -> tup
 
 
 @pytest.fixture(scope="session", autouse=True)
-def check_services_availability():
+def check_services_availability(request: pytest.FixtureRequest):
     """Check if required services are running, otherwise skip tests.
     Prevents massive traceback dumps when backend infrastructure is missing.
     """
+    if request.session.items:
+        has_no_service_static = any(
+            "contract_static_no_service" in item.keywords for item in request.session.items
+        )
+        has_service_required = any(
+            "service_required" in item.keywords or "runtime_contract" in item.keywords
+            for item in request.session.items
+        )
+        if has_no_service_static and not has_service_required:
+            # Static OpenAPI artifact checks can run without live services, but
+            # keep service availability gating whenever runtime contract tests
+            # are present in the same collected session.
+            return
+
     mock_mode, missing_services, strict_mode = _evaluate_services_availability()
     if mock_mode:
         return

@@ -14,8 +14,14 @@ Fixture hierarchy:
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from collections.abc import AsyncGenerator
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 import pytest
 import pytest_asyncio
@@ -50,6 +56,7 @@ os.environ["MIN_SOURCES_FOR_CORROBORATED"] = "2"
 os.environ["JWT_FALLBACK_TO_QUERY_PARAM"] = "true"
 os.environ["SERVICE_AUTH_SECRET"] = "test-service-auth-secret-that-is-32-chars-long-ok"
 os.environ["ALLOW_INSECURE_DEV_AUTH_BYPASS"] = "true"
+os.environ["JWT_SECRET"] = "test-jwt-secret-that-is-at-least-32-chars"
 
 from layer5_ground_truth import database as db_module  # noqa: E402
 from layer5_ground_truth.api.main import create_app  # noqa: E402
