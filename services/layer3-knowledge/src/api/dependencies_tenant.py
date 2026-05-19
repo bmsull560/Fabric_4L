@@ -94,6 +94,8 @@ from .dependencies_tenant_secured import (  # noqa: E402,F401
 >>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 )
 
+_warn_deprecated("Neo4jTenantSession (import-time)")
+
 __all__ = [
     "Neo4jTenantSession",
 <<<<<<< HEAD
