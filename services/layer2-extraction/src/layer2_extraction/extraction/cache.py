@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from redis.exceptions import RedisError
-except Exception:  # pragma: no cover - optional dependency fallback
+except ImportError:  # pragma: no cover - optional dependency fallback
     RedisError = Exception
 
 
@@ -70,7 +70,7 @@ class ExtractionCache:
                         "exception_class": type(exc).__name__,
                     },
                 )
-            except Exception as exc:
+            except (ValueError, TypeError, OSError) as exc:
                 logger.exception(
                     "Unexpected cache initialization failure; using in-memory fallback",
                     extra={
@@ -127,7 +127,7 @@ class ExtractionCache:
                 self._log_cache_failure("read", exc, context)
             except (pickle.UnpicklingError, AttributeError, EOFError, ValueError, TypeError) as exc:
                 self._log_cache_failure("read", exc, context)
-            except Exception as exc:
+            except (RuntimeError, OSError) as exc:
                 self._log_cache_failure("read", exc, context)
         if self._fallback is not None:
             return self._fallback.get(key)
@@ -153,7 +153,7 @@ class ExtractionCache:
                 self._log_cache_failure("write", exc, context)
             except (pickle.PickleError, TypeError, AttributeError, ValueError) as exc:
                 self._log_cache_failure("write", exc, context)
-            except Exception as exc:
+            except (RuntimeError, OSError) as exc:
                 self._log_cache_failure("write", exc, context)
         if self._fallback is not None:
             self._fallback.set(key, value)
@@ -164,5 +164,5 @@ class ExtractionCache:
                 await self._redis.close()
             except RedisError as exc:
                 self._log_cache_failure("invalidate", exc)
-            except Exception as exc:
+            except (RuntimeError, OSError) as exc:
                 self._log_cache_failure("invalidate", exc)
