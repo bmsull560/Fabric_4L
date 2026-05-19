@@ -18,6 +18,8 @@ from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from .tenant_query_helper import run_tenant_validated_query
+
 logger = logging.getLogger(__name__)
 
 MAX_SIGNALS = 10
@@ -158,13 +160,15 @@ class ContextGatheringService:
             ORDER BY s.confidence_score DESC
             LIMIT $limit
             """
-            async with self._driver.session() as session:
-                result = await session.run(query, {
-                    "tenant_id": tenant_id,
+            records = await run_tenant_validated_query(
+                driver=self._driver,
+                query=query,
+                tenant_id=tenant_id,
+                params={
                     "account_id": account_id,
                     "limit": MAX_SIGNALS,
-                })
-                records = [record async for record in result]
+                },
+            )
 
             return [
                 {
@@ -198,13 +202,15 @@ class ContextGatheringService:
             ORDER BY vh.confidence_score DESC
             LIMIT $limit
             """
-            async with self._driver.session() as session:
-                result = await session.run(query, {
-                    "tenant_id": tenant_id,
+            records = await run_tenant_validated_query(
+                driver=self._driver,
+                query=query,
+                tenant_id=tenant_id,
+                params={
                     "account_id": account_id,
                     "limit": MAX_HYPOTHESES,
-                })
-                records = [record async for record in result]
+                },
+            )
 
             return [
                 {
@@ -217,8 +223,8 @@ class ContextGatheringService:
                     "capability": h.get("capability_name"),
                     "signal": h.get("signal_name"),
                 }
-                for r in records
-                if (h := r.get("hypothesis"))
+                for record in records
+                if (h := record.get("hypothesis"))
             ]
         except Exception as e:
             logger.warning("Failed to load account hypotheses: %s", e)
@@ -250,9 +256,13 @@ class ContextGatheringService:
                    avg(COALESCE(e.time_to_value_days, 180)) AS avg_ttv
             """
 
-            async with self._driver.session() as session:
-                result = await session.run(query, params)
-                record = await result.single()
+            records = await run_tenant_validated_query(
+                driver=self._driver,
+                query=query,
+                tenant_id=tenant_id,
+                params=params,
+            )
+            record = records[0] if records else None
 
             if not record:
                 return None
