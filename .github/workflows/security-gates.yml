@@ -44,6 +44,54 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # SEC-L3-CYPHER-003: Static analysis gate for dynamic Cypher construction.
+  # Blocks PRs that introduce unparameterized label/rel-type interpolation in
+  # Layer 3 Cypher queries. Uses Semgrep rules in .semgrep/cypher-dynamic-guard.yml.
+  cypher-dynamic-guard:
+    name: Cypher Dynamic Construction Guard (SEC-L3-CYPHER-003)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Cypher dynamic guard (ERROR rules — block on failure)
+        run: |
+          semgrep \
+            --config .semgrep/cypher-dynamic-guard.yml \
+            --severity ERROR \
+            --error \
+            --json \
+            --output semgrep-cypher-errors.json \
+            services/layer3-knowledge/src/ \
+            || (cat semgrep-cypher-errors.json && exit 1)
+
+      - name: Run Cypher dynamic guard (WARNING rules — report only)
+        run: |
+          semgrep \
+            --config .semgrep/cypher-dynamic-guard.yml \
+            --severity WARNING \
+            --json \
+            --output semgrep-cypher-warnings.json \
+            services/layer3-knowledge/src/ || true
+          if [ -s semgrep-cypher-warnings.json ]; then
+            echo "::warning::Cypher dynamic WHERE/SET clause patterns detected — review required"
+            cat semgrep-cypher-warnings.json
+          fi
+
+      - name: Upload Semgrep results
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: semgrep-cypher-guard-${{ github.sha }}
+          path: |
+            semgrep-cypher-errors.json
+            semgrep-cypher-warnings.json
+          retention-days: ${{ env.SECURITY_ARTIFACT_RETENTION_DAYS }}
+
   # Container vulnerability scanning with Trivy
   trivy-image-scan:
     name: Container Scan (Trivy)
