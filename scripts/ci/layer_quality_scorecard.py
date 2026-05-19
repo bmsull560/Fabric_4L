@@ -36,8 +36,6 @@ LAYER_SCOPES = {
         "scope_tokens": ["layer6", "benchmark", "benchmarks"],
     },
 }
-for scope in LAYER_SCOPES.values():
-    scope["scope_tokens"] = [token.lower() for token in scope["scope_tokens"]]
 
 @dataclass
 class CheckDef:

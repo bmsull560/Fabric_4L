@@ -48,5 +48,9 @@ def test_compute_scopes_support_files_to_matching_layer(tmp_path: Path, monkeypa
     report = module.compute(policy)
 
     assert report["layers"]["layer2"]["score"] == 100.0
+    assert report["layers"]["layer2"]["passed_checks"] == 5
+    assert all(check["present"] is True for check in report["layers"]["layer2"]["checks"].values())
     assert report["layers"]["layer1"]["score"] == 0.0
     assert report["layers"]["layer1"]["checks"]["contract_tests"]["present"] is False
+    assert report["layers"]["layer1"]["checks"]["security_negative_paths"]["present"] is False
+    assert report["layers"]["layer1"]["checks"]["docs_contract_freshness"]["present"] is False

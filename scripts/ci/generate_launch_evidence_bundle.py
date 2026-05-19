@@ -264,7 +264,8 @@ class EvidenceDocs:
         """Return a numeric readiness percentage for machine-readable summaries.
 
         Empty collections intentionally return 0.0 so downstream JSON/markdown
-        consumers can treat "no eligible evidence" as "no readiness proven yet."
+        consumers can treat "no eligible evidence" as an unproven/failing score,
+        rather than a missing or nullable field.
         """
         if not results:
             return 0.0
