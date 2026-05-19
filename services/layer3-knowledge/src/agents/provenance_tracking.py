@@ -21,6 +21,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..agents.base import AgentResult, BaseAgent
+from ..db.query_execution import run_system_query
 
 
 class ProvenanceTrackingAgent__record_entityResult(TypedDictModel):
@@ -471,7 +472,8 @@ class ProvenanceTrackingAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_system_query(
+                session,
                 query,
                 {
                     "activity_id": activity_id,
