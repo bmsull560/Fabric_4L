@@ -48,6 +48,14 @@
       "target_removal": "2026-12-01",
       "owner": "docs",
       "path": "docs/semantic_contract.md"
+    },
+    {
+      "feature": "l3.api.dependencies_tenant_legacy_shim",
+      "introduced": "2026-05-18",
+      "deprecated_since": "2026-05-18",
+      "target_removal": "2026-09-30",
+      "owner": "layer3-knowledge",
+      "path": "services/layer3-knowledge/src/api/dependencies_tenant.py"
     }
   ]
 }
