@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from logging_config import get_logger
 
-from ...api.dependencies_tenant import create_neo4j_tenant_session
+from ...api.dependencies_tenant_secured import create_neo4j_tenant_session
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 

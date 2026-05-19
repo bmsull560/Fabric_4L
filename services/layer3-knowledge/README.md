@@ -117,6 +117,16 @@ Related governance references:
 - Layer runtime parity checks: `tests/contract/test_layer_runtime_parity.py`
 - Service entrypoint smoke checks: `tests/contract/test_layer_service_entrypoint_smoke.py`
 
+## Tenant Neo4j dependency standard (single approved module)
+
+- **Approved dependency module:** `services/layer3-knowledge/src/api/dependencies_tenant_secured.py`
+- Route modules must import Neo4j tenant-scoped dependencies from
+  `...api.dependencies_tenant_secured` only.
+- `...api.dependencies_tenant` is a compatibility shim that emits deprecation warnings and has a
+  **hard removal date of 2026-09-30**.
+- CI enforces this via `python scripts/ci/check_layer3_imports.py --strict`, which blocks new
+  imports of the deprecated shim.
+
 ## Scheduled removals & deprecations
 
 Layer 3 follows Value Fabric deprecation policy:

@@ -284,7 +284,7 @@ graph LR
 |-------|-----------|----------------|
 | **API** | Header validation | `X-Tenant-ID` required, verified against JWT |
 | **Database** | Row-level security | PostgreSQL RLS policies, `tenant_id` column |
-| **Graph** | Label partitioning | Neo4j tenant labels, `TenantScopedCypher` |
+| **Graph** | Label partitioning + validated tenant session | Neo4j tenant labels, `TenantScopedCypher`, and Layer 3 approved dependency `services/layer3-knowledge/src/api/dependencies_tenant_secured.py` (legacy shim `dependencies_tenant.py` removal date: 2026-09-30) |
 | **Cache** | Key prefixing | Redis keys prefixed with `tenant:{id}:` |
 | **Queue** | Queue namespacing | Job queues isolated per tenant |
 | **Storage** | Path prefixing | S3 paths include tenant prefix |
