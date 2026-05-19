@@ -6,7 +6,9 @@ import importlib.util
 import logging
 from dataclasses import dataclass
 
-logger = logging.getLogger(__name__)
+import structlog
+
+logger = structlog.get_logger()
 
 
 @dataclass

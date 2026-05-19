@@ -82,6 +82,12 @@ class CrawlerConfig:
     # Metrics
     emit_metrics: bool = True
 
+    # Proxy rotation
+    proxies: list[dict[str, Any]] = field(default_factory=list)
+    proxy_rotation_strategy: str = "ROUND_ROBIN"
+    proxy_max_failures: int = 3
+    proxy_enabled: bool = False
+
     @classmethod
     def from_yaml(cls, path: Path | str) -> "CrawlerConfig":
         """Load configuration from YAML file.

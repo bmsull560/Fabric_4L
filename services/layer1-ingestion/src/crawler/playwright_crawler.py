@@ -22,6 +22,7 @@ import structlog
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
 from .crawler_config import CrawlerConfig, load_config
+from .proxy_rotator import ProxyConfig, ProxyRotator
 from .telemetry import (
     CrawlMetrics,
     get_tracer,
@@ -79,6 +80,20 @@ class PlaywrightCrawler:
                 attributes=self.config.trace_attributes,
             )
 
+        # Proxy rotation
+        self.proxy_rotator: ProxyRotator | None = None
+        if self.config.proxy_enabled and self.config.proxies:
+            self.proxy_rotator = ProxyRotator(
+                proxies=self.config.proxies,
+                strategy=self.config.proxy_rotation_strategy,
+                max_failures_before_quarantine=self.config.proxy_max_failures,
+            )
+            logger.info(
+                "Proxy rotation enabled",
+                strategy=self.config.proxy_rotation_strategy,
+                proxy_count=len(self.config.proxies),
+            )
+
         # Metrics collector
         self.metrics = CrawlMetrics()
 
@@ -86,6 +101,7 @@ class PlaywrightCrawler:
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
         self._semaphore: asyncio.Semaphore | None = None
+        self._current_proxy: ProxyConfig | None = None
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -116,13 +132,21 @@ class PlaywrightCrawler:
                 args=self.config.browser_args,
             )
 
+            # Build context options with optional proxy
+            context_options: dict[str, Any] = {
+                "user_agent": self.user_agent,
+                "viewport": self.config.viewport,
+                "java_script_enabled": True,
+                "bypass_csp": True,
+            }
+            if self.proxy_rotator:
+                self._current_proxy = self.proxy_rotator.get_next()
+                if self._current_proxy:
+                    context_options["proxy"] = self._current_proxy.to_playwright_dict()
+                    logger.info("Playwright context using proxy", proxy_id=self._current_proxy.id, host=self._current_proxy.host)
+
             # Create context with custom settings from config
-            self._context = await self._browser.new_context(
-                user_agent=self.user_agent,
-                viewport=self.config.viewport,
-                java_script_enabled=True,
-                bypass_csp=True,
-            )
+            self._context = await self._browser.new_context(**context_options)
 
             # Set default timeouts
             self._context.set_default_timeout(self.timeout_ms)
@@ -263,6 +287,10 @@ class PlaywrightCrawler:
                         scroll_triggered=scroll_triggered,
                     )
 
+                    # Report proxy success
+                    if self.proxy_rotator and self._current_proxy:
+                        self.proxy_rotator.report_result(self._current_proxy.id, success=True, response_time_ms=duration_ms)
+
                     if span:
                         span.set_attribute("crawl.duration_ms", duration_ms)
                         span.set_attribute("crawl.blocked_resources", blocked_resources)
@@ -291,6 +319,10 @@ class PlaywrightCrawler:
                         blocked_resources=blocked_resources,
                         scroll_triggered=scroll_triggered,
                     )
+
+                    # Report proxy failure
+                    if self.proxy_rotator and self._current_proxy:
+                        self.proxy_rotator.report_result(self._current_proxy.id, success=False)
 
                     logger.error(
                         "Crawl failed",

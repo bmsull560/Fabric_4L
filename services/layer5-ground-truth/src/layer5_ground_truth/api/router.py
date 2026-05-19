@@ -14,11 +14,11 @@ Endpoints:
   GET    /health                    — Health check
 """
 
-import logging
+import structlog
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..cache import cached
@@ -43,15 +43,6 @@ from ..services.truth_service import (
 from .auth import TokenClaims, authorize_action, get_current_user
 from .schemas import (
     AddSourceRequest,
-<<<<<<< HEAD
-    FreshnessCheckResponse,
-    FreshnessSummaryResponse,
-<<<<<<< ours
-    HealthResponse,
-=======
->>>>>>> theirs
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     MaturityLadderResponse,
     MaturityLevelDetail,
     TruthObjectCreate,
@@ -67,27 +58,7 @@ from .schemas import (
 )
 
 
-<<<<<<< HEAD
-<<<<<<< ours
-class sync_to_kgResult(TypedDictModel):
-    failed: Any
-    synced: Any
-    total_pending: Any
-
-
-class list_staleResult(TypedDictModel):
-    has_more: bool
-    items: Any
-    limit: Any
-    offset: Any
-    total: Any
-
-
-=======
->>>>>>> theirs
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
 
@@ -113,7 +84,6 @@ router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
     },
 )
 async def create_truth(
-    request: Request,
     payload: TruthObjectCreate,
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
@@ -149,7 +119,6 @@ async def create_truth(
         "approved",
     ):
         client = get_layer3_client()
-        request_id = getattr(request.state, "trace_id", None)
         node_id = await client.sync_truth_object(
             truth_object_id=truth.id,
             tenant_id=tenant_id,
@@ -161,7 +130,6 @@ async def create_truth(
             value=truth.value,
             applies_to=truth.applies_to,
             source_count=len(truth.sources),
-            request_id=str(request_id) if request_id else None,
         )
         if node_id:
             truth.kg_node_id = node_id
@@ -272,7 +240,6 @@ async def list_truths(
     ),
 )
 async def sync_to_kg(
-    request: Request,
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> SyncToKgResponse:
@@ -295,7 +262,6 @@ async def sync_to_kg(
     pending = result.scalars().all()
 
     client = get_layer3_client()
-    request_id = getattr(request.state, "trace_id", None)
     synced = 0
     failed = 0
     for truth in pending:
@@ -310,7 +276,6 @@ async def sync_to_kg(
             value=truth.value,
             applies_to=truth.applies_to,
             source_count=len(truth.sources),
-            request_id=str(request_id) if request_id else None,
         )
         if node_id:
             truth.kg_node_id = node_id
@@ -319,24 +284,11 @@ async def sync_to_kg(
         else:
             failed += 1
 
-<<<<<<< HEAD
-<<<<<<< ours
-    return sync_to_kgResult.model_validate(
-        {
-            "synced": synced,
-            "failed": failed,
-            "total_pending": len(pending),
-        }
-    )
-=======
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     return SyncToKgResponse.model_validate({
         "synced": synced,
         "failed": failed,
         "total_pending": len(pending),
     })
->>>>>>> theirs
 
 
 # ---------------------------------------------------------------------------
@@ -419,20 +371,6 @@ async def list_stale(
         for t in items
     ]
 
-<<<<<<< HEAD
-<<<<<<< ours
-    return list_staleResult.model_validate(
-        {
-            "items": summaries,
-            "total": total,
-            "limit": limit,
-            "offset": offset,
-            "has_more": (offset + limit) < total,
-        }
-    )
-=======
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     return StaleTruthsResponse.model_validate({
         "items": summaries,
         "total": total,
@@ -440,7 +378,6 @@ async def list_stale(
         "offset": offset,
         "has_more": (offset + limit) < total,
     })
->>>>>>> theirs
 
 
 # ---------------------------------------------------------------------------
@@ -520,7 +457,6 @@ async def get_truth(
     },
 )
 async def validate_truth(
-    request: Request,
     truth_id: UUID,
     payload: ValidateRequest,
     caller: TokenClaims = Depends(get_current_user),
@@ -546,9 +482,9 @@ async def validate_truth(
             actor=payload.actor,
             actor_type=payload.actor_type,
             notes=payload.notes,
-            dispute_reason=(
-                payload.dispute_reason.value if payload.dispute_reason else None
-            ),
+            dispute_reason=payload.dispute_reason.value
+            if payload.dispute_reason
+            else None,
         )
     except InvalidTransitionError as exc:
         raise HTTPException(
@@ -574,7 +510,6 @@ async def validate_truth(
     # Sync to Layer 3 after approval
     if truth.status == "approved":
         client = get_layer3_client()
-        request_id = getattr(request.state, "trace_id", None)
         node_id = await client.sync_truth_object(
             truth_object_id=truth.id,
             tenant_id=tenant_id,
@@ -586,7 +521,6 @@ async def validate_truth(
             value=truth.value,
             applies_to=truth.applies_to,
             source_count=len(truth.sources),
-            request_id=str(request_id) if request_id else None,
         )
         if node_id:
             truth.kg_node_id = node_id
@@ -766,3 +700,6 @@ async def get_maturity_ladder() -> MaturityLadderResponse:
         ),
     ]
     return MaturityLadderResponse(levels=levels)
+
+
+

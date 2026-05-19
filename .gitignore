@@ -15,10 +15,11 @@ ehthumbs.db
 
 # Environment variables
 # Real .env files with secrets are never committed.
-# Committed files: .env.example, .env.test, .env.staging, .env.production,
-#                  .env.development, .env.production.example
+# Only .env.*.example templates should be committed.
 .env
-.env.dev
+.env.*
+!.env.*.example
+!.env.production-compose.template
 .env.local
 .env.*.local
 .local/secrets/

@@ -15,11 +15,6 @@ from pydantic import BaseModel, Field, JsonValue, field_validator, model_validat
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 # Re-export enums so API consumers only need to import from schemas
-from ..services.freshness_contracts import (
-    FreshnessCheckResponse,
-    FreshnessCounts,
-    FreshnessSummaryResponse,
-)
 from ..models.truth_object import (
     ClaimType,
     DisputeReason,
@@ -59,12 +54,6 @@ __all__ = [
     "TruthObjectSummary",
     "TruthObjectListResponse",
     "StaleTruthsResponse",
-<<<<<<< HEAD
-    "FreshnessCheckResponse",
-    "FreshnessCounts",
-    "FreshnessSummaryResponse",
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "SyncToKgResponse",
     "ValidateResponse",
     "HealthResponse",

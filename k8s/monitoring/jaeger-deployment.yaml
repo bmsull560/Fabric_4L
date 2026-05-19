@@ -27,7 +27,6 @@ spec:
           image: jaegertracing/all-in-one:1.50
           imagePullPolicy: IfNotPresent
           args:
-            - --memory.max-traces=100000
             - --query.base-path=/jaeger
             - --collector.otlp.enabled=true
           env:
@@ -36,7 +35,15 @@ spec:
             - name: COLLECTOR_ZIPKIN_HOST_PORT
               value: ":9411"
             - name: SPAN_STORAGE_TYPE
-              value: "memory"
+              value: "badger"
+            - name: BADGER_EPHEMERAL
+              value: "false"
+            - name: BADGER_DIRECTORY_KEY
+              value: "/badger/data/keys"
+            - name: BADGER_DIRECTORY_VALUE
+              value: "/badger/data/values"
+            - name: BADGER_SPAN_STORE_TTL
+              value: "168h"
             - name: JAEGER_SAMPLER_TYPE
               value: "const"
             - name: JAEGER_SAMPLER_PARAM
@@ -89,9 +96,14 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            - name: badger-data
+              mountPath: /badger/data
       volumes:
         - name: tmp
           emptyDir: {}
+        - name: badger-data
+          persistentVolumeClaim:
+            claimName: jaeger-badger-data
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

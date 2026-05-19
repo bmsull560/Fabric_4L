@@ -2,9 +2,87 @@
 
 from __future__ import annotations
 
+from pydantic import BaseModel
+
 from layer2_extraction.extraction.chunker import SemanticChunker
 from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
 from layer2_extraction.models.extraction_api import ExtractionResult
+
+
+# ---------------------------------------------------------------------------
+# API Schema stubs (route layer depends on these)
+# ---------------------------------------------------------------------------
+
+
+class ExtractionStatusResponse(BaseModel):
+    job_id: str
+    status: str = "unknown"
+    progress: float = 0.0
+    message: str | None = None
+
+
+class ExtractRequest(BaseModel):
+    content: str
+    source_url: str = ""
+    job_id: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Service functions
+# ---------------------------------------------------------------------------
+
+
+async def get_extraction_status(job_id: str) -> ExtractionStatusResponse:
+    """Get current extraction status for a job."""
+    # TODO: integrate with real job store
+    return ExtractionStatusResponse(job_id=job_id, status="pending", progress=0.0)
+
+
+async def extract_batch(requests: list[ExtractRequest], background_tasks) -> dict:
+    """Enqueue a batch of extraction jobs."""
+    # TODO: integrate with real pipeline
+    return {"batch_id": "stub", "queued": len(requests)}
+
+
+async def stream_job_events(job_id: str):
+    """Stream SSE events for a job."""
+    # TODO: integrate with real event stream
+    return {"job_id": job_id, "events": []}
+
+
+async def handle_ingestion_completed(payload: dict) -> dict:
+    """Handle notification from L1 that ingestion finished.
+
+    Enqueues extraction for the ingested content.
+    """
+    from layer2_extraction.integration.job_store import build_job_store
+
+    job_store = build_job_store()
+    # Create a new extraction job linked to the L1 ingestion result
+    job = await job_store.create(
+        source_url=payload.get("output_url", ""),
+        tenant_id=payload.get("tenant_id", "default"),
+        metadata={
+            "l1_job_id": payload.get("job_id"),
+            "l1_target_id": payload.get("target_id"),
+            "ingestion_status": payload.get("status"),
+        },
+    )
+    return {
+        "received": True,
+        "l2_job_id": job.id if hasattr(job, "id") else str(job),
+        "l1_job_id": payload.get("job_id"),
+    }
+
+
+async def health_check() -> dict:
+    """Liveness probe."""
+    return {"status": "ok", "service": "layer2-extraction"}
+
+
+async def metrics_endpoint(request) -> dict:
+    """Prometheus-style metrics stub."""
+    return {"metrics": "stub"}
 
 
 class ExtractionService:

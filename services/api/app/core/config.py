@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_DEFAULT_DEV_SECRET = "fabric-4l-dev-secret-key-change-in-production"
 _DEV_ENVIRONMENTS = {"local", "dev", "development", "test", "testing", "ci"}
 _PRODUCTION_ENVS = {"production", "prod", "staging"}
 _DEV_CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
@@ -80,7 +79,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("ENVIRONMENT", "ENV", "APP_ENV"),
     )
     debug: bool = False
-    secret_key: str = _DEFAULT_DEV_SECRET
+    secret_key: str = Field(
+        validation_alias=AliasChoices("JWT_SECRET", "SECRET_KEY"),
+    )
     algorithm: str = "HS256"
     jwt_issuer: str = Field(
         default="value-fabric-internal",
@@ -137,12 +138,13 @@ class Settings(BaseSettings):
                 errors.append("llm_provider=mock is disabled in production-like environments")
             if self.seed_demo_data:
                 errors.append("seed_demo_data must be false in production-like environments")
-            if self.secret_key == _DEFAULT_DEV_SECRET or len(self.secret_key) < 32:
-                errors.append("SECRET_KEY must be replaced with a strong production secret")
             if not self.jwt_issuer.strip():
                 errors.append("JWT_ISSUER must be configured in production-like environments")
             if not self.jwt_audience.strip():
                 errors.append("JWT_AUDIENCE must be configured in production-like environments")
+
+        if len(self.secret_key) < 32:
+            errors.append("JWT_SECRET/SECRET_KEY must be at least 32 characters")
 
         try:
             _validate_exact_cors_origins(self.cors_origins, production_like=self.is_production_like)

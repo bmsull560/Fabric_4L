@@ -164,3 +164,49 @@ def test_decode_signed_state_rejects_non_uuid_tenant(monkeypatch) -> None:
 
     with pytest.raises(integrations_route.IntegrationValidationError, match="tenant mapping is invalid"):
         integrations_route._decode_signed_state(state)
+
+
+def test_decode_signed_state_rejects_open_redirect(monkeypatch) -> None:
+    """Regression: PT-2026-041 — block return_to values that open-redirect to external hosts."""
+    monkeypatch.setenv("JWT_SECRET", "test-jwt-secret-1234567890")
+    payload = {
+        "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "user-123",
+        "return_to": "//evil.com/steal",
+        "oauth_base_url": "https://login.salesforce.com",
+        "iat": 2_000_000_000,
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+    signature = hmac.new(
+        b"test-jwt-secret-1234567890",
+        encoded_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    state = f"{encoded_payload}.{signature}"
+
+    with pytest.raises(integrations_route.IntegrationValidationError, match="return_to must be an application-relative path"):
+        integrations_route._decode_signed_state(state)
+
+
+def test_decode_signed_state_rejects_disallowed_oauth_base_url(monkeypatch) -> None:
+    """Regression: PT-2026-041 — block OAuth callbacks to unauthorized identity providers."""
+    monkeypatch.setenv("JWT_SECRET", "test-jwt-secret-1234567890")
+    payload = {
+        "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
+        "user_id": "user-123",
+        "return_to": "/context/integrations",
+        "oauth_base_url": "https://evil-idp.com",
+        "iat": 2_000_000_000,
+    }
+    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(payload_json).decode("utf-8").rstrip("=")
+    signature = hmac.new(
+        b"test-jwt-secret-1234567890",
+        encoded_payload.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    state = f"{encoded_payload}.{signature}"
+
+    with pytest.raises(integrations_route.IntegrationValidationError, match="provider base URL is not allowed"):
+        integrations_route._decode_signed_state(state)

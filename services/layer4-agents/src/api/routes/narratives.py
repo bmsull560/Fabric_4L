@@ -74,6 +74,7 @@ class NarrativeGenerateRequest(BaseModel):
     competitive_data: dict[str, Any] | None = Field(None, description="Pre-fetched competitive landscape (flagged as unverified)")
     roi_data: dict[str, Any] | None = Field(None, description="Pre-fetched ROI results (flagged as unverified)")
     evidence_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched evidence (flagged as unverified)")
+    benchmark_dataset_ids: list[str] | None = Field(None, description="Layer 6 benchmark dataset IDs to include in narrative evidence")
 
 
 class StatusUpdateRequest(BaseModel):
@@ -133,6 +134,19 @@ async def generate_narrative(
     driver = _get_neo4j_driver(request)
     svc = NarrativeBuilderService(driver)
 
+    # Fetch Layer 6 benchmarks if requested
+    benchmark_data: list[dict[str, Any]] = []
+    if body.benchmark_dataset_ids:
+        from ...integration.layer6_client import get_layer6_client
+        l6_client = get_layer6_client()
+        for ds_id in body.benchmark_dataset_ids:
+            ds_result = await l6_client.get_dataset(ds_id)
+            if ds_result.get("success"):
+                benchmark_data.append(ds_result.get("data", {}))
+            else:
+                logger.warning("benchmark_dataset_fetch_failed", dataset_id=ds_id, error=ds_result.get("error"))
+        await l6_client.close()
+
     narr_request = NarrativeRequest(
         account_id=body.account_id,
         title=body.title,
@@ -155,7 +169,12 @@ async def generate_narrative(
         competitive_data=body.competitive_data,
         roi_data=body.roi_data,
         evidence_data=body.evidence_data,
+        benchmark_data=benchmark_data or None,
     )
+
+    # Attach benchmark provenance
+    if benchmark_data:
+        result["benchmark_refs"] = [d.get("id", "unknown") for d in benchmark_data]
 
     # V-009: Tag narratives built from caller-supplied data
     if _has_prefetched_data(body):

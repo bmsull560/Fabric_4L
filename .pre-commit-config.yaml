@@ -149,7 +149,10 @@ repos:
       - id: semgrep
         name: Semgrep (security SAST)
         args:
-          - --config=auto
+          - --config=p/owasp-top-ten
+          - --config=p/python
+          - --config=p/javascript
+          - --config=.semgrep/cypher-dynamic-guard.yml
           - --error
           - --skip-git-ignore
           - --metrics=off

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+import structlog
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -12,7 +12,7 @@ from value_fabric.shared.database import require_tenant_context
 
 from ..models.benchmark_dataset import BenchmarkDataset, BenchmarkMetric, StatisticalProfile
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class BenchmarkRepository:

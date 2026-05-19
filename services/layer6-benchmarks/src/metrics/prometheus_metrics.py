@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+import structlog
 import time
 from typing import Any
 
@@ -15,7 +15,7 @@ try:
 except ImportError:  # pragma: no cover
     PathNormalizer = None  # type: ignore[assignment]
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 SERVICE_NAME = "layer6-benchmarks"
 _L6_KNOWN_ROUTES: dict[str, str] = {

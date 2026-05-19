@@ -174,7 +174,7 @@ services:
       REDIS_URL: redis://redis:6379/2
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      NEO4J_PASSWORD: devpassword
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD}
     volumes: *shared-code-volumes
     depends_on:
       postgres:
@@ -227,7 +227,7 @@ services:
       REDIS_URL: redis://redis:6379/6
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      NEO4J_PASSWORD: devpassword
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD}
     volumes: *shared-code-volumes
     depends_on:
       postgres:
@@ -258,7 +258,7 @@ services:
       REDIS_URL: redis://redis:6379/4
       NEO4J_URI: bolt://neo4j:7687
       NEO4J_USER: neo4j
-      NEO4J_PASSWORD: devpassword
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD}
       LAYER1_URL: http://layer1-ingestion:8000
       LAYER1_API_URL: http://layer1-ingestion:8000
       LAYER2_URL: http://layer2-extraction:8000

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     )
 
     # Auth / JWT
-    jwt_secret: str = Field(default="changeme-in-production", alias="JWT_SECRET")
+    jwt_secret: str = Field(alias="JWT_SECRET")
     jwt_algorithm: str = "HS256"
 
     # Layer 2 integration

@@ -12,13 +12,18 @@ P1-29: OpenTelemetry tracing integration for observability.
 import asyncio
 import hashlib
 import json
-import logging
 import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
+
+import structlog
+from value_fabric.shared.tracing.logging_config import configure_structured_logging
+
+configure_structured_logging(service_name="layer2-extraction", log_level=os.getenv("LOG_LEVEL", "INFO"))
+logger = structlog.get_logger()
 
 # Third-party imports for health check
 try:
@@ -76,7 +81,7 @@ from ..shared_bootstrap import verify_metrics_access
 from .app_factory import create_app
 from .lifespan import create_lifespan
 
-logger = logging.getLogger(__name__)
+# logger already configured via configure_structured_logging() at module top
 
 PRODUCTION_LIKE_ENVIRONMENTS = {"production", "prod", "staging", "stage"}
 

@@ -5,7 +5,7 @@ Uses asyncpg for production and aiosqlite for tests (via DATABASE_URL override).
 Follows the same pattern as Layer 1's database.py but with async support.
 """
 
-import logging
+import structlog
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -75,7 +75,7 @@ _TENANT_BYPASS_REASON_KEY = "tenant_context_bypass_reason"
 _PRIVILEGED_REASON_HEADER = "X-Privileged-Reason"
 _RLS_SUPPORTED_SCHEMES = frozenset({"postgresql", "postgres", "postgresql+asyncpg", "postgresql+psycopg"})
 _RLS_SUPERUSER_NAMES = frozenset({"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"})
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 _privileged_db_session_metrics = {
     "activations_total": 0,
     "denials_total": 0,

@@ -79,6 +79,43 @@ jobs:
 
           echo "All required root files present ✓"
 
+      - name: Validate Docker Compose files
+        run: |
+          for f in docker-compose*.yml; do
+            echo "Validating $f..."
+            docker compose -f "$f" config > /dev/null || exit 1
+          done
+          echo "All compose files valid ✓"
+
+      - name: Block :latest tags in Docker Compose
+        run: |
+          if grep -rn "image:.*:latest" docker-compose*.yml; then
+            echo "ERROR: :latest tag found in Docker Compose files"
+            exit 1
+          fi
+          echo "No :latest tags found ✓"
+
+      - name: Block hardcoded secrets in Docker Compose
+        run: |
+          patterns=(
+            "JWT_SECRET=dev-local-secret"
+            "JWT_SECRET=e2e-test-secret"
+            "NEO4J_PASSWORD=devpassword"
+            "NEO4J_AUTH: neo4j/devpassword"
+            "postgres:postgres@postgres"
+          )
+          found=0
+          for pattern in "${patterns[@]}"; do
+            if grep -rn "$pattern" docker-compose*.yml; then
+              found=1
+            fi
+          done
+          if [ $found -eq 1 ]; then
+            echo "ERROR: Hardcoded secrets found in Docker Compose files"
+            exit 1
+          fi
+          echo "No hardcoded secrets in compose files ✓"
+
   # ============================================
   # License and Headers
   # ============================================

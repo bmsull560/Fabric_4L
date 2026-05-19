@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
+import structlog
 import os
 from typing import Any
 
 from ..settings import get_layer6_settings
 
-LOGGER = logging.getLogger("layer6.startup")
+LOGGER = structlog.get_logger("layer6.startup")
 
 
 def config_fingerprint(config: dict[str, Any]) -> str:

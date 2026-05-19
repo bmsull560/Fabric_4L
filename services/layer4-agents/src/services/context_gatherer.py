@@ -1,4 +1,4 @@
-"""ContextGatheringService - real data fetcher for ValuePilot conversations.
+"""ContextGatheringService — Real data fetcher for ValuePilot conversations.
 
 When the GATE ConversationAgent is unavailable, this service queries
 PostgreSQL (accounts) and Neo4j (signals, hypotheses, evidence) to build
@@ -14,38 +14,16 @@ Design principles:
 from __future__ import annotations
 
 import logging
-from collections.abc import Hashable
 from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-<<<<<<< HEAD
-from .tenant_query_helper import run_tenant_validated_query
-=======
 from .tenant_cypher import fetch_tenant_validated_records, fetch_tenant_validated_single
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 logger = logging.getLogger(__name__)
 
 MAX_SIGNALS = 10
 MAX_HYPOTHESES = 8
-
-
-def _hypothesis_dedup_key(hypothesis: dict[str, Any]) -> Hashable:
-    """Return a deterministic de-duplication key for hypothesis rows."""
-    hypothesis_id = hypothesis.get("id")
-    if hypothesis_id:
-        return f"id:{hypothesis_id}"
-
-    return (
-        "fallback",
-        hypothesis.get("hypothesis_text"),
-        hypothesis.get("status"),
-        hypothesis.get("confidence_score"),
-        hypothesis.get("value_path_category"),
-        hypothesis.get("capability_name"),
-        hypothesis.get("signal_name"),
-    )
 
 
 class ContextGathererResult(TypedDictModel):
@@ -96,6 +74,7 @@ class ContextGatheringService:
             "evidence": evidence,
         }
 
+        # Strip None values to keep prompt compact
         return {k: v for k, v in result.items() if v is not None}
 
     async def _gather_parallel(
@@ -104,12 +83,7 @@ class ContextGatheringService:
         account_id: str,
         tenant_id: str,
         industry: str | None,
-    ) -> tuple[
-        dict[str, Any] | None,
-        list[dict[str, Any]],
-        list[dict[str, Any]],
-        dict[str, Any] | None,
-    ]:
+    ) -> tuple[dict[str, Any] | None, list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None]:
         """Run independent queries concurrently."""
         import asyncio
 
@@ -186,25 +160,15 @@ class ContextGatheringService:
             ORDER BY s.confidence_score DESC
             LIMIT $limit
             """
-<<<<<<< HEAD
-            records = await run_tenant_validated_query(
-                driver=self._driver,
-                query=query,
-                tenant_id=tenant_id,
-=======
             records = await fetch_tenant_validated_records(
                 driver=self._driver,
                 query=query,
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 params={
                     "account_id": account_id,
                     "limit": MAX_SIGNALS,
                 },
-<<<<<<< HEAD
-=======
                 tenant_id=tenant_id,
                 operation="context_gatherer.account_signals",
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             )
 
             return [
@@ -239,25 +203,15 @@ class ContextGatheringService:
             ORDER BY vh.confidence_score DESC
             LIMIT $limit
             """
-<<<<<<< HEAD
-            records = await run_tenant_validated_query(
-                driver=self._driver,
-                query=query,
-                tenant_id=tenant_id,
-=======
             records = await fetch_tenant_validated_records(
                 driver=self._driver,
                 query=query,
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 params={
                     "account_id": account_id,
                     "limit": MAX_HYPOTHESES,
                 },
-<<<<<<< HEAD
-=======
                 tenant_id=tenant_id,
                 operation="context_gatherer.account_hypotheses",
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             )
 
             return [
@@ -292,7 +246,7 @@ class ContextGatheringService:
             MATCH (e:Evidence {tenant_id: $tenant_id})
             WHERE e.evidence_type = 'case_study'
             """
-            params: dict[str, Any] = {}
+            params: dict[str, Any] = {"tenant_id": tenant_id}
 
             if industry:
                 query += " AND e.industry = $industry"
@@ -304,15 +258,6 @@ class ContextGatheringService:
                    avg(COALESCE(e.time_to_value_days, 180)) AS avg_ttv
             """
 
-<<<<<<< HEAD
-            records = await run_tenant_validated_query(
-                driver=self._driver,
-                query=query,
-                tenant_id=tenant_id,
-                params=params,
-            )
-            record = records[0] if records else None
-=======
             record = await fetch_tenant_validated_single(
                 driver=self._driver,
                 query=query,
@@ -320,7 +265,6 @@ class ContextGatheringService:
                 tenant_id=tenant_id,
                 operation="context_gatherer.evidence_summary",
             )
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
             if not record:
                 return None

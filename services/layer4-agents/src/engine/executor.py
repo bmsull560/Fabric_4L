@@ -920,6 +920,122 @@ class OrchestrationController:
         )
         return result
 
+    async def resume_from_checkpoint(
+        self,
+        checkpoint_id: str,
+        resume_data: dict[str, Any] | None = None,
+        skip_nodes: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Resume a workflow from a specific checkpoint.
+
+        Loads the checkpoint state, optionally skips specified nodes,
+        and continues execution from the checkpoint point.
+
+        Args:
+            checkpoint_id: The checkpoint to resume from
+            resume_data: Optional data to merge into state before resume
+            skip_nodes: Node IDs to skip during replay
+
+        Returns:
+            Dict with status and resumed workflow info
+        """
+        if self.checkpoint_saver is None:
+            raise WorkflowExecutionError("Checkpoint saver not configured")
+
+        # Parse checkpoint_id to extract workflow_id (thread_id)
+        # LangGraph checkpoints use thread_id = workflow_id
+        # The checkpoint_id itself is a UUID within the thread
+        # We need to query the saver to find which workflow owns this checkpoint
+        workflow_id = None
+        checkpoint_state = None
+        try:
+            # LangGraph AsyncPostgresSaver: list checkpoints for a thread
+            # We don't know the thread_id, so we scan recent workflows
+            workflow_ids = await self.state_manager.list_workflows()
+            for wf_id in workflow_ids:
+                checkpoints = await self._list_checkpoints_for_workflow(wf_id)
+                for chk in checkpoints:
+                    if chk.get("checkpoint_id") == checkpoint_id:
+                        workflow_id = wf_id
+                        checkpoint_state = chk
+                        break
+                if workflow_id:
+                    break
+        except Exception as e:
+            raise WorkflowExecutionError(f"Failed to locate checkpoint {checkpoint_id}: {e}") from e
+
+        if not workflow_id or not checkpoint_state:
+            raise WorkflowExecutionError(f"Checkpoint {checkpoint_id} not found")
+
+        # Load workflow state
+        state = await self.state_manager.load_state(workflow_id)
+        if not state:
+            raise WorkflowExecutionError(f"No state found for workflow {workflow_id}")
+
+        # Merge resume data
+        if resume_data:
+            if state.output_data is None:
+                state.output_data = {}
+            state.output_data.update(resume_data)
+            state.output_data["resumed_from_checkpoint"] = checkpoint_id
+            state.output_data["resumed_at"] = datetime.now(UTC).isoformat()
+
+        # Get workflow type
+        metadata = self._workflow_metadata.get(workflow_id, {})
+        workflow_type = metadata.get("workflow_type")
+        if not workflow_type:
+            raise WorkflowExecutionError(f"No workflow type found for {workflow_id}")
+
+        # Re-create workflow
+        workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
+
+        # Build node skip list for LangGraph
+        if skip_nodes:
+            # Store skip list in state metadata so the workflow graph can respect it
+            if state.metadata is None:
+                state.metadata = {}
+            state.metadata["_skip_nodes"] = skip_nodes
+
+        # Resume execution from checkpoint
+        try:
+            result = await workflow.run(state, thread_id=workflow_id, checkpoint_id=checkpoint_id)
+        except WorkflowExecutionError:
+            raise
+        except Exception as e:
+            raise WorkflowExecutionError(
+                f"Failed to resume workflow {workflow_id} from checkpoint {checkpoint_id}: {e}"
+            ) from e
+
+        return {
+            "status": result.status.value if hasattr(result.status, "value") else str(result.status),
+            "workflow_id": workflow_id,
+            "checkpoint_id": checkpoint_id,
+            "current_node": result.current_node if hasattr(result, "current_node") else None,
+        }
+
+    async def _list_checkpoints_for_workflow(self, workflow_id: str) -> list[dict[str, Any]]:
+        """List checkpoints for a workflow from the checkpoint saver."""
+        if self.checkpoint_saver is None:
+            return []
+        try:
+            conn = self.checkpoint_saver.conn if hasattr(self.checkpoint_saver, "conn") else None
+            if conn is None:
+                return []
+            import asyncpg
+            rows = await conn.fetch(
+                """
+                SELECT checkpoint_id, checkpoint->'channel_values' as state_data
+                FROM checkpoints
+                WHERE thread_id = $1
+                ORDER BY checkpoint_id DESC
+                LIMIT 50
+                """,
+                workflow_id,
+            )
+            return [{"checkpoint_id": r["checkpoint_id"], "state": r["state_data"]} for r in rows]
+        except Exception:
+            return []
+
     async def list_active_workflows(
         self,
         tenant_id: str | None = None,

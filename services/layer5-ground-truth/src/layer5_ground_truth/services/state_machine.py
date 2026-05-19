@@ -31,7 +31,7 @@ APPROVED → OPERATIONALIZED (maturity only, status stays APPROVED)
   • triggered when the truth object is referenced in an ROI model or deck
 """
 
-import logging
+import structlog
 import time
 from datetime import UTC, datetime
 from uuid import UUID
@@ -52,7 +52,7 @@ from ..models.truth_object import (
     ValidationEvent,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------

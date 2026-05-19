@@ -21,7 +21,7 @@ import functools
 import hashlib
 import inspect
 import json
-import logging
+import structlog
 from collections.abc import Callable
 from typing import Any, TypeVar
 
@@ -29,7 +29,7 @@ import redis.asyncio as redis
 
 from .config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 T = TypeVar("T")
 
 

@@ -20,7 +20,7 @@ Fail-closed contract:
     diagnostics and cannot create tenant context on their own.
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from uuid import UUID
 
@@ -42,7 +42,7 @@ from value_fabric.shared.identity.policy_registry import (
 
 from ..config import Settings, get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 _AUTH_REQUIRED = "authentication_required"
 
 

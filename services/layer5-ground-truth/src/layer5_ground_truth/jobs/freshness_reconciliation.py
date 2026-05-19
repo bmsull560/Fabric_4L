@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+
+import structlog
 from datetime import UTC, datetime
 from typing import Any
 
@@ -17,7 +19,7 @@ from ..services.freshness_monitor import (
     run_freshness_check_with_leader_lock,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 async def run_once(*, dry_run: bool = False) -> dict[str, Any]:

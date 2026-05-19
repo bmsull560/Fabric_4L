@@ -29,6 +29,7 @@ export interface NarrativeGenerationRequest {
   prompt: string;
   outputType: OutputType;
   industry: string;
+  benchmarkDatasetIds?: string[];
 }
 
 export interface NarrativeGenerationResponse {
@@ -78,7 +79,7 @@ export function useGenerateNarrative() {
   const queryClient = useQueryClient();
 
   return useMutation<NarrativeGenerationResponse, Error, NarrativeGenerationRequest>({
-    mutationFn: async ({ prompt, outputType, industry }) => {
+    mutationFn: async ({ prompt, outputType, industry, benchmarkDatasetIds }) => {
       const workflowType = OUTPUT_TYPE_TO_WORKFLOW[outputType];
 
       const response = await apiPost<l4.components['schemas']['WorkflowCreateResponse'] & { workflow_id?: string }>('l4', '/workflows', {
@@ -91,6 +92,7 @@ export function useGenerateNarrative() {
             sections: outputType === 'narrative'
               ? ['executive_summary', 'current_state', 'proposed_solution', 'roi_analysis', 'implementation', 'next_steps']
               : undefined,
+            benchmark_dataset_ids: benchmarkDatasetIds,
           },
         },
       });

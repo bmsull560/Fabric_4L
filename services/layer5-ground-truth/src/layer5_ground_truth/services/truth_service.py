@@ -5,7 +5,7 @@ Separates database operations from the API layer, keeping routers thin.
 All methods accept an open AsyncSession and do not commit — callers commit.
 """
 
-import logging
+import structlog
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -25,7 +25,7 @@ from ..models.truth_object import (
 )
 from ..services.state_machine import ValidationStateMachine
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 _state_machine = ValidationStateMachine()
 
 

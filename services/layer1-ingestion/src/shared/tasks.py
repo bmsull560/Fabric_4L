@@ -1186,17 +1186,33 @@ def dispatch_outbox_event(self, event_id: str):
                 return
 
             # Deliver to configured sink.
-            # Initial implementation: structured log (no-op delivery).
-            # Future: HTTP adapter, internal service call, etc.
-            logger.info(
-                "Dispatching outbox event",
-                event_id=event_id,
-                event_type=event.event_type,
-                aggregate_type=event.aggregate_type,
-                aggregate_id=event.aggregate_id,
-                tenant_id=str(event.tenant_id),
-                payload=event.payload,
-            )
+            # Primary sink: L2 extraction webhook
+            l2_webhook_url = os.getenv("L2_WEBHOOK_URL", "http://layer2-extraction:8002/v1/webhooks/ingestion-completed")
+            try:
+                import httpx
+                webhook_payload = {
+                    "tenant_id": str(event.tenant_id),
+                    "job_id": event.aggregate_id,
+                    "target_id": event.payload.get("target_id") if event.payload else None,
+                    "status": event.event_type,
+                    "output_url": event.payload.get("output_url") if event.payload else None,
+                    "metadata": event.payload or {},
+                }
+                response = httpx.post(l2_webhook_url, json=webhook_payload, timeout=30.0)
+                response.raise_for_status()
+                logger.info(
+                    "EventOutbox dispatched to L2",
+                    event_id=event_id,
+                    event_type=event.event_type,
+                    l2_status=response.status_code,
+                )
+            except Exception as dispatch_exc:
+                logger.error(
+                    "EventOutbox L2 dispatch failed",
+                    event_id=event_id,
+                    error=str(dispatch_exc),
+                )
+                raise  # Let Celery retry handle this
 
             # Mark dispatched.
             event.status = OutboxStatus.DISPATCHED.value

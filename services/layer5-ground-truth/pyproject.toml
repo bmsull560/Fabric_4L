@@ -166,4 +166,17 @@ pythonpath = ["src", "../..", "../../packages/shared/src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-v --tb=short"
+[tool.coverage.run]
+source = ['src']
+branch = true
+omit = ['*/tests/*', '*/migrations/*']
 
+[tool.coverage.report]
+fail_under = 80
+exclude_lines = [
+    'pragma: no cover',
+    'def __repr__',
+    'raise AssertionError',
+    'raise NotImplementedError',
+    'if __name__ == .__main__.:',
+]

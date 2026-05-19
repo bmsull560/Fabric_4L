@@ -17,7 +17,7 @@ Endpoints:
 All endpoints are organization-scoped for multi-tenancy.
 """
 
-import logging
+import structlog
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -50,7 +50,7 @@ from .schemas import (
     RollbackModelResponse,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/v1", tags=["model-registry"])
 

@@ -92,6 +92,60 @@ jobs:
             semgrep-cypher-warnings.json
           retention-days: ${{ env.SECURITY_ARTIFACT_RETENTION_DAYS }}
 
+  # Broad security SAST with Semgrep (OWASP Top 10, Python, JavaScript)
+  semgrep-security-scan:
+    name: Semgrep Security Scan (OWASP + Language Rules)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep security scan
+        run: |
+          semgrep \
+            --config p/owasp-top-ten \
+            --config p/python \
+            --config p/javascript \
+            --config .semgrep/cypher-dynamic-guard.yml \
+            --error \
+            --json \
+            --output semgrep-security-results.json \
+            || true
+          if [ -s semgrep-security-results.json ]; then
+            echo "Semgrep findings detected — reviewing severity"
+            python3 << 'PYEOF'
+          import json
+          import sys
+          try:
+              with open('semgrep-security-results.json') as f:
+                  data = json.load(f)
+          except (json.JSONDecodeError, FileNotFoundError) as exc:
+              print(f"ERROR: Could not parse semgrep report: {exc}")
+              sys.exit(1)
+          issues = [r for r in data.get('results', []) if r['extra']['metadata'].get('confidence', '').lower() in ['high', 'medium']]
+          if issues:
+              print(f"Found {len(issues)} high/medium confidence issues")
+              for i in issues[:10]:
+                  meta = i['extra']['metadata']
+                  print(f"  - [{meta.get('cwe', 'N/A')}] {i['extra']['message']} at {i['path']}:{i['start']['line']}")
+              sys.exit(1)
+          else:
+              print("No high/medium confidence issues found")
+          PYEOF
+          fi
+
+      - name: Upload Semgrep security results
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: semgrep-security-results-${{ github.sha }}
+          path: semgrep-security-results.json
+          retention-days: ${{ env.SECURITY_ARTIFACT_RETENTION_DAYS }}
+
   # Container vulnerability scanning with Trivy
   trivy-image-scan:
     name: Container Scan (Trivy)
@@ -311,15 +365,18 @@ jobs:
       - name: Run bandit scan
         working-directory: services/${{ matrix.layer }}
         run: |
-          bandit -r src/ -ll -ii --format json --output bandit-report.json || true
-          bandit -r src/ -ll -ii --format screen
-          if [ -s bandit-report.json ]; then
-            echo "Bandit issues found - checking severity"
-            python3 << 'PYEOF'
+          bandit -r src/ -ll -ii --format json --output bandit-report.json --exit-zero
+          bandit -r src/ -ll -ii --format screen --exit-zero
+          echo "Checking bandit report for medium/high severity issues..."
+          python3 << 'PYEOF'
           import json
           import sys
-          with open('bandit-report.json') as f:
-              data = json.load(f)
+          try:
+              with open('bandit-report.json') as f:
+                  data = json.load(f)
+          except (json.JSONDecodeError, FileNotFoundError) as exc:
+              print(f"ERROR: Could not parse bandit-report.json: {exc}")
+              sys.exit(1)
           issues = [r for r in data.get('results', []) if r['issue_severity'] in ['MEDIUM', 'HIGH']]
           if issues:
               print(f"Found {len(issues)} medium/high severity issues")
@@ -329,7 +386,6 @@ jobs:
           else:
               print("No medium/high severity issues found")
           PYEOF
-          fi
 
       - name: Upload bandit report
         if: always()

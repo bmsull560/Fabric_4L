@@ -1,6 +1,6 @@
 """Prometheus metrics collection for Layer 5 Ground Truth."""
 
-import logging
+import structlog
 import time
 from typing import Any
 
@@ -23,7 +23,7 @@ try:
 except ImportError:  # pragma: no cover - shared package not on path in some test envs
     PathNormalizer = None  # type: ignore[assignment]
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class MetricsConfig:

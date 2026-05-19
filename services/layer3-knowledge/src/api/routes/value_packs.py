@@ -36,14 +36,11 @@ from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
 from ...db.query_execution import run_validated_query
-<<<<<<< HEAD
-=======
 from ...utils.cypher_security import (
     ALLOWED_REL_TYPES,
     ALLOWED_TARGET_LABELS,
     validate_cypher_identifier,
 )
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 class _build_fork_paramsResult(TypedDictModel):
@@ -346,7 +343,7 @@ async def _update_relationships(
         if tenant_id:
             params["tenant_id"] = tenant_id
         # strict-scoped-query-execution: helper requires tenant_id on every target node match
-        result = await run_validated_query(tx, check_query, params)
+        result = await tx.run(check_query, params)
         record = await result.single()
         found_ids = set(record["found_ids"]) if record else set()
         missing = set(target_ids) - found_ids
@@ -363,7 +360,7 @@ async def _update_relationships(
     DELETE r
     """
     # strict-scoped-query-execution: relationship delete starts from tenant-scoped ValuePack
-    await run_validated_query(tx, delete_query, pack_id=pack_id, tenant_id=tenant_id)
+    await tx.run(delete_query, pack_id=pack_id, tenant_id=tenant_id)
 
     # Create new relationships with tenant scoping
     create_query = f"""
@@ -373,7 +370,7 @@ async def _update_relationships(
     CREATE (vp)-[:{rel_type}]->(t)
     """
     # strict-scoped-query-execution: relationship creation requires tenant_id on both endpoints
-    await run_validated_query(tx, create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
+    await tx.run(create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
 
 
 async def _get_pack_detail(
@@ -614,7 +611,7 @@ async def create_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            result = await run_validated_query(tx,
+            result = await tx.run(
                 query,
                 pack_id=pack_id,
                 name=request.name,
@@ -779,7 +776,7 @@ async def update_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            await run_validated_query(tx, update_query, **params)
+            await tx.run(update_query, **params)
             await _update_pack_relationships(tx, pack_id, request, tenant_id)
 
         # Re-query for consistent view with relationships
@@ -981,7 +978,7 @@ async def execute_pack(
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
-            await run_validated_query(tx,
+            await tx.run(
                 complete_query,
                 execution_id=execution_id,
                 status=execution_status,

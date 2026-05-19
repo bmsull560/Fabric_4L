@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+
+import structlog
+from value_fabric.shared.tracing.logging_config import configure_structured_logging
+
+configure_structured_logging(service_name="layer6-benchmarks", log_level=os.getenv("LOG_LEVEL", "INFO"))
+logger = structlog.get_logger()
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import Response
@@ -59,7 +64,7 @@ from .schemas import (
 )
 from .startup_logging import emit_startup_metadata, runtime_metadata_from_env
 
-logger = logging.getLogger(__name__)
+# logger already configured via configure_structured_logging() at module top
 
 SERVICE_NAME = "layer6-benchmarks"
 SERVICE_VERSION = "1.0.0"

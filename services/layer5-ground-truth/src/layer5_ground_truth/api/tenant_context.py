@@ -1,11 +1,11 @@
 
 import json
-import logging
+import structlog
 from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 def _as_uuid(raw: str | UUID | None) -> UUID | None:

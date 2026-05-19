@@ -1,4 +1,48 @@
 groups:
+  - name: blackbox_probe_alerts
+    interval: 30s
+    rules:
+      - alert: BlackboxProbeFailed
+        expr: probe_success == 0
+        for: 1m
+        labels:
+          severity: critical
+          owner: platform-ops
+        annotations:
+          summary: "Blackbox probe failed for {{ $labels.instance }}"
+          description: >
+            Synthetic probe to {{ $labels.instance }} has been failing for > 1 minute.
+            Module: {{ $labels.module }}.
+            Check service health and network connectivity.
+          runbook_url: "https://docs.valuefabric.internal/runbooks/operations/blackbox-probe-failed"
+
+      - alert: BlackboxProbeHighLatency
+        expr: probe_duration_seconds > 2
+        for: 5m
+        labels:
+          severity: warning
+          owner: platform-ops
+        annotations:
+          summary: "Blackbox probe latency high for {{ $labels.instance }}"
+          description: >
+            Synthetic probe to {{ $labels.instance }} is taking > 2 seconds.
+            Current latency: {{ $value | printf "%.2f" }}s.
+          runbook_url: "https://docs.valuefabric.internal/runbooks/operations/blackbox-probe-failed"
+
+      - alert: BlackboxTLSCertificateExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 14
+        for: 0m
+        labels:
+          severity: warning
+          owner: platform-ops
+        annotations:
+          summary: "TLS certificate for {{ $labels.instance }} expiring soon"
+          description: >
+            TLS certificate for {{ $labels.instance }} expires in
+            {{ $value | humanizeDuration }}.
+            Renew before expiry to avoid service disruption.
+          runbook_url: "https://docs.valuefabric.internal/runbooks/operations/tls-renewal"
+
   - name: security_websocket_alerts
     interval: 30s
     rules:

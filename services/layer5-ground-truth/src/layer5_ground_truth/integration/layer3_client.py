@@ -11,110 +11,17 @@ Layer 3 API base URL is configured via LAYER3_BASE_URL env var (default: http://
 """
 
 import asyncio
-import json
-import logging
+import structlog
 from typing import Any
 from uuid import UUID
 
 import httpx
-from pydantic import ValidationError
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-
-from metrics.prometheus_metrics import get_metrics
->>>>>>> theirs
 
 from metrics.prometheus_metrics import get_metrics
 
 from ..config import get_settings
 
-logger = logging.getLogger(__name__)
-
-<<<<<<< ours
-<<<<<<< ours
-ERR_LAYER3_HTTP_CLIENT = "L5_LAYER3_HTTP_CLIENT_ERROR"
-ERR_LAYER3_TIMEOUT = "L5_LAYER3_TIMEOUT"
-ERR_LAYER3_CONTRACT_INVALID = "L5_LAYER3_CONTRACT_INVALID"
-ERR_LAYER3_POLICY_DENIED = "L5_LAYER3_POLICY_DENIED"
-ERR_LAYER3_TENANT_MISMATCH = "L5_LAYER3_TENANT_MISMATCH"
-ERR_LAYER3_SERVER_ERROR = "L5_LAYER3_SERVER_ERROR"
-
-
-class Layer3ClientError(RuntimeError):
-    """Base error for Layer 3 sync failures that need explicit API handling."""
-
-    error_code = ERR_LAYER3_HTTP_CLIENT
-    status_code = 502
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        tenant_id: UUID | None = None,
-        request_id: str | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.tenant_id = tenant_id
-        self.request_id = request_id
-
-
-class Layer3PolicyDeniedError(Layer3ClientError):
-    """Raised when Layer 3 rejects a request for auth, policy, or governance reasons."""
-
-    error_code = ERR_LAYER3_POLICY_DENIED
-    status_code = 403
-
-
-class Layer3TenantMismatchError(Layer3ClientError):
-    """Raised when Layer 3 returns data scoped to a different tenant."""
-
-    error_code = ERR_LAYER3_TENANT_MISMATCH
-    status_code = 403
-
-
-class Layer3ContractValidationError(Layer3ClientError):
-    """Raised when Layer 3 returns a malformed or incompatible response contract."""
-
-    error_code = ERR_LAYER3_CONTRACT_INVALID
-    status_code = 502
-
-
-def _log_context(
-    *,
-    tenant_id: UUID | None,
-    truth_object_id: UUID | None = None,
-    request_id: str | None = None,
-    error_code: str,
-    transition: str | None = None,
-    sync_status: str | None = None,
-    attempt: int | None = None,
-    status_code: int | None = None,
-) -> dict[str, Any]:
-    return {
-        "request_id": request_id,
-        "tenant_id": str(tenant_id) if tenant_id is not None else None,
-        "truth_object_id": (
-            str(truth_object_id) if truth_object_id is not None else None
-        ),
-        "error_code": error_code,
-        "transition": transition,
-        "sync_status": sync_status,
-        "attempt": attempt,
-        "upstream_status_code": status_code,
-    }
-=======
-L3_ERR_HTTP_CLIENT = "L3_HTTP_CLIENT_ERROR"
-L3_ERR_TIMEOUT = "L3_TIMEOUT"
-L3_ERR_CONTRACT = "L3_CONTRACT_VALIDATION_FAILED"
->>>>>>> theirs
-=======
-L3_ERR_HTTP_CLIENT = "L3_HTTP_CLIENT_ERROR"
-L3_ERR_TIMEOUT = "L3_TIMEOUT"
-L3_ERR_CONTRACT = "L3_CONTRACT_VALIDATION_FAILED"
->>>>>>> theirs
+logger = structlog.get_logger()
 
 
 # ---------------------------------------------------------------------------
@@ -182,19 +89,12 @@ class Layer3Client:
         """Return True if Layer 3 is reachable."""
         try:
             client = self._get_client()
-            resp = await client.get(f"{self._base_url}/health", headers=self._headers)
+            resp = await client.get(
+                f"{self._base_url}/health", headers=self._headers
+            )
             return resp.status_code == 200
-        except httpx.TimeoutException as exc:
-            logger.debug(
-                "layer3_ping_timeout",
-                extra=_log_context(tenant_id=None, error_code=ERR_LAYER3_TIMEOUT),
-            )
-            return False
-        except httpx.RequestError as exc:
-            logger.debug(
-                "layer3_ping_http_client_error",
-                extra=_log_context(tenant_id=None, error_code=ERR_LAYER3_HTTP_CLIENT),
-            )
+        except Exception as exc:
+            logger.debug("Layer 3 ping failed: %s", exc)
             return False
 
     # ------------------------------------------------------------------
@@ -213,7 +113,6 @@ class Layer3Client:
         value: dict | None = None,
         applies_to: dict | None = None,
         source_count: int = 0,
-        request_id: str | None = None,
     ) -> str | None:
         """
         Create or update a :GroundTruth node in the Layer 3 Knowledge Graph.
@@ -253,7 +152,7 @@ class Layer3Client:
             "merge_keys": ["truth_object_id", "tenant_id"],
         }
 
-        transition = f"{status}->kg_sync"
+        # Retry with exponential backoff for transient failures
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -264,163 +163,76 @@ class Layer3Client:
                     headers=self._headers,
                 )
                 resp.raise_for_status()
-                data = self._parse_node_response(
-                    resp,
-                    tenant_id=tenant_id,
-                    truth_object_id=truth_object_id,
-                    request_id=request_id,
-                )
-                node_id = data["node_id"]
+                data = resp.json()
+                node_id: str = data.get("id") or data.get("node_id", "")
                 logger.info(
                     "Synced TruthObject %s to Layer 3 KG as node %s",
                     truth_object_id,
                     node_id,
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code="L5_LAYER3_SYNC_SUCCESS",
-                        transition=transition,
-                        sync_status="success",
-                    ),
                 )
                 metrics = get_metrics()
                 if metrics:
                     metrics.increment_kg_sync(status="success")
                     metrics.increment_kg_sync_outcome(
-                        sync_status="success", transition=transition
+                        sync_status="success", transition=f"{status}->kg_sync"
                     )
                 logger.info(
                     "kg sync outcome",
                     extra={
-                        **_log_context(
-                            tenant_id=tenant_id,
-                            truth_object_id=truth_object_id,
-                            request_id=request_id,
-                            error_code="L5_LAYER3_SYNC_SUCCESS",
-                            transition=transition,
-                            sync_status="success",
-                        ),
+                        "request_id": None,
+                        "tenant_id": str(tenant_id),
+                        "truth_object_id": str(truth_object_id),
+                        "transition": f"{status}->kg_sync",
+                        "sync_status": "success",
                     },
                 )
                 return node_id
             except httpx.HTTPStatusError as exc:
-                status_code = exc.response.status_code
-                # Authz/policy failures are security events, not operational outages.
-                if status_code in {401, 403, 451}:
-                    self._record_sync_failure("policy_denied", transition)
-                    logger.warning(
-                        "layer3_policy_denied",
-                        extra=_log_context(
-                            tenant_id=tenant_id,
-                            truth_object_id=truth_object_id,
-                            request_id=request_id,
-                            error_code=ERR_LAYER3_POLICY_DENIED,
-                            transition=transition,
-                            sync_status="policy_denied",
-                            attempt=attempt + 1,
-                            status_code=status_code,
-                        ),
-                    )
-                    raise Layer3PolicyDeniedError(
-                        "Layer 3 policy denied Ground Truth sync",
-                        tenant_id=tenant_id,
-                    ) from exc
-
-                # Other 4xx errors indicate a bad sync request, but do not block Layer 5.
-                if 400 <= status_code < 500:
-                    self._record_sync_failure("client_error", transition)
-                    logger.warning(
-                        "layer3_client_error",
-                        extra=_log_context(
-                            tenant_id=tenant_id,
-                            truth_object_id=truth_object_id,
-                            request_id=request_id,
-                            error_code=ERR_LAYER3_HTTP_CLIENT,
-                            transition=transition,
+                # Don't retry 4xx errors (client errors)
+                if 400 <= exc.response.status_code < 500:
+                    metrics = get_metrics()
+                    if metrics:
+                        metrics.increment_kg_sync(status="client_error")
+                        metrics.increment_kg_sync_outcome(
                             sync_status="client_error",
-                            attempt=attempt + 1,
-                            status_code=status_code,
-                        ),
+                            transition=f"{status}->kg_sync",
+                        )
+                    logger.warning(
+                        "Layer 3 sync failed for TruthObject %s: HTTP %d — %s",
+                        truth_object_id,
+                        exc.response.status_code,
+                        exc.response.text[:200],
                     )
                     return None
-
+                # Retry 5xx errors on attempts before max
                 if attempt < max_retries - 1:
-                    wait_time = 2**attempt
+                    wait_time = 2**attempt  # 1s, 2s, 4s
                     logger.warning(
                         "Layer 3 sync attempt %d/%d failed with HTTP %d, retrying in %ds",
                         attempt + 1,
                         max_retries,
-                        status_code,
+                        exc.response.status_code,
                         wait_time,
-                        extra=_log_context(
-                            tenant_id=tenant_id,
-                            truth_object_id=truth_object_id,
-                            request_id=request_id,
-                            error_code=ERR_LAYER3_SERVER_ERROR,
-                            transition=transition,
-                            sync_status="retrying",
-                            attempt=attempt + 1,
-                            status_code=status_code,
-                        ),
                     )
                     await asyncio.sleep(wait_time)
                     continue
-
-                self._record_sync_failure("server_error", transition)
+                # Final attempt failed
                 logger.warning(
                     "Layer 3 sync failed for TruthObject %s after %d attempts: HTTP %d",
                     truth_object_id,
                     max_retries,
-                    status_code,
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_SERVER_ERROR,
-                        transition=transition,
+                    exc.response.status_code,
+                )
+                metrics = get_metrics()
+                if metrics:
+                    metrics.increment_kg_sync(status="server_error")
+                    metrics.increment_kg_sync_outcome(
                         sync_status="server_error",
-                        attempt=attempt + 1,
-                        status_code=status_code,
-                    ),
-                )
-                return None
-            except httpx.TimeoutException as exc:
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt
-                    logger.warning(
-                        "Layer 3 sync attempt %d/%d timed out, retrying in %ds",
-                        attempt + 1,
-                        max_retries,
-                        wait_time,
-                        extra=_log_context(
-                            tenant_id=tenant_id,
-                            truth_object_id=truth_object_id,
-                            request_id=request_id,
-                            error_code=ERR_LAYER3_TIMEOUT,
-                            transition=transition,
-                            sync_status="retrying",
-                            attempt=attempt + 1,
-                        ),
+                        transition=f"{status}->kg_sync",
                     )
-                    await asyncio.sleep(wait_time)
-                    continue
-
-                self._record_sync_failure("timeout", transition)
-                logger.warning(
-                    "layer3_timeout",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_TIMEOUT,
-                        transition=transition,
-                        sync_status="timeout",
-                        attempt=attempt + 1,
-                    ),
-                )
                 return None
-            except httpx.RequestError as exc:
+            except Exception as exc:
+                # Retry on connection errors
                 if attempt < max_retries - 1:
                     wait_time = 2**attempt
                     logger.warning(
@@ -429,163 +241,34 @@ class Layer3Client:
                         max_retries,
                         exc,
                         wait_time,
-                        extra=_log_context(
-                            tenant_id=tenant_id,
-                            truth_object_id=truth_object_id,
-                            request_id=request_id,
-                            error_code=ERR_LAYER3_HTTP_CLIENT,
-                            transition=transition,
-                            sync_status="retrying",
-                            attempt=attempt + 1,
-                        ),
                     )
                     await asyncio.sleep(wait_time)
                     continue
-
-                self._record_sync_failure("exception", transition)
+                # Final attempt failed
                 logger.warning(
-                    "layer3_http_client_error",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_HTTP_CLIENT,
-                        transition=transition,
-                        sync_status="failed",
-                        attempt=attempt + 1,
-                    ),
+                    "Layer 3 sync failed for TruthObject %s after %d attempts: %s",
+                    truth_object_id,
+                    max_retries,
+                    exc,
                 )
+                metrics = get_metrics()
+                if metrics:
+                    metrics.increment_kg_sync(status="exception")
+                    metrics.increment_kg_sync_outcome(
+                        sync_status="exception", transition=f"{status}->kg_sync"
+                    )
                 logger.warning(
                     "kg sync outcome",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_HTTP_CLIENT,
-                        transition=transition,
-                        sync_status="failed",
-                    ),
-                )
-                return None
-            except Layer3TenantMismatchError:
-                self._record_sync_failure("tenant_mismatch", transition)
-                logger.warning(
-                    "kg sync outcome",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_TENANT_MISMATCH,
-                        transition=transition,
-                        sync_status="tenant_mismatch",
-                    ),
-                )
-                raise
-            except Layer3ContractValidationError:
-                self._record_sync_failure("contract_invalid", transition)
-                logger.warning(
-                    "kg sync outcome",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        truth_object_id=truth_object_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_CONTRACT_INVALID,
-                        transition=transition,
-                        sync_status="contract_invalid",
-                    ),
+                    extra={
+                        "request_id": None,
+                        "tenant_id": str(tenant_id),
+                        "truth_object_id": str(truth_object_id),
+                        "transition": f"{status}->kg_sync",
+                        "sync_status": "failed",
+                    },
                 )
                 return None
         return None
-
-    def _record_sync_failure(self, sync_status: str, transition: str) -> None:
-        metrics = get_metrics()
-        if metrics:
-            metrics.increment_kg_sync(status=sync_status)
-            metrics.increment_kg_sync_outcome(
-                sync_status=sync_status,
-                transition=transition,
-            )
-
-    def _parse_node_response(
-        self,
-        resp: httpx.Response,
-        *,
-        tenant_id: UUID,
-        truth_object_id: UUID,
-        request_id: str | None = None,
-    ) -> dict[str, str]:
-        try:
-            data = resp.json()
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.warning(
-                "layer3_contract_invalid_json",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    truth_object_id=truth_object_id,
-                    request_id=request_id,
-                    error_code=ERR_LAYER3_CONTRACT_INVALID,
-                    sync_status="contract_invalid",
-                ),
-            )
-            raise Layer3ContractValidationError(
-                "Layer 3 returned invalid JSON for Ground Truth node sync",
-                tenant_id=tenant_id,
-            ) from exc
-
-        if not isinstance(data, dict):
-            logger.warning(
-                "layer3_contract_invalid_shape",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    truth_object_id=truth_object_id,
-                    request_id=request_id,
-                    error_code=ERR_LAYER3_CONTRACT_INVALID,
-                    sync_status="contract_invalid",
-                ),
-            )
-            raise Layer3ContractValidationError(
-                "Layer 3 node sync response must be a JSON object",
-                tenant_id=tenant_id,
-            )
-
-        node_id = data.get("id") or data.get("node_id")
-        if not isinstance(node_id, str) or not node_id.strip():
-            logger.warning(
-                "layer3_contract_missing_node_id",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    truth_object_id=truth_object_id,
-                    request_id=request_id,
-                    error_code=ERR_LAYER3_CONTRACT_INVALID,
-                    sync_status="contract_invalid",
-                ),
-            )
-            raise Layer3ContractValidationError(
-                "Layer 3 node sync response is missing id/node_id",
-                tenant_id=tenant_id,
-            )
-
-        response_tenant = data.get("tenant_id")
-        properties = data.get("properties")
-        if response_tenant is None and isinstance(properties, dict):
-            response_tenant = properties.get("tenant_id")
-        if response_tenant is not None and str(response_tenant) != str(tenant_id):
-            logger.error(
-                "layer3_tenant_mismatch",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    truth_object_id=truth_object_id,
-                    request_id=request_id,
-                    error_code=ERR_LAYER3_TENANT_MISMATCH,
-                    sync_status="tenant_mismatch",
-                ),
-            )
-            raise Layer3TenantMismatchError(
-                "Layer 3 returned a Ground Truth node for a different tenant",
-                tenant_id=tenant_id,
-            )
-
-        return {"node_id": node_id}
 
     # ------------------------------------------------------------------
     # Link GroundTruth node to existing KG entities
@@ -658,36 +341,18 @@ class Layer3Client:
                     exc.response.status_code,
                 )
                 return False
-            except httpx.TimeoutException as exc:
+            except Exception as exc:
                 if attempt < max_retries - 1:
                     wait_time = 2**attempt
                     await asyncio.sleep(wait_time)
                     continue
                 logger.warning(
-                    "layer3_link_timeout",
-                    extra=_log_context(
-                        tenant_id=None,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_TIMEOUT,
-                        sync_status="timeout",
-                        attempt=attempt + 1,
-                    ),
-                )
-                return False
-            except httpx.RequestError as exc:
-                if attempt < max_retries - 1:
-                    wait_time = 2**attempt
-                    await asyncio.sleep(wait_time)
-                    continue
-                logger.warning(
-                    "layer3_link_http_client_error",
-                    extra=_log_context(
-                        tenant_id=None,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_HTTP_CLIENT,
-                        sync_status="failed",
-                        attempt=attempt + 1,
-                    ),
+                    "Layer 3 link failed after %d attempts: %s -[%s]-> %s: %s",
+                    max_retries,
+                    kg_node_id,
+                    relationship_type,
+                    target_entity_id,
+                    exc,
                 )
                 return False
 
@@ -705,7 +370,6 @@ class Layer3Client:
 
         Returns the entity dict or None if not found / unavailable.
         """
-        request_tenant = str(tenant_id)
         try:
             client = self._get_client()
             resp = await client.get(
@@ -716,162 +380,11 @@ class Layer3Client:
             if resp.status_code == 404:
                 return None
             resp.raise_for_status()
-<<<<<<< ours
-<<<<<<< ours
-            data = resp.json()
-            if not isinstance(data, dict):
-                logger.warning(
-                    "layer3_entity_context_contract_invalid",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_CONTRACT_INVALID,
-                        sync_status="contract_invalid",
-                    ),
-                )
-                return None
-            response_tenant = data.get("tenant_id")
-            if response_tenant is not None and str(response_tenant) != str(tenant_id):
-                logger.error(
-                    "layer3_entity_context_tenant_mismatch",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_TENANT_MISMATCH,
-                        sync_status="tenant_mismatch",
-                    ),
-                )
-                raise Layer3TenantMismatchError(
-                    "Layer 3 returned entity context for a different tenant",
-                    tenant_id=tenant_id,
-                )
-            return data
-        except httpx.HTTPStatusError as exc:
-            logger.debug(
-                "layer3_entity_context_http_status",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    error_code=(
-                        ERR_LAYER3_SERVER_ERROR
-                        if exc.response.status_code >= 500
-                        else ERR_LAYER3_HTTP_CLIENT
-                    ),
-                    status_code=exc.response.status_code,
-                ),
-            )
-            return None
-        except httpx.TimeoutException as exc:
-            logger.debug(
-                "layer3_entity_context_timeout",
-                extra=_log_context(tenant_id=tenant_id, error_code=ERR_LAYER3_TIMEOUT),
-            )
-            return None
-        except httpx.RequestError as exc:
-            logger.debug(
-                "layer3_entity_context_http_client_error",
-                extra=_log_context(
-                    tenant_id=tenant_id, error_code=ERR_LAYER3_HTTP_CLIENT
-                ),
-=======
-=======
->>>>>>> theirs
-            payload = resp.json()
-            if not isinstance(payload, dict):
-                raise ValidationError.from_exception_data(
-                    "Layer3EntityContext",
-                    [
-                        {
-                            "type": "dict_type",
-                            "loc": ("response",),
-                            "msg": "Layer 3 entity context must be an object",
-                            "input": payload,
-                        }
-                    ],
-                )
-            response_tenant = payload.get("tenant_id")
-            if response_tenant is not None and str(response_tenant) != request_tenant:
-                logger.warning(
-                    "Layer 3 entity context tenant mismatch",
-                    extra={
-                        "error_code": L3_ERR_CONTRACT,
-                        "request_id": None,
-                        "tenant_id": request_tenant,
-                        "entity_id": entity_id,
-                        "response_tenant_id": str(response_tenant),
-                    },
-                )
-                return None
-            return payload
-        except httpx.TimeoutException as exc:
-            logger.warning(
-                "Layer 3 entity context fetch timed out",
-                extra={
-                    "error_code": L3_ERR_TIMEOUT,
-                    "request_id": None,
-                    "tenant_id": request_tenant,
-                    "entity_id": entity_id,
-                },
-            )
-            logger.debug("Layer 3 timeout details for entity %s: %s", entity_id, exc)
-            return None
-        except httpx.HTTPError as exc:
-            logger.warning(
-                "Layer 3 entity context HTTP client failure",
-                extra={
-                    "error_code": L3_ERR_HTTP_CLIENT,
-                    "request_id": None,
-                    "tenant_id": request_tenant,
-                    "entity_id": entity_id,
-                },
-<<<<<<< ours
->>>>>>> theirs
-            )
-            logger.debug("Layer 3 HTTP client failure for entity %s: %s", entity_id, exc)
-            return None
-        except ValidationError as exc:
-            logger.warning(
-                "Layer 3 entity context contract validation failed",
-                extra={
-                    "error_code": L3_ERR_CONTRACT,
-                    "request_id": None,
-                    "tenant_id": request_tenant,
-                    "entity_id": entity_id,
-                },
-            )
-            logger.debug("Layer 3 contract validation details for entity %s: %s", entity_id, exc)
-            return None
+            return resp.json()
         except Exception as exc:
-            logger.debug("Layer 3 entity context fetch failed for %s: %s", entity_id, exc)
-            return None
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.warning(
-                "layer3_entity_context_contract_invalid_json",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    request_id=request_id,
-                    error_code=ERR_LAYER3_CONTRACT_INVALID,
-                    sync_status="contract_invalid",
-                ),
+            logger.debug(
+                "Layer 3 entity context fetch failed for %s: %s", entity_id, exc
             )
-=======
-            )
->>>>>>> theirs
-            logger.debug("Layer 3 HTTP client failure for entity %s: %s", entity_id, exc)
-            return None
-        except ValidationError as exc:
-            logger.warning(
-                "Layer 3 entity context contract validation failed",
-                extra={
-                    "error_code": L3_ERR_CONTRACT,
-                    "request_id": None,
-                    "tenant_id": request_tenant,
-                    "entity_id": entity_id,
-                },
-            )
-            logger.debug("Layer 3 contract validation details for entity %s: %s", entity_id, exc)
-            return None
-        except Exception as exc:
-            logger.debug("Layer 3 entity context fetch failed for %s: %s", entity_id, exc)
             return None
 
     # ------------------------------------------------------------------

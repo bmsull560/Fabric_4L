@@ -13,6 +13,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import time
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -248,11 +249,13 @@ def _decode_signed_state(state: str) -> dict[str, Any]:
         UUID(tenant_id)
     except (TypeError, ValueError) as exc:
         raise IntegrationValidationError("OAuth state tenant mapping is invalid") from exc
-    if not isinstance(return_to, str) or not return_to.startswith("/"):
+    if not isinstance(return_to, str) or not re.match(r"^/[a-zA-Z0-9_/-]*$", return_to):
         raise IntegrationValidationError("OAuth state return_to must be an application-relative path")
-    if not isinstance(oauth_base_url, str) or not oauth_base_url.startswith("https://"):
-        if not (isinstance(oauth_base_url, str) and oauth_base_url.startswith("http://localhost")):
-            raise IntegrationValidationError("OAuth state provider base URL is invalid")
+    allowed_oauth_base_urls = {"https://login.salesforce.com", "https://test.salesforce.com"}
+    if oauth_base_url not in allowed_oauth_base_urls and not (
+        isinstance(oauth_base_url, str) and oauth_base_url.startswith("http://localhost")
+    ):
+        raise IntegrationValidationError("OAuth state provider base URL is not allowed")
     issued_at = int(payload.get("iat", 0))
     if issued_at <= 0 or time.time() - issued_at > _OAUTH_STATE_TTL_SECONDS:
         raise IntegrationValidationError("OAuth state has expired")

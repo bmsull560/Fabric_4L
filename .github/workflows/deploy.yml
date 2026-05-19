@@ -102,16 +102,27 @@ jobs:
 
       - name: Download and verify SBOMs
         run: |
-          # This would download SBOMs from artifact storage
-          # and verify they match the deployed images
-          echo "SBOM verification placeholder - integrate with artifact store"
+          # TODO: Integrate with artifact store (e.g. GitHub Packages OCI, S3, Artifactory)
+          # to download and verify CycloneDX SBOMs against deployed image digests.
+          # Required env: SBOM_ARTIFACT_URL or similar.
+          if [ -z "${SBOM_ARTIFACT_URL:-}" ]; then
+            echo "::warning::SBOM_ARTIFACT_URL is not configured. Skipping SBOM verification."
+            echo "Set SBOM_ARTIFACT_URL in GitHub Environment secrets to enable SBOM verification."
+            exit 0
+          fi
+          echo "SBOM verification not yet implemented. Configure SBOM_ARTIFACT_URL to enable."
 
       - name: Check environment health
         if: env.ENVIRONMENT != 'dev'
         run: |
-          # Check if previous deployment is healthy before proceeding
-          echo "Environment health check placeholder"
-          # curl -fsS "https://api.${{ env.ENVIRONMENT }}.value-fabric.com/health"
+          HEALTH_URL="${{ vars.HEALTH_CHECK_URL }}"
+          if [ -z "$HEALTH_URL" ]; then
+            echo "::warning::HEALTH_CHECK_URL is not configured for environment ${{ env.ENVIRONMENT }}."
+            echo "Set HEALTH_CHECK_URL in GitHub Environment variables to enable pre-deploy health checks."
+            exit 0
+          fi
+          echo "Checking environment health at $HEALTH_URL ..."
+          curl -fsS --retry 3 --retry-delay 5 "$HEALTH_URL" || (echo "Environment health check failed" && exit 1)
 
       - name: Block unverified production promotion
         if: env.ENVIRONMENT == 'production'
@@ -148,14 +159,23 @@ jobs:
 
       - name: Configure kubeconfig
         run: |
-          # This would typically use a cloud provider action to configure access
-          # For example:
-          # - aws eks update-kubeconfig --region us-east-1 --name value-fabric-${{ env.ENVIRONMENT }}
-          # - gcloud container clusters get-credentials value-fabric --zone us-central1
-          # - az aks get-credentials --resource-group value-fabric --name value-fabric
-          
-          echo "Kubeconfig configuration placeholder"
-          echo "Environment: ${{ env.ENVIRONMENT }}"
+          # Configure kubeconfig using cloud provider CLI or a stored kubeconfig secret.
+          # Supported: AWS EKS, GCP GKE, Azure AKS, or raw KUBECONFIG secret.
+          if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+            mkdir -p "$HOME/.kube"
+            echo "${{ secrets.KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
+            chmod 600 "$HOME/.kube/config"
+            echo "Kubeconfig configured from secret"
+          elif [ -n "${{ vars.KUBE_CLUSTER_NAME }}" ] && command -v aws >/dev/null 2>&1; then
+            aws eks update-kubeconfig --region "${{ vars.AWS_REGION }}" --name "${{ vars.KUBE_CLUSTER_NAME }}"
+          elif [ -n "${{ vars.KUBE_CLUSTER_NAME }}" ] && command -v gcloud >/dev/null 2>&1; then
+            gcloud container clusters get-credentials "${{ vars.KUBE_CLUSTER_NAME }}" --zone "${{ vars.GCP_ZONE }}"
+          elif [ -n "${{ vars.KUBE_CLUSTER_NAME }}" ] && command -v az >/dev/null 2>&1; then
+            az aks get-credentials --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --name "${{ vars.KUBE_CLUSTER_NAME }}"
+          else
+            echo "::error::No kubeconfig configured. Set KUBECONFIG secret or cloud provider vars (KUBE_CLUSTER_NAME, AWS_REGION, etc.)."
+            exit 1
+          fi
 
       - name: Resolve deploy namespace
         run: |
@@ -318,10 +338,16 @@ jobs:
       - name: Configure kubeconfig
         run: |
           # Mirror the same kubeconfig setup as the deploy job.
-          # Replace this placeholder with the cloud-provider-specific action
-          # (e.g. aws eks update-kubeconfig, gcloud container clusters get-credentials).
-          echo "Kubeconfig configuration placeholder"
-          echo "Environment: ${{ env.ENVIRONMENT }}"
+          if [ -n "${{ secrets.KUBECONFIG }}" ]; then
+            mkdir -p "$HOME/.kube"
+            echo "${{ secrets.KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
+            chmod 600 "$HOME/.kube/config"
+          elif command -v kubectl >/dev/null 2>&1 && [ -f "$HOME/.kube/config" ]; then
+            echo "Using existing kubeconfig"
+          else
+            echo "::error::No kubeconfig available. Set KUBECONFIG secret or configure cloud provider CLI."
+            exit 1
+          fi
 
       - name: Alert on failure
         run: |

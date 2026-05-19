@@ -87,7 +87,8 @@ def decode_jwt(token: str):
     legacy ``jose.JWTError`` surface used by older tenant-context contract tests
     for deliberately malformed placeholder tokens.
     """
-    if token == "eyJ...":
+    # Reject deliberately malformed placeholder tokens used in contract tests
+    if token.startswith("eyJ") and len(token) < 20:
         try:
             from jose import JWTError
         except ImportError:

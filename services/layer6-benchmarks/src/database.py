@@ -1,6 +1,6 @@
 """Neo4j driver management for Layer 6 Benchmark Service."""
 
-from __future__ import annotationsimport asyncioimport loggingfrom neo4j import AsyncDriver, AsyncGraphDatabasefrom neo4j.exceptions import AuthError, ConfigurationError, ServiceUnavailable, TransientErrorfrom .config import Settings, get_settingslogger = logging.getLogger(__name__)
+from __future__ import annotationsimport asyncioimport loggingfrom neo4j import AsyncDriver, AsyncGraphDatabasefrom neo4j.exceptions import AuthError, ConfigurationError, ServiceUnavailable, TransientErrorfrom .config import Settings, get_settingslogger = structlog.get_logger()
 
 _driver: AsyncDriver | None = None
 

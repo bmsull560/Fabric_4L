@@ -1,219 +1,28 @@
-# CODEOWNERS - Mandatory Reviewers by Path
-# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# Fabric_4L CODEOWNERS
+# Critical paths require explicit review from maintainers.
 
-# Global fallback - all changes require at least one maintainer
-* @value-fabric/maintainers
+# Security-critical files
+.github/workflows/security-*.yml       @bmsull560
+.github/workflows/deploy.yml            @bmsull560
+k8s/external-secrets/                   @bmsull560
+k8s/policy/                             @bmsull560
+shared/security/                        @bmsull560
+SECURITY.md                             @bmsull560
 
-# ============================================
-# SECURITY-CRITICAL PATHS
-# Require security team + lead maintainer review
-# ============================================
+# Infrastructure and deployment
+k8s/                                    @bmsull560
+infra/                                  @bmsull560
+Makefile                                @bmsull560
+docker-compose*.yml                     @bmsull560
+bunnyshell.yaml                         @bmsull560
 
-# Authentication and authorization
-value_fabric/shared/identity/ @value-fabric/security-leads @value-fabric/maintainers
-contracts/tool-manifests/ @value-fabric/security-leads @value-fabric/maintainers
-**/*auth* @value-fabric/security-leads @value-fabric/backend-leads
-**/*rbac* @value-fabric/security-leads @value-fabric/backend-leads
+# Contracts and APIs (source of truth)
+contracts/openapi/                      @bmsull560
+contracts/json-schema/                  @bmsull560
 
-# Security configurations
-SECURITY.md @value-fabric/security-leads @value-fabric/ciso
-THREAT_MODEL.md @value-fabric/security-leads @value-fabric/ciso
-COMPLIANCE.md @value-fabric/compliance-team @value-fabric/security-leads
-.github/workflows/security-gates.yml @value-fabric/security-leads @value-fabric/sre-leads
+# CI/CD configuration
+.github/workflows/                      @bmsull560
+scripts/ci/                             @bmsull560
 
-# Secrets management
-k8s/external-secrets/ @value-fabric/security-leads @value-fabric/sre-leads
-k8s/infisical/ @value-fabric/security-leads @value-fabric/sre-leads
-**/*secret* @value-fabric/security-leads @value-fabric/sre-leads
-
-# ============================================
-# INFRASTRUCTURE PATHS
-# Require SRE team + infrastructure lead
-# ============================================
-
-# Kubernetes manifests
-k8s/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
-infra/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
-
-# CI/CD pipelines
-.github/workflows/ @value-fabric/sre-leads @value-fabric/maintainers
-.github/workflows/deploy*.yml @value-fabric/sre-leads @value-fabric/maintainers
-.github/workflows/build*.yml @value-fabric/sre-leads @value-fabric/backend-leads
-
-# Validation scripts - require security review for any changes
-.github/scripts/ @value-fabric/security-leads @value-fabric/sre-leads
-
-# Container configurations
-**/Dockerfile @value-fabric/sre-leads @value-fabric/backend-leads
-.dockerignore @value-fabric/sre-leads
-
-# Monitoring and alerting
-monitoring/ @value-fabric/sre-leads @value-fabric/backend-leads
-
-# ============================================
-# BACKEND SERVICE PATHS
-# Require backend leads + domain experts
-# ============================================
-
-# Layer 1: Ingestion
-services/layer1-ingestion/ @value-fabric/backend-leads @value-fabric/data-engineering
-
-# Layer 2: Extraction  
-services/layer2-extraction/ @value-fabric/backend-leads @value-fabric/ai-ml-leads
-
-# Layer 3: Knowledge Graph
-services/layer3-knowledge/ @value-fabric/backend-leads @value-fabric/graph-specialists
-
-# Layer 4: Agents
-services/layer4-agents/ @value-fabric/backend-leads @value-fabric/ai-ml-leads
-
-# Layer 5: Ground Truth
-services/layer5-ground-truth/ @value-fabric/backend-leads @value-fabric/data-engineering
-
-# Layer 6: Benchmarks
-services/layer6-benchmarks/ @value-fabric/backend-leads @value-fabric/qa-leads
-
-# Shared libraries
-value_fabric/shared/ @value-fabric/backend-leads @value-fabric/architects
-
-# ============================================
-# FRONTEND PATHS
-# Require frontend leads + UX review
-# ============================================
-
-apps/web/ @value-fabric/frontend-leads @value-fabric/ux-designers
-
-# ============================================
-# API CONTRACTS
-# Require architects + backend leads
-# ============================================
-
-contracts/ @value-fabric/architects @value-fabric/backend-leads
-contracts/openapi/ @value-fabric/architects @value-fabric/backend-leads
-contracts/jsonschema/ @value-fabric/architects @value-fabric/backend-leads
-
-# ============================================
-# DOMAIN PACKS
-# Require domain experts + backend leads
-# ============================================
-
-packs/ @value-fabric/backend-leads @value-fabric/domain-experts
-packs/life-sciences/ @value-fabric/domain-experts-life-sciences
-packs/manufacturing/ @value-fabric/domain-experts-manufacturing
-packs/software/ @value-fabric/domain-experts-software
-
-# ============================================
-# TEST PATHS
-# Require QA leads + relevant domain
-# ============================================
-
-tests/ @value-fabric/qa-leads @value-fabric/backend-leads
-tests/security/ @value-fabric/security-leads @value-fabric/qa-leads
-tests/e2e/ @value-fabric/qa-leads @value-fabric/frontend-leads
-tests/contract/ @value-fabric/backend-leads @value-fabric/architects
-
-# ============================================
-# DOCUMENTATION
-# Require tech writers + domain leads
-# ============================================
-
-docs/ @value-fabric/tech-writers @value-fabric/maintainers
-docs/operations/ @value-fabric/sre-leads @value-fabric/tech-writers
-docs/compliance/ @value-fabric/compliance-team @value-fabric/security-leads
-docs/explanations/adr/ @value-fabric/architects @value-fabric/maintainers
-
-# ============================================
-# AGENT DEFINITIONS
-# Require agent team + architects
-# ============================================
-
-services/layer4-agents/src/agents/ @value-fabric/agent-team @value-fabric/architects
-services/layer4-agents/skills/ @value-fabric/agent-team @value-fabric/architects
-services/layer4-agents/workflows/ @value-fabric/agent-team @value-fabric/architects
-
-# ============================================
-# DATABASE MIGRATIONS
-# Require DBAs + backend leads
-# ============================================
-
-**/migrations/ @value-fabric/backend-leads @value-fabric/dba-team
-**/*alembic* @value-fabric/backend-leads @value-fabric/dba-team
-
-# ============================================
-# ROOT CONFIGURATION
-# Require maintainers + relevant leads
-# ============================================
-
-# Build and dependency files
-Makefile @value-fabric/sre-leads @value-fabric/maintainers
-pyproject.toml @value-fabric/backend-leads @value-fabric/sre-leads
-package.json @value-fabric/frontend-leads @value-fabric/sre-leads
-pnpm-lock.yaml @value-fabric/frontend-leads @value-fabric/sre-leads
-poetry.lock @value-fabric/backend-leads @value-fabric/sre-leads
-uv.lock @value-fabric/backend-leads @value-fabric/sre-leads
-
-# Version and release
-VERSIONING.md @value-fabric/maintainers @value-fabric/sre-leads
-CHANGELOG.md @value-fabric/maintainers @value-fabric/tech-writers
-
-# Root security files
-SECURITY.md @value-fabric/security-leads @value-fabric/ciso
-THREAT_MODEL.md @value-fabric/security-leads @value-fabric/ciso
-COMPLIANCE.md @value-fabric/compliance-team @value-fabric/security-leads
-RUNBOOK.md @value-fabric/sre-leads @value-fabric/maintainers
-AGENTS.md @value-fabric/maintainers @value-fabric/architects
-
-# ============================================
-# EXCEPTIONS - Single reviewer allowed
-# ============================================
-
-# Automated generated files (no human review needed)
-**/*.gen.ts @value-fabric/bot-auto-merge
-**/*.gen.py @value-fabric/bot-auto-merge
-**/openapi.json @value-fabric/bot-auto-merge
-
-# Documentation typo fixes (low risk)
-*.md @value-fabric/tech-writers
-
-# ============================================
-# DEPENDENCY UPDATE OWNERSHIP (H-07 Audit Fix)
-# Ensures every package manifest and Dockerfile has an update owner
-# Maps to dependabot.yml reviewer assignments
-# ============================================
-
-# Apps
-/apps/web/ @value-fabric/frontend-leads @value-fabric/sre-leads
-
-# SDK
-/sdk/python/ @value-fabric/backend-leads @value-fabric/architects
-
-# Services
-/services/api/ @value-fabric/backend-leads
-/services/layer1-ingestion/ @value-fabric/data-engineering @value-fabric/backend-leads
-/services/layer2-extraction/ @value-fabric/ai-ml-leads @value-fabric/backend-leads
-/services/layer3-knowledge/ @value-fabric/graph-specialists @value-fabric/backend-leads
-/services/layer4-agents/ @value-fabric/ai-ml-leads @value-fabric/agent-team
-/services/layer5-ground-truth/ @value-fabric/data-engineering @value-fabric/qa-leads
-/services/layer6-benchmarks/ @value-fabric/qa-leads @value-fabric/backend-leads
-
-# Shared packages
-/packages/config/ @value-fabric/sre-leads @value-fabric/maintainers
-/packages/eslint-plugin-fabric-contracts/ @value-fabric/sre-leads @value-fabric/maintainers
-/packages/platform-contract/ @value-fabric/architects @value-fabric/sre-leads
-/packages/shared/ @value-fabric/backend-leads @value-fabric/architects
-
-# Package manifests and Dockerfiles (dependency update ownership)
-**/package.json @value-fabric/sre-leads
-**/pyproject.toml @value-fabric/sre-leads
-**/requirements.txt @value-fabric/sre-leads
-**/Dockerfile @value-fabric/sre-leads @value-fabric/backend-leads
-**/Dockerfile.* @value-fabric/sre-leads @value-fabric/backend-leads
-
-# Test dependencies
-/tests/ @value-fabric/backend-leads @value-fabric/qa-leads
-
-# Devcontainer
-/.devcontainer/ @value-fabric/sre-leads @value-fabric/maintainers
-
-# Dependabot and dependency configuration
-/.github/dependabot.yml @value-fabric/sre-leads @value-fabric/security-leads
+# Default fallback
+*                                       @bmsull560

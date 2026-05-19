@@ -45,6 +45,11 @@ export interface NarrativeStore {
   inputMethod: InputMethod;
   setInputMethod: (method: InputMethod) => void;
 
+  /** Selected benchmark dataset IDs for evidence backing */
+  benchmarkDatasetIds: string[];
+  setBenchmarkDatasetIds: (ids: string[]) => void;
+  toggleBenchmarkDataset: (id: string) => void;
+
   /** Reset all fields to defaults */
   reset: () => void;
 }
@@ -54,6 +59,7 @@ const DEFAULTS = {
   outputType: 'narrative' as OutputType,
   industry: DEFAULT_INDUSTRY,
   inputMethod: 'text' as InputMethod,
+  benchmarkDatasetIds: [] as string[],
 };
 
 export const useNarrativeStore = create<NarrativeStore>((set) => ({
@@ -62,5 +68,11 @@ export const useNarrativeStore = create<NarrativeStore>((set) => ({
   setOutputType: (type) => set({ outputType: type }),
   setIndustry: (industry) => set({ industry }),
   setInputMethod: (method) => set({ inputMethod: method }),
+  setBenchmarkDatasetIds: (ids) => set({ benchmarkDatasetIds: ids }),
+  toggleBenchmarkDataset: (id) => set((state) => ({
+    benchmarkDatasetIds: state.benchmarkDatasetIds.includes(id)
+      ? state.benchmarkDatasetIds.filter((bid) => bid !== id)
+      : [...state.benchmarkDatasetIds, id],
+  })),
   reset: () => set(DEFAULTS),
 }));

@@ -40,6 +40,7 @@ from .routes.company_knowledge import router as company_knowledge_router
 from .routes.crm_webhooks import router as crm_webhooks_router
 from .routes.enrichment import router as enrichment_router
 from .routes.frontend_compat import router as frontend_compat_router
+from .routes.account_reviews import router as account_reviews_router
 from .routes.governance_workflows import router as governance_workflows_router
 from .routes.ground_truth_proxy import router as ground_truth_proxy_router
 from .routes.harness import router as harness_router
@@ -61,6 +62,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(audit_router.router, prefix="/v1", tags=["audit"])
     app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
     app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
+    app.include_router(account_reviews_router)
     app.include_router(signals.router, prefix="/v1", tags=["signals"])
     app.include_router(tasks.router, prefix="/v1", tags=["tasks"])
     app.include_router(comments.router, prefix="/v1", tags=["comments"])

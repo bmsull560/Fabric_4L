@@ -1,6 +1,6 @@
 """Configuration for Layer 5 Ground Truth service."""
 
-import logging
+import structlog
 from functools import lru_cache
 from typing import ClassVar
 from urllib.parse import urlparse
@@ -61,7 +61,7 @@ def _has_default_database_credentials(raw_url: str) -> bool:
     return username in {"postgres", "valuefabric", "value_fabric"} or password in {"", "postgres", "password"}
 
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class Settings(BaseSettings):
