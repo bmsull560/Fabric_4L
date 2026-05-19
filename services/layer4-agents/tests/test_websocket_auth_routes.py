@@ -161,6 +161,7 @@ async def test_route_rejects_missing_token(caplog):
     await workflow_websocket(websocket=ws, workflow_id="wf-1")
     ws.close.assert_awaited_once_with(code=1008, reason="Authentication failed")
     assert "AUTH_TOKEN_MISSING" in caplog.text
+    assert "trace_id" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -208,6 +209,7 @@ async def test_route_accepts_canonical_header_and_connects_with_correct_claims(
     )
 
     ws = _make_websocket("base64url.bearer.authorization, valid.jwt.token")
+    ws.headers["x-request-id"] = "req-123"
     mock_manager = MagicMock()
     mock_manager.connect = AsyncMock()
     mock_manager.disconnect = AsyncMock()
@@ -229,6 +231,8 @@ async def test_route_accepts_canonical_header_and_connects_with_correct_claims(
     call_kwargs = mock_manager.connect.call_args
     assert call_kwargs.kwargs["tenant_id"] == "tenant-abc"
     assert call_kwargs.kwargs["user_id"] == "user-xyz"
+    assert call_kwargs.kwargs["trace_id"] == "req-123"
+    assert call_kwargs.kwargs["correlation_id"] == "req-123"
     mock_manager.disconnect.assert_awaited_once()
 
 
