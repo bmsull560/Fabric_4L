@@ -43,6 +43,11 @@ from metrics import MetricsMiddleware, get_metrics, initialize_metrics
 
 from ..config import get_settings
 from ..database import close_db, init_db
+from ..integration.layer3_client import (
+    Layer3ClientError,
+    Layer3PolicyDeniedError,
+    Layer3TenantMismatchError,
+)
 from .router import router
 from .schemas import HealthResponse
 
@@ -93,7 +98,9 @@ async def _get_database_migration_heads() -> tuple[str, ...]:
     async with engine.connect() as conn:
         return tuple(
             await conn.run_sync(
-                lambda sync_conn: MigrationContext.configure(sync_conn).get_current_heads()
+                lambda sync_conn: MigrationContext.configure(
+                    sync_conn
+                ).get_current_heads()
             )
         )
 
@@ -109,7 +116,9 @@ async def _check_schema_migration_alignment() -> dict[str, object]:
     script = ScriptDirectory.from_config(alembic_cfg)
 
     if len(expected_heads) != 1:
-        logger.error("Layer 5 readiness requires a single Alembic head, found %s", expected_heads)
+        logger.error(
+            "Layer 5 readiness requires a single Alembic head, found %s", expected_heads
+        )
         return {
             "ready": False,
             "schema": "inconsistent",
@@ -123,7 +132,9 @@ async def _check_schema_migration_alignment() -> dict[str, object]:
     try:
         current_heads = await _get_database_migration_heads()
     except Exception as exc:
-        logger.warning("Readiness schema probe could not determine Alembic revision: %s", exc)
+        logger.warning(
+            "Readiness schema probe could not determine Alembic revision: %s", exc
+        )
         return {
             "ready": False,
             "schema": "inconsistent",
@@ -217,6 +228,72 @@ async def _check_schema_migration_alignment() -> dict[str, object]:
         "expected_heads": [expected_head],
     }
 
+
+def _request_correlation_context(
+    request: Request, *, error_code: str
+) -> dict[str, object | None]:
+    request_id = getattr(request.state, "trace_id", None) or request.headers.get(
+        "X-Request-ID"
+    )
+    context = getattr(request.state, "governance_context", None)
+    tenant_id = getattr(context, "tenant_id", None)
+    return {
+        "error_code": error_code,
+        "request_id": str(request_id) if request_id else None,
+        "correlation_id": str(request_id) if request_id else None,
+        "tenant_id": (
+            str(tenant_id)
+            if tenant_id is not None
+            else request.headers.get("X-Tenant-ID")
+        ),
+        "path": request.url.path,
+        "method": request.method,
+    }
+
+
+def _layer3_error_response(request: Request, exc: Layer3ClientError) -> JSONResponse:
+    request_id = getattr(request.state, "trace_id", None) or request.headers.get(
+        "X-Request-ID"
+    )
+    context = getattr(request.state, "governance_context", None)
+    tenant_id = getattr(context, "tenant_id", None) or getattr(exc, "tenant_id", None)
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers={"X-Request-ID": str(request_id)} if request_id else None,
+        content={
+            "code": exc.error_code,
+            "message": str(exc),
+            "trace_id": str(request_id) if request_id else None,
+            "details": {
+                "service": "layer3-knowledge",
+                "tenant_id": str(tenant_id) if tenant_id is not None else None,
+            },
+        },
+    )
+
+
+async def layer3_security_exception_handler(
+    request: Request, exc: Layer3ClientError
+) -> JSONResponse:
+    """Return explicit security/policy responses without collapsing them into 500s."""
+    logger.warning(
+        "layer3_security_policy_error",
+        extra=_request_correlation_context(request, error_code=exc.error_code),
+    )
+    return _layer3_error_response(request, exc)
+
+
+async def layer3_operational_exception_handler(
+    request: Request, exc: Layer3ClientError
+) -> JSONResponse:
+    """Return explicit operational dependency errors if a caller elects to raise them."""
+    logger.warning(
+        "layer3_operational_error",
+        extra=_request_correlation_context(request, error_code=exc.error_code),
+    )
+    return _layer3_error_response(request, exc)
+
+
 # ---------------------------------------------------------------------------
 # Lifespan (startup / shutdown)
 # ---------------------------------------------------------------------------
@@ -248,10 +325,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if vault_addr and is_vault_healthy is not None:
             logger.info("L5: Checking Vault connectivity at %s", vault_addr)
             health_result = is_vault_healthy(vault_addr)
-            ok = await health_result if inspect.isawaitable(health_result) else health_result
+            ok = (
+                await health_result
+                if inspect.isawaitable(health_result)
+                else health_result
+            )
             if not ok:
-                logger.error("L5: Vault unreachable — cannot start in production without secrets backend")
-                raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
+                logger.error(
+                    "L5: Vault unreachable — cannot start in production without secrets backend"
+                )
+                raise RuntimeError(
+                    "Vault unreachable — cannot start in production without secrets backend"
+                )
             logger.info("L5: Vault connectivity verified")
 
     # Initialize Redis client for rate limiting (async context)
@@ -271,7 +356,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         if redis_required or settings.is_production_like:
             logger.error(f"L5: Redis rate limiting required but unavailable: {e}")
-            raise RuntimeError(f"Redis rate limiting required in {env} but unavailable: {e}")
+            raise RuntimeError(
+                f"Redis rate limiting required in {env} but unavailable: {e}"
+            )
 
         logger.warning(f"L5: Redis rate limiter disabled - {e}")
         app.state.redis_rate_limiter = None
@@ -361,6 +448,14 @@ def create_app() -> FastAPI:
         ],
     )
 
+    app.add_exception_handler(
+        Layer3PolicyDeniedError, layer3_security_exception_handler
+    )
+    app.add_exception_handler(
+        Layer3TenantMismatchError, layer3_security_exception_handler
+    )
+    app.add_exception_handler(Layer3ClientError, layer3_operational_exception_handler)
+
     install_metrics_middleware(
         app,
         metrics=initialize_metrics(),
@@ -424,6 +519,7 @@ def create_app() -> FastAPI:
     # Mount the Model Registry router
     try:
         from .model_registry_routes import router as model_registry_router
+
         app.include_router(model_registry_router)
     except ImportError:
         logging.getLogger(__name__).warning("Model Registry router not available")
@@ -435,12 +531,16 @@ def create_app() -> FastAPI:
         # Verify internal access for metrics (blocks public ingress access).
         # Delegated to shared.observability so all layers stay aligned.
         if not verify_metrics_access(request):
-            raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
+            raise HTTPException(
+                status_code=403, detail="Metrics endpoint requires internal access"
+            )
 
         metrics = get_metrics()
         if not metrics:
             return Response(
-                content="# Metrics collection is disabled", status_code=503, media_type="text/plain"
+                content="# Metrics collection is disabled",
+                status_code=503,
+                media_type="text/plain",
             )
         try:
             return Response(
@@ -454,7 +554,12 @@ def create_app() -> FastAPI:
             )
 
     # Public health check (matches middleware PUBLIC_PATH_ALLOWLIST)
-    @app.get("/health", response_model=HealthResponse, tags=["system"], include_in_schema=False)
+    @app.get(
+        "/health",
+        response_model=HealthResponse,
+        tags=["system"],
+        include_in_schema=False,
+    )
     async def public_health() -> HealthResponse:
         return HealthResponse(
             status="ok",
@@ -517,37 +622,44 @@ def create_app() -> FastAPI:
 
 # JWT Secret validation denylist — known weak/placeholder values (exact match,
 # case-insensitive).  Defined at module level so the set is constructed once.
-JWT_SECRET_DENYLIST: frozenset[str] = frozenset({
-    "changeme-in-production",
-    "changeme",
-    "password",
-    "password123",
-    "admin",
-    "secret",
-    "jwt-secret",
-    "default",
-    "test",
-    "",
-    "null",
-    "none",
-    "123456",
-    "12345678",
-    "qwerty",
-    "abc123",
-})
+JWT_SECRET_DENYLIST: frozenset[str] = frozenset(
+    {
+        "changeme-in-production",
+        "changeme",
+        "password",
+        "password123",
+        "admin",
+        "secret",
+        "jwt-secret",
+        "default",
+        "test",
+        "",
+        "null",
+        "none",
+        "123456",
+        "12345678",
+        "qwerty",
+        "abc123",
+    }
+)
 
 # Weak prefix patterns — catches padded placeholders like "changemexxxxxxxx"
 # that pass the length check but are still predictable.  Defined at module
 # level so the tuple is constructed once, not on every validation call.
 _JWT_WEAK_PREFIXES: tuple[str, ...] = (
-    "changeme", "password", "secret", "admin", "test", "default",
-    "123456", "qwerty", "abc123",
+    "changeme",
+    "password",
+    "secret",
+    "admin",
+    "test",
+    "default",
+    "123456",
+    "qwerty",
+    "abc123",
 )
 
 # Compiled pattern for common weak-secret stems followed by digits.
-_JWT_WEAK_PATTERN = re.compile(
-    r'^(changeme|password|secret|admin|test|default)[0-9]*$'
-)
+_JWT_WEAK_PATTERN = re.compile(r"^(changeme|password|secret|admin|test|default)[0-9]*$")
 
 
 def _validate_jwt_secret(secret: str) -> None:
@@ -562,7 +674,9 @@ def _validate_jwt_secret(secret: str) -> None:
     - Does not match a weak stem+digits pattern
     """
     if not secret:
-        raise RuntimeError("JWT_SECRET is empty or not set. Set a secure JWT_SECRET environment variable.")
+        raise RuntimeError(
+            "JWT_SECRET is empty or not set. Set a secure JWT_SECRET environment variable."
+        )
 
     if len(secret) < 32:
         raise RuntimeError(

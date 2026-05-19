@@ -7,10 +7,16 @@ import httpx
 import pytest
 
 from layer5_ground_truth.integration.layer3_client import Layer3Client
-from layer5_ground_truth.models.truth_object import MaturityLevel, TruthObject, TruthStatus
-from layer5_ground_truth.services.state_machine import InvalidTransitionError, ValidationStateMachine
+from layer5_ground_truth.models.truth_object import (
+    MaturityLevel,
+    TruthObject,
+    TruthStatus,
+)
+from layer5_ground_truth.services.state_machine import (
+    InvalidTransitionError,
+    ValidationStateMachine,
+)
 from tests.conftest import TEST_ORG_ID
-
 
 REQUIRED_LOG_KEYS = (
     "request_id",
@@ -30,14 +36,15 @@ def test_layer5_structured_log_keys_present_in_runtime_paths() -> None:
     for rel_path in runtime_files:
         content = (Path(__file__).resolve().parents[1] / rel_path).read_text()
         for key in REQUIRED_LOG_KEYS:
-            assert f'"{key}"' in content, f"missing structured log key {key} in {rel_path}"
+            assert (
+                f'"{key}"' in content
+            ), f"missing structured log key {key} in {rel_path}"
 
 
 def test_layer5_observability_metric_schema_is_defined() -> None:
     """Guardrail: schema metric names/labels remain stable unless explicitly reviewed."""
     content = (
-        Path(__file__).resolve().parents[1]
-        / "src/metrics/prometheus_metrics.py"
+        Path(__file__).resolve().parents[1] / "src/metrics/prometheus_metrics.py"
     ).read_text()
     assert "validation_latency_seconds" in content
     assert "validation_transition_failures_total" in content
@@ -63,7 +70,9 @@ def _make_truth(status: TruthStatus) -> TruthObject:
 
 
 @pytest.mark.asyncio
-async def test_invalid_transition_emits_failure_metric_and_structured_warning(caplog, monkeypatch) -> None:
+async def test_invalid_transition_emits_failure_metric_and_structured_warning(
+    caplog, monkeypatch
+) -> None:
     sm = ValidationStateMachine()
     truth = _make_truth(TruthStatus.SUPPORTED)
 
@@ -71,11 +80,15 @@ async def test_invalid_transition_emits_failure_metric_and_structured_warning(ca
         def __init__(self) -> None:
             self.calls: list[tuple[str, str]] = []
 
-        def increment_validation_transition_failure(self, transition: str, reason: str) -> None:
+        def increment_validation_transition_failure(
+            self, transition: str, reason: str
+        ) -> None:
             self.calls.append((transition, reason))
 
     metrics = DummyMetrics()
-    monkeypatch.setattr("layer5_ground_truth.services.state_machine.get_metrics", lambda: metrics)
+    monkeypatch.setattr(
+        "layer5_ground_truth.services.state_machine.get_metrics", lambda: metrics
+    )
 
     with pytest.raises(InvalidTransitionError):
         sm._assert_transition(truth, TruthStatus.SUPPORTED)  # noqa: SLF001
@@ -95,6 +108,7 @@ async def test_invalid_transition_emits_failure_metric_and_structured_warning(ca
 async def test_validation_latency_metric_emitted_on_success(monkeypatch) -> None:
     sm = ValidationStateMachine()
     truth = _make_truth(TruthStatus.EXTRACTED)
+
     class FakeResult:
         rowcount = 1
 
@@ -120,7 +134,9 @@ async def test_validation_latency_metric_emitted_on_success(monkeypatch) -> None
             self.latency_calls.append(transition)
 
     metrics = DummyMetrics()
-    monkeypatch.setattr("layer5_ground_truth.services.state_machine.get_metrics", lambda: metrics)
+    monkeypatch.setattr(
+        "layer5_ground_truth.services.state_machine.get_metrics", lambda: metrics
+    )
     await sm._apply_transition(  # noqa: SLF001
         FakeDB(),
         truth,
@@ -133,7 +149,9 @@ async def test_validation_latency_metric_emitted_on_success(monkeypatch) -> None
 
 
 @pytest.mark.asyncio
-async def test_sync_partial_failure_emits_retry_and_audit_safe_events(monkeypatch, caplog) -> None:
+async def test_sync_partial_failure_emits_retry_and_audit_safe_events(
+    monkeypatch, caplog
+) -> None:
     class DummyMetrics:
         def __init__(self) -> None:
             self.sync_outcomes: list[tuple[str, str]] = []
@@ -145,13 +163,20 @@ async def test_sync_partial_failure_emits_retry_and_audit_safe_events(monkeypatc
             self.sync_outcomes.append((sync_status, transition))
 
     metrics = DummyMetrics()
-    monkeypatch.setattr("layer5_ground_truth.integration.layer3_client.get_metrics", lambda: metrics)
-    monkeypatch.setattr("layer5_ground_truth.integration.layer3_client.asyncio.sleep", AsyncMock())
+    monkeypatch.setattr(
+        "layer5_ground_truth.integration.layer3_client.get_metrics", lambda: metrics
+    )
+    monkeypatch.setattr(
+        "layer5_ground_truth.integration.layer3_client.asyncio.sleep", AsyncMock()
+    )
 
     async def post_side_effect(*_args, **_kwargs):
         post_side_effect.count += 1
         if post_side_effect.count < 3:
-            raise RuntimeError("transient network issue")
+            raise httpx.ConnectError(
+                "transient network issue",
+                request=httpx.Request("POST", "http://layer3.test/api/v1/nodes"),
+            )
         raise httpx.ConnectError("final failure")
 
     post_side_effect.count = 0
@@ -159,9 +184,14 @@ async def test_sync_partial_failure_emits_retry_and_audit_safe_events(monkeypatc
     mock_client.post.side_effect = post_side_effect
     async_client_cm = AsyncMock()
     async_client_cm.__aenter__.return_value = mock_client
-    monkeypatch.setattr("layer5_ground_truth.integration.layer3_client.httpx.AsyncClient", lambda **kwargs: async_client_cm)
+    monkeypatch.setattr(
+        "layer5_ground_truth.integration.layer3_client.httpx.AsyncClient",
+        lambda **kwargs: async_client_cm,
+    )
 
     client = Layer3Client()
+    client._settings.layer3_sync_enabled = True
+    client._client = mock_client
     result = await client.sync_truth_object(
         truth_object_id=uuid.uuid4(),
         tenant_id=TEST_ORG_ID,
