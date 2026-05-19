@@ -11,11 +11,16 @@ from db.query_execution import TenantQueryValidationError, run_validated_query
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-HIGH_RISK_ROOTS = (
+HIGH_RISK_RUNTIME_ROOTS = (
     REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" / "routes",
     REPO_ROOT / "services" / "layer3-knowledge" / "src" / "services",
     REPO_ROOT / "services" / "layer3-knowledge" / "src" / "agents",
     REPO_ROOT / "services" / "layer3-knowledge" / "src" / "analytics",
+)
+ALLOWED_SYSTEM_SCOPED_PATH_FRAGMENTS = (
+    "services/layer3-knowledge/src/schema/",
+    "services/layer3-knowledge/src/migrations/",
+    "services/layer3-knowledge/src/bootstrap/",
 )
 
 
@@ -35,19 +40,22 @@ class _DirectSessionRunVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def test_high_risk_runtime_modules_do_not_call_session_run_directly() -> None:
-    """Runtime modules must enter Neo4j through approved execution wrappers."""
+def test_high_risk_runtime_modules_use_approved_execution_boundary() -> None:
+    """High-risk runtime modules must use approved wrappers (system scopes allowlisted)."""
 
     violations: list[str] = []
-    for root in HIGH_RISK_ROOTS:
+    for root in HIGH_RISK_RUNTIME_ROOTS:
         for path in root.rglob("*.py"):
+            rel = path.relative_to(REPO_ROOT).as_posix()
+            if any(rel.startswith(fragment) for fragment in ALLOWED_SYSTEM_SCOPED_PATH_FRAGMENTS):
+                continue
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             visitor = _DirectSessionRunVisitor()
             visitor.visit(tree)
             for line, col in visitor.violations:
-                violations.append(f"{path.relative_to(REPO_ROOT)}:{line}:{col}")
+                violations.append(f"{rel}:{line}:{col}")
 
-    assert not violations, "direct session.run calls found:\n" + "\n".join(violations)
+    assert not violations, "direct session.run calls found in high-risk runtime modules:\n" + "\n".join(violations)
 
 
 @pytest.mark.asyncio
