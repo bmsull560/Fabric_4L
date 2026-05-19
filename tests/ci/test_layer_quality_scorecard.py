@@ -19,7 +19,7 @@ def _load_module():
     return module
 
 
-def test_compute_scopes_shared_docs_contracts_and_tests_to_the_matching_layer(tmp_path: Path, monkeypatch) -> None:
+def test_compute_scopes_support_files_to_matching_layer(tmp_path: Path, monkeypatch) -> None:
     module = _load_module()
     monkeypatch.setattr(module, "ROOT", tmp_path)
 

@@ -10,7 +10,7 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -226,7 +226,7 @@ class EvidenceDocs:
         return "\n".join(lines)
 
     @staticmethod
-    def _summary(results: list[EvidenceResult]) -> dict[str, object]:
+    def _summary(results: list[EvidenceResult]) -> dict[str, Any]:
         return {
             "passed": sum(r.status == "passed" for r in results),
             "failed": sum(r.status == "failed" for r in results),

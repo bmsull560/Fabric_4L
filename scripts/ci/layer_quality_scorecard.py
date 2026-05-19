@@ -50,10 +50,10 @@ CHECKS = [
     CheckDef("security_negative_paths", "Security/auth negative-path coverage", ["unauthorized", "forbidden", "auth", "401", "403"]),
     CheckDef("docs_contract_freshness", "Docs-contract freshness status", ["contract", "openapi", "schema", "docs"]),
 ]
+LOWERED_CHECK_PATTERNS = {check.key: [pattern.lower() for pattern in check.patterns] for check in CHECKS}
 
 
 def _find_any_text(paths: list[str], snippets: list[str]) -> bool:
-    lowered = [s.lower() for s in snippets]
     for rel in paths:
         p = ROOT / rel
         if not p.exists():
@@ -65,13 +65,12 @@ def _find_any_text(paths: list[str], snippets: list[str]) -> bool:
                 text = f.read_text(encoding="utf-8", errors="ignore").lower()
             except Exception:
                 continue
-            if any(s in text for s in lowered):
+            if any(s in text for s in snippets):
                 return True
     return False
 
 
 def _find_scoped_support_text(scope_tokens: list[str], snippets: list[str]) -> bool:
-    lowered = [s.lower() for s in snippets]
     scoped_tokens = [token.lower() for token in scope_tokens]
 
     for root_name in SCOPED_SUPPORT_ROOTS:
@@ -88,7 +87,7 @@ def _find_scoped_support_text(scope_tokens: list[str], snippets: list[str]) -> b
                 text = file_path.read_text(encoding="utf-8", errors="ignore").lower()
             except Exception:
                 continue
-            if any(snippet in text for snippet in lowered):
+            if any(snippet in text for snippet in snippets):
                 return True
     return False
 
@@ -100,7 +99,8 @@ def compute(policy: dict) -> dict:
         checks = {}
         passed = 0
         for chk in CHECKS:
-            ok = _find_any_text(paths, chk.patterns) or _find_scoped_support_text(scope["scope_tokens"], chk.patterns)
+            lowered_patterns = LOWERED_CHECK_PATTERNS[chk.key]
+            ok = _find_any_text(paths, lowered_patterns) or _find_scoped_support_text(scope["scope_tokens"], lowered_patterns)
             checks[chk.key] = {"description": chk.description, "present": ok}
             passed += int(ok)
         score = round((passed / len(CHECKS)) * 100, 1)
