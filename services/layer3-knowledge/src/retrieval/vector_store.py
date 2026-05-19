@@ -374,7 +374,7 @@ class Neo4jVectorStore:
 
         try:
             async with driver.session(database=self.settings.neo4j_database) as session:
-                result = await session.run(scoped.cypher, scoped.params)
+                result = await run_scoped_query(session, scoped)
                 existing = {r["name"]: r["state"] async for r in result}
 
             for etype in VECTOR_ENTITY_TYPES:
