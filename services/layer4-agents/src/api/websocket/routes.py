@@ -29,8 +29,22 @@ logger = logging.getLogger(__name__)
 websocket_router = APIRouter()
 
 
-async def _verify_workflow_ownership(workflow_id: str, tenant_id: str) -> bool:
-    """Verify that a workflow belongs to the given tenant.
+def _auth_close_reason(code: str, detail: str) -> str:
+    """Build a compact, structured auth close reason for code 1008."""
+    return f"auth_error:{code}:{detail}"
+
+
+async def _load_workflow_metadata(workflow_id: str) -> dict | None:
+    """Load workflow metadata using the same source as HTTP workflow status routes."""
+    # Local import — avoids circular dependency at module load time.
+    from ...api.routes.workflows import get_executor
+
+    executor = get_executor()
+    return await executor.get_workflow_status(workflow_id)
+
+
+async def _verify_workflow_ownership(workflow_id: str, tenant_id: str, user_id: str) -> tuple[bool, str]:
+    """Verify that a workflow belongs to the given authenticated principal.
 
     Queries the executor's in-memory + persisted metadata. Returns True when
     the workflow exists and its tenant matches. Returns False when the workflow
@@ -42,34 +56,29 @@ async def _verify_workflow_ownership(workflow_id: str, tenant_id: str) -> bool:
         tenant_id: Tenant extracted from the authenticated JWT.
 
     Returns:
-        True if the workflow is owned by the tenant, False otherwise.
+        Tuple[allowed, auth_code]
     """
     try:
-        # Local import — avoids circular dependency at module load time.
-        from ...api.routes.workflows import get_executor
-
-        executor = get_executor()
-        status = await executor.get_workflow_status(workflow_id)
+        status = await _load_workflow_metadata(workflow_id)
         if not status:
-            logger.warning(
-                "Workflow ownership check: workflow not found",
-                extra={"workflow_id": workflow_id, "tenant_id": tenant_id},
-            )
-            return False
+            return False, "AUTH_WORKFLOW_NOT_FOUND"
         workflow_tenant = status.get("tenant_id")
         if not workflow_tenant:
-            logger.warning(
-                "Workflow ownership check: workflow has no tenant_id",
-                extra={"workflow_id": workflow_id},
-            )
-            return False
-        return str(workflow_tenant) == str(tenant_id)
+            return False, "AUTH_WORKFLOW_TENANT_MISSING"
+        if str(workflow_tenant) != str(tenant_id):
+            return False, "AUTH_WORKFLOW_TENANT_MISMATCH"
+
+        workflow_user = status.get("user_id")
+        if workflow_user and str(workflow_user) != str(user_id):
+            return False, "AUTH_WORKFLOW_USER_MISMATCH"
+
+        return True, "AUTHZ_OK"
     except Exception:
         logger.exception(
             "Workflow ownership check raised unexpectedly — denying connection",
             extra={"workflow_id": workflow_id},
         )
-        return False
+        return False, "AUTH_WORKFLOW_LOOKUP_ERROR"
 
 
 @websocket_router.websocket("/ws/workflows/{workflow_id}")
@@ -150,10 +159,16 @@ async def workflow_websocket(
     _log["tenant_id"] = tenant_id
 
     # SEC-L4-WS-001: Verify the requested workflow belongs to the authenticated tenant.
-    owned = await _verify_workflow_ownership(workflow_id, tenant_id)
+    owned, auth_code = await _verify_workflow_ownership(workflow_id, tenant_id, user_id)
     if not owned:
-        logger.warning("WebSocket workflow ownership check failed", extra=_log)
-        await websocket.close(code=1008, reason="Workflow not found or access denied")
+        logger.warning(
+            "WebSocket workflow ownership check failed",
+            extra={**_log, "auth_code": auth_code, "trace_id": correlation_id},
+        )
+        await websocket.close(
+            code=1008,
+            reason=_auth_close_reason(auth_code, "workflow access denied"),
+        )
         return
 
     logger.info("WebSocket workflow session started", extra=_log)

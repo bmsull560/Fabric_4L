@@ -179,7 +179,7 @@ async def test_route_accepts_canonical_header(monkeypatch):
     ws.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
 
     with patch("value_fabric.layer4.api.websocket.routes.get_ws_manager", return_value=mock_manager), \
-         patch("value_fabric.layer4.api.websocket.routes._verify_workflow_ownership", return_value=True):
+         patch("value_fabric.layer4.api.websocket.routes._verify_workflow_ownership", return_value=(True, "AUTHZ_OK")):
         await workflow_websocket(websocket=ws, workflow_id="wf-2", token=None)
 
     mock_manager.connect.assert_awaited_once()
@@ -211,7 +211,7 @@ async def test_route_legacy_query_param_emits_deprecation_and_connects(monkeypat
             return_value=mock_manager,
         ), patch(
             "value_fabric.layer4.api.websocket.routes._verify_workflow_ownership",
-            return_value=True,
+            return_value=(True, "AUTHZ_OK"),
         ):
             await workflow_websocket(websocket=ws, workflow_id="wf-3", token="legacy.jwt")
 
@@ -238,3 +238,47 @@ async def test_route_does_not_leak_token_in_logs(caplog):
     assert "super.secret.jwt" not in caplog.text
     assert "AUTH_TOKEN_DECODE_FAILED" in caplog.text
     ws.close.assert_awaited_once_with(code=1008, reason="Authentication failed")
+
+
+@pytest.mark.asyncio
+async def test_route_rejects_cross_tenant_workflow_subscription(monkeypatch):
+    monkeypatch.setattr("value_fabric.layer4.api.websocket.auth._JWT_AVAILABLE", True)
+    monkeypatch.setattr(
+        "value_fabric.layer4.api.websocket.auth.decode_jwt",
+        lambda _t: {"tenant_id": "tenant-a", "sub": "user-a"},
+    )
+    ws = _make_websocket("base64url.bearer.authorization, valid.jwt.token", request_id="req-1")
+    mock_manager = MagicMock()
+    mock_manager.connect = AsyncMock()
+    mock_manager.disconnect = AsyncMock()
+
+    with patch("value_fabric.layer4.api.websocket.routes.get_ws_manager", return_value=mock_manager), \
+         patch("value_fabric.layer4.api.websocket.routes._load_workflow_metadata", return_value={"tenant_id": "tenant-b", "user_id": "user-b"}):
+        await workflow_websocket(websocket=ws, workflow_id="wf-tenant-b", token=None)
+
+    mock_manager.connect.assert_not_awaited()
+    ws.close.assert_awaited_once()
+    assert ws.close.await_args.kwargs["code"] == 1008
+    assert "AUTH_WORKFLOW_TENANT_MISMATCH" in ws.close.await_args.kwargs["reason"]
+
+
+@pytest.mark.asyncio
+async def test_route_rejects_missing_workflow_fail_closed(monkeypatch):
+    monkeypatch.setattr("value_fabric.layer4.api.websocket.auth._JWT_AVAILABLE", True)
+    monkeypatch.setattr(
+        "value_fabric.layer4.api.websocket.auth.decode_jwt",
+        lambda _t: {"tenant_id": "tenant-a", "sub": "user-a"},
+    )
+    ws = _make_websocket("base64url.bearer.authorization, valid.jwt.token", request_id="req-2")
+    mock_manager = MagicMock()
+    mock_manager.connect = AsyncMock()
+    mock_manager.disconnect = AsyncMock()
+
+    with patch("value_fabric.layer4.api.websocket.routes.get_ws_manager", return_value=mock_manager), \
+         patch("value_fabric.layer4.api.websocket.routes._load_workflow_metadata", return_value=None):
+        await workflow_websocket(websocket=ws, workflow_id="wf-missing", token=None)
+
+    mock_manager.connect.assert_not_awaited()
+    ws.close.assert_awaited_once()
+    assert ws.close.await_args.kwargs["code"] == 1008
+    assert "AUTH_WORKFLOW_NOT_FOUND" in ws.close.await_args.kwargs["reason"]
