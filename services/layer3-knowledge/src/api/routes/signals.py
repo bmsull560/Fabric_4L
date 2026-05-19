@@ -22,7 +22,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from value_fabric.shared.identity import RequestContext, require_authenticated
 
-from ...api.dependencies_tenant import Neo4jTenantSession, get_neo4j_with_tenant
+from ...api.dependencies_tenant_secured import Neo4jTenantSession, get_neo4j_with_tenant
 
 logger = logging.getLogger(__name__)
 

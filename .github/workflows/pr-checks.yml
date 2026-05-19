@@ -386,6 +386,10 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: python scripts/ci/check_layer3_query_entrypoints.py services/layer3-knowledge/src --report-json artifacts/layer3-query-entrypoint-matrix.json
 
+      - name: Run Layer 3 tenant dependency import gate
+        working-directory: ${{ github.workspace }}
+        run: python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
+
       - name: Upload Layer 3 Cypher scope audit
         if: always()
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
