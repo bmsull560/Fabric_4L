@@ -59,6 +59,8 @@ get_neo4j_secured = cast(
     _wrap_async(get_neo4j_secured, "get_neo4j_secured"),
 )
 
+_warn_deprecated("Neo4jTenantSession (import-time)")
+
 __all__ = [
     "Neo4jTenantSession",
     "create_neo4j_tenant_session",
