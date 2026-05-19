@@ -7,10 +7,15 @@ automatic reconnection support and event replay.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from value_fabric.shared.observability.trace_context import resolve_trace_context
 
 from .manager import get_ws_manager
+
+if TYPE_CHECKING:
+    from ...engine.executor import OrchestrationController
 
 try:
     from value_fabric.shared.identity.jwt import decode_jwt
@@ -87,6 +92,49 @@ def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
         raise WebSocketAuthError(error_code)
 
 
+async def _verify_workflow_ownership(workflow_id: str, tenant_id: str) -> bool:
+    """Verify that a workflow belongs to the given tenant.
+
+    Queries the executor's in-memory + persisted metadata. Returns True when
+    the workflow exists and its tenant matches. Returns False when the workflow
+    is not found (treat as denied to avoid enumeration). Raises on unexpected
+    errors so the caller can fail closed.
+
+    Args:
+        workflow_id: Workflow instance ID from the WebSocket path.
+        tenant_id: Tenant extracted from the authenticated JWT.
+
+    Returns:
+        True if the workflow is owned by the tenant, False otherwise.
+    """
+    try:
+        from ...api.routes.workflows import get_executor  # local import — avoids circular dep at module load
+        executor = get_executor()
+        status = await executor.get_workflow_status(workflow_id)
+        if not status:
+            # Workflow not found — deny to prevent enumeration
+            logger.warning(
+                "Workflow ownership check: workflow not found",
+                extra={"workflow_id": workflow_id, "tenant_id": tenant_id},
+            )
+            return False
+        workflow_tenant = status.get("tenant_id")
+        if not workflow_tenant:
+            # No tenant recorded — deny; this should not happen in production
+            logger.warning(
+                "Workflow ownership check: workflow has no tenant_id",
+                extra={"workflow_id": workflow_id},
+            )
+            return False
+        return str(workflow_tenant) == str(tenant_id)
+    except Exception:
+        logger.exception(
+            "Workflow ownership check raised unexpectedly — denying connection",
+            extra={"workflow_id": workflow_id},
+        )
+        return False
+
+
 @websocket_router.websocket("/ws/workflows/{workflow_id}")
 async def workflow_websocket(
     websocket: WebSocket,
@@ -139,11 +187,19 @@ async def workflow_websocket(
         workflow_id: Workflow instance ID to subscribe to
         last_event_id: Optional last seen event for replay on reconnect
     """
+    # OBS-L4-004: Resolve correlation ID at the HTTP upgrade stage.
+    # Inherits X-Request-ID / X-Correlation-ID from the client if present,
+    # otherwise generates a new one. All subsequent log calls in this session
+    # include this ID so WebSocket events are traceable end-to-end.
+    trace_ctx = resolve_trace_context(websocket.headers)
+    correlation_id = trace_ctx.trace_id
+    _log = {"workflow_id": workflow_id, "correlation_id": correlation_id}
+
     # P1-13 FIX: Reject JWT in query parameter (prevents logging by proxies)
     if token:
         logger.warning(
             "WebSocket authentication failed: AUTH_QUERY_TOKEN_FORBIDDEN",
-            extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", "workflow_id": workflow_id},
+            extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", **_log},
         )
         await websocket.close(
             code=1008,
@@ -170,12 +226,23 @@ async def workflow_websocket(
         tenant_id, user_id = _extract_tenant_from_token(ws_token)
     except WebSocketAuthError as e:
         logger.warning(
-            "Authentication failed: %s",
-            e.code,
-            extra={"auth_code": e.code, "workflow_id": workflow_id},
+            "WebSocket authentication failed",
+            extra={"auth_code": e.code, **_log},
         )
         await websocket.close(code=1008, reason="Authentication failed")
         return
+
+    # Bind tenant context to the log dict now that we have it
+    _log["tenant_id"] = tenant_id
+
+    # SEC-L4-WS-001: Verify the requested workflow belongs to the authenticated tenant.
+    owned = await _verify_workflow_ownership(workflow_id, tenant_id)
+    if not owned:
+        logger.warning("WebSocket workflow ownership check failed", extra=_log)
+        await websocket.close(code=1008, reason="Workflow not found or access denied")
+        return
+
+    logger.info("WebSocket workflow session started", extra=_log)
 
     try:
         # Accept connection and send replay if reconnecting (with tenant context)
@@ -192,14 +259,17 @@ async def workflow_websocket(
                 await ws_manager.handle_client_message(websocket, workflow_id, message)
 
             except WebSocketDisconnect:
-                logger.info(f"Client disconnected from workflow {workflow_id}")
+                logger.info("WebSocket client disconnected", extra=_log)
                 break
             except Exception as e:
-                logger.warning(f"Error handling client message for workflow {workflow_id}: {e}")
+                logger.warning(
+                    "WebSocket client message error",
+                    extra={**_log, "error": str(e)},
+                )
                 # Continue rather than break to keep connection alive
 
     except Exception as e:
-        logger.error(f"WebSocket error for workflow {workflow_id}: {e}")
+        logger.error("WebSocket session error", extra={**_log, "error": str(e)})
     finally:
-        # Cleanup connection
+        logger.info("WebSocket workflow session ended", extra=_log)
         await ws_manager.disconnect(websocket, workflow_id)
