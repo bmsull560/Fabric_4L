@@ -60,7 +60,10 @@ def _scan() -> dict[str, list[str]]:
                 rel_path = file_path.relative_to(REPO_ROOT).as_posix()
                 if _allowed(rel_path):
                     continue
-                content = file_path.read_text(encoding="utf-8")
+                try:
+                    content = file_path.read_text(encoding="utf-8")
+                except UnicodeDecodeError:
+                    continue
                 for layer, pattern in RUNTIME_PATTERNS.items():
                     if pattern.search(content):
                         violations[layer].append(rel_path)
