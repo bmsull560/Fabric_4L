@@ -531,10 +531,6 @@ def test_l5_fail_closed_without_context() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    reason="Layer 6 main.py requires live infra env vars (NEO4J_URI, LAYER3_API_KEY, etc.) to import",
-)
 async def test_l6_ctx_source_of_truth(monkeypatch: pytest.MonkeyPatch) -> None:
     from value_fabric.layer6.api import main as l6_main
 

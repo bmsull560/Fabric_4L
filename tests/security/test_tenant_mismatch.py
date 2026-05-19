@@ -29,12 +29,13 @@ try:
     from fastapi import FastAPI, HTTPException, Request
     from fastapi.testclient import TestClient
     _FASTAPI_AVAILABLE = True
-except ImportError:
-    _FASTAPI_AVAILABLE = False
-    TestClient = None  # type: ignore[assignment,misc]
+except ImportError as exc:
+    raise AssertionError(
+        "fastapi is required for mandatory security regression tests. "
+        "Install test dependencies before running make gate-mandatory-security-regression."
+    ) from exc
 
 pytestmark = [
-    pytest.mark.skipif(not _FASTAPI_AVAILABLE, reason="fastapi not installed"),
     pytest.mark.security,
     pytest.mark.tenant_mismatch,
     pytest.mark.tenant_boundary,
@@ -55,7 +56,10 @@ _TEST_AUDIENCE = os.environ["JWT_AUDIENCE"]
 def _mismatch_app():
     """Minimal FastAPI app backed by real GovernanceMiddleware."""
     if not _FASTAPI_AVAILABLE:
-        pytest.skip("fastapi not installed")
+        raise AssertionError(
+            "fastapi is required for mandatory security regression tests. "
+            "Install test dependencies before running make gate-mandatory-security-regression."
+        )
 
     from value_fabric.shared.identity.middleware import GovernanceMiddleware
 

@@ -67,7 +67,10 @@ os.environ.setdefault("ALLOW_LEGACY_TEST_TENANT_IDS", "true")
 def _adversarial_app():
     """Minimal FastAPI app with real GovernanceMiddleware for adversarial tests."""
     if not _FASTAPI_AVAILABLE:
-        pytest.skip("fastapi not installed")
+        raise AssertionError(
+            "fastapi is required for mandatory security regression tests. "
+            "Install test dependencies before running make gate-mandatory-security-regression."
+        )
 
     from value_fabric.shared.identity.middleware import GovernanceMiddleware
 
@@ -102,7 +105,10 @@ def client(_adversarial_app):
     Layer 1 ingestion app and does not expose /api/v1/entities.
     """
     if not _FASTAPI_AVAILABLE:
-        pytest.skip("fastapi not installed")
+        raise AssertionError(
+            "fastapi is required for mandatory security regression tests. "
+            "Install test dependencies before running make gate-mandatory-security-regression."
+        )
     return TestClient(_adversarial_app)
 
 
