@@ -12,6 +12,7 @@ from functools import lru_cache
 from typing import Any
 
 from neo4j import AsyncDriver
+from ..db.query_execution import run_validated_query
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ class EvidenceSearchService:
                     "limit": limit,
                 }
 
-            result = await session.run(query, params)
+            result = await run_validated_query(session, query, params)
             records = await result.data()
 
             # Transform to match schema and add reasoning
@@ -215,7 +216,7 @@ class EvidenceSearchService:
                     "limit": limit,
                 }
 
-            result = await session.run(query, params)
+            result = await run_validated_query(session, query, params)
             records = await result.data()
 
             return [
@@ -258,7 +259,7 @@ class EvidenceSearchService:
             } as evidence
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {"evidence_id": evidence_id, "tenant_id": tenant_id},
             )
@@ -298,7 +299,7 @@ class EvidenceSearchService:
             RETURN e.id as evidence_id
             """
 
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "evidence_id": evidence_id,
