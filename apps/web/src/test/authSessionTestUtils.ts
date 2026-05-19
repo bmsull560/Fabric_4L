@@ -5,7 +5,7 @@
  * httpOnly cookie (backend-managed) and only non-secret metadata is kept
  * in sessionStorage.  These utilities reflect that model.
  */
-import { sessionService, type LocationLike, type SessionMeta, type StorageLike, type OidcFlowState, type SessionSnapshot } from '@/services/sessionService';
+import { sessionService, type LocationLike, type SessionMeta, type StorageLike, type OidcFlowState } from '@/services/sessionService';
 import type { UserInfo } from '@/schemas/auth';
 
 export class MemoryStorage implements StorageLike {
@@ -93,32 +93,6 @@ export const authFixtures = {
     return {
       user,
       tenantId: overrides.tenantId ?? user.tenantId,
-    };
-  },
-
-  /**
-   * @deprecated Use sessionMeta(). Returns a SessionSnapshot shim with empty
-   * accessToken for tests that haven't been migrated yet.
-   */
-  validSession(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
-    const user = overrides.user ?? baseUser;
-    return {
-      accessToken: '',
-      tenantId: overrides.tenantId ?? user.tenantId,
-      user,
-    };
-  },
-
-  /**
-   * @deprecated Expired sessions are now detected by the backend (401).
-   * Kept for tests that check the shim behaviour.
-   */
-  expiredSession(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
-    const user = overrides.user ?? baseUser;
-    return {
-      accessToken: '',
-      tenantId: overrides.tenantId ?? user.tenantId,
-      user,
     };
   },
 
