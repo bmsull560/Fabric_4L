@@ -81,7 +81,6 @@ class ExtractionCache:
                         "exception_class": type(exc).__name__,
                     },
                 )
-                self._fallback = _InMemoryLRUCache()
 
     @staticmethod
     def _log_cache_failure(operation: str, exc: Exception, context: dict[str, str | None] | None = None) -> None:
