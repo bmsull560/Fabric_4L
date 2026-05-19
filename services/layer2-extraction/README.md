@@ -142,6 +142,8 @@ Layer 2's `ExtractionCache` is best-effort and fail-open by design so extraction
 
 Structured cache-failure logs include these fields for correlation when available: `operation`, `tenant_id`, `job_id`, `correlation_id`, and `exception_class`.
 
+Operational expectation: cache failures must **never** fail the extraction request. Layer 2 continues the core extraction path with either in-memory fallback or a cache miss/recompute flow, so SLO impact is latency/cost (extra LLM calls), not availability.
+
 ## Development
 
 ### Setup
