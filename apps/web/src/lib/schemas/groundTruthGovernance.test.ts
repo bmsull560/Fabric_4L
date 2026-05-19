@@ -97,22 +97,26 @@ describe("ground-truth governance runtime-boundary parsers", () => {
     ).toThrowError();
   });
 
-  it("parses partial freshness summaries", () => {
+  it("parses freshness summary envelopes", () => {
     const result = parseFreshnessSummaryResponse({
-      stale_count: 2,
-      total_count: 10,
+      tenant_id: "tenant-1",
+      timestamp: "2026-01-02T00:00:00Z",
+      summary: { stale: 2, fresh: 7, expiring_soon: 1, total: 10 },
+      warning_threshold_days: 14,
     });
 
-    expect(result.stale_count).toBe(2);
-    expect(result.total_count).toBe(10);
-    expect(result.fresh_count).toBeUndefined();
+    expect(result.summary.stale).toBe(2);
+    expect(result.summary.total).toBe(10);
+    expect(result.warning_threshold_days).toBe(14);
   });
 
   it("rejects invalid freshness summary counts", () => {
     expect(() =>
       parseFreshnessSummaryResponse({
-        stale_count: -1,
-        total_count: 10,
+        tenant_id: "tenant-1",
+        timestamp: "2026-01-02T00:00:00Z",
+        summary: { stale: -1, fresh: 7, expiring_soon: 1, total: 10 },
+        warning_threshold_days: 14,
       })
     ).toThrowError();
   });

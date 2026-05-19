@@ -30,6 +30,22 @@ This registry tracks **runtime** compatibility wrappers/shims that exist to pres
 | COMPAT-L4-001 | `services/layer4-agents/src/api/routes/frontend_compat.py` | Route shim | layer4-agents | Preserves historical frontend contract during workflow API consolidation. | 2026-08-31 | Platform Architecture approved 2026-05-12; reviewed 2026-05-12. | PLATARCH-REMOVE-L4-001 |
 | COMPAT-SDK-001 | `sdk/python/src/valuefabric/cli/workflows.py` | CLI compatibility surface | sdk | Backward-compatible CLI workflow commands pending full canonical command migration. | 2026-09-30 | Platform Architecture approved 2026-05-12; reviewed 2026-05-12. | PLATARCH-REMOVE-SDK-001 |
 
+| COMPAT-WEB-002 | `apps/web/src/services/sessionService.ts` | Frontend session API shim | web-platform | Legacy `SessionSnapshot` / `getSessionSnapshot` / `persistSession` compatibility wrappers were removed on 2026-05-18; remaining shim is `getAccessToken()` null-return helper while cookie auth migration finishes. Canonical API is `SessionMeta` via `getSessionMeta()`/`persistSessionMeta()`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-002 |
+| COMPAT-WEB-003 | `apps/web/src/hooks/useAgentStream.ts` | Hook compatibility wrapper | web-platform | Deprecated hook retained while callers migrate to canonical `@/agui/useAgentEvents`. | 2026-07-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-003 |
+| COMPAT-WEB-004 | `apps/web/src/navigation/navHelpers.ts` | Type/export alias shim | web-platform | Re-export shim during navigation service migration. Canonical exports live in `apps/web/src/navigation/navigationService.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-004 |
+| COMPAT-WEB-005 | `apps/web/src/hooks/useApiShared.ts` | Constant alias shim | web-platform | Backward-compatible stale-time aliases preserved for legacy hook imports; canonical keys are the non-legacy names in the same module. | 2026-07-15 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-005 |
+| COMPAT-WEB-006 | `apps/web/src/hooks/useBenchmarks.ts` | Type export shim | web-platform | Backward-compatible type re-export to avoid import churn; canonical types are in `apps/web/src/schemas/benchmark.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-006 |
+| COMPAT-WEB-007 | `apps/web/src/hooks/useFormulas.ts` | Type export shim | web-platform | Backward-compatible type re-export for formula consumers; canonical types are in `apps/web/src/schemas/formula.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-007 |
+| COMPAT-WEB-008 | `apps/web/src/hooks/useVariables.ts` | Type export shim | web-platform | Backward-compatible type re-export for variable consumers; canonical types are in `apps/web/src/schemas/variable.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-008 |
+| COMPAT-WEB-009 | `apps/web/src/hooks/useValuePacks.ts` | Type export shim | web-platform | Backward-compatible schema type re-export; canonical types are in `apps/web/src/schemas/valuePack.ts`. | 2026-06-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-009 |
+| COMPAT-WEB-010 | `apps/web/src/components/ui/fabric/LoadingSkeleton.tsx` | UI component compatibility shim | web-platform | Deprecated fabric wrapper kept for callers still using legacy skeleton component. Canonical replacements: `@/components/ui/skeleton` and `@/components/ui/SkeletonViews`. | 2026-07-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-010 |
+| COMPAT-WEB-011 | `apps/web/src/components/blocks/SectionCard.tsx` | Prop alias shim | web-platform | `subtitle` alias retained for backward compatibility while callers migrate to canonical `description` prop. | 2026-07-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-011 |
+| COMPAT-WEB-012 | `apps/web/src/components/AppShell.tsx` | Controlled/uncontrolled state shim | web-platform | Internal fallback state remains for older callers not yet passing controlled props. Canonical usage is controlled props from workspace shells. | 2026-08-15 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-012 |
+| COMPAT-WEB-013 | `apps/web/src/components/workspace/RightRail.tsx` | AG-UI prop compatibility shim | web-platform | Backward-compatible RightRail prop contract maintained during `useAgentEvents` rollout. | 2026-08-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-013 |
+| COMPAT-WEB-014 | `apps/web/src/config/auth.ts` | Provider option compatibility shim | web-platform | Legacy Microsoft provider key retained for existing tenant configs. Canonical provider list is managed via current auth provider config. | 2026-09-30 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-014 |
+| COMPAT-WEB-015 | `apps/web/src/schemas/auth.ts` | Role parsing compatibility shim | web-platform | Parser accepts frontend tier aliases in addition to canonical backend roles to prevent auth payload drift during migration. | 2026-07-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-015 |
+| COMPAT-WEB-016 | `apps/web/src/stores/userTierStore.ts` | Legacy route alias shim | web-platform | Legacy route redirects retained while route canonicalization completes. | 2026-08-31 | Platform Architecture approved 2026-05-18; reviewed 2026-05-18. | PLATARCH-REMOVE-WEB-016 |
+
 ## Known Intentional Behaviors (Not Shims)
 
 These are deliberate v1 design decisions that raise errors rather than silently degrading. They are documented here to prevent future "fixes" that would weaken the intended behavior.
@@ -62,3 +78,26 @@ These are deliberate v1 design decisions that raise errors rather than silently 
 - **Compatibility owner/path:** `services/layer3-knowledge/src` for designated mirrored directories only.
 - **Allowed non-mirrored exceptions in service tree:** `api/`, `agents/`, `cache/`, `docs/`, `metrics/`, and top-level `config.py` stay service-local and are not required to exist under `value_fabric/layer3`.
 - **Guardrail:** mirrored paths in `services/layer3-knowledge/src` must remain thin `from value_fabric.layer3... import *` shims; implementation logic must not diverge from canonical runtime modules.
+
+
+
+## Frontend Shim Inventory (apps/web/src)
+
+| Shim path | Canonical replacement path | Current callers (2026-05-18 sweep) | Risk tier | Target removal milestone |
+|---|---|---|---|---|
+| `apps/web/src/services/sessionService.ts` (`getSessionSnapshot`/`persistSession` family) | `SessionMeta` APIs in `apps/web/src/services/sessionService.ts` | **Removed on 2026-05-18** (no runtime callers) | Low | Completed in Sprint 6 (2026-05-18) |
+| `apps/web/src/hooks/useAgentStream.ts` | `apps/web/src/agui/useAgentEvents.ts` | `apps/web/src/agui/useAgentEvents.ts` (default actions helper) | Medium | Sprint 7 AG-UI convergence |
+| `apps/web/src/navigation/navHelpers.ts` | `apps/web/src/navigation/navigationService.ts` | `GlobalLayout`, `MobileNavigation`, `MobilePersistentSidebar`, `TieredNav` | Medium | Sprint 7 navigation unification |
+| `apps/web/src/components/ui/fabric/LoadingSkeleton.tsx` | `apps/web/src/components/ui/skeleton.tsx`, `apps/web/src/components/ui/SkeletonViews.tsx` | `apps/web/src/components/ui/fabric/index.ts` and downstream fabric imports | Low | Sprint 7 UI primitive migration |
+| `apps/web/src/components/blocks/SectionCard.tsx` (`subtitle` alias) | `description` prop on same component | Pages still passing `subtitle` (e.g., `pages/value-case/ValueCasePage.tsx`) | Low | Sprint 7 card-prop cleanup |
+| `apps/web/src/hooks/useApiShared.ts` (legacy stale-time aliases) | Canonical `STALE_TIME` keys in same module | shared hook consumers across `apps/web/src/hooks/` | Medium | Sprint 8 hooks API freeze |
+| `apps/web/src/config/auth.ts` (legacy Microsoft option) | Canonical auth provider configuration in same module | auth config consumers via `authProviders` | Medium | Sprint 8 tenant config migration |
+| `apps/web/src/stores/userTierStore.ts` (legacy redirects) | canonical route map in same store/module | navigation flows that still hit legacy routes | Medium | Sprint 8 route canonicalization |
+
+## Frontend Compatibility Shim Migration Runbook
+
+1. **Identify shim usage**: run `rg -n "<alias-or-deprecated-api>" apps/web/src` and collect all callsites.
+2. **Switch to canonical API**: replace alias imports/props/hooks with canonical path from this registry, then update nearby tests in the same feature slice.
+3. **Verify no remaining callers**: rerun `rg` to confirm zero callsites outside approved shim files.
+4. **Remove shim code**: delete deprecated wrapper/alias paths and compatibility tests that only validated shim behavior.
+5. **Update registry + CI evidence**: mark the entry removed (strikethrough row), include removal date, and run `pnpm --dir apps/web run check:compatibility-shims-registered`.

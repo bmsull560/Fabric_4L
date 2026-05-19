@@ -20,6 +20,7 @@ import importlib.util
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -121,12 +122,109 @@ sys.modules["psycopg2"] = _MockPsycopg2()
 sys.modules["psycopg2.extras"] = _MockPsycopg2.extras
 
 class _MockLanggraphCheckpoint:
+    class BaseCheckpointSaver:
+        pass
+
     class AsyncPostgresSaver:
         pass
 
 import sys
+sys.modules["langgraph"] = type("MockModule", (), {})()
+sys.modules["langgraph.checkpoint"] = type("MockModule", (), {})()
+sys.modules["langgraph.checkpoint.base"] = type("MockModule", (), {"BaseCheckpointSaver": _MockLanggraphCheckpoint.BaseCheckpointSaver})()
 sys.modules["langgraph.checkpoint.postgres"] = type("MockModule", (), {})()
 sys.modules["langgraph.checkpoint.postgres.aio"] = type("MockModule", (), {"AsyncPostgresSaver": _MockLanggraphCheckpoint.AsyncPostgresSaver})()
+
+class _MockStateGraph:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_node(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_edge(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def add_conditional_edges(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def set_entry_point(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    def compile(self, *args: Any, **kwargs: Any) -> Any:
+        return self
+
+    async def ainvoke(self, value: Any, *args: Any, **kwargs: Any) -> Any:
+        return value
+
+sys.modules["langgraph.graph"] = type("MockModule", (), {"StateGraph": _MockStateGraph})()
+
+class _MockAsyncGraphDatabase:
+    @staticmethod
+    def driver(*args: Any, **kwargs: Any) -> Any:
+        return None
+
+sys.modules["neo4j"] = type("MockModule", (), {"AsyncGraphDatabase": _MockAsyncGraphDatabase})()
+
+class _MockS3Client:
+    def put_object(self, *args: Any, **kwargs: Any) -> dict[str, str]:
+        return {"ETag": "mock"}
+
+    def generate_presigned_url(self, *args: Any, **kwargs: Any) -> str:
+        return "https://example.com/mock"
+
+class _MockBoto3:
+    @staticmethod
+    def client(*args: Any, **kwargs: Any) -> _MockS3Client:
+        return _MockS3Client()
+
+class _MockConfig:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+sys.modules["botocore"] = type("MockModule", (), {})()
+sys.modules["botocore.client"] = type("MockModule", (), {"BaseClient": _MockS3Client})()
+sys.modules["botocore.config"] = type("MockModule", (), {"Config": _MockConfig})()
+sys.modules["boto3"] = _MockBoto3()
+
+def _mock_retry(*args: Any, **kwargs: Any) -> Any:
+    def decorator(func: Any) -> Any:
+        return func
+    return decorator
+
+def _mock_policy(*args: Any, **kwargs: Any) -> Any:
+    return None
+
+
+from pydantic import networks as _pydantic_networks
+
+class _MockEmailParts:
+    def __init__(self, email: str) -> None:
+        self.normalized = email
+        self.local_part = email.split("@", 1)[0]
+
+
+class _MockEmailValidator:
+    class EmailNotValidError(ValueError):
+        pass
+
+    @staticmethod
+    def validate_email(email: str, check_deliverability: bool = False) -> _MockEmailParts:
+        return _MockEmailParts(email)
+
+_pydantic_networks.email_validator = _MockEmailValidator
+_pydantic_networks.import_email_validator = lambda: None
+
+sys.modules["tenacity"] = type(
+    "MockModule",
+    (),
+    {
+        "retry": _mock_retry,
+        "retry_if_exception_type": _mock_policy,
+        "stop_after_attempt": _mock_policy,
+        "wait_exponential": _mock_policy,
+    },
+)()
 
 
 
@@ -146,9 +244,15 @@ def _package_root(spec: OpenApiExportSpec) -> Path:
 
 def _install_synthetic_package(name: str, package_path: Path) -> None:
     module = ModuleType(name)
-    module.__file__ = str(package_path / "__init__.py")
+    init_path = package_path / "__init__.py"
+    module.__file__ = str(init_path)
     module.__package__ = name
     module.__path__ = [str(package_path)]  # type: ignore[attr-defined]
+    if init_path.exists():
+        init_text = init_path.read_text(encoding="utf-8")
+        version_match = re.search(r"^__version__\s*=\s*['\"]([^'\"]+)['\"]", init_text, flags=re.MULTILINE)
+        if version_match:
+            module.__version__ = version_match.group(1)  # type: ignore[attr-defined]
     sys.modules[name] = module
 
 

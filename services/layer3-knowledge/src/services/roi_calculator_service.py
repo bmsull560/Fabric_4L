@@ -44,6 +44,7 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
+from ..db.query_execution import run_validated_query
 
 
 class ROICalculatorService_compare_scenariosResult(TypedDictModel):
@@ -448,7 +449,7 @@ class ROICalculatorService:
         RETURN t {.*} AS template
         """
         async with self._driver.session() as session:
-            result = await session.run(query, {
+            result = await run_validated_query(session, query, {
                 "id": template_id,
                 "tenant_id": tenant_id,
                 "name": template.name,
@@ -503,12 +504,12 @@ class ROICalculatorService:
 
         async with self._driver.session() as session:
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
-            count_result = await session.run(count_query, params)
+            count_result = await run_validated_query(session, count_query, params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
-            list_result = await session.run(query, params)
+            list_result = await run_validated_query(session, query, params)
             records = [record async for record in list_result]
 
         return ROICalculatorService_get_templatesResult.model_validate({
@@ -561,7 +562,7 @@ class ROICalculatorService:
         RETURN rc {.*} AS calculation
         """
         async with self._driver.session() as session:
-            result = await session.run(query, {
+            result = await run_validated_query(session, query, {
                 "id": calc_id,
                 "tenant_id": tenant_id,
                 "account_id": account_id or "",
@@ -594,7 +595,7 @@ class ROICalculatorService:
         RETURN rc {.*} AS calculation
         """
         async with self._driver.session() as session:
-            result = await session.run(query, {
+            result = await run_validated_query(session, query, {
                 "calc_id": calc_id,
                 "tenant_id": tenant_id,
             })
@@ -646,12 +647,12 @@ class ROICalculatorService:
 
         async with self._driver.session() as session:
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
-            count_result = await session.run(count_query, params)
+            count_result = await run_validated_query(session, count_query, params)
             count_record = await count_result.single()
             total = count_record["total"] if count_record else 0
 
             # strict-scoped-query-execution: dynamic query parameters include tenant_id
-            list_result = await session.run(query, params)
+            list_result = await run_validated_query(session, query, params)
             records = [record async for record in list_result]
 
         calculations = []
@@ -702,7 +703,7 @@ class ROICalculatorService:
                collect(DISTINCT e.company_size) AS company_sizes
         """
         async with self._driver.session() as session:
-            result = await session.run(query, {
+            result = await run_validated_query(session, query, {
                 "tenant_id": tenant_id,
                 "industry": industry,
             })

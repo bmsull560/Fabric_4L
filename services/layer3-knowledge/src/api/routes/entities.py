@@ -27,7 +27,7 @@ from ...api.dependencies import (
     get_app_state,
     get_graph_rag,
 )
-from ...api.dependencies_tenant import Neo4jTenantSession, get_neo4j_with_tenant
+from ...api.dependencies_tenant_secured import Neo4jTenantSession, get_neo4j_with_tenant
 from ...api.exception_mapping import map_exception_to_http_error
 from ...api.exceptions import DatabaseError, ValidationError
 from ...api.models import (

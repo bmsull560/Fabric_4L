@@ -1115,7 +1115,7 @@ export interface paths {
         patch: operations["review_signal_v1_signals__signal_id__review_patch"];
         trace?: never;
     };
-    "/v1/evidence/{evidence_id}/decisions": {
+    "/v1/evidence/{evidence_id}/decision": {
         parameters: {
             query?: never;
             header?: never;
@@ -1124,8 +1124,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
         /** Decide Evidence */
-        post: operations["decide_evidence_v1_evidence__evidence_id__decisions_post"];
+        patch: operations["decide_evidence_v1_evidence__evidence_id__decision_patch"];
+        trace?: never;
+    };
+    "/v1/evidence/{evidence_id}/drivers/{driver_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link Evidence Driver */
+        post: operations["link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3651,6 +3668,625 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/billing/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Subscription
+         * @description Get current subscription status for a customer.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *
+         *     Returns:
+         *         Subscription details including plan and status
+         */
+        get: operations["get_subscription_v1_billing_subscription_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Checkout
+         * @description Create a Stripe checkout session for subscription.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         request: Checkout session parameters
+         *
+         *     Returns:
+         *         Session ID and checkout URL
+         */
+        post: operations["create_checkout_v1_billing_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Portal
+         * @description Create a Stripe customer portal session.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         request: Portal session parameters
+         *
+         *     Returns:
+         *         Portal URL for customer to manage billing
+         */
+        post: operations["create_portal_v1_billing_portal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Entitlements
+         * @description Get all feature entitlements for a customer.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *
+         *     Returns:
+         *         Plan details and feature availability map
+         */
+        get: operations["get_entitlements_v1_billing_entitlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/check-feature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Feature
+         * @description Check if a customer has access to a specific feature.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         feature_id: Feature identifier to check
+         *
+         *     Returns:
+         *         Feature access status
+         */
+        get: operations["check_feature_v1_billing_check_feature_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/sync-customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Customer
+         * @description Sync customer with Stripe (create or update).
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         request: Customer details
+         *
+         *     Returns:
+         *         Customer record with Stripe ID if available
+         */
+        post: operations["sync_customer_v1_billing_sync_customer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stripe Webhook
+         * @description Handle Stripe webhook events.
+         *
+         *     Processes subscription lifecycle events from Stripe with idempotency.
+         *     Must configure webhook secret in STRIPE_WEBHOOK_SECRET env var.
+         *
+         *     SECURITY: Validates request originates from Stripe IP ranges AND
+         *     has valid Stripe-Signature header. Dual verification for defense-in-depth.
+         *
+         *     Headers:
+         *         Stripe-Signature: Webhook signature for verification
+         *
+         *     Returns:
+         *         Processing status
+         */
+        post: operations["stripe_webhook_v1_billing_webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Usage Event
+         * @description Ingest a single usage event for billing.
+         *
+         *     Args:
+         *         request: Usage event details
+         *
+         *     Returns:
+         *         Ingested event with ID and status
+         *
+         *     Raises:
+         *         400: Validation error
+         *         409: Duplicate event (idempotency conflict)
+         */
+        post: operations["ingest_usage_event_v1_billing_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/events/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Usage Batch
+         * @description Ingest multiple usage events in a batch.
+         *
+         *     Args:
+         *         request: Batch of usage events (max 1000)
+         *
+         *     Returns:
+         *         Summary with counts of created, duplicate, and error events
+         *
+         *     Raises:
+         *         400: Batch validation error
+         */
+        post: operations["ingest_usage_batch_v1_billing_events_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/usage/{customer_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage Summary
+         * @description Get aggregated usage summary for a customer and metric.
+         *
+         *     Args:
+         *         customer_id: Customer to query
+         *         metric_name: Metric to aggregate
+         *         start_date: Start of period (ISO format)
+         *         end_date: End of period (ISO format)
+         *
+         *     Returns:
+         *         Usage summary with total quantity and event count
+         */
+        get: operations["get_usage_summary_v1_billing_usage__customer_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/usage/{customer_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Usage Events
+         * @description List individual usage events for a customer.
+         *
+         *     Args:
+         *         customer_id: Customer to query
+         *         metric_name: Optional metric filter
+         *         start_date: Optional start date filter
+         *         end_date: Optional end date filter
+         *         limit: Maximum results (1-1000)
+         *         offset: Pagination offset
+         *
+         *     Returns:
+         *         List of usage events
+         */
+        get: operations["list_usage_events_v1_billing_usage__customer_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/usage/{customer_id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Usage To Stripe
+         * @description Sync pending usage events to Stripe MeterEvents.
+         *
+         *     Aggregates pending usage and reports to Stripe for metered billing.
+         *     Requires Stripe customer to be linked and STRIPE_METER_EVENTS_ENABLED=true.
+         *
+         *     Args:
+         *         customer_id: Customer to sync usage for
+         *         metric_name: Optional metric filter (syncs all if omitted)
+         *
+         *     Returns:
+         *         Sync summary with counts and Stripe responses
+         *
+         *     Raises:
+         *         400: Validation error or no Stripe customer linked
+         *         402: Stripe not configured
+         */
+        post: operations["sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/limits/{customer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage Limits
+         * @description Get current usage and limits for a customer.
+         *
+         *     Returns all configured limits and current usage percentages.
+         *     Use this to show progress bars or warnings in the UI.
+         *
+         *     Args:
+         *         customer_id: Customer to check
+         *
+         *     Returns:
+         *         Usage limits and current consumption for all metrics
+         */
+        get: operations["get_usage_limits_v1_billing_limits__customer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/limits/{customer_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Request Allowed
+         * @description Check if a request should be allowed based on usage limits.
+         *
+         *     Use this endpoint before processing expensive operations to validate
+         *     that the customer has quota remaining. Returns 402 Payment Required
+         *     if the hard limit is exceeded.
+         *
+         *     Args:
+         *         customer_id: Customer making the request
+         *         metric_name: Metric being consumed
+         *         quantity: Amount to be consumed
+         *
+         *     Returns:
+         *         Validation result with allow/deny decision
+         *
+         *     Raises:
+         *         402: Hard limit exceeded (upgrade required)
+         *         400: Invalid request
+         */
+        post: operations["check_request_allowed_v1_billing_limits__customer_id__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/plans/{plan_id}/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plan Limits
+         * @description Get the configured usage limits for a plan.
+         *
+         *     Returns the limits configuration without customer-specific usage data.
+         *     Useful for displaying plan details in pricing pages.
+         *
+         *     Args:
+         *         plan_id: Plan identifier (free, pro, enterprise)
+         *
+         *     Returns:
+         *         Plan limits configuration
+         */
+        get: operations["get_plan_limits_v1_billing_plans__plan_id__limits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Invoices
+         * @description List invoices with optional filters.
+         *
+         *     Returns paginated list of invoices for the tenant, optionally filtered
+         *     by customer and status.
+         */
+        get: operations["list_invoices_v1_billing_invoices_get"];
+        put?: never;
+        /**
+         * Create Invoice
+         * @description Create a new invoice.
+         *
+         *     Creates a draft invoice for the specified customer and billing period.
+         *     Add line items via POST /invoices/{id}/items, then finalize via POST /invoices/{id}/finalize.
+         */
+        post: operations["create_invoice_v1_billing_invoices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Invoice
+         * @description Get invoice details including line items and charges.
+         */
+        get: operations["get_invoice_v1_billing_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Invoice Item
+         * @description Add a line item to an invoice.
+         */
+        post: operations["add_invoice_item_v1_billing_invoices__invoice_id__items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Invoice
+         * @description Finalize a draft invoice (make it open/payable).
+         *
+         *     Recalculates totals from line items and changes status to 'open'.
+         */
+        post: operations["finalize_invoice_v1_billing_invoices__invoice_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Invoice
+         * @description Void an invoice.
+         */
+        post: operations["void_invoice_v1_billing_invoices__invoice_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/charges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Charges
+         * @description List charge records.
+         */
+        get: operations["list_charges_v1_billing_charges_get"];
+        put?: never;
+        /**
+         * Record Charge
+         * @description Record a charge attempt.
+         */
+        post: operations["record_charge_v1_billing_charges_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/reports/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Revenue Summary
+         * @description Get revenue summary for a period.
+         *
+         *     Returns aggregated invoice and charge totals for the specified period.
+         */
+        get: operations["get_revenue_summary_v1_billing_reports_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/customers/{customer_id}/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Customer Balance
+         * @description Get customer balance summary.
+         *
+         *     Returns open invoice amounts and lifetime payment totals.
+         */
+        get: operations["get_customer_balance_v1_billing_customers__customer_id__balance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/c1/stream": {
         parameters: {
             query?: never;
@@ -4028,6 +4664,225 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/harness/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List harness runs
+         * @description List harness runs for the authenticated tenant.
+         */
+        get: operations["list_runs_v1_harness_runs_get"];
+        put?: never;
+        /**
+         * Create a harness run
+         * @description Create a new HarnessRun for the authenticated tenant.
+         */
+        post: operations["create_run_v1_harness_runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a harness run
+         * @description Get a single harness run by ID.
+         */
+        get: operations["get_run_v1_harness_runs__run_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Cancel a harness run
+         * @description Cancel (transition to CANCELLED) a harness run.
+         */
+        delete: operations["cancel_run_v1_harness_runs__run_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Advance run state
+         * @description Advance the state machine for a harness run.
+         */
+        post: operations["transition_run_v1_harness_runs__run_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}/checkpoints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List checkpoints for a run
+         * @description List all checkpoints for a harness run.
+         */
+        get: operations["list_checkpoints_v1_harness_runs__run_id__checkpoints_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}/checkpoints/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get latest checkpoint for a run
+         * @description Get the most recent checkpoint for a harness run.
+         */
+        get: operations["get_latest_checkpoint_v1_harness_runs__run_id__checkpoints_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List gates for a run
+         * @description List all human gates for a harness run.
+         */
+        get: operations["list_gates_v1_harness_runs__run_id__gates_get"];
+        put?: never;
+        /**
+         * Create a human gate
+         * @description Create a human gate for a harness run.
+         */
+        post: operations["create_gate_v1_harness_runs__run_id__gates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/gates/{gate_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide a human gate
+         * @description Approve, reject, modify, or expire a human gate.
+         *
+         *     Requires content_admin, tenant_admin, or super_admin role.
+         *     decision_by is always server-derived from ctx.user_id — any
+         *     body-supplied value is ignored to prevent spoofing.
+         */
+        post: operations["decide_gate_v1_harness_gates__gate_id__decide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate claims for a run
+         * @description Validate a list of claims through the L5 ValidationHook.
+         */
+        post: operations["validate_claims_v1_harness_runs__run_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/runs/{run_id}/validation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get validation results for a run
+         * @description Return the stored validation results for a run.
+         *
+         *     Returns an empty summary when no claims have been validated yet.
+         *     Tenant-scoped: 403 if run belongs to a different tenant.
+         */
+        get: operations["get_run_validation_v1_harness_runs__run_id__validation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/harness/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Harness health check
+         * @description Return harness health: validation availability and L5 connectivity.
+         */
+        get: operations["harness_health_v1_harness_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4385,6 +5240,61 @@ export interface components {
             service_account_id: string | null;
         };
         /**
+         * AddInvoiceItemRequest
+         * @description Request to add an invoice line item.
+         */
+        AddInvoiceItemRequest: {
+            /**
+             * Description
+             * @description Line item description
+             */
+            description: string;
+            /**
+             * Amount Cents
+             * @description Amount in cents
+             */
+            amount_cents: number;
+            /**
+             * Quantity
+             * @description Quantity
+             * @default 1
+             */
+            quantity: number;
+            /**
+             * Unit Amount Cents
+             * @description Price per unit in cents
+             */
+            unit_amount_cents?: number | null;
+            /**
+             * Type
+             * @description Item type: subscription, metered, one_time, proration
+             * @default one_time
+             */
+            type: string;
+            /**
+             * Usage Quantity
+             * @description Usage quantity for metered items
+             */
+            usage_quantity?: number | null;
+            /**
+             * Usage Metric
+             * @description Usage metric for metered items
+             */
+            usage_metric?: string | null;
+            /**
+             * Tax Cents
+             * @description Tax amount in cents
+             * @default 0
+             */
+            tax_cents: number;
+            /**
+             * Discount Cents
+             * @description Discount amount in cents
+             * @default 0
+             */
+            discount_cents: number;
+        };
+        /**
          * AgentGovernanceMetadata
          * @description Governance metadata surfaced to RightRail and trace/audit views.
          */
@@ -4512,7 +5422,7 @@ export interface components {
          */
         ArchiveWorkflowResponse: {
             /** Workflow Id */
-            workflow_id: unknown;
+            workflow_id: string;
             /** Status */
             status: string;
             /** Archived At */
@@ -4618,6 +5528,20 @@ export interface components {
          * @enum {string}
          */
         AuthorityWeight: "high" | "medium" | "low";
+        /** AvailableWorkflow */
+        AvailableWorkflow: {
+            /** Type */
+            type: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+        };
+        /** AvailableWorkflowsResponse */
+        AvailableWorkflowsResponse: {
+            /** Workflows */
+            workflows: components["schemas"]["AvailableWorkflow"][];
+        };
         /** BatchEnrichRequest */
         BatchEnrichRequest: {
             /**
@@ -4686,6 +5610,31 @@ export interface components {
         /** Body_api_update_user_v1_users__user_id__patch */
         Body_api_update_user_v1_users__user_id__patch: {
             request: components["schemas"]["UserUpdateRequest"];
+            context?: components["schemas"]["RequestContext"] | null;
+        };
+        /** Body_create_audit_export_v1_governance_audit_exports_post */
+        Body_create_audit_export_v1_governance_audit_exports_post: {
+            request: components["schemas"]["AuditExportCreateRequest"];
+            context?: components["schemas"]["RequestContext"] | null;
+        };
+        /** Body_create_decision_v1_governance_reviews__review_id__decisions_post */
+        Body_create_decision_v1_governance_reviews__review_id__decisions_post: {
+            decision: components["schemas"]["ApprovalDecision"];
+            context?: components["schemas"]["RequestContext"] | null;
+        };
+        /** Body_create_review_v1_governance_reviews_post */
+        Body_create_review_v1_governance_reviews_post: {
+            request: components["schemas"]["ReviewRequest"];
+            context?: components["schemas"]["RequestContext"] | null;
+        };
+        /** Body_create_version_v1_governance_versions_post */
+        Body_create_version_v1_governance_versions_post: {
+            version: components["schemas"]["VersionRecord"];
+            context?: components["schemas"]["RequestContext"] | null;
+        };
+        /** Body_decide_gate_v1_harness_gates__gate_id__decide_post */
+        Body_decide_gate_v1_harness_gates__gate_id__decide_post: {
+            body: components["schemas"]["GateDecisionRequest"];
             context?: components["schemas"]["RequestContext"] | null;
         };
         /** Body_update_tenant_settings_v1_tenants__tenant_id__settings_patch */
@@ -4970,6 +5919,27 @@ export interface components {
             total: number;
         };
         /**
+         * CheckoutRequest
+         * @description Request to create a checkout session.
+         */
+        CheckoutRequest: {
+            /**
+             * Plan Id
+             * @description Plan to subscribe to (pro, enterprise)
+             */
+            plan_id: string;
+            /**
+             * Success Url
+             * @description Redirect URL after successful checkout
+             */
+            success_url: string;
+            /**
+             * Cancel Url
+             * @description Redirect URL if checkout canceled
+             */
+            cancel_url: string;
+        };
+        /**
          * CheckpointInfo
          * @description Information about a single checkpoint.
          */
@@ -5005,21 +5975,76 @@ export interface components {
             };
         };
         /**
-         * CheckpointListResponse
-         * @description Response containing checkpoint timeline.
+         * CheckpointResponse
+         * @description Single checkpoint in API responses.
          */
-        CheckpointListResponse: {
-            /** Workflow Id */
-            workflow_id: string;
-            /** Checkpoints */
-            checkpoints: components["schemas"]["CheckpointInfo"][];
-            /** Total Count */
-            total_count: number;
+        CheckpointResponse: {
+            /** Id */
+            id: string;
+            /** Run Id */
+            run_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            state_name: components["schemas"]["HarnessState"];
+            /** Input Hash */
+            input_hash: string;
+            /** Output Hash */
+            output_hash: string | null;
             /**
-             * Current Checkpoint Id
-             * @description Most recent checkpoint ID
+             * Created At
+             * Format: date-time
              */
-            current_checkpoint_id?: string | null;
+            created_at: string;
+        };
+        /**
+         * ClaimValidationRequest
+         * @description A single claim to validate.
+         */
+        ClaimValidationRequest: {
+            /** Claim Id */
+            claim_id: string;
+            /** Claim Text */
+            claim_text: string;
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            /** Value Pack Id */
+            value_pack_id?: string | null;
+            /** Account Id */
+            account_id?: string | null;
+        };
+        /**
+         * ClaimValidationResult
+         * @description Result of validating a single claim through L5 or fallback.
+         */
+        ClaimValidationResult: {
+            /** Id */
+            id?: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Claim Id */
+            claim_id: string;
+            validation_state: components["schemas"]["ValidationState"];
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            /** Confidence */
+            confidence: number;
+            /** Trust Score */
+            trust_score: number;
+            /**
+             * Validator
+             * @enum {string}
+             */
+            validator: "agent" | "human" | "policy" | "benchmark" | "unavailable";
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
         };
         /** CommentListResponse */
         CommentListResponse: {
@@ -5384,6 +6409,57 @@ export interface components {
             /** Body */
             body: string;
         };
+        /**
+         * CreateGateRequest
+         * @description Request body for POST /v1/harness/runs/{run_id}/gates.
+         */
+        CreateGateRequest: {
+            gate_type: components["schemas"]["GateType"];
+        };
+        /**
+         * CreateInvoiceRequest
+         * @description Request to create a new invoice.
+         */
+        CreateInvoiceRequest: {
+            /**
+             * Customer Id
+             * @description Customer being invoiced
+             */
+            customer_id: string;
+            /**
+             * Period Start
+             * Format: date-time
+             * @description Billing period start
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date-time
+             * @description Billing period end
+             */
+            period_end: string;
+            /**
+             * Invoice Number
+             * @description Optional invoice number
+             */
+            invoice_number?: string | null;
+            /**
+             * Subscription Id
+             * @description Optional subscription link
+             */
+            subscription_id?: string | null;
+            /**
+             * Currency
+             * @description Currency code
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Description
+             * @description Invoice description
+             */
+            description?: string | null;
+        };
         /** CreateNotificationRequest */
         CreateNotificationRequest: {
             /** Account Id */
@@ -5398,6 +6474,19 @@ export interface components {
             title: string;
             /** Message */
             message: string;
+        };
+        /**
+         * CreateRunRequest
+         * @description Request body for POST /v1/harness/runs.
+         */
+        CreateRunRequest: {
+            workflow_type: components["schemas"]["HarnessWorkflowType"];
+            /** @default user */
+            initiated_by: components["schemas"]["InitiatedBy"];
+            /** Account Id */
+            account_id?: string | null;
+            /** Value Pack Id */
+            value_pack_id?: string | null;
         };
         /** CreateTaskRequest */
         CreateTaskRequest: {
@@ -5469,6 +6558,22 @@ export interface components {
             };
             /** Updated At */
             updated_at: string;
+        };
+        /**
+         * CustomerSyncRequest
+         * @description Request to sync customer with Stripe.
+         */
+        CustomerSyncRequest: {
+            /**
+             * Email
+             * @description Customer email address
+             */
+            email: string;
+            /**
+             * Name
+             * @description Customer name
+             */
+            name?: string | null;
         };
         /**
          * DismissBadgeRequest
@@ -5653,13 +6758,8 @@ export interface components {
             account_id: string;
             /** Case Id */
             case_id: string;
-            /**
-             * Decision
-             * @description accepted|rejected|attached_to_driver
-             */
+            /** Decision */
             decision: string;
-            /** Driver Id */
-            driver_id?: string | null;
             /** Decision Note */
             decision_note?: string | null;
         };
@@ -5673,21 +6773,23 @@ export interface components {
             case_id: string;
             /** Decision */
             decision: string;
-            /** Driver Id */
-            driver_id?: string | null;
             /** Reviewed By */
-            reviewed_by?: string | null;
+            reviewed_by: string;
             /** Reviewed At */
             reviewed_at: string;
             /** Provenance */
             provenance?: {
                 [key: string]: unknown;
             };
-            /**
-             * Confidence
-             * @default 0
-             */
-            confidence: number;
+            /** Confidence */
+            confidence?: number | null;
+        };
+        /** EvidenceDriverLinkRequest */
+        EvidenceDriverLinkRequest: {
+            /** Account Id */
+            account_id: string;
+            /** Case Id */
+            case_id: string;
         };
         /**
          * ExportAuditRecord
@@ -5789,6 +6891,66 @@ export interface components {
             description?: string | null;
         };
         /**
+         * GateDecisionRequest
+         * @description Request body for POST /v1/harness/gates/{gate_id}/decide.
+         */
+        GateDecisionRequest: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved" | "rejected" | "modified" | "expired";
+            /** Decision Reason */
+            decision_reason?: string | null;
+        };
+        /**
+         * GateListResponse
+         * @description List of gates for a run.
+         */
+        GateListResponse: {
+            /** Items */
+            items: components["schemas"]["GateResponse"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * GateResponse
+         * @description Single gate in API responses.
+         */
+        GateResponse: {
+            /** Id */
+            id: string;
+            /** Run Id */
+            run_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            gate_type: components["schemas"]["GateType"];
+            status: components["schemas"]["GateStatus"];
+            /** Decision By */
+            decision_by: string | null;
+            /** Decision Reason */
+            decision_reason: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+        };
+        /**
+         * GateStatus
+         * @description Human gate status.
+         * @enum {string}
+         */
+        GateStatus: "pending" | "approved" | "rejected" | "modified" | "expired";
+        /**
+         * GateType
+         * @description Type of human gate.
+         * @enum {string}
+         */
+        GateType: "approve_claims" | "approve_assumptions" | "approve_customer_output" | "resolve_conflict";
+        /**
          * GenerateHypothesesRequest
          * @description Request to generate value hypotheses for an account.
          */
@@ -5830,6 +6992,48 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /**
+         * HarnessHealthResponse
+         * @description Response for GET /v1/harness/health.
+         */
+        HarnessHealthResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "degraded";
+            /** Validation Available */
+            validation_available: boolean;
+            /** L5 Healthy */
+            l5_healthy: boolean;
+            /** Db Healthy */
+            db_healthy: boolean;
+        };
+        /**
+         * HarnessRunStatus
+         * @description Run status reflects execution disposition.
+         * @enum {string}
+         */
+        HarnessRunStatus: "queued" | "running" | "waiting_for_human" | "failed" | "completed" | "cancelled";
+        /**
+         * HarnessState
+         * @description Canonical workflow states.
+         *
+         *     State flow (happy path):
+         *       INIT → RESOLVE_CONTEXT → LOAD_VALUE_PACK → RETRIEVE_KNOWLEDGE
+         *       → GENERATE_HYPOTHESES → MATCH_EVIDENCE → QUANTIFY_IMPACT
+         *       → VALIDATE_CLAIMS → HUMAN_REVIEW → PUBLISH_OUTPUT → DONE
+         *
+         *     Terminal states: DONE, FAILED, CANCELLED.
+         * @enum {string}
+         */
+        HarnessState: "INIT" | "RESOLVE_CONTEXT" | "LOAD_VALUE_PACK" | "RETRIEVE_KNOWLEDGE" | "GENERATE_HYPOTHESES" | "MATCH_EVIDENCE" | "QUANTIFY_IMPACT" | "VALIDATE_CLAIMS" | "HUMAN_REVIEW" | "PUBLISH_OUTPUT" | "DONE" | "FAILED" | "CANCELLED";
+        /**
+         * HarnessWorkflowType
+         * @description Canonical workflow types.
+         * @enum {string}
+         */
+        HarnessWorkflowType: "signal_extraction" | "account_intelligence" | "value_model_generation" | "evidence_matching" | "value_tree_generation" | "roi_calculator_generation" | "business_case_generation" | "renewal_risk_analysis" | "expansion_opportunity_analysis";
         /**
          * HealthBadgeInfo
          * @description Health badge for UI display.
@@ -6026,6 +7230,12 @@ export interface components {
          */
         ICPSourceType: "upload" | "paste" | "generated_from_website" | "manual";
         /**
+         * InitiatedBy
+         * @description Who or what initiated the run.
+         * @enum {string}
+         */
+        InitiatedBy: "user" | "system" | "agent" | "scheduled_job";
+        /**
          * IntegrationCreateRequest
          * @description Request to create/update an integration.
          *
@@ -6161,6 +7371,7 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        JsonValue: unknown;
         /**
          * KnowledgeSourceCreateRequest
          * @description Request to add a new knowledge source.
@@ -6631,6 +7842,17 @@ export interface components {
          */
         Permission: "read:health" | "read:metrics" | "read:schema" | "read:search" | "read:graphrag" | "read:analytics" | "read:ingestion" | "read:agents" | "read:models" | "write:models" | "admin:models" | "write:ingestion" | "write:extraction" | "write:schema" | "write:analytics" | "write:agents" | "admin:api_keys" | "admin:users" | "admin:tenants" | "admin:system";
         /**
+         * PortalRequest
+         * @description Request to create a customer portal session.
+         */
+        PortalRequest: {
+            /**
+             * Return Url
+             * @description URL to return to after portal session
+             */
+            return_url: string;
+        };
+        /**
          * ProcessingMetadata
          * @description Metadata about signal processing.
          */
@@ -7015,6 +8237,53 @@ export interface components {
             strategy: string;
         };
         /**
+         * RecordChargeRequest
+         * @description Request to record a charge.
+         */
+        RecordChargeRequest: {
+            /**
+             * Customer Id
+             * @description Customer being charged
+             */
+            customer_id: string;
+            /**
+             * Amount Cents
+             * @description Charge amount in cents
+             */
+            amount_cents: number;
+            /**
+             * Status
+             * @description Charge status
+             * @default succeeded
+             */
+            status: string;
+            /**
+             * Invoice Id
+             * @description Linked invoice ID
+             */
+            invoice_id?: string | null;
+            /**
+             * Stripe Charge Id
+             * @description Stripe charge ID
+             */
+            stripe_charge_id?: string | null;
+            /**
+             * Payment Method Id
+             * @description Payment method ID
+             */
+            payment_method_id?: string | null;
+            /**
+             * Payment Method Type
+             * @description Payment method type
+             */
+            payment_method_type?: string | null;
+            /**
+             * Description
+             * @description Charge description
+             */
+            description?: string | null;
+        };
+        /**
          * RegenerateBusinessCaseRequest
          * @description Regenerate request with lineage to an existing case.
          */
@@ -7099,6 +8368,8 @@ export interface components {
             workspace_id?: unknown | null;
             /** Tenant Role */
             tenant_role?: string | null;
+            /** Trace Id */
+            trace_id?: string | null;
             /**
              * Isolation Tier
              * @default shared
@@ -7223,6 +8494,52 @@ export interface components {
          * @enum {string}
          */
         Role: "super_admin" | "tenant_admin" | "content_admin" | "analyst" | "read_only" | "system";
+        /**
+         * RunListResponse
+         * @description Paginated list of runs.
+         */
+        RunListResponse: {
+            /** Items */
+            items: components["schemas"]["RunResponse"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Has More */
+            has_more: boolean;
+        };
+        /**
+         * RunResponse
+         * @description Single run in API responses.
+         */
+        RunResponse: {
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Account Id */
+            account_id: string | null;
+            workflow_type: components["schemas"]["HarnessWorkflowType"];
+            initiated_by: components["schemas"]["InitiatedBy"];
+            status: components["schemas"]["HarnessRunStatus"];
+            current_state: components["schemas"]["HarnessState"];
+            /** Value Pack Id */
+            value_pack_id: string | null;
+            /** Trace Id */
+            trace_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * SalesforceOAuthAuthorizeRequest
          * @description Request to start Salesforce OAuth.
@@ -7629,6 +8946,24 @@ export interface components {
             status: string;
         };
         /**
+         * SubscriptionResponse
+         * @description Subscription status response.
+         */
+        SubscriptionResponse: {
+            /** Id */
+            id: string | null;
+            /** Plan Id */
+            plan_id: string;
+            /** Status */
+            status: string;
+            /** Current Period Start */
+            current_period_start: string | null;
+            /** Current Period End */
+            current_period_end: string | null;
+            /** Cancel At Period End */
+            cancel_at_period_end: boolean;
+        };
+        /**
          * SyncAccountsRequest
          * @description Manual sync trigger request.
          */
@@ -8014,6 +9349,53 @@ export interface components {
             /** Requires Auth */
             requires_auth: boolean;
         };
+        /**
+         * TraceEventResponse
+         * @description Trace event emitted on state transitions.
+         */
+        TraceEventResponse: {
+            /** Trace Id */
+            trace_id: string;
+            /** Run Id */
+            run_id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            from_state: components["schemas"]["HarnessState"] | null;
+            to_state: components["schemas"]["HarnessState"] | null;
+            /** Event Type */
+            event_type: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+        };
+        /**
+         * TransitionRequest
+         * @description Request body for POST /v1/harness/runs/{run_id}/transition.
+         */
+        TransitionRequest: {
+            to_state: components["schemas"]["HarnessState"];
+            /**
+             * Human Override
+             * @default false
+             */
+            human_override: boolean;
+            /** State Payload */
+            state_payload?: {
+                [key: string]: unknown;
+            };
+            /** Validation Results */
+            validation_results?: components["schemas"]["ClaimValidationResult"][] | null;
+        };
+        /**
+         * TransitionResponse
+         * @description Response for a successful state transition.
+         */
+        TransitionResponse: {
+            run: components["schemas"]["RunResponse"];
+            trace_event?: components["schemas"]["TraceEventResponse"] | null;
+        };
         /** UpdateTaskRequest */
         UpdateTaskRequest: {
             status?: components["schemas"]["TaskStatus"] | null;
@@ -8023,6 +9405,66 @@ export interface components {
             due_date?: string | null;
             /** Stage */
             stage?: string | null;
+        };
+        /**
+         * UsageBatchRequest
+         * @description Request body for batch ingestion of usage events.
+         */
+        UsageBatchRequest: {
+            /**
+             * Events
+             * @description Events to ingest
+             */
+            events: components["schemas"]["UsageEventRequest"][];
+        };
+        /**
+         * UsageEventRequest
+         * @description Request body for ingesting a single usage event.
+         */
+        UsageEventRequest: {
+            /**
+             * Event Id
+             * @description Idempotency key
+             */
+            event_id: string;
+            /**
+             * Customer Id
+             * @description Customer identifier
+             */
+            customer_id: string;
+            /**
+             * Event Name
+             * @description Logical event name
+             */
+            event_name: string;
+            /**
+             * Metric Name
+             * @description Metered metric name
+             */
+            metric_name: string;
+            /**
+             * Quantity
+             * @description Quantity to record
+             */
+            quantity: number;
+            /**
+             * Unit
+             * @description Unit of measure
+             */
+            unit?: string | null;
+            /**
+             * Timestamp
+             * Format: date-time
+             * @description Event timestamp (UTC)
+             */
+            timestamp: string;
+            /**
+             * Metadata
+             * @description Optional metadata
+             */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * UsageMetricsResponse
@@ -8122,6 +9564,34 @@ export interface components {
             status?: components["schemas"]["UserStatus"] | null;
         };
         /**
+         * ValidateClaimsRequest
+         * @description Request body for POST /v1/harness/runs/{run_id}/validate.
+         */
+        ValidateClaimsRequest: {
+            /** Claims */
+            claims: components["schemas"]["ClaimValidationRequest"][];
+        };
+        /**
+         * ValidateClaimsResponse
+         * @description Response for POST /v1/harness/runs/{run_id}/validate
+         *     and GET /v1/harness/runs/{run_id}/validation.
+         */
+        ValidateClaimsResponse: {
+            /** Results */
+            results: components["schemas"]["ValidationResultResponse"][];
+            /** Total */
+            total: number;
+            /** Passed */
+            passed: number;
+            /** Failed */
+            failed: number;
+            /** Needs Review */
+            needs_review: number;
+            /** Insufficient Evidence */
+            insufficient_evidence: number;
+            summary?: components["schemas"]["ValidationSummaryResponse"] | null;
+        };
+        /**
          * ValidateHypothesisRequest
          * @description Request to validate or reject a hypothesis.
          */
@@ -8209,6 +9679,34 @@ export interface components {
             ctx?: Record<string, never>;
         };
         /**
+         * ValidationResultResponse
+         * @description Single validation result in API responses.
+         */
+        ValidationResultResponse: {
+            /** Id */
+            id: string;
+            /** Tenant Id */
+            tenant_id: string;
+            /** Claim Id */
+            claim_id: string;
+            validation_state: components["schemas"]["ValidationState"];
+            /** Evidence Refs */
+            evidence_refs: string[];
+            /** Confidence */
+            confidence: number;
+            /** Trust Score */
+            trust_score: number;
+            /** Validator */
+            validator: string;
+            /** Reason */
+            reason: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
          * ValidationSeededApiKey
          * @description Pre-hashed API key metadata for deterministic non-production validation.
          */
@@ -8266,6 +9764,32 @@ export interface components {
              * @default 3600
              */
             expires_in_seconds: number;
+        };
+        /**
+         * ValidationState
+         * @description Result of claim validation.
+         * @enum {string}
+         */
+        ValidationState: "passed" | "failed" | "needs_review" | "insufficient_evidence";
+        /**
+         * ValidationSummaryResponse
+         * @description Aggregate publish decision across all validated claims.
+         */
+        ValidationSummaryResponse: {
+            /** Total */
+            total: number;
+            /** Passed */
+            passed: number;
+            /** Failed */
+            failed: number;
+            /** Needs Review */
+            needs_review: number;
+            /** Insufficient Evidence */
+            insufficient_evidence: number;
+            /** Can Publish */
+            can_publish: boolean;
+            /** Requires Human Review */
+            requires_human_review: boolean;
         };
         /**
          * ValueExtractionRecordListResponse
@@ -8494,6 +10018,16 @@ export interface components {
             /** Recommendations */
             recommendations: string[];
         };
+        /** WorkflowCancelResponse */
+        WorkflowCancelResponse: {
+            /** Workflow Id */
+            workflow_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "cancelled";
+        };
         /**
          * WorkflowCreateRequest
          * @description Request to submit a new workflow - OpenAPI spec compliant.
@@ -8560,11 +10094,11 @@ export interface components {
             use_case_ids?: string[] | null;
             /** Prospect Metrics */
             prospect_metrics?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["JsonValue"];
             } | null;
             /** Custom Data */
             custom_data?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["JsonValue"];
             } | null;
         };
         /** WorkflowListItem */
@@ -8602,6 +10136,25 @@ export interface components {
             offset: number;
             /** Has More */
             has_more: boolean;
+        };
+        /**
+         * WorkflowOutput
+         * @description Structured workflow output envelope for completed workflow results.
+         */
+        WorkflowOutput: {
+            data?: components["schemas"]["JsonValue"];
+            /** Summary */
+            summary?: string | null;
+            /** Artifacts */
+            artifacts?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
+            /** Metrics */
+            metrics?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        } & {
+            [key: string]: unknown;
         };
         /**
          * WorkflowPauseRequest
@@ -8701,6 +10254,23 @@ export interface components {
             completed_at?: string | null;
             actionable_next_state: components["schemas"]["WorkflowProgressActionableState"];
         };
+        /** WorkflowResultResponse */
+        WorkflowResultResponse: {
+            /** Workflow Id */
+            workflow_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "running" | "paused" | "interrupted" | "completed" | "failed" | "cancelled";
+            output?: components["schemas"]["WorkflowOutput"] | null;
+            /** Errors */
+            errors?: (string | {
+                [key: string]: components["schemas"]["JsonValue"];
+            })[];
+            /** Completed At */
+            completed_at?: string | null;
+        };
         /**
          * WorkflowResumeRequest
          * @description Request to resume a paused or interrupted workflow.
@@ -8719,7 +10289,7 @@ export interface components {
              * @description Optional user decision/input data
              */
             resume_data?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["JsonValue"];
             } | null;
             /** Tenant Id */
             tenant_id?: string | null;
@@ -8804,7 +10374,7 @@ export interface components {
             has_output: boolean;
             /** Results */
             results?: {
-                [key: string]: unknown;
+                [key: string]: components["schemas"]["JsonValue"];
             } | null;
             /** Tenant Id */
             tenant_id?: string | null;
@@ -8899,6 +10469,23 @@ export interface components {
             per_page: number;
         };
         /**
+         * CheckpointListResponse
+         * @description Response containing checkpoint timeline.
+         */
+        layer4_agents__api__routes__checkpoints__CheckpointListResponse: {
+            /** Workflow Id */
+            workflow_id: string;
+            /** Checkpoints */
+            checkpoints: components["schemas"]["CheckpointInfo"][];
+            /** Total Count */
+            total_count: number;
+            /**
+             * Current Checkpoint Id
+             * @description Most recent checkpoint ID
+             */
+            current_checkpoint_id?: string | null;
+        };
+        /**
          * RegisterTenantRequest
          * @description Request to register a new tenant.
          */
@@ -8950,6 +10537,16 @@ export interface components {
             settings?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * CheckpointListResponse
+         * @description List of checkpoints for a run.
+         */
+        layer4_agents__harness__api_models__CheckpointListResponse: {
+            /** Items */
+            items: components["schemas"]["CheckpointResponse"][];
+            /** Total */
+            total: number;
         };
         /**
          * AuditLogResponse
@@ -9253,9 +10850,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["AvailableWorkflowsResponse"];
                 };
             };
         };
@@ -9308,9 +10903,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["WorkflowCancelResponse"];
                 };
             };
             /** @description Validation Error */
@@ -9341,9 +10934,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["WorkflowResultResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10733,7 +12324,7 @@ export interface operations {
             };
         };
     };
-    decide_evidence_v1_evidence__evidence_id__decisions_post: {
+    decide_evidence_v1_evidence__evidence_id__decision_patch: {
         parameters: {
             query?: never;
             header?: never;
@@ -10755,6 +12346,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EvidenceDecisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+                driver_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceDriverLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -11219,7 +12848,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CheckpointListResponse"];
+                    "application/json": components["schemas"]["layer4_agents__api__routes__checkpoints__CheckpointListResponse"];
                 };
             };
             /** @description Workflow out of tenant scope */
@@ -14624,7 +16253,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReviewRequest"];
+                "application/json": components["schemas"]["Body_create_review_v1_governance_reviews_post"];
             };
         };
         responses: {
@@ -14690,7 +16319,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ApprovalDecision"];
+                "application/json": components["schemas"]["Body_create_decision_v1_governance_reviews__review_id__decisions_post"];
             };
         };
         responses: {
@@ -14754,7 +16383,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VersionRecord"];
+                "application/json": components["schemas"]["Body_create_version_v1_governance_versions_post"];
             };
         };
         responses: {
@@ -14820,7 +16449,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AuditExportCreateRequest"];
+                "application/json": components["schemas"]["Body_create_audit_export_v1_governance_audit_exports_post"];
             };
         };
         responses: {
@@ -14893,6 +16522,880 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LineageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_subscription_v1_billing_subscription_get: {
+        parameters: {
+            query: {
+                customer_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_checkout_v1_billing_checkout_post: {
+        parameters: {
+            query: {
+                customer_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_portal_v1_billing_portal_post: {
+        parameters: {
+            query: {
+                customer_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_entitlements_v1_billing_entitlements_get: {
+        parameters: {
+            query: {
+                customer_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_feature_v1_billing_check_feature_get: {
+        parameters: {
+            query: {
+                customer_id: string;
+                feature_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_customer_v1_billing_sync_customer_post: {
+        parameters: {
+            query: {
+                customer_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerSyncRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stripe_webhook_v1_billing_webhook_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Stripe-Signature": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_usage_event_v1_billing_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_usage_batch_v1_billing_events_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage_summary_v1_billing_usage__customer_id__summary_get: {
+        parameters: {
+            query: {
+                metric_name: string;
+                start_date?: string | null;
+                end_date?: string | null;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_usage_events_v1_billing_usage__customer_id__events_get: {
+        parameters: {
+            query?: {
+                metric_name?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post: {
+        parameters: {
+            query?: {
+                metric_name?: string | null;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage_limits_v1_billing_limits__customer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_request_allowed_v1_billing_limits__customer_id__check_post: {
+        parameters: {
+            query: {
+                metric_name: string;
+                quantity?: number;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_limits_v1_billing_plans__plan_id__limits_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_invoices_v1_billing_invoices_get: {
+        parameters: {
+            query?: {
+                customer_id?: string | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_invoice_v1_billing_invoices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_invoice_v1_billing_invoices__invoice_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_invoice_item_v1_billing_invoices__invoice_id__items_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddInvoiceItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalize_invoice_v1_billing_invoices__invoice_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_invoice_v1_billing_invoices__invoice_id__void_post: {
+        parameters: {
+            query?: {
+                /** @description Void reason */
+                reason?: string | null;
+            };
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_charges_v1_billing_charges_get: {
+        parameters: {
+            query?: {
+                customer_id?: string | null;
+                invoice_id?: string | null;
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_charge_v1_billing_charges_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordChargeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_revenue_summary_v1_billing_reports_revenue_get: {
+        parameters: {
+            query: {
+                period_start: string;
+                period_end: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_customer_balance_v1_billing_customers__customer_id__balance_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -15516,6 +18019,417 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OnboardingStatusResponse"];
+                };
+            };
+        };
+    };
+    list_runs_v1_harness_runs_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HarnessRunStatus"] | null;
+                workflow_type?: components["schemas"]["HarnessWorkflowType"] | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_run_v1_harness_runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRunRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_v1_harness_runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_v1_harness_runs__run_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_run_v1_harness_runs__run_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransitionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_checkpoints_v1_harness_runs__run_id__checkpoints_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["layer4_agents__harness__api_models__CheckpointListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_checkpoint_v1_harness_runs__run_id__checkpoints_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_gates_v1_harness_runs__run_id__gates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_gate_v1_harness_runs__run_id__gates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_gate_v1_harness_gates__gate_id__decide_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                gate_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_decide_gate_v1_harness_gates__gate_id__decide_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_claims_v1_harness_runs__run_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateClaimsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateClaimsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_validation_v1_harness_runs__run_id__validation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValidateClaimsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    harness_health_v1_harness_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HarnessHealthResponse"];
                 };
             };
         };
