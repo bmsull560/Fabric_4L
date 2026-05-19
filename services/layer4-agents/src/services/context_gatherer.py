@@ -18,6 +18,8 @@ from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from .tenant_cypher import fetch_tenant_validated_records, fetch_tenant_validated_single
+
 logger = logging.getLogger(__name__)
 
 MAX_SIGNALS = 10
@@ -158,13 +160,16 @@ class ContextGatheringService:
             ORDER BY s.confidence_score DESC
             LIMIT $limit
             """
-            async with self._driver.session() as session:
-                result = await session.run(query, {
-                    "tenant_id": tenant_id,
+            records = await fetch_tenant_validated_records(
+                driver=self._driver,
+                query=query,
+                params={
                     "account_id": account_id,
                     "limit": MAX_SIGNALS,
-                })
-                records = [record async for record in result]
+                },
+                tenant_id=tenant_id,
+                operation="context_gatherer.account_signals",
+            )
 
             return [
                 {
@@ -198,28 +203,35 @@ class ContextGatheringService:
             ORDER BY vh.confidence_score DESC
             LIMIT $limit
             """
-            async with self._driver.session() as session:
-                result = await session.run(query, {
-                    "tenant_id": tenant_id,
+            records = await fetch_tenant_validated_records(
+                driver=self._driver,
+                query=query,
+                params={
                     "account_id": account_id,
                     "limit": MAX_HYPOTHESES,
-                })
-                records = [record async for record in result]
+                },
+                tenant_id=tenant_id,
+                operation="context_gatherer.account_hypotheses",
+            )
 
-            return [
-                {
-                    "id": h.get("id"),
-                    "text": h.get("hypothesis_text"),
-                    "status": h.get("status"),
-                    "confidence": h.get("confidence_score"),
-                    "value_path": h.get("value_path_category"),
-                    "estimated_impact_usd": h.get("estimated_impact_usd"),
-                    "capability": h.get("capability_name"),
-                    "signal": h.get("signal_name"),
-                }
-                for r in records
-                if (h := r.get("hypothesis"))
-            ]
+            hypotheses: list[dict[str, Any]] = []
+            for record in records:
+                h = record.get("hypothesis")
+                if not h:
+                    continue
+                hypotheses.append(
+                    {
+                        "id": h.get("id"),
+                        "text": h.get("hypothesis_text"),
+                        "status": h.get("status"),
+                        "confidence": h.get("confidence_score"),
+                        "value_path": h.get("value_path_category"),
+                        "estimated_impact_usd": h.get("estimated_impact_usd"),
+                        "capability": h.get("capability_name"),
+                        "signal": h.get("signal_name"),
+                    }
+                )
+            return hypotheses
         except Exception as e:
             logger.warning("Failed to load account hypotheses: %s", e)
             return []
@@ -250,9 +262,13 @@ class ContextGatheringService:
                    avg(COALESCE(e.time_to_value_days, 180)) AS avg_ttv
             """
 
-            async with self._driver.session() as session:
-                result = await session.run(query, params)
-                record = await result.single()
+            record = await fetch_tenant_validated_single(
+                driver=self._driver,
+                query=query,
+                params=params,
+                tenant_id=tenant_id,
+                operation="context_gatherer.evidence_summary",
+            )
 
             if not record:
                 return None
