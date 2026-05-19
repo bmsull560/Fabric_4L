@@ -142,6 +142,7 @@ async def persist_signal(
     }
 
     try:
+        # tenant_id is resolved from Neo4jTenantSession and forced into params.
         result = await neo4j.run(_UPSERT_SIGNAL_CYPHER, params)
         record = await result.single()
         if record:
@@ -193,6 +194,7 @@ async def list_graph_signals(
         cypher = _LIST_SIGNALS_CYPHER
 
     try:
+        # tenant_id is resolved from Neo4jTenantSession and forced into params.
         result = await neo4j.run(cypher, params)
         records = await result.data()
         items = [_node_to_dict(r["s"]) for r in records]

@@ -21,6 +21,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..agents.base import AgentResult, BaseAgent
+from ..db.query_execution import run_validated_query
 
 
 class ProvenanceTrackingAgent__record_entityResult(TypedDictModel):
@@ -413,7 +414,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "entity_id": entity_id,
@@ -471,7 +472,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "activity_id": activity_id,
@@ -524,7 +525,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            result = await session.run(
+            result = await run_validated_query(session,
                 query,
                 {
                     "derived_id": derived_entity_id,
@@ -653,7 +654,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         """
 
         async with self._driver.session() as session:
-            await session.run(
+            await run_validated_query(session,
                 query,
                 {
                     "trace_id": trace.trace_id,
@@ -686,7 +687,7 @@ class ProvenanceTrackingAgent(BaseAgent):
                 CREATE (t)-[:HAS_STEP]->(s)
                 """
 
-                await session.run(
+                await run_validated_query(session,
                     step_query,
                     {
                         "trace_id": trace.trace_id,
@@ -733,12 +734,12 @@ class ProvenanceTrackingAgent(BaseAgent):
 
         async with self._driver.session() as session:
             # Get upstream
-            result = await session.run(upstream_query, {"entity_id": entity_id, "tenant_id": tenant_id})
+            result = await run_validated_query(session, upstream_query, {"entity_id": entity_id, "tenant_id": tenant_id})
             async for record in result:
                 upstream.extend(record.get("lineage", []))
 
             # Get downstream
-            result = await session.run(downstream_query, {"entity_id": entity_id, "tenant_id": tenant_id})
+            result = await run_validated_query(session, downstream_query, {"entity_id": entity_id, "tenant_id": tenant_id})
             async for record in result:
                 downstream.extend(record.get("lineage", []))
 
