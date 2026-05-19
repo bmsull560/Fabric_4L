@@ -487,12 +487,14 @@ async def signal_stream_websocket(
                 if data == "ping":
                     await websocket.send_json({
                         "event_type": "pong",
+                        "correlation_id": correlation_id,
                         "timestamp": datetime.now(UTC).isoformat(),
                     })
                 else:
                     await websocket.send_json({
                         "event_type": "ack",
                         "received": data,
+                        "correlation_id": correlation_id,
                         "timestamp": datetime.now(UTC).isoformat(),
                     })
 
@@ -530,6 +532,7 @@ async def stream_signals_to_websocket(
     # Set up streaming callback
     async def emit_event(event_data: dict[str, Any]) -> None:
         try:
+            event_data.setdefault("correlation_id", trace_id)
             await websocket.send_json(event_data)
         except Exception as e:
             logger.warning(f"Failed to send WebSocket event: {e}")
