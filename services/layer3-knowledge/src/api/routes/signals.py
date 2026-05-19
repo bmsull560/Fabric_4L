@@ -1,4 +1,8 @@
-"""ValueSignal graph persistence routes for Layer 3 Knowledge Graph.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: ValueSignal graph persistence routes for Layer 3 Knowledge Graph.
 
 Stores ValueSignal objects as Neo4j nodes and provides tenant-scoped
 query endpoints for L4 agents and the frontend.
@@ -18,7 +22,11 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from value_fabric.shared.identity import RequestContext, require_authenticated
 
+<<<<<<< HEAD
 from ...api.dependencies_tenant_secured import Neo4jTenantSessionSecured as Neo4jTenantSession, get_neo4j_secured as get_neo4j_with_tenant
+=======
+from ...api.dependencies_tenant_secured import Neo4jTenantSession, get_neo4j_with_tenant
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 logger = logging.getLogger(__name__)
 

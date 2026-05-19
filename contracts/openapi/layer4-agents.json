@@ -9639,7 +9639,10 @@
               "maxLength": 64,
               "pattern": "^[a-zA-Z0-9_-]+$",
               "title": "Customer Id"
+<<<<<<< HEAD
 <<<<<<< ours
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             }
           },
           {
@@ -9665,6 +9668,7 @@
                   "title": "Response Check Feature V1 Billing Check Feature Get"
                 }
               }
+<<<<<<< HEAD
 =======
 >>>>>>> theirs
             }
@@ -9681,6 +9685,20 @@
             }
           }
 <<<<<<< ours
+=======
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         }
       }
     },
@@ -9716,9 +9734,12 @@
             }
           }
         },
+<<<<<<< HEAD
 =======
         ],
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -9727,11 +9748,15 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
+<<<<<<< HEAD
 <<<<<<< ours
                   "title": "Response Sync Customer V1 Billing Sync Customer Post"
 =======
                   "title": "Response Check Feature V1 Billing Check Feature Get"
 >>>>>>> theirs
+=======
+                  "title": "Response Sync Customer V1 Billing Sync Customer Post"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -9749,6 +9774,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/billing/webhook": {
 =======
@@ -9849,6 +9875,8 @@
           "required": true
         },
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/webhook": {
       "post": {
         "tags": [
@@ -9868,13 +9896,17 @@
             }
           }
         ],
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "additionalProperties": true,
                   "type": "object",
@@ -9884,6 +9916,11 @@
                   "additionalProperties": true,
                   "title": "Response Stripe Webhook V1 Billing Webhook Post"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Stripe Webhook V1 Billing Webhook Post"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -9901,15 +9938,20 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/billing/events/batch": {
 =======
     "/v1/billing/events": {
 >>>>>>> theirs
+=======
+    "/v1/billing/events": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
       "post": {
         "tags": [
           "Billing"
         ],
+<<<<<<< HEAD
 <<<<<<< ours
         "summary": "Ingest Usage Batch",
         "description": "Ingest multiple usage events in a batch.\n\nArgs:\n    request: Batch of usage events (max 1000)\n\nReturns:\n    Summary with counts of created, duplicate, and error events\n\nRaises:\n    400: Batch validation error",
@@ -9919,15 +9961,24 @@
         "description": "Ingest a single usage event for billing.\n\nArgs:\n    request: Usage event details\n\nReturns:\n    Ingested event with ID and status\n\nRaises:\n    400: Validation error\n    409: Duplicate event (idempotency conflict)",
         "operationId": "ingest_usage_event_v1_billing_events_post",
 >>>>>>> theirs
+=======
+        "summary": "Ingest Usage Event",
+        "description": "Ingest a single usage event for billing.\n\nArgs:\n    request: Usage event details\n\nReturns:\n    Ingested event with ID and status\n\nRaises:\n    400: Validation error\n    409: Duplicate event (idempotency conflict)",
+        "operationId": "ingest_usage_event_v1_billing_events_post",
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                 "$ref": "#/components/schemas/UsageBatchRequest"
 =======
                 "$ref": "#/components/schemas/UsageEventRequest"
 >>>>>>> theirs
+=======
+                "$ref": "#/components/schemas/UsageEventRequest"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               }
             }
           },
@@ -9941,11 +9992,15 @@
                 "schema": {
                   "additionalProperties": true,
                   "type": "object",
+<<<<<<< HEAD
 <<<<<<< ours
                   "title": "Response Ingest Usage Batch V1 Billing Events Batch Post"
 =======
                   "title": "Response Ingest Usage Event V1 Billing Events Post"
 >>>>>>> theirs
+=======
+                  "title": "Response Ingest Usage Event V1 Billing Events Post"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -9963,6 +10018,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/billing/usage/{customer_id}/summary": {
       "get": {
@@ -9981,6 +10037,8 @@
               "type": "string",
               "title": "Customer Id"
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/events/batch": {
       "post": {
         "tags": [
@@ -10010,6 +10068,7 @@
                   "title": "Response Ingest Usage Batch V1 Billing Events Batch Post"
                 }
               }
+<<<<<<< HEAD
 >>>>>>> theirs
             }
           },
@@ -10025,6 +10084,19 @@
           },
           {
 =======
+=======
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           }
         }
       }
@@ -10057,7 +10129,10 @@
             }
           },
           {
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "name": "start_date",
             "in": "query",
             "required": false,
@@ -10131,6 +10206,7 @@
             "name": "customer_id",
             "in": "path",
             "required": true,
+<<<<<<< HEAD
 <<<<<<< ours
             "schema": {
               "type": "string",
@@ -10140,6 +10216,8 @@
           {
             "name": "metric_name",
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "schema": {
               "type": "string",
               "title": "Customer Id"
@@ -10163,6 +10241,7 @@
           },
           {
             "name": "start_date",
+<<<<<<< HEAD
 >>>>>>> theirs
             "in": "query",
             "required": false,
@@ -10193,6 +10272,8 @@
           {
             "name": "end_date",
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "in": "query",
             "required": false,
             "schema": {
@@ -10205,7 +10286,10 @@
                   "type": "null"
                 }
               ],
+<<<<<<< HEAD
 <<<<<<< ours
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               "title": "Start Date"
             }
           },
@@ -10223,8 +10307,11 @@
                   "type": "null"
                 }
               ],
+<<<<<<< HEAD
 =======
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               "title": "End Date"
             }
           },
@@ -10455,6 +10542,7 @@
     "/v1/billing/plans/{plan_id}/limits": {
       "get": {
         "tags": [
+<<<<<<< HEAD
 <<<<<<< ours
           },
           {
@@ -10482,6 +10570,8 @@
                 "$ref": "#/components/schemas/layer4_agents__api__routes__frontend_compat__TenantSettingsUpdate"
               }
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           "Billing"
         ],
         "summary": "Get Plan Limits",
@@ -10495,7 +10585,10 @@
             "schema": {
               "type": "string",
               "title": "Plan Id"
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             }
           }
         ],
@@ -10505,6 +10598,7 @@
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/TenantSettingsUpdateResponse"
 =======
@@ -10512,6 +10606,11 @@
                   "additionalProperties": true,
                   "title": "Response Get Plan Limits V1 Billing Plans  Plan Id  Limits Get"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Plan Limits V1 Billing Plans  Plan Id  Limits Get"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -10526,6 +10625,7 @@
               }
             }
           }
+<<<<<<< HEAD
 <<<<<<< ours
         },
         "x-deprecated-removal-date": "2026-08-01",
@@ -10546,6 +10646,8 @@
             "name": "X-CSRF-Token",
             "in": "header",
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         }
       }
     },
@@ -10561,7 +10663,10 @@
           {
             "name": "customer_id",
             "in": "query",
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "required": false,
             "schema": {
               "anyOf": [
@@ -10572,6 +10677,7 @@
                   "type": "null"
                 }
               ],
+<<<<<<< HEAD
 <<<<<<< ours
               "title": "X-Csrf-Token"
             }
@@ -10580,13 +10686,18 @@
             "name": "vf_csrf_token",
             "in": "cookie",
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               "title": "Customer Id"
             }
           },
           {
             "name": "status",
             "in": "query",
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "required": false,
             "schema": {
               "anyOf": [
@@ -10597,9 +10708,12 @@
                   "type": "null"
                 }
               ],
+<<<<<<< HEAD
 <<<<<<< ours
               "title": "Vf Csrf Token"
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               "title": "Status"
             }
           },
@@ -10624,6 +10738,7 @@
               "minimum": 0,
               "default": 0,
               "title": "Offset"
+<<<<<<< HEAD
 >>>>>>> theirs
             }
           }
@@ -10644,13 +10759,23 @@
 =======
           "200": {
 >>>>>>> theirs
+=======
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/RegisterTenantResponse"
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response List Invoices V1 Billing Invoices Get"
@@ -10696,7 +10821,10 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Create Invoice V1 Billing Invoices Post"
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -10711,6 +10839,7 @@
               }
             }
           }
+<<<<<<< HEAD
         },
         "x-deprecated-removal-date": "2026-07-01",
         "x-canonical-path": "/v1/tenants/register"
@@ -10729,6 +10858,11 @@
           {
             "name": "prospect_id",
 =======
+=======
+        }
+      }
+    },
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/invoices/{invoice_id}": {
       "get": {
         "tags": [
@@ -10740,16 +10874,23 @@
         "parameters": [
           {
             "name": "invoice_id",
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
+<<<<<<< HEAD
 <<<<<<< ours
               "title": "Prospect Id"
 =======
               "title": "Invoice Id"
 >>>>>>> theirs
+=======
+              "title": "Invoice Id"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             }
           }
         ],
@@ -10759,6 +10900,7 @@
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/ProspectContextResponse"
 =======
@@ -10766,6 +10908,11 @@
                   "additionalProperties": true,
                   "title": "Response Get Invoice V1 Billing Invoices  Invoice Id  Get"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Invoice V1 Billing Invoices  Invoice Id  Get"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -10783,6 +10930,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/prospects/{prospect_id}/start-analysis": {
       "post": {
@@ -10796,6 +10944,8 @@
           {
             "name": "prospect_id",
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/invoices/{invoice_id}/items": {
       "post": {
         "tags": [
@@ -10807,16 +10957,23 @@
         "parameters": [
           {
             "name": "invoice_id",
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
+<<<<<<< HEAD
 <<<<<<< ours
               "title": "Prospect Id"
 =======
               "title": "Invoice Id"
 >>>>>>> theirs
+=======
+              "title": "Invoice Id"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             }
           }
         ],
@@ -10825,25 +10982,34 @@
           "content": {
             "application/json": {
               "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                 "$ref": "#/components/schemas/StartAnalysisRequest"
 =======
                 "$ref": "#/components/schemas/AddInvoiceItemRequest"
 >>>>>>> theirs
+=======
+                "$ref": "#/components/schemas/AddInvoiceItemRequest"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               }
             }
           }
         },
         "responses": {
+<<<<<<< HEAD
 <<<<<<< ours
           "201": {
 =======
           "200": {
 >>>>>>> theirs
+=======
+          "200": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/StartAnalysisResponse"
 =======
@@ -10851,6 +11017,11 @@
                   "additionalProperties": true,
                   "title": "Response Add Invoice Item V1 Billing Invoices  Invoice Id  Items Post"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Invoice Item V1 Billing Invoices  Invoice Id  Items Post"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -10868,6 +11039,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/company-knowledge/profiles": {
       "post": {
@@ -10884,6 +11056,8 @@
                 "$ref": "#/components/schemas/CompanyKnowledgeProfileCreateRequest"
               }
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/invoices/{invoice_id}/finalize": {
       "post": {
         "tags": [
@@ -10900,6 +11074,7 @@
             "schema": {
               "type": "string",
               "title": "Invoice Id"
+<<<<<<< HEAD
 >>>>>>> theirs
             }
           },
@@ -10911,10 +11086,18 @@
 =======
           "200": {
 >>>>>>> theirs
+=======
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
 =======
@@ -10922,6 +11105,11 @@
                   "additionalProperties": true,
                   "title": "Response Finalize Invoice V1 Billing Invoices  Invoice Id  Finalize Post"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Finalize Invoice V1 Billing Invoices  Invoice Id  Finalize Post"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -10939,12 +11127,15 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/company-knowledge/profiles/current": {
       "get": {
         "tags": [
           "Company Knowledge"
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/invoices/{invoice_id}/void": {
       "post": {
         "tags": [
@@ -10981,20 +11172,27 @@
             },
             "description": "Void reason"
           }
+<<<<<<< HEAD
 >>>>>>> theirs
         ],
         "summary": "Get Current Profile",
         "description": "Get the current tenant's active or latest draft profile.",
         "operationId": "get_current_profile_v1_company_knowledge_profiles_current_get",
+=======
+        ],
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Void Invoice V1 Billing Invoices  Invoice Id  Void Post"
@@ -11008,7 +11206,10 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -11016,6 +11217,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/company-knowledge/profiles/{profile_id}": {
       "get": {
@@ -11035,6 +11237,8 @@
               "format": "uuid",
               "title": "Profile Id"
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/charges": {
       "get": {
         "tags": [
@@ -11113,7 +11317,10 @@
               "minimum": 0,
               "default": 0,
               "title": "Offset"
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             }
           }
         ],
@@ -11123,6 +11330,7 @@
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
 =======
@@ -11130,17 +11338,25 @@
                   "additionalProperties": true,
                   "title": "Response List Charges V1 Billing Charges Get"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Charges V1 Billing Charges Get"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
           },
           "422": {
             "description": "Validation Error",
+<<<<<<< HEAD
 <<<<<<< ours
             "content": {
               "application/json": {
                 "schema": {
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "content": {
               "application/json": {
                 "schema": {
@@ -11186,13 +11402,17 @@
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
         }
+<<<<<<< HEAD
 <<<<<<< ours
       },
       "patch": {
@@ -11241,6 +11461,8 @@
               "application/json": {
                 "schema": {
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
       }
     },
     "/v1/billing/reports/revenue": {
@@ -11291,7 +11513,10 @@
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
@@ -11300,6 +11525,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/company-knowledge/profiles/{profile_id}/approve": {
       "post": {
@@ -11313,6 +11539,8 @@
           {
             "name": "profile_id",
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/billing/customers/{customer_id}/balance": {
       "get": {
         "tags": [
@@ -11324,11 +11552,15 @@
         "parameters": [
           {
             "name": "customer_id",
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
+<<<<<<< HEAD
 <<<<<<< ours
               "format": "uuid",
               "title": "Profile Id"
@@ -11346,17 +11578,23 @@
           }
         },
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               "title": "Customer Id"
             }
           }
         ],
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+<<<<<<< HEAD
 <<<<<<< ours
                   "$ref": "#/components/schemas/CompanyKnowledgeProfileResponse"
 =======
@@ -11364,6 +11602,11 @@
                   "additionalProperties": true,
                   "title": "Response Get Customer Balance V1 Billing Customers  Customer Id  Balance Get"
 >>>>>>> theirs
+=======
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Customer Balance V1 Billing Customers  Customer Id  Balance Get"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 }
               }
             }
@@ -11381,6 +11624,7 @@
         }
       }
     },
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/company-knowledge/sources": {
       "post": {
@@ -11391,6 +11635,8 @@
         "description": "Add a knowledge source to a profile.\n\nFor website sources, triggers a background crawl via Layer 1.",
         "operationId": "add_knowledge_source_v1_company_knowledge_sources_post",
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "/v1/c1/stream": {
       "post": {
         "tags": [
@@ -16681,6 +16927,914 @@
         ],
         "title": "Body_create_version_v1_governance_versions_post"
       },
+<<<<<<< HEAD
+      "Body_decide_gate_v1_harness_gates__gate_id__decide_post": {
+=======
+      "ActorSummary": {
+        "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "api_key_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Id"
+          },
+          "service_account_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Account Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_id",
+          "roles",
+          "permissions",
+          "api_key_id",
+          "service_account_id"
+        ],
+        "title": "ActorSummary"
+      },
+      "AddInvoiceItemRequest": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Line item description"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Amount Cents",
+            "description": "Amount in cents"
+          },
+          "quantity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantity",
+            "description": "Quantity",
+            "default": 1.0
+          },
+          "unit_amount_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Amount Cents",
+            "description": "Price per unit in cents"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Item type: subscription, metered, one_time, proration",
+            "default": "one_time"
+          },
+          "usage_quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Quantity",
+            "description": "Usage quantity for metered items"
+          },
+          "usage_metric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usage Metric",
+            "description": "Usage metric for metered items"
+          },
+          "tax_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Tax Cents",
+            "description": "Tax amount in cents",
+            "default": 0
+          },
+          "discount_cents": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Discount Cents",
+            "description": "Discount amount in cents",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "description",
+          "amount_cents"
+        ],
+        "title": "AddInvoiceItemRequest",
+        "description": "Request to add an invoice line item."
+      },
+      "AgentGovernanceMetadata": {
+        "properties": {
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "tool_name": {
+            "type": "string",
+            "title": "Tool Name"
+          },
+          "audit_event_id": {
+            "type": "string",
+            "title": "Audit Event Id"
+          },
+          "emitted_at": {
+            "type": "string",
+            "title": "Emitted At"
+          },
+          "intent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Intent"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "workflow_triggered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Triggered"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trace_id",
+          "workflow_id",
+          "tenant_id",
+          "tool_name",
+          "audit_event_id",
+          "emitted_at"
+        ],
+        "title": "AgentGovernanceMetadata",
+        "description": "Governance metadata surfaced to RightRail and trace/audit views."
+      },
+      "AgentStreamAccountContext": {
+        "properties": {
+          "accountName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountname",
+            "description": "Selected account display name"
+          },
+          "accountId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accountid",
+            "description": "Selected account identifier"
+          },
+          "accountTier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accounttier",
+            "description": "Optional account segment/tier"
+          }
+        },
+        "type": "object",
+        "title": "AgentStreamAccountContext",
+        "description": "Account/workspace context from frontend."
+      },
+      "AgentStreamMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "description": "Message role (system|user|assistant)"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content",
+            "description": "Message text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "AgentStreamMessage",
+        "description": "Single chat message compatible with frontend request shape."
+      },
+      "AgentStreamRequest": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/AgentStreamMessage"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Messages"
+          },
+          "activeTab": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Activetab",
+            "description": "Active UI tab key"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentStreamAccountContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contextEnvelope": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextenvelope"
+          },
+          "entityContext": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitycontext"
+          },
+          "selectedSignalId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedsignalid"
+          },
+          "selectedValuePath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedvaluepath"
+          },
+          "selectedDriverTreeId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selecteddrivertreeid"
+          },
+          "selectedScenarioId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedscenarioid"
+          },
+          "selectedBusinessCaseId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selectedbusinesscaseid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages",
+          "activeTab"
+        ],
+        "title": "AgentStreamRequest",
+        "description": "Request payload expected by RightRail frontend."
+      },
+      "AgentStreamResponse": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/AgentGovernanceMetadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "metadata"
+        ],
+        "title": "AgentStreamResponse",
+        "description": "Assistant response payload for RightRail."
+      },
+      "ApprovalDecision": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "title": "Decision Id"
+          },
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "changes_requested",
+              "rejected"
+            ],
+            "title": "Decision"
+          },
+          "immutable_audit_hash": {
+            "type": "string",
+            "title": "Immutable Audit Hash"
+          },
+          "decided_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Decided At"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "review_id",
+          "decision",
+          "immutable_audit_hash",
+          "decided_at",
+          "lineage"
+        ],
+        "title": "ApprovalDecision"
+      },
+      "ArchiveWorkflowResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "archived_at": {
+            "type": "string",
+            "title": "Archived At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "status",
+          "archived_at"
+        ],
+        "title": "ArchiveWorkflowResponse",
+        "description": "Archive workflow response."
+      },
+      "AuditEventInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "timestamp",
+          "actor_id",
+          "details"
+        ],
+        "title": "AuditEventInfo",
+        "description": "Audit event information."
+      },
+      "AuditExportCreateRequest": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "correlation_id": {
+            "type": "string",
+            "title": "Correlation Id"
+          },
+          "trace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "review_id",
+          "correlation_id"
+        ],
+        "title": "AuditExportCreateRequest"
+      },
+      "AuditExportJob": {
+        "properties": {
+          "audit_export_id": {
+            "type": "string",
+            "title": "Audit Export Id"
+          },
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "failed",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "immutable_audit_hash": {
+            "type": "string",
+            "title": "Immutable Audit Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "audit_export_id",
+          "review_id",
+          "status",
+          "lineage",
+          "created_at",
+          "immutable_audit_hash"
+        ],
+        "title": "AuditExportJob"
+      },
+      "AuditLogEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "provenance",
+              "access_log"
+            ],
+            "title": "Source"
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Type"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "agent": {
+            "type": "string",
+            "title": "Agent"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "timestamp",
+          "source",
+          "event_type",
+          "action",
+          "agent",
+          "details"
+        ],
+        "title": "AuditLogEntry",
+        "description": "Single audit log entry."
+      },
+      "AuthSessionResponse": {
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "title": "Authenticated"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authenticated",
+          "user_id",
+          "tenant_id",
+          "roles",
+          "permissions"
+        ],
+        "title": "AuthSessionResponse",
+        "description": "Minimal authenticated session profile for compatibility smoke checks."
+      },
+      "AuthorityWeight": {
+        "type": "string",
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "AuthorityWeight",
+        "description": "How authoritative this source is considered."
+      },
+      "AvailableWorkflow": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "name",
+          "description"
+        ],
+        "title": "AvailableWorkflow"
+      },
+      "AvailableWorkflowsResponse": {
+        "properties": {
+          "workflows": {
+            "items": {
+              "$ref": "#/components/schemas/AvailableWorkflow"
+            },
+            "type": "array",
+            "title": "Workflows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflows"
+        ],
+        "title": "AvailableWorkflowsResponse"
+      },
+      "BatchEnrichRequest": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "description": "Max accounts to enrich",
+            "default": 50
+          },
+          "force": {
+            "type": "boolean",
+            "title": "Force",
+            "description": "Re-enrich already enriched accounts",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "BatchEnrichRequest"
+      },
+      "Body_api_activate_tenant_v1_tenants__tenant_id__activate_post": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
+        "properties": {
+          "body": {
+            "$ref": "#/components/schemas/GateDecisionRequest"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "Body_decide_gate_v1_harness_gates__gate_id__decide_post"
+      },
+      "Body_create_audit_export_v1_governance_audit_exports_post": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/AuditExportCreateRequest"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "Body_create_audit_export_v1_governance_audit_exports_post"
+      },
+      "Body_create_decision_v1_governance_reviews__review_id__decisions_post": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/ApprovalDecision"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "Body_create_decision_v1_governance_reviews__review_id__decisions_post"
+      },
+      "Body_create_review_v1_governance_reviews_post": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ReviewRequest"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "Body_create_review_v1_governance_reviews_post"
+      },
+      "Body_create_version_v1_governance_versions_post": {
+        "properties": {
+          "version": {
+            "$ref": "#/components/schemas/VersionRecord"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RequestContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "Body_create_version_v1_governance_versions_post"
+      },
       "Body_decide_gate_v1_harness_gates__gate_id__decide_post": {
         "properties": {
           "body": {
@@ -19619,7 +20773,96 @@
         ],
         "title": "Body_create_decision_v1_governance_reviews__review_id__decisions_post"
       },
+<<<<<<< HEAD
       "Body_create_review_v1_governance_reviews_post": {
+=======
+      "CreateGateRequest": {
+        "properties": {
+          "gate_type": {
+            "$ref": "#/components/schemas/GateType"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gate_type"
+        ],
+        "title": "CreateGateRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/gates."
+      },
+      "CreateInvoiceRequest": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id",
+            "description": "Customer being invoiced"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period Start",
+            "description": "Billing period start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Period End",
+            "description": "Billing period end"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number",
+            "description": "Optional invoice number"
+          },
+          "subscription_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscription Id",
+            "description": "Optional subscription link"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "description": "Currency code",
+            "default": "USD"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Invoice description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "period_start",
+          "period_end"
+        ],
+        "title": "CreateInvoiceRequest",
+        "description": "Request to create a new invoice."
+      },
+      "CreateNotificationRequest": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "properties": {
           "request": {
             "$ref": "#/components/schemas/ReviewRequest"
@@ -20738,6 +21981,7 @@
           },
           "tenant_id": {
             "type": "string",
+<<<<<<< HEAD
             "title": "Tenant Id"
           },
           "state_name": {
@@ -20757,6 +22001,9 @@
               }
             ],
             "title": "Output Hash"
+=======
+            "title": "Decision"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           },
           "created_at": {
             "type": "string",
@@ -21673,7 +22920,10 @@
         "title": "HarnessHealthResponse",
         "description": "Response for GET /v1/harness/health."
       },
+<<<<<<< HEAD
 <<<<<<< ours
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
       "HarnessRunStatus": {
         "type": "string",
         "enum": [
@@ -23474,7 +24724,12 @@
         ],
         "title": "Body_create_decision_v1_governance_reviews__review_id__decisions_post"
       },
+<<<<<<< HEAD
       "Body_create_review_v1_governance_reviews_post": {
+=======
+      "JsonValue": {},
+      "KnowledgeSourceCreateRequest": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "properties": {
           "request": {
             "$ref": "#/components/schemas/ReviewRequest"
@@ -25430,6 +26685,21 @@
         "title": "PortalRequest",
         "description": "Request to create a customer portal session."
       },
+      "PortalRequest": {
+        "properties": {
+          "return_url": {
+            "type": "string",
+            "title": "Return Url",
+            "description": "URL to return to after portal session"
+          }
+        },
+        "type": "object",
+        "required": [
+          "return_url"
+        ],
+        "title": "PortalRequest",
+        "description": "Request to create a customer portal session."
+      },
       "ProcessingMetadata": {
         "properties": {
           "extraction_duration_ms": {
@@ -27029,6 +28299,7 @@
         "title": "RecordChargeRequest",
         "description": "Request to record a charge."
       },
+<<<<<<< HEAD
       "CustomerSyncRequest": {
         "properties": {
           "email": {
@@ -27057,6 +28328,9 @@
         "description": "Request to sync customer with Stripe."
       },
       "DismissBadgeRequest": {
+=======
+      "RegenerateBusinessCaseRequest": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "properties": {
           "account_id": {
             "type": "string",
@@ -27653,6 +28927,7 @@
         "title": "RunListResponse",
         "description": "Paginated list of runs."
       },
+<<<<<<< HEAD
       "CreateRunRequest": {
         "properties": {
           "workflow_type": {
@@ -27694,6 +28969,9 @@
         "description": "Request body for POST /v1/harness/runs."
       },
       "CreateTaskRequest": {
+=======
+      "RunResponse": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "properties": {
           "id": {
             "type": "string",
@@ -27720,6 +28998,7 @@
           "initiated_by": {
             "$ref": "#/components/schemas/InitiatedBy"
           },
+<<<<<<< HEAD
           "description": {
             "anyOf": [
               {
@@ -27816,6 +29095,15 @@
             "$ref": "#/components/schemas/GateStatus"
           },
           "decision_by": {
+=======
+          "status": {
+            "$ref": "#/components/schemas/HarnessRunStatus"
+          },
+          "current_state": {
+            "$ref": "#/components/schemas/HarnessState"
+          },
+          "value_pack_id": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "anyOf": [
               {
                 "type": "string"
@@ -27824,6 +29112,7 @@
                 "type": "null"
               }
             ],
+<<<<<<< HEAD
             "title": "Decision By"
           },
           "decision_reason": {
@@ -27836,12 +29125,20 @@
               }
             ],
             "title": "Decision Reason"
+=======
+            "title": "Value Pack Id"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "title": "Created At"
           },
+<<<<<<< HEAD
           "decided_at": {
             "anyOf": [
               {
@@ -27853,12 +29150,19 @@
               }
             ],
             "title": "Decided At"
+=======
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "id",
+<<<<<<< HEAD
           "run_id",
           "tenant_id",
           "gate_type",
@@ -27893,6 +29197,21 @@
         ],
         "title": "GateType",
         "description": "Type of human gate."
+=======
+          "tenant_id",
+          "account_id",
+          "workflow_type",
+          "initiated_by",
+          "status",
+          "current_state",
+          "value_pack_id",
+          "trace_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "RunResponse",
+        "description": "Single run in API responses."
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
       },
       "SalesforceOAuthAuthorizeRequest": {
         "properties": {
@@ -31342,7 +32661,351 @@
         "title": "ToolSchemaResponse",
         "description": "Typed response model for a single tool schema."
       },
+<<<<<<< HEAD
       "SubscriptionResponse": {
+=======
+      "TraceEventResponse": {
+        "properties": {
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "from_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HarnessState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "to_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HarnessState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event_type": {
+            "type": "string",
+            "title": "Event Type"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "trace_id",
+          "run_id",
+          "tenant_id",
+          "from_state",
+          "to_state",
+          "event_type",
+          "timestamp"
+        ],
+        "title": "TraceEventResponse",
+        "description": "Trace event emitted on state transitions."
+      },
+      "TransitionRequest": {
+        "properties": {
+          "to_state": {
+            "$ref": "#/components/schemas/HarnessState"
+          },
+          "human_override": {
+            "type": "boolean",
+            "title": "Human Override",
+            "default": false
+          },
+          "state_payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "State Payload"
+          },
+          "validation_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ClaimValidationResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "to_state"
+        ],
+        "title": "TransitionRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/transition."
+      },
+      "TransitionResponse": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/RunResponse"
+          },
+          "trace_event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceEventResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run"
+        ],
+        "title": "TransitionResponse",
+        "description": "Response for a successful state transition."
+      },
+      "UpdateTaskRequest": {
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assignee": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignee"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          }
+        },
+        "type": "object",
+        "title": "UpdateTaskRequest"
+      },
+      "UsageBatchRequest": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/UsageEventRequest"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Events",
+            "description": "Events to ingest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events"
+        ],
+        "title": "UsageBatchRequest",
+        "description": "Request body for batch ingestion of usage events."
+      },
+      "UsageEventRequest": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Id",
+            "description": "Idempotency key"
+          },
+          "customer_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Customer Id",
+            "description": "Customer identifier"
+          },
+          "event_name": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Name",
+            "description": "Logical event name"
+          },
+          "metric_name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Metric Name",
+            "description": "Metered metric name"
+          },
+          "quantity": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Quantity",
+            "description": "Quantity to record"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Unit of measure"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "Event timestamp (UTC)"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata",
+            "description": "Optional metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_id",
+          "customer_id",
+          "event_name",
+          "metric_name",
+          "quantity",
+          "timestamp"
+        ],
+        "title": "UsageEventRequest",
+        "description": "Request body for ingesting a single usage event."
+      },
+      "UsageMetricsResponse": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "period": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Period"
+          },
+          "api_calls": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Api Calls"
+          },
+          "agent_executions": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Agent Executions"
+          },
+          "llm_usage": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Llm Usage"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "period",
+          "api_calls",
+          "agent_executions",
+          "llm_usage"
+        ],
+        "title": "UsageMetricsResponse",
+        "description": "Usage metrics response."
+      },
+      "UserInviteRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Email to invite"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role",
+            "default": "analyst"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "UserInviteRequest",
+        "description": "Invite a new user to the tenant (tenant_admin only)."
+      },
+      "UserModel": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         "properties": {
           "id": {
             "anyOf": [
@@ -31357,8 +33020,1187 @@
           },
           "plan_id": {
             "type": "string",
+<<<<<<< HEAD
             "title": "Plan Id"
 =======
+=======
+            "format": "uuid",
+            "title": "Tenant Id",
+            "description": "Owning tenant"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Email address (unique within tenant)"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role",
+            "default": "analyst"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UserStatus",
+            "default": "invited"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "invited_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invited By"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "email"
+        ],
+        "title": "UserModel",
+        "description": "Read-only representation of a user (returned by API \u2014 no password)."
+      },
+      "UserStatus": {
+        "type": "string",
+        "enum": [
+          "invited",
+          "active",
+          "deactivated"
+        ],
+        "title": "UserStatus",
+        "description": "Lifecycle status of a user."
+      },
+      "UserUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "UserUpdateRequest",
+        "description": "Update a user's role or status."
+      },
+      "ValidateClaimsRequest": {
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimValidationRequest"
+            },
+            "type": "array",
+            "title": "Claims"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "claims"
+        ],
+        "title": "ValidateClaimsRequest",
+        "description": "Request body for POST /v1/harness/runs/{run_id}/validate."
+      },
+      "ValidateClaimsResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationResultResponse"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "needs_review": {
+            "type": "integer",
+            "title": "Needs Review"
+          },
+          "insufficient_evidence": {
+            "type": "integer",
+            "title": "Insufficient Evidence"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSummaryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "results",
+          "total",
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence"
+        ],
+        "title": "ValidateClaimsResponse",
+        "description": "Response for POST /v1/harness/runs/{run_id}/validate\nand GET /v1/harness/runs/{run_id}/validation."
+      },
+      "ValidateHypothesisRequest": {
+        "properties": {
+          "feedback": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Feedback"
+          },
+          "new_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Status",
+            "description": "New status: validated, rejected, or converted"
+          },
+          "confidence_adjustment": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Confidence Adjustment",
+            "description": "Additive confidence adjustment",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "feedback"
+        ],
+        "title": "ValidateHypothesisRequest",
+        "description": "Request to validate or reject a hypothesis."
+      },
+      "ValidateSlugResponse": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "available"
+        ],
+        "title": "ValidateSlugResponse",
+        "description": "Response for slug validation."
+      },
+      "ValidateTruthRequest": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "actor_type": {
+            "type": "string",
+            "title": "Actor Type",
+            "default": "user"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "actor"
+        ],
+        "title": "ValidateTruthRequest"
+      },
+      "ValidationAuthContextSeedRequest": {
+        "properties": {
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "maxLength": 63,
+            "minLength": 1,
+            "title": "Tenant Slug",
+            "default": "tenant-e2e-001"
+          },
+          "tenant_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Tenant Name",
+            "default": "E2E Validation Tenant"
+          },
+          "service_account_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Service Account Id",
+            "default": "svc-playwright-backend-validation"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidationSeededApiKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "account_mappings": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Account Mappings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ValidationAuthContextSeedRequest",
+        "description": "Non-production deterministic auth-context seed payload.\n\nThe payload intentionally accepts only non-secret metadata and optional\npre-hashed API key material. Raw secrets are rejected by ``extra=forbid``."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationResultResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "claim_id": {
+            "type": "string",
+            "title": "Claim Id"
+          },
+          "validation_state": {
+            "$ref": "#/components/schemas/ValidationState"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence Refs"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "trust_score": {
+            "type": "number",
+            "title": "Trust Score"
+          },
+          "validator": {
+            "type": "string",
+            "title": "Validator"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "tenant_id",
+          "claim_id",
+          "validation_state",
+          "evidence_refs",
+          "confidence",
+          "trust_score",
+          "validator",
+          "reason",
+          "created_at"
+        ],
+        "title": "ValidationResultResponse",
+        "description": "Single validation result in API responses."
+      },
+      "ValidationSeededApiKey": {
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "title": "Key Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "default": "E2E backend-integrated validation service key"
+          },
+          "key_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Key Hash"
+          },
+          "prefix": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 4,
+            "title": "Prefix"
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Role",
+            "default": "system"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Permissions"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key_id",
+          "key_hash",
+          "prefix"
+        ],
+        "title": "ValidationSeededApiKey",
+        "description": "Pre-hashed API key metadata for deterministic non-production validation."
+      },
+      "ValidationSessionRequest": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "User Id",
+            "default": "e2e-admin-user"
+          },
+          "email": {
+            "type": "string",
+            "minLength": 3,
+            "title": "Email",
+            "default": "e2e@valuefabric.test"
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Role",
+            "default": "admin"
+          },
+          "tenant_slug": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Tenant Slug",
+            "default": "e2e-test"
+          },
+          "expires_in_seconds": {
+            "type": "integer",
+            "maximum": 86400.0,
+            "minimum": 60.0,
+            "title": "Expires In Seconds",
+            "default": 3600
+          }
+        },
+        "type": "object",
+        "title": "ValidationSessionRequest",
+        "description": "Non-production browser session payload for backend-integrated Playwright validation."
+      },
+      "ValidationState": {
+        "type": "string",
+        "enum": [
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence"
+        ],
+        "title": "ValidationState",
+        "description": "Result of claim validation."
+      },
+      "ValidationSummaryResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "needs_review": {
+            "type": "integer",
+            "title": "Needs Review"
+          },
+          "insufficient_evidence": {
+            "type": "integer",
+            "title": "Insufficient Evidence"
+          },
+          "can_publish": {
+            "type": "boolean",
+            "title": "Can Publish"
+          },
+          "requires_human_review": {
+            "type": "boolean",
+            "title": "Requires Human Review"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "passed",
+          "failed",
+          "needs_review",
+          "insufficient_evidence",
+          "can_publish",
+          "requires_human_review"
+        ],
+        "title": "ValidationSummaryResponse",
+        "description": "Aggregate publish decision across all validated claims."
+      },
+      "ValueExtractionRecordListResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ValueExtractionRecordResponse"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "page",
+          "page_size",
+          "has_more",
+          "items"
+        ],
+        "title": "ValueExtractionRecordListResponse",
+        "description": "Paginated extraction records."
+      },
+      "ValueExtractionRecordResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "profile_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Profile Id"
+          },
+          "page_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extracted": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extracted"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "requires_review": {
+            "type": "boolean",
+            "title": "Requires Review"
+          },
+          "review_status": {
+            "$ref": "#/components/schemas/ReviewStatus"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "extraction_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Version"
+          },
+          "llm_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model"
+          },
+          "trace_span_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Span Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source_id",
+          "tenant_id",
+          "profile_id",
+          "extracted",
+          "requires_review",
+          "review_status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ValueExtractionRecordResponse",
+        "description": "Extraction record in API responses."
+      },
+      "ValueExtractionReviewRequest": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ReviewStatus",
+            "description": "accepted | rejected | modified"
+          },
+          "user_edits": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Edits",
+            "description": "Modified extracted fields when action=modified"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "ValueExtractionReviewRequest",
+        "description": "Request to review an extraction record."
+      },
+      "VerifyEmailRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "title": "VerifyEmailRequest",
+        "description": "Request to verify email address."
+      },
+      "VerifyEmailResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "tenant_id",
+          "status"
+        ],
+        "title": "VerifyEmailResponse",
+        "description": "Response from email verification."
+      },
+      "VersionDiff": {
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "title": "Version Id"
+          },
+          "compare_to_version_id": {
+            "type": "string",
+            "title": "Compare To Version Id"
+          },
+          "changed_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changed Fields"
+          },
+          "change_count": {
+            "type": "integer",
+            "title": "Change Count"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_id",
+          "compare_to_version_id",
+          "changed_fields",
+          "change_count",
+          "lineage"
+        ],
+        "title": "VersionDiff"
+      },
+      "VersionRecord": {
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "title": "Version Id"
+          },
+          "version_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "superseded"
+            ],
+            "title": "Version Status"
+          },
+          "lineage": {
+            "$ref": "#/components/schemas/LineageRef"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "object_type": {
+            "type": "string",
+            "enum": [
+              "business_case",
+              "value_model"
+            ],
+            "title": "Object Type",
+            "default": "business_case"
+          },
+          "snapshot": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Snapshot"
+          },
+          "immutable_audit_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Immutable Audit Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version_id",
+          "version_status",
+          "lineage",
+          "created_at"
+        ],
+        "title": "VersionRecord"
+      },
+      "WebSocketStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "connected, disconnected, or connecting"
+          },
+          "active_workflows": {
+            "type": "integer",
+            "title": "Active Workflows",
+            "description": "Number of workflows with active connections"
+          },
+          "total_connections": {
+            "type": "integer",
+            "title": "Total Connections"
+          },
+          "reconnect_attempts": {
+            "type": "integer",
+            "title": "Reconnect Attempts"
+          },
+          "last_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Event Id"
+          },
+          "connection_quality": {
+            "type": "string",
+            "title": "Connection Quality",
+            "description": "excellent, good, fair, or poor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "active_workflows",
+          "total_connections",
+          "reconnect_attempts",
+          "last_event_id",
+          "connection_quality"
+        ],
+        "title": "WebSocketStatusResponse",
+        "description": "WebSocket connection status."
+      },
+      "WebhookProvisioningResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "tenant_id": {
+            "type": "string",
+            "title": "Tenant Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "webhook_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "tenant_id",
+          "status"
+        ],
+        "title": "WebhookProvisioningResponse",
+        "description": "Response from webhook provisioning request."
+      },
+      "WhitespaceAnalysisRequest": {
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "title": "Prospect Id",
+            "description": "Prospect identifier"
+          },
+          "prospect_needs": {
+            "type": "string",
+            "minLength": 10,
+            "title": "Prospect Needs",
+            "description": "Description of prospect needs"
+          },
+          "analysis_depth": {
+            "type": "string",
+            "title": "Analysis Depth",
+            "description": "Analysis depth (quick, standard, deep)",
+            "default": "standard"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prospect_id",
+          "prospect_needs"
+        ],
+        "title": "WhitespaceAnalysisRequest",
+        "description": "Whitespace analysis request."
+      },
+      "WhitespaceAnalysisResponse": {
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "title": "Prospect Id"
+          },
+          "extracted_needs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Extracted Needs"
+          },
+          "gap_analysis": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Gap Analysis"
+          },
+          "opportunity_score": {
+            "type": "number",
+            "title": "Opportunity Score"
+          },
+          "recommendations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recommendations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prospect_id",
+          "extracted_needs",
+          "gap_analysis",
+          "opportunity_score",
+          "recommendations"
+        ],
+        "title": "WhitespaceAnalysisResponse",
+        "description": "Whitespace analysis response."
+      },
+      "WorkflowCancelResponse": {
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "title": "Workflow Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "cancelled",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_id",
+          "status"
+        ],
+        "title": "WorkflowCancelResponse"
+      },
+      "WorkflowCreateRequest": {
+        "properties": {
+          "workflow_type": {
+            "type": "string",
+            "enum": [
+              "business_case_generation",
+              "business_case",
+              "roi_calculator",
+              "whitespace_analysis",
+              "orchestrator"
+            ],
+            "title": "Workflow Type",
+            "description": "Type of workflow to run"
+          },
+          "inputs": {
+            "$ref": "#/components/schemas/WorkflowInputs",
+            "description": "Workflow inputs"
+          },
+          "priority": {
+            "type": "string",
+            "title": "Priority",
+            "description": "Execution priority",
+            "default": "NORMAL"
+          },
+          "workflow_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workflow Id",
+            "description": "Optional workflow ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow_type"
+        ],
+        "title": "WorkflowCreateRequest",
+        "description": "Request to submit a new workflow - OpenAPI spec compliant.\n\nSpec requires:\n- workflow_type: enum [whitespace_analysis, business_case_generation]\n- inputs: object"
+      },
+      "WorkflowCreateResponse": {
+        "properties": {
+          "workflow_instance_id": {
+            "type": "string",
+            "title": "Workflow Instance Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Workflow status"
+          },
+          "estimated_duration_seconds": {
+            "type": "integer",
+            "title": "Estimated Duration Seconds",
+            "description": "Estimated execution time",
+            "default": 300
+          }
+        },
+        "type": "object",
+        "required": [
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           "workflow_instance_id",
           "status"
         ],
@@ -31574,6 +34416,45 @@
           "has_more"
         ],
         "title": "WorkflowListResponse"
+      },
+      "WorkflowOutput": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "artifacts": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Artifacts"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "object",
+            "title": "Metrics"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "WorkflowOutput",
+        "description": "Structured workflow output envelope for completed workflow results."
       },
       "WorkflowPauseRequest": {
         "properties": {
@@ -31888,15 +34769,20 @@
           "output": {
             "anyOf": [
               {
+<<<<<<< HEAD
                 "additionalProperties": {
                   "$ref": "#/components/schemas/JsonValue"
                 },
                 "type": "object"
 >>>>>>> theirs
+=======
+                "$ref": "#/components/schemas/WorkflowOutput"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               },
               {
                 "type": "null"
               }
+<<<<<<< HEAD
 <<<<<<< ours
             ]
           },
@@ -31905,6 +34791,10 @@
             ],
             "title": "Output"
           },
+=======
+            ]
+          },
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           "errors": {
             "items": {
               "anyOf": [
@@ -31923,21 +34813,30 @@
             "title": "Errors"
           },
           "completed_at": {
+<<<<<<< HEAD
 >>>>>>> theirs
             "anyOf": [
               {
                 "type": "string",
                 "maxLength": 160
+=======
+            "anyOf": [
+              {
+                "type": "string"
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
               },
               {
                 "type": "null"
               }
             ],
+<<<<<<< HEAD
 <<<<<<< ours
             "title": "Assignee"
           },
           "due_date": {
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             "title": "Completed At"
           }
         },
@@ -32790,11 +35689,15 @@
             ],
             "title": "Current Checkpoint Id",
             "description": "Most recent checkpoint ID"
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           }
         },
         "type": "object",
         "required": [
+<<<<<<< HEAD
 <<<<<<< ours
           "name",
           "category",
@@ -32813,6 +35716,8 @@
           },
           "trace_id": {
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
           "workflow_id",
           "checkpoints",
           "total_count"

@@ -5,8 +5,9 @@ Uses an in-memory SQLite database (via aiosqlite) for fast, isolated tests.
 The DATABASE_URL is overridden before any imports touch the engine.
 
 Fixture hierarchy:
-  engine (session-scoped)  →  tables created once per test session
-  db     (function-scoped) →  fresh transaction rolled back after each test
+  engine (function-scoped) →  fresh in-memory DB per test; prevents fixture-level
+                               commits from leaking across tests via savepoint escape
+  db     (function-scoped) →  session with a nested transaction rolled back after each test
   client (function-scoped) →  httpx.AsyncClient wrapping the FastAPI app
 """
 
@@ -30,6 +31,17 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests marked requires_postgres when no PostgreSQL is available."""
+    postgres_url = os.getenv("POSTGRES_TEST_URL") or os.getenv("DATABASE_URL", "")
+    run_postgres_tests = os.getenv("RUN_POSTGRES_TESTS", "").strip().lower() == "true"
+    if not run_postgres_tests or not postgres_url.lower().startswith("postgres"):
+        skip_pg = pytest.mark.skip(reason="requires_postgres: no live PostgreSQL instance")
+        for item in items:
+            if item.get_closest_marker("requires_postgres"):
+                item.add_marker(skip_pg)
 
 # Override DATABASE_URL before any application code imports the engine
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -75,12 +87,29 @@ def anyio_backend():
     return "asyncio"
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture
 async def engine():
-    """Create a session-scoped async engine backed by SQLite in-memory."""
+    """Create a function-scoped async engine backed by SQLite in-memory.
+
+    Each test gets its own fresh database so that commits made by fixtures
+    (e.g. sample_model_version calling db.commit()) cannot leak data into
+    subsequent tests.  The session-scoped approach was unsafe because
+    begin_nested() + rollback only protects against explicit test writes;
+    fixture-level commits escape the savepoint and persist for the rest of
+    the session.
+    """
+    from sqlalchemy import event as sa_event
+
     _engine = create_async_engine(TEST_DB_URL, echo=False, future=True)
 
-    # Patch the module-level engine so the app uses our test engine
+    # Enable SQLite foreign key enforcement so ON DELETE CASCADE works in tests.
+    @sa_event.listens_for(_engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_conn, _connection_record):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    # Patch the module-level engine so the app uses our test engine.
     db_module._engine = _engine
     db_module._session_factory = async_sessionmaker(
         bind=_engine,
@@ -112,9 +141,14 @@ async def db(engine) -> AsyncGenerator[AsyncSession, None]:
 
     Uses a nested transaction (SAVEPOINT) so the outer transaction can
     be rolled back cleanly regardless of what the test does.
+
+    Tenant context is pre-set to TEST_ORG_ID so the flush enforcement
+    guard does not reject writes made directly through the test session.
     """
     factory = db_module.get_session_factory()
     async with factory() as session:
+        # Establish tenant context so _enforce_tenant_context_before_flush passes.
+        db_module._mark_session_tenant_context(session, str(TEST_ORG_ID))
         # Begin a nested transaction (SAVEPOINT)
         await session.begin_nested()
         yield session
@@ -223,6 +257,7 @@ def make_source_payload(**overrides) -> dict:
 @pytest_asyncio.fixture
 async def tenant_aware_client(db) -> AsyncGenerator[AsyncClient, None]:
     """Client fixture that allows per-request tenant switching via X-Test-Tenant."""
+    from fastapi import Header
     from layer5_ground_truth.api.auth import TokenClaims, get_current_user
     from layer5_ground_truth.database import get_db_from_context
 
@@ -231,11 +266,16 @@ async def tenant_aware_client(db) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db_from_context():
         yield db
 
-    async def override_get_current_user(request):
-        tenant_raw = request.headers.get("X-Test-Tenant", str(TEST_ORG_ID))
+    # Use Header() parameters instead of Request injection — FastAPI recognises
+    # Header() in dependency overrides but does NOT auto-inject Request objects.
+    async def override_get_current_user(
+        x_test_tenant: str | None = Header(default=None, alias="X-Test-Tenant"),
+        x_test_actor: str | None = Header(default=None, alias="X-Test-Actor"),
+    ) -> TokenClaims:
+        tenant_raw = x_test_tenant or str(TEST_ORG_ID)
         return TokenClaims(
             tenant_id=uuid.UUID(tenant_raw),
-            user_id=request.headers.get("X-Test-Actor", "test-user"),
+            user_id=x_test_actor or "test-user",
             roles=["admin"],
         )
 

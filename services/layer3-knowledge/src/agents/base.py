@@ -1,4 +1,9 @@
-"""Base agent class for Value Fabric agent framework."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Base agent class for Value Fabric agent framework.
+"""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

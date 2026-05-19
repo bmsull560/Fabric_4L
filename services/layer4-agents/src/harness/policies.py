@@ -11,8 +11,6 @@ Rules:
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from harness.models import (
     ClaimValidationResult,
     GateStatus,
@@ -22,6 +20,7 @@ from harness.models import (
     ToolRiskLevel,
     ToolSideEffectClass,
     ValidationState,
+    ValidationSummary,
 )
 
 
@@ -95,8 +94,8 @@ def evaluate_tool_invocation_policy(
 
 def evaluate_transition_policy(
     run: HarnessRun,
-    validation_results: Optional[List[ClaimValidationResult]] = None,
-    human_gate: Optional[HumanGate] = None,
+    validation_results: list[ClaimValidationResult] | None = None,
+    human_gate: HumanGate | None = None,
     override_policy_allowed: bool = False,
 ) -> None:
     """
@@ -121,8 +120,8 @@ def evaluate_transition_policy(
 
 def can_publish_output(
     run: HarnessRun,
-    validation_results: Optional[List[ClaimValidationResult]] = None,
-    human_gate_decision: Optional[HumanGate] = None,
+    validation_results: list[ClaimValidationResult] | None = None,
+    human_gate_decision: HumanGate | None = None,
     override_policy: bool = False,
 ) -> bool:
     """
@@ -173,7 +172,7 @@ def can_publish_output(
 
 
 def requires_human_review(
-    validation_results: Optional[List[ClaimValidationResult]],
+    validation_results: list[ClaimValidationResult] | None,
 ) -> bool:
     """Return True if the validation results require human review before publishing."""
     if validation_results is None:
@@ -185,3 +184,49 @@ def requires_human_review(
         ):
             return True
     return False
+
+
+def aggregate_validation_results(
+    results: list[ClaimValidationResult],
+) -> ValidationSummary:
+    """Aggregate per-claim validation results into a publish decision.
+
+    Rules:
+      - all passed → can_publish=True, requires_human_review=False
+      - any failed → can_publish=False, requires_human_review=False
+      - any needs_review or insufficient_evidence → can_publish=False, requires_human_review=True
+      - empty results → can_publish=False, requires_human_review=True
+    """
+    if not results:
+        return ValidationSummary(
+            total=0,
+            passed=0,
+            failed=0,
+            needs_review=0,
+            insufficient_evidence=0,
+            can_publish=False,
+            requires_human_review=True,
+        )
+
+    counts: dict[ValidationState, int] = {s: 0 for s in ValidationState}
+    for vr in results:
+        counts[vr.validation_state] += 1
+
+    total = len(results)
+    passed = counts[ValidationState.PASSED]
+    failed = counts[ValidationState.FAILED]
+    needs_review = counts[ValidationState.NEEDS_REVIEW]
+    insufficient = counts[ValidationState.INSUFFICIENT_EVIDENCE]
+
+    can_publish = (passed == total) and total > 0
+    human_review = (needs_review > 0 or insufficient > 0) and not can_publish
+
+    return ValidationSummary(
+        total=total,
+        passed=passed,
+        failed=failed,
+        needs_review=needs_review,
+        insufficient_evidence=insufficient,
+        can_publish=can_publish,
+        requires_human_review=human_review,
+    )

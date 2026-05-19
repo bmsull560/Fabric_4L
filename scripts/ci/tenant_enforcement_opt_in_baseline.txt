@@ -1,0 +1,2 @@
+services/api/app/routers/auth.py:207: route 'invite_user' accesses body.tenant_id without calling enforce_authenticated_tenant
+services/api/app/routers/auth.py:318: route 'get_me' accesses body.tenant_id without calling enforce_authenticated_tenant

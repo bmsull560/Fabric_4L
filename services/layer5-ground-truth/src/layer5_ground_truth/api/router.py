@@ -31,6 +31,7 @@ from ..services.state_machine import (
     InvalidTransitionError,
     TransitionConflictError,
 )
+from ..services.freshness_monitor import FreshnessCheckResponse, FreshnessSummaryResponse
 from ..services.truth_service import (
     add_source,
     create_truth_object,
@@ -42,12 +43,15 @@ from ..services.truth_service import (
 from .auth import TokenClaims, authorize_action, get_current_user
 from .schemas import (
     AddSourceRequest,
+<<<<<<< HEAD
     FreshnessCheckResponse,
     FreshnessSummaryResponse,
 <<<<<<< ours
     HealthResponse,
 =======
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     MaturityLadderResponse,
     MaturityLevelDetail,
     TruthObjectCreate,
@@ -63,6 +67,7 @@ from .schemas import (
 )
 
 
+<<<<<<< HEAD
 <<<<<<< ours
 class sync_to_kgResult(TypedDictModel):
     failed: Any
@@ -80,6 +85,8 @@ class list_staleResult(TypedDictModel):
 
 =======
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
@@ -312,6 +319,7 @@ async def sync_to_kg(
         else:
             failed += 1
 
+<<<<<<< HEAD
 <<<<<<< ours
     return sync_to_kgResult.model_validate(
         {
@@ -321,6 +329,8 @@ async def sync_to_kg(
         }
     )
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     return SyncToKgResponse.model_validate({
         "synced": synced,
         "failed": failed,
@@ -409,6 +419,7 @@ async def list_stale(
         for t in items
     ]
 
+<<<<<<< HEAD
 <<<<<<< ours
     return list_staleResult.model_validate(
         {
@@ -420,6 +431,8 @@ async def list_stale(
         }
     )
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     return StaleTruthsResponse.model_validate({
         "items": summaries,
         "total": total,

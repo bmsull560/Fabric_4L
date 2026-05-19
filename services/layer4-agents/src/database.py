@@ -24,8 +24,7 @@ from .config.settings import settings
 # Task 4.1: Default isolation tier constant
 DEFAULT_ISOLATION_TIER = "shared"
 
-from fastapi import Depends, Header, HTTPException, status
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -144,8 +143,8 @@ async def _emit_tenant_context_set_audit(
             request_id=context.request_id,
             details=details.model_dump(exclude_none=True),
         )
-    except (AttributeError, TypeError) as exc:
-        # P0: Log debug only - don't fail the request
+    except Exception as exc:
+        # Audit emission must never break request flow — log and continue.
         logger.debug("Tenant context audit emission failed (non-critical): %s", exc)
 
 
@@ -165,7 +164,7 @@ class Base(DeclarativeBase):
 # ---------------------------------------------------------------------------
 
 _engine: AsyncEngine | None = None
-_session_factory: async_sessionmaker["TenantEnforcedAsyncSession"] | None = None
+_session_factory: async_sessionmaker[TenantEnforcedAsyncSession] | None = None
 
 _TENANT_CONTEXT_STATE_KEY = "tenant_context_state"
 _TENANT_CONTEXT_VALUE_KEY = "tenant_context_value"
@@ -340,6 +339,8 @@ def _allow_compat_only_db_dependency(dep_name: str) -> None:
 try:
     from value_fabric.shared.database import (
         TenantContextError as SharedTenantContextError,
+    )
+    from value_fabric.shared.database import (
         validate_tenant_id as shared_validate_tenant_id,
     )
     SHARED_TENANT_VALIDATION_AVAILABLE = True
@@ -380,9 +381,20 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
                 fail_safe_mode=FAIL_SAFE_MODE,
                 reserved_keywords=RESERVED_TENANT_KEYWORDS,
             )
-        except (ValueError, TypeError) as exc:
+        except (ValueError, TypeError, SharedTenantContextError) as exc:
+            # Increment per-error-type counters so metrics stay accurate
+            # regardless of which validation path executes.
+            if tenant_id is None:
+                _tenant_validation_metrics["missing_context_errors"] += 1
+            elif str(tenant_id).strip() == "":
+                _tenant_validation_metrics["empty_tenant_errors"] += 1
+            else:
+                _tenant_validation_metrics["uuid_format_errors"] += 1
             _tenant_validation_metrics["validation_failures"] += 1
-            raise exc
+            # Re-raise as local TenantContextError for a stable exception contract.
+            if not isinstance(exc, TenantContextError):
+                raise TenantContextError(str(exc)) from exc
+            raise
 
     # Fallback to local implementation
     if tenant_id is None:
@@ -543,6 +555,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
+async def get_db_with_tenant(
+    request: Request,
+    context: RequestContext = Depends(get_request_context),  # type: ignore
+) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for DB sessions with required tenant context.
+
+    DEPRECATED: Use get_db_from_context() for all new endpoints. This stub
+    exists only to satisfy the compatibility-guard contract and emit a
+    deprecation warning when legacy callers are present.
+    """
+    _allow_compat_only_db_dependency("get_db_with_tenant")
+    warnings.warn(
+        "get_db_with_tenant() is deprecated. Use get_db_from_context() for proper tenant isolation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    async for session in get_db_from_context(context):
+        yield session
+
+
 async def get_db_from_context(
     context: RequestContext = Depends(get_request_context),  # type: ignore
 ) -> AsyncGenerator[AsyncSession, None]:
@@ -589,10 +621,19 @@ async def get_db_from_context(
         if context.isolation_tier == "shared":
             await _set_local_tenant_context(session, tenant_id)
         else:
-            # Future: handle 'schema' and 'database' tiers
+            # Only 'shared' (PostgreSQL RLS) is supported in v1.
+            # 'schema' and 'database' tiers are rejected at provisioning time
+            # (see tenant_provisioning.py). This branch is a defensive fallback
+            # for tenants that were provisioned before that guard was added.
+            # 422 is correct: the request is structurally valid but the tier
+            # value is not accepted by this server.
             raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail=f"Isolation tier '{context.isolation_tier}' not yet implemented",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Isolation tier '{context.isolation_tier}' is not supported. "
+                    "Only 'shared' (PostgreSQL RLS) is available in v1. "
+                    "Contact support to migrate this tenant."
+                ),
             )
 
         # Task 3.1: Emit tenant context set audit event
@@ -719,7 +760,7 @@ async def get_tiered_db_session(
         request_context: Optional RequestContext for audit logging
 
     Raises:
-        HTTPException: 501 if unimplemented tier requested
+        HTTPException: 422 if an unsupported isolation tier is requested
         TenantContextError: If tenant_id is invalid
     """
     _allow_compat_only_db_dependency("get_tiered_db_session")
@@ -753,24 +794,24 @@ async def get_tiered_db_session(
                 await session.rollback()
                 raise
 
-    elif isolation_tier == "schema":
-        # Future: Implement schema-per-tenant routing
+    elif isolation_tier in ("schema", "database"):
+        # "schema" and "database" tiers are not implemented in v1.
+        # Tenants must be provisioned with isolation_tier="shared".
+        # If this path is reached, the tenant was provisioned with an unsupported
+        # tier — reject immediately rather than silently failing mid-workflow.
         raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Schema-per-tenant isolation tier not yet implemented",
-        )
-
-    elif isolation_tier == "database":
-        # Future: Implement database-per-tenant routing
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Database-per-tenant isolation tier not yet implemented",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Isolation tier {isolation_tier!r} is not implemented. "
+                "Only 'shared' (PostgreSQL RLS) is supported in v1. "
+                "Re-provision this tenant with isolation_tier='shared'."
+            ),
         )
 
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown isolation tier: {isolation_tier}",
+            detail=f"Unknown isolation tier: {isolation_tier!r}. Supported: 'shared'.",
         )
 
 
@@ -845,7 +886,7 @@ async def db_session_for_context(
 
     Raises:
         TenantContextError: If tenant_id is missing or invalid.
-        HTTPException: If an unimplemented isolation tier is requested.
+        HTTPException: 422 if an unsupported isolation tier is requested.
     """
     if not SHARED_IDENTITY_AVAILABLE:
         raise RuntimeError("shared.identity package required for db_session_for_context")
@@ -866,8 +907,12 @@ async def db_session_for_context(
             await _set_local_tenant_context(session, tenant_id)
         else:
             raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail=f"Isolation tier '{context.isolation_tier}' not yet implemented",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"Isolation tier '{context.isolation_tier}' is not implemented. "
+                    "Only 'shared' (PostgreSQL RLS) is supported in v1. "
+                    "Re-provision this tenant with isolation_tier='shared'."
+                ),
             )
 
         await _emit_tenant_context_set_audit(context, str(tenant_id), is_bypass=False)

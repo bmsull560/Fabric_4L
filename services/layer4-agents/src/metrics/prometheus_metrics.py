@@ -301,6 +301,16 @@ class PrometheusMetrics:
             registry=self.config.registry,
         )
 
+        # Security: cross-tenant WebSocket access denials (OBS-L4-009)
+        # SECURITY: Uses tenant_tier (hash bucket) instead of raw tenant_id to
+        # prevent high-cardinality label explosion while preserving alerting fidelity.
+        self._metrics["ws_tenant_mismatch_total"] = Counter(
+            "security_websocket_tenant_mismatch_total",
+            "WebSocket connections denied due to cross-tenant workflow access (BOLA/IDOR probe signal)",
+            ["actor_tenant_tier"],
+            registry=self.config.registry,
+        )
+
     def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
         if self.config.enabled:
             self._metrics["requests_total"].labels(
@@ -484,6 +494,20 @@ class PrometheusMetrics:
             tenant_tier = _derive_tenant_tier(tenant_id)
             self._metrics["crm_salesforce_rate_limit_total"].labels(
                 tenant_tier=tenant_tier
+            ).inc()
+
+    def increment_ws_tenant_mismatch(self, actor_tenant_id: str | None) -> None:
+        """Record a cross-tenant WebSocket access denial (OBS-L4-009).
+
+        Emits ``security_websocket_tenant_mismatch_total`` with a
+        cardinality-limited ``actor_tenant_tier`` label.  The raw tenant_id
+        is intentionally excluded from the metric label to prevent label
+        explosion; it is captured in the structured log at the call site.
+        """
+        if self.config.enabled:
+            actor_tier = _derive_tenant_tier(actor_tenant_id)
+            self._metrics["ws_tenant_mismatch_total"].labels(
+                actor_tenant_tier=actor_tier
             ).inc()
 
     def get_metrics(self) -> str:

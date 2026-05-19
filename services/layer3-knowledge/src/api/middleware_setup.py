@@ -1,4 +1,9 @@
-"""Layer 3 middleware setup utilities."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Layer 3 middleware setup utilities.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +11,6 @@ from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger
 from value_fabric.shared.fastapi_framework import (
@@ -16,8 +20,8 @@ from value_fabric.shared.fastapi_framework import (
     resolve_cors_policy,
 )
 
-from api.rate_limiter import add_rate_limiting
-from api.versioning import VersionMiddleware, get_version_compatibility
+from ..api.rate_limiter import add_rate_limiting
+from ..api.versioning import VersionMiddleware, get_version_compatibility
 
 logger = get_logger(__name__)
 

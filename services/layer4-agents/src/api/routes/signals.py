@@ -9,16 +9,20 @@ Provides REST API endpoints for:
 from __future__ import annotations
 
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 from value_fabric.shared.audit import AuditAction, AuditEmitter, AuditOutcome
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_authenticated
+from value_fabric.shared.identity.jwt import decode_jwt
+from value_fabric.shared.observability.trace_context import resolve_trace_context
 
 from ...agents.signal_detection import SignalDetectionAgent
+from ...integration.layer3_client import Layer3Client
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +116,29 @@ class SignalReviewResponse(BaseModel):
     decision_note: str | None = None
 
 
+
+
+class EvidenceDecisionRequest(BaseModel):
+    account_id: str
+    case_id: str
+    decision: str
+    decision_note: str | None = None
+
+
+class EvidenceDriverLinkRequest(BaseModel):
+    account_id: str
+    case_id: str
+
+
+class EvidenceDecisionResponse(BaseModel):
+    evidence_id: str
+    account_id: str
+    case_id: str
+    decision: str
+    reviewed_by: str
+    reviewed_at: str
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    confidence: float | None = None
 # ============================================================================
 # API Endpoints
 # ============================================================================
@@ -311,10 +338,9 @@ async def review_signal(
     if request.review_status not in {"approved", "rejected"}:
         raise HTTPException(status_code=400, detail="review_status must be approved or rejected")
 
-    from ...integration.layer3_client import Layer3Client
-
     reviewed_at = datetime.now(UTC).isoformat()
-    async with Layer3Client() as client:
+    _l3_url = os.getenv("LAYER3_URL", "http://layer3-knowledge:8000")
+    async with Layer3Client(base_url=_l3_url) as client:
         response = await client.review_signal(
             signal_id=signal_id,
             account_id=request.account_id,
@@ -351,37 +377,105 @@ async def signal_stream_websocket(
     - signal_failed: Processing error for a signal
     - stream_complete: All signals processed
 
+    Authentication: JWT must be supplied via the ``Sec-WebSocket-Protocol``
+    header in the format ``token,<jwt>``. Query-parameter tokens are rejected
+    to prevent credential logging by proxies.
+
     Args:
         websocket: WebSocket connection
         prospect_id: Prospect/account ID to stream signals for
     """
-    # P0-9 FIX: Authenticate WebSocket before accepting
-    import os
+    # OBS-L4-004: Resolve correlation ID at the HTTP upgrade stage.
+    # Inherits X-Request-ID / X-Correlation-ID from the client if present,
+    # otherwise generates a new one. All subsequent log calls in this session
+    # include this ID so WebSocket events are traceable end-to-end.
+    trace_ctx = resolve_trace_context(websocket.headers)
+    correlation_id = trace_ctx.trace_id
+    _log: dict = {"prospect_id": prospect_id, "correlation_id": correlation_id}
 
-    from value_fabric.shared.identity.jwt import decode_jwt
+    # SEC-L4-WS-002: Reject JWT in query parameter (mirrors workflow WebSocket fix).
+    # Tokens in query params are written to proxy/access logs.
+    if websocket.query_params.get("token"):
+        logger.warning(
+            "Signals WebSocket rejected: token in query param",
+            extra={"auth_code": "AUTH_QUERY_TOKEN_FORBIDDEN", **_log},
+        )
+        await websocket.close(
+            code=1008,
+            reason="Authentication via query param is forbidden; use Sec-WebSocket-Protocol header",
+        )
+        return
 
-    token = websocket.query_params.get("token")
-    if not token:
+    # SEC-L4-WS-002: Extract JWT from Sec-WebSocket-Protocol header.
+    protocol_header = websocket.headers.get("sec-websocket-protocol", "")
+    ws_token: str | None = None
+    if protocol_header:
+        parts = protocol_header.split(",")
+        if len(parts) >= 2 and parts[0].strip().lower() == "token":
+            ws_token = parts[1].strip()
+        elif len(parts) == 1:
+            ws_token = parts[0].strip()
+
+    if not ws_token:
+        logger.warning("Signals WebSocket rejected: no token", extra=_log)
         await websocket.close(code=1008, reason="Authentication required")
         return
+
     try:
-        jwt_secret = os.getenv("JWT_SECRET", "")
-        payload = decode_jwt(token, jwt_secret)
-        if not payload or not payload.get("tenant_id"):
-            await websocket.close(code=1008, reason="Invalid token")
+        payload = decode_jwt(ws_token)
+        if not payload:
+            await websocket.close(code=1008, reason="Authentication failed")
+            return
+        # decode_jwt returns TokenClaims (dataclass) or dict depending on version
+        if isinstance(payload, dict):
+            tenant_id: str | None = payload.get("tenant_id")
+            user_id: str | None = payload.get("sub") or payload.get("user_id")
+        else:
+            tenant_id = getattr(payload, "tenant_id", None)
+            user_id = getattr(payload, "sub", None) or getattr(payload, "user_id", None)
+
+        if not tenant_id:
+            await websocket.close(code=1008, reason="Authentication failed")
+            return
+        tenant_id = str(tenant_id)
+    except Exception:
+        logger.warning("Signals WebSocket JWT decode failed", extra=_log)
+        await websocket.close(code=1008, reason="Authentication failed")
+        return
+
+    # Bind tenant context to the log dict now that we have it
+    _log["tenant_id"] = tenant_id
+
+    # SEC-L4-WS-002: Verify the prospect belongs to the authenticated tenant.
+    # We query Layer 3 for the entity; a 404 means either the prospect doesn't
+    # exist or it belongs to a different tenant — both cases deny the connection.
+    try:
+        _l3_url = os.getenv("LAYER3_URL", "http://layer3-knowledge:8000")
+        async with Layer3Client(base_url=_l3_url, tenant_id=tenant_id) as l3:
+            entity = await l3.get_entity(prospect_id, tenant_id=tenant_id)
+        if entity is None:
+            logger.warning("Signals WebSocket: prospect not found for tenant", extra=_log)
+            await websocket.close(code=1008, reason="Prospect not found or access denied")
             return
     except Exception:
-        await websocket.close(code=1008, reason="Authentication failed")
+        logger.exception(
+            "Signals WebSocket: prospect ownership check failed — denying connection",
+            extra=_log,
+        )
+        await websocket.close(code=1008, reason="Prospect not found or access denied")
         return
 
     await websocket.accept()
     active = True
+
+    logger.info("Signals WebSocket session started", extra={**_log, "user_id": user_id})
 
     try:
         # Send connection confirmation
         await websocket.send_json({
             "event_type": "connected",
             "prospect_id": prospect_id,
+            "correlation_id": correlation_id,
             "timestamp": datetime.now(UTC).isoformat(),
         })
 
@@ -390,14 +484,12 @@ async def signal_stream_websocket(
             try:
                 # Receive messages from client (ping/keepalive or configuration)
                 data = await websocket.receive_text()
-                # Echo or process client messages
                 if data == "ping":
                     await websocket.send_json({
                         "event_type": "pong",
                         "timestamp": datetime.now(UTC).isoformat(),
                     })
                 else:
-                    # Handle configuration updates if needed
                     await websocket.send_json({
                         "event_type": "ack",
                         "received": data,
@@ -406,11 +498,13 @@ async def signal_stream_websocket(
 
             except WebSocketDisconnect:
                 active = False
-                logger.info(f"Signal stream disconnected for prospect {prospect_id}")
+                logger.info("Signals WebSocket client disconnected", extra=_log)
 
     except Exception as e:
-        logger.error(f"Signal stream error for {prospect_id}: {e}")
-        await websocket.close(code=1011, reason=f"Server error: {str(e)}")
+        logger.error("Signals WebSocket session error", extra={**_log, "error": str(e)})
+        await websocket.close(code=1011, reason="Server error")
+    finally:
+        logger.info("Signals WebSocket session ended", extra=_log)
 
 
 async def stream_signals_to_websocket(
@@ -458,79 +552,53 @@ async def stream_signals_to_websocket(
     # Execute with streaming
     await agent.execute(task, context)
 
-class EvidenceDecisionRequest(BaseModel):
-    account_id: str
-    case_id: str
-    decision: str = Field(..., description="accepted|rejected|attached_to_driver")
-    driver_id: str | None = None
-    decision_note: str | None = None
 
-
-class EvidenceDecisionResponse(BaseModel):
-    evidence_id: str
-    account_id: str
-    case_id: str
-    decision: str
-    driver_id: str | None = None
-    reviewed_by: str | None = None
-    reviewed_at: str
-    provenance: dict[str, Any] = Field(default_factory=dict)
-    confidence: float = 0.0
-
-
-_EVIDENCE_DECISIONS: dict[tuple[str, str, str], dict[str, Any]] = {}
-
-
-
-@router.post("/evidence/{evidence_id}/decisions", response_model=EvidenceDecisionResponse)
+@router.patch("/evidence/{evidence_id}/decision", response_model=EvidenceDecisionResponse)
 async def decide_evidence(
     evidence_id: str,
     request: EvidenceDecisionRequest,
-    http_request: Request,
     ctx: RequestContext = Depends(require_authenticated),
 ) -> EvidenceDecisionResponse:
-    if request.decision not in {"accepted", "rejected", "attached_to_driver"}:
-        raise HTTPException(status_code=400, detail="decision must be accepted, rejected, or attached_to_driver")
+    if request.decision not in {"accepted", "rejected"}:
+        raise HTTPException(status_code=400, detail="decision must be accepted or rejected")
+    now = datetime.now(UTC).isoformat()
+    _l3_url = os.getenv("LAYER3_URL", "http://layer3-knowledge:8000")
+    async with Layer3Client(base_url=_l3_url) as client:
+        response = await client.decide_evidence(
+            evidence_id=evidence_id,
+            account_id=request.account_id,
+            case_id=request.case_id,
+            decision=request.decision,
+            reviewer_id=ctx.user_id,
+            decision_note=request.decision_note,
+            tenant_id=ctx.tenant_id,
+        )
+    return EvidenceDecisionResponse(
+        evidence_id=evidence_id,
+        account_id=request.account_id,
+        case_id=request.case_id,
+        decision=response.get("decision", request.decision),
+        reviewed_by=response.get("reviewed_by", ctx.user_id),
+        reviewed_at=response.get("reviewed_at", now),
+        provenance=response.get("provenance", {}),
+        confidence=response.get("confidence"),
+    )
 
-    reviewed_at = datetime.now(UTC).isoformat()
-    record = {
-        "evidence_id": evidence_id,
-        "account_id": request.account_id,
-        "case_id": request.case_id,
-        "decision": request.decision,
-        "driver_id": request.driver_id,
-        "reviewed_by": ctx.user_id,
-        "reviewed_at": reviewed_at,
-        "provenance": {
-            "tenant_id": str(ctx.tenant_id),
-            "scope": {"account_id": request.account_id, "case_id": request.case_id},
-            "source": "layer4-agents",
-        },
-        "confidence": 0.9 if request.decision == "accepted" else 0.75,
-    }
-    _EVIDENCE_DECISIONS[(str(ctx.tenant_id), request.account_id, evidence_id)] = record
 
-    if request.decision == "attached_to_driver" and request.driver_id:
-        driver = http_request.app.state.neo4j_driver
-        query = """
-        MERGE (e:Evidence {id: $evidence_id, account_id: $account_id, tenant_id: $tenant_id})
-        MERGE (d:ValueHypothesis {id: $driver_id, account_id: $account_id, tenant_id: $tenant_id})
-        MERGE (e)-[r:ATTACHED_TO_DRIVER]->(d)
-        SET r.case_id = $case_id,
-            r.decision_note = $decision_note,
-            r.updated_at = datetime()
-        """
-        async with driver.session() as session:
-            await session.run(
-                query,
-                {
-                    "evidence_id": evidence_id,
-                    "driver_id": request.driver_id,
-                    "account_id": request.account_id,
-                    "tenant_id": str(ctx.tenant_id),
-                    "case_id": request.case_id,
-                    "decision_note": request.decision_note,
-                },
-            )
-
-    return EvidenceDecisionResponse(**record)
+@router.post("/evidence/{evidence_id}/drivers/{driver_id}")
+async def link_evidence_driver(
+    evidence_id: str,
+    driver_id: str,
+    request: EvidenceDriverLinkRequest,
+    ctx: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    _l3_url = os.getenv("LAYER3_URL", "http://layer3-knowledge:8000")
+    async with Layer3Client(base_url=_l3_url) as client:
+        response = await client.link_evidence_driver(
+            evidence_id=evidence_id,
+            driver_id=driver_id,
+            account_id=request.account_id,
+            case_id=request.case_id,
+            tenant_id=ctx.tenant_id,
+        )
+    return {"evidence_id": evidence_id, "driver_id": driver_id, **(response or {})}

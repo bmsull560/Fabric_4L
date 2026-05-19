@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: services/layer6-benchmarks:latest
+          image: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

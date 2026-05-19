@@ -15,9 +15,9 @@ import RightRail, { type RightRailMode } from "@/components/workspace/RightRail"
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { useNavigation } from "@/hooks";
+import { useCanonicalCaseId, usePersistWorkspaceTab } from "@/hooks/useWorkspaceCase";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { LoadingState, EmptyState, ErrorState } from "@/components/states";
-import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import {
   useValueSignals,
@@ -31,6 +31,8 @@ import {
   type SignalCard,
   type ValueSignalLifecycleState,
 } from "@/types/valueSignal";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { Btn, MetricCard } from "@/components/ui/fabric";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -142,6 +144,10 @@ export default function SignalsTab() {
   const promoteMutation = usePromoteValueSignal();
   const refineMutation = useRefineSignals();
   const { navigateTo } = useNavigation();
+  const persistTab = usePersistWorkspaceTab("signals");
+  // Only resolve the canonical case ID when persistence has failed and the user
+  // may retry — avoids an unconditional POST /analysis/cases on every mount.
+  const { data: caseId } = useCanonicalCaseId(persistTab.isError ? accountId : null);
 
   const [selectedSignal, setSelectedSignal] = useState<ValueSignal | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
@@ -293,6 +299,16 @@ export default function SignalsTab() {
         />
       }
     >
+      {persistTab.persistState === "failed" && (
+        <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs flex items-center justify-between">
+          <span>Could not persist this tab</span>
+          {caseId && (
+            <button className="underline" onClick={() => persistTab.mutate({ caseId, payload: { signals: signalList?.items ?? [] } })}>
+              Retry save
+            </button>
+          )}
+        </div>
+      )}
       {isLoading ? (
         <LoadingState message="Loading signals…" />
       ) : hasError ? (

@@ -37,7 +37,9 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver
 from value_fabric.layer3.security.query_validator import ValidatedNeo4jSession
-from value_fabric.layer3.services.cypher_scope_guard import validate_tenant_scoped_cypher
+from value_fabric.layer3.services.cypher_scope_guard import (
+    validate_tenant_scoped_cypher,
+)
 from value_fabric.shared.models.typed_dict import TypedDictModel
 from ..db.query_execution import run_validated_query
 

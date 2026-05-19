@@ -176,6 +176,34 @@ def build_layer3_client_class(*, healthy: bool, success: bool):
                 error="Layer 3 ingestion failed",
             )
 
+        async def batch_ingest_rdf_data(self, items: list) -> list[IngestionResponse]:
+            if not healthy:
+                raise AssertionError("batch_ingest_rdf_data should not be called when Layer 3 is unhealthy")
+
+            results = []
+            for item in items:
+                missing = required_ingest_keys.difference(item)
+                if missing:
+                    raise AssertionError(f"Missing batch ingest keys: {sorted(missing)}")
+                if success:
+                    results.append(IngestionResponse(
+                        success=True,
+                        ingestion_id=item.get("extraction_job_id", "ing-1"),
+                        entities_loaded=2,
+                        relationships_loaded=1,
+                        message="ok",
+                    ))
+                else:
+                    results.append(IngestionResponse(
+                        success=False,
+                        ingestion_id=item.get("extraction_job_id", "ing-1"),
+                        entities_loaded=0,
+                        relationships_loaded=0,
+                        message="failed",
+                        error="Layer 3 ingestion failed",
+                    ))
+            return results
+
         async def close(self) -> None:
             return None
 
@@ -234,9 +262,31 @@ def fake_store(monkeypatch: pytest.MonkeyPatch) -> FakePendingIngestionStore:
 
 
 @pytest.fixture
-async def async_client():
+def jwt_token() -> str:
+    """Generate a signed JWT for test requests."""
+    import os
+    import time
+    import jwt as pyjwt
+
+    secret = os.environ.get("JWT_SECRET", "test-secret-key-for-layer2-tests-32b")
+    payload = {
+        "sub": "00000000-0000-0000-0000-000000000001",
+        "tenant_id": "00000000-0000-0000-0000-000000000002",
+        "iss": "value-fabric-internal",
+        "aud": "value-fabric-services",
+        "iat": int(time.time()),
+        "exp": int(time.time()) + 3600,
+    }
+    return pyjwt.encode(payload, secret, algorithm="HS256")
+
+
+@pytest.fixture
+async def async_client(jwt_token: str):
     transport = httpx.ASGITransport(app=api_main.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    headers = {"Authorization": f"Bearer {jwt_token}"}
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver", headers=headers
+    ) as client:
         yield client
 
 

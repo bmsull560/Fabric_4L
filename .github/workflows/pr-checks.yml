@@ -84,6 +84,8 @@ jobs:
 
       - name: Enforce static test skip governance
         run: |
+          python scripts/ci/check_test_skip_register_uniqueness.py \
+            --register config/ci/test_skip_register.yaml
           python scripts/ci/check_test_skip_governance.py \
             --register config/ci/test_skip_register.yaml \
             --write-report artifacts/test-skip-governance.json
@@ -357,7 +359,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -383,6 +385,10 @@ jobs:
       - name: Run Layer 3 query entrypoint matrix gate
         working-directory: ${{ github.workspace }}
         run: python scripts/ci/check_layer3_query_entrypoints.py services/layer3-knowledge/src --report-json artifacts/layer3-query-entrypoint-matrix.json
+
+      - name: Run Layer 3 tenant dependency import gate
+        working-directory: ${{ github.workspace }}
+        run: python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
 
       - name: Upload Layer 3 Cypher scope audit
         if: always()
@@ -444,7 +450,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -517,7 +523,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: 'latest'
           enable-cache: true
@@ -535,6 +541,31 @@ jobs:
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
+
+      - name: Enforce Layer 3 monolith code freeze (ARCH-L3-007)
+        working-directory: ${{ github.workspace }}
+        run: |
+          python scripts/ci/check_l3_monolith_freeze.py \
+            --diff-only \
+            --base-ref "origin/${{ github.base_ref || 'main' }}"
+
+      - name: Check Layer 3 V2 contract drift against V1 snapshot (DOC-ARCH-010)
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p artifacts
+          python scripts/ci/check_l3_contract_drift.py \
+            --snapshot docs/api/v1_snapshot.yaml \
+            --current contracts/openapi/layer3-knowledge.json \
+            --json-out artifacts/l3-contract-drift.json
+
+      - name: Upload Layer 3 contract drift report
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: l3-contract-drift-report
+          path: artifacts/l3-contract-drift.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Run tests with coverage
         run: |
@@ -602,7 +633,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -665,7 +696,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -750,7 +781,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -782,7 +813,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -835,7 +866,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@f8b513ce0366feceaf2a3b0a9c7f1d7be0a2ee8f # v3
+        uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
         with:
           version: '0.11.6'
           enable-cache: true
@@ -1008,6 +1039,15 @@ jobs:
             apps/web/frontend-junit.xml
             apps/web/coverage/
           retention-days: 14
+
+      - name: Upload frontend test report artifact (release evidence)
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        if: always()
+        with:
+          name: frontend-test-report-${{ github.sha }}
+          path: apps/web/frontend-junit.xml
+          retention-days: 90
+          if-no-files-found: warn
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium

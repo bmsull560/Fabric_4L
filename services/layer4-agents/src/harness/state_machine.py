@@ -12,15 +12,14 @@ Rules:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from datetime import UTC, datetime
 
 from harness.models import (
     HarnessRun,
     HarnessRunStatus,
     HarnessState,
     HarnessTraceEvent,
-    HarnessWorkflowType,
     ValidationState,
 )
 
@@ -44,7 +43,7 @@ class ValidationRequiredError(TransitionError):
 
 
 # Valid transitions: from_state -> set of allowed to_states
-_TRANSITION_MAP: Dict[HarnessState, set[HarnessState]] = {
+_TRANSITION_MAP: dict[HarnessState, set[HarnessState]] = {
     HarnessState.INIT: {
         HarnessState.RESOLVE_CONTEXT,
         HarnessState.FAILED,
@@ -136,7 +135,7 @@ class StateMachine:
 
     def __init__(
         self,
-        transition_hooks: Optional[List[Callable[[HarnessRun, HarnessState, HarnessState], None]]] = None,
+        transition_hooks: list[Callable[[HarnessRun, HarnessState, HarnessState], None]] | None = None,
     ) -> None:
         self._hooks = transition_hooks or []
 
@@ -157,9 +156,9 @@ class StateMachine:
         self,
         run: HarnessRun,
         to_state: HarnessState,
-        validation_state: Optional[ValidationState] = None,
+        validation_state: ValidationState | None = None,
         human_override: bool = False,
-    ) -> Tuple[HarnessRun, HarnessTraceEvent]:
+    ) -> tuple[HarnessRun, HarnessTraceEvent]:
         """
         Attempt to transition `run` to `to_state`.
 
@@ -209,7 +208,7 @@ class StateMachine:
             status=new_status,
             value_pack_id=run.value_pack_id,
             validation_state=validation_state,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             event_type="transition",
         )
 
@@ -223,7 +222,7 @@ class StateMachine:
         self,
         run: HarnessRun,
         reason: str,
-    ) -> Tuple[HarnessRun, HarnessTraceEvent]:
+    ) -> tuple[HarnessRun, HarnessTraceEvent]:
         """Route a run to HUMAN_REVIEW with a traceable reason."""
         if run.current_state in _TERMINAL_STATES:
             raise TerminalStateError(
@@ -238,7 +237,7 @@ class StateMachine:
     def _enforce_publish_policy(
         self,
         run: HarnessRun,
-        validation_state: Optional[ValidationState],
+        validation_state: ValidationState | None,
         human_override: bool,
     ) -> None:
         """
@@ -277,7 +276,7 @@ class StateMachine:
     def can_publish(
         self,
         run: HarnessRun,
-        validation_state: Optional[ValidationState],
+        validation_state: ValidationState | None,
         human_override: bool = False,
     ) -> bool:
         """Return True if the run can enter PUBLISH_OUTPUT."""

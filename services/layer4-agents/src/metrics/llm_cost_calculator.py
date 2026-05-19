@@ -9,11 +9,21 @@ import os
 logger = logging.getLogger(__name__)
 
 COST_PER_1K_TOKENS: dict[tuple[str, str], dict[str, float]] = {
+    # OpenAI
     ("openai", "gpt-4o"): {"prompt": 0.005, "completion": 0.015},
     ("openai", "gpt-4o-mini"): {"prompt": 0.00015, "completion": 0.0006},
+    # Anthropic
     ("anthropic", "claude-3-opus"): {"prompt": 0.015, "completion": 0.075},
     ("anthropic", "claude-3-sonnet"): {"prompt": 0.003, "completion": 0.015},
     ("anthropic", "claude-3-haiku"): {"prompt": 0.00025, "completion": 0.00125},
+    # Together.ai — prices as of 2025-05 (USD per 1K tokens)
+    ("together", "meta-llama/Llama-3.3-70B-Instruct-Turbo"): {"prompt": 0.00088, "completion": 0.00088},
+    ("together", "meta-llama/Llama-3.1-8B-Instruct-Turbo"): {"prompt": 0.00018, "completion": 0.00018},
+    ("together", "meta-llama/Llama-3.1-405B-Instruct-Turbo"): {"prompt": 0.0035, "completion": 0.0035},
+    ("together", "mistralai/Mixtral-8x7B-Instruct-v0.1"): {"prompt": 0.0006, "completion": 0.0006},
+    ("together", "mistralai/Mistral-7B-Instruct-v0.3"): {"prompt": 0.0002, "completion": 0.0002},
+    ("together", "Qwen/Qwen2.5-72B-Instruct-Turbo"): {"prompt": 0.0012, "completion": 0.0012},
+    ("together", "deepseek-ai/DeepSeek-R1"): {"prompt": 0.003, "completion": 0.007},
 }
 
 

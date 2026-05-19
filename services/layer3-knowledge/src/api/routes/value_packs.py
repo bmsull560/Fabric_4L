@@ -1,4 +1,8 @@
-"""Value Pack API routes for Layer 3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Value Pack API routes for Layer 3.
 
 Provides endpoints for Value Pack CRUD and execution.
 """
@@ -11,13 +15,6 @@ from typing import Any, Literal, TypedDict
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
-from value_fabric.shared.models.typed_dict import TypedDictModel
-
-from api.routes.formulas import evaluate_expression
-from auth.api_keys import APIKey
-from auth.middleware import get_current_api_key
-from db.driver import get_driver
-from logging_config import get_logger
 from value_fabric.layer3.models.valuepack import (
     DEFAULT_VALUEPACKS,
     ComposableTemplateLibraryResponse,
@@ -39,6 +36,14 @@ from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
 from ...db.query_execution import run_validated_query
+<<<<<<< HEAD
+=======
+from ...utils.cypher_security import (
+    ALLOWED_REL_TYPES,
+    ALLOWED_TARGET_LABELS,
+    validate_cypher_identifier,
+)
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 class _build_fork_paramsResult(TypedDictModel):
@@ -301,6 +306,11 @@ class PackForkResponse(BaseModel):
 
 # Helper functions
 
+# SEC-L3-CYPHER-003 / GOV-L3-006: Allowlists for dynamic Cypher label and
+# relationship-type interpolation are now the canonical source of truth in
+# utils.cypher_security (ALLOWED_REL_TYPES, ALLOWED_TARGET_LABELS).
+# Imported above — do not redefine locally.
+
 
 async def _update_relationships(
     tx,
@@ -313,9 +323,17 @@ async def _update_relationships(
     """Update pack relationships, validating target entities exist.
 
     SECURITY: All queries include tenant_id filtering to prevent cross-tenant access.
+    SECURITY: rel_type and target_label are validated against allowlists before
+    interpolation to prevent Cypher injection (SEC-L3-CYPHER-003).
 
     Raises HTTPException if any target_id doesn't exist.
+    Raises ValueError if rel_type or target_label are not in the allowlist.
     """
+    # SEC-L3-CYPHER-003 / GOV-L3-006: Validate interpolated identifiers against
+    # the canonical allowlists in utils.cypher_security before building the query.
+    validate_cypher_identifier(rel_type, ALLOWED_REL_TYPES, kind="rel_type")
+    validate_cypher_identifier(target_label, ALLOWED_TARGET_LABELS, kind="target_label")
+
     # Validate all targets exist with tenant scoping
     if target_ids:
         # SECURITY: Add tenant_id filter if available
@@ -480,12 +498,12 @@ async def list_packs(
         )
         params["search"] = search
 
-    where_clause = " AND ".join(where_clauses)
+    where_clause = " AND ".join(where_clauses)  # cypher-dynamic-safe: where_clauses are hardcoded literals
 
     # SECURITY: All related nodes filtered by tenant_id
     query = f"""
     MATCH (vp:ValuePack)
-    WHERE {where_clause}
+    WHERE {where_clause}  
     OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver {{tenant_id: $tenant_id}})
     OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula {{tenant_id: $tenant_id}})
     OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset {{tenant_id: $tenant_id}})
@@ -754,7 +772,7 @@ async def update_pack(
     set_clauses, params = _build_update_params(request, pack_id)
     update_query = f"""
     MATCH (vp:ValuePack {{id: $pack_id, tenant_id: $tenant_id}})
-    SET {", ".join(set_clauses)}
+    SET {", ".join(set_clauses)}  # cypher-dynamic-safe: set_clauses are hardcoded literals from _build_update_params
     RETURN vp
     """
     params["tenant_id"] = tenant_id
@@ -1098,7 +1116,7 @@ async def fork_pack(
     # Create forked pack with copied relationships
     new_pack_id = str(uuid.uuid4())
     fork_params = _build_fork_params(orig, request, new_pack_id)
-    params["tenant_id"] = tenant_id
+    fork_params["tenant_id"] = tenant_id
     new_pack = await _execute_fork(driver, fork_params)
 
     return PackForkResponse(

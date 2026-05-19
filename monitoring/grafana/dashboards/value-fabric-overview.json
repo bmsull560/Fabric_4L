@@ -17,7 +17,61 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "doc",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": true,
+      "title": "Runbooks",
+      "type": "dashboards",
+      "url": ""
+    },
+    {
+      "icon": "link",
+      "targetBlank": true,
+      "title": "Auth Incident Runbook",
+      "type": "link",
+      "url": "https://wiki.internal/runbooks/enterprise-oidc-sso-incident"
+    },
+    {
+      "icon": "link",
+      "targetBlank": true,
+      "title": "Postgres Incident Runbook",
+      "type": "link",
+      "url": "https://wiki.internal/runbooks/postgres-unreachable"
+    },
+    {
+      "icon": "link",
+      "targetBlank": true,
+      "title": "Redis Incident Runbook",
+      "type": "link",
+      "url": "https://wiki.internal/runbooks/redis-unreachable"
+    },
+    {
+      "icon": "link",
+      "targetBlank": true,
+      "title": "Neo4j Incident Runbook",
+      "type": "link",
+      "url": "https://wiki.internal/runbooks/neo4j-unreachable"
+    },
+    {
+      "icon": "link",
+      "targetBlank": true,
+      "title": "Workflow Stall Runbook",
+      "type": "link",
+      "url": "https://wiki.internal/runbooks/agent-workflow-stall"
+    },
+    {
+      "icon": "link",
+      "targetBlank": true,
+      "title": "Provider Outage Runbook",
+      "type": "link",
+      "url": "https://wiki.internal/runbooks/llm-provider-outage"
+    }
+  ],
   "panels": [
     {
       "collapsed": false,

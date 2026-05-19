@@ -1,3 +1,9 @@
+# 22 named critical gates run as a matrix job, each producing a JSON evidence artifact.
+# Gates cover: auth coverage, tenant isolation, OpenAPI drift, production config policy,
+# hermetic build inputs, correlation log contract, ADR-027 import hygiene (all 6 layers),
+# Alembic head consistency, env contract structure, stale namespace dirs, and P0 security
+# regression gates (auth-boundaries, jwt-config, cross-tenant-write, auth-source, rate-limit-safety).
+# The critical-gates-merge-blocker summary job enforces all must pass before merge.
 name: Critical Gates
 
 on:
@@ -70,6 +76,11 @@ jobs:
             owner: "@value-fabric/architects"
             escalation: "@value-fabric/maintainers"
             command: "python scripts/ci/check_layer3_imports.py --strict"
+          - id: layer3-tenant-dependency-imports
+            service: layer3
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/backend-leads"
+            command: "python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py"
           - id: adr027-layer4-imports
             service: layer4
             owner: "@value-fabric/architects"
@@ -110,6 +121,31 @@ jobs:
             owner: "@value-fabric/architects"
             escalation: "@value-fabric/maintainers"
             command: "python scripts/ci/check_stale_namespace_dirs.py"
+          - id: p0-auth-boundaries
+            service: shared
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/ciso"
+            command: "python -m pytest -q tests/security/test_auth_boundaries.py --maxfail=1"
+          - id: p0-jwt-config
+            service: shared
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/ciso"
+            command: "python -m pytest -q tests/security/test_jwt_config_validation.py --maxfail=1"
+          - id: p0-cross-tenant-write
+            service: shared
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/ciso"
+            command: "python -m pytest -q tests/security/test_cross_tenant_write.py --maxfail=1"
+          - id: p0-auth-source
+            service: shared
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/ciso"
+            command: "python -m pytest -q tests/security/test_auth_source_validation.py --maxfail=1"
+          - id: p0-rate-limit-safety
+            service: shared
+            owner: "@value-fabric/security-leads"
+            escalation: "@value-fabric/ciso"
+            command: "python -m pytest -q tests/security/test_rate_limit_safety.py --maxfail=1"
 
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332

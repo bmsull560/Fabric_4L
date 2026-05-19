@@ -1,0 +1,57 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: value-fabric
+
+resources:
+  - ../../base
+  - ../../external-secrets/vault-integration.yml
+  - ../../external-secrets/vault-database-dynamic.yml
+  - ../../external-secrets/neo4j-secrets.yaml
+  - ../../external-secrets/pgbouncer-secrets.yaml
+  - ../../operators
+  - ../../monitoring/placeholder-secret-scanner-cronjob.yaml
+  - ../../monitoring/thanos.yml
+  - ../../monitoring/loki-fluent-bit.yml
+
+labels:
+  - pairs:
+      environment: prod
+
+patches:
+  - path: prod-replicas-patch.yml
+  - path: neo4j-aura-patch.yml
+  - path: layer4-aura-wait-patch.yml
+
+# Image digests are injected at deploy time by scripts/ci/prepare_kustomize_deploy.sh.
+# The <resolved-by-ci> markers below are replaced with real registry digests before apply.
+# See kustomization.yaml for the live file (digests are comments until CI injects them).
+images:
+  - name: services/layer1-ingestion
+    newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
+    digest: <resolved-by-ci>
+  - name: services/layer2-extraction
+    newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
+    digest: <resolved-by-ci>
+  - name: services/layer3-knowledge
+    newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
+    digest: <resolved-by-ci>
+  - name: services/layer4-agents
+    newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
+    digest: <resolved-by-ci>
+  - name: services/layer5-ground-truth
+    newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
+    digest: <resolved-by-ci>
+  - name: services/layer6-benchmarks
+    newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+    digest: <resolved-by-ci>
+  - name: apps/web
+    newName: ghcr.io/bmsull560/fabric_4l/frontend
+    digest: <resolved-by-ci>
+  # Infrastructure images use explicit versions.
+  - name: postgres
+    newTag: "15.10-alpine"
+  - name: redis
+    newTag: "7.4-alpine"
+  - name: neo4j
+    newTag: "5.25-community"

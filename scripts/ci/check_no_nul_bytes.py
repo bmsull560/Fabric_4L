@@ -10,6 +10,17 @@ from pathlib import Path
 ALLOWED_SUFFIXES = {".py", ".ts", ".tsx", ".json", ".yaml"}
 
 
+def files_with_nul(paths: list[Path], base: Path | None = None) -> list[str]:
+    """Return relative path strings for any files in *paths* that contain NUL bytes."""
+    offenders: list[str] = []
+    for path in paths:
+        data = path.read_bytes()
+        if b"\x00" in data:
+            label = str(path.relative_to(base)) if base else str(path)
+            offenders.append(label)
+    return offenders
+
+
 def tracked_files() -> list[Path]:
     result = subprocess.run(
         ["git", "ls-files"], check=True, capture_output=True, text=True
@@ -23,11 +34,7 @@ def tracked_files() -> list[Path]:
 
 
 def main() -> int:
-    offenders: list[str] = []
-    for path in tracked_files():
-        data = path.read_bytes()
-        if b"\x00" in data:
-            offenders.append(f"{path} (nul_count={data.count(b'\x00')})")
+    offenders = files_with_nul(tracked_files(), Path.cwd())
 
     if offenders:
         print("ERROR: NUL-byte guard failed: tracked files with embedded \\x00 detected:")

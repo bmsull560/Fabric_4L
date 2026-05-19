@@ -1,7 +1,17 @@
-"""Layer 3 monolith app module.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
+
+# FROZEN — do not add new @app.<method> routes (ARCH-L3-007).
+# New endpoints belong in services/layer3-knowledge/src/api/routers/.
+# CI enforces this via scripts/ci/check_l3_monolith_freeze.py.
+# Full removal tracked in ARCH-L3-011 (Sprint 3).
 
 Migration ledger:
 - moved groups: operational system routes (/health,/metrics) and query/search implementations to api/routes modules.
+- moved to v2 bounded routers: entities (entities_v2.py), value packs (value_packs_v2.py).
 - remaining groups: legacy aliases, deprecation header compatibility, and incremental endpoint extraction backlog.
 """
 
@@ -20,7 +30,6 @@ from typing import Any, Literal
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError as PydanticValidationError
 
 # psutil with fallback for minimal environments
 try:
@@ -45,11 +54,9 @@ except ImportError:  # pragma: no cover - exercised only in minimal test envs
 
     psutil = _PsutilFallback()
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response
 from value_fabric.layer3.config import get_settings
 from value_fabric.layer3.logging_config import get_logger, setup_logging
-from value_fabric.shared.identity import RequestContext, require_authenticated
-from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 from value_fabric.shared.fastapi_framework import (
     RouterMount,
     add_governance_middleware,
@@ -58,17 +65,11 @@ from value_fabric.shared.fastapi_framework import (
     include_router_mounts,
     resolve_cors_policy,
 )
-from value_fabric.shared.security import validate_production_safety
-from value_fabric.shared.observability import configure_observability
+from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.models.typed_dict import TypedDictModel
-from value_fabric.shared.error_handling.exceptions import (
-    ServiceUnavailableError as SharedServiceUnavailableError,
-    ValidationError as SharedValidationError,
-    ValueFabricException as SharedValueFabricException,
-)
-from value_fabric.shared.error_handling.models import ErrorCode
+from value_fabric.shared.security import validate_production_safety
 
-from api.dependencies import (
+from .dependencies import (
     AppState,
     close_app_state,
     get_app_state,
@@ -89,7 +90,7 @@ from api.dependencies import (
 )
 
 # P1-29: OpenTelemetry imports for distributed tracing
-from api.telemetry import (
+from .main_fix import (
     OTEL_AVAILABLE,
     SERVICE_NAME,
     BatchSpanProcessor,
@@ -99,66 +100,39 @@ from api.telemetry import (
     TracerProvider,
     trace,
 )
-from api.metrics_state import get_system_metrics, set_app_metrics
+from .metrics_state import get_system_metrics, set_app_metrics
 
 # Neo4j tenant-aware dependencies (Sprint 5)
 try:
-    from . import dependencies_tenant as _dependencies_tenant  # noqa: F401
+    from . import (
+        dependencies_tenant_secured as _dependencies_tenant_secured,  # noqa: F401
+    )
     NEO4J_TENANT_AVAILABLE = True
 except ImportError:
     NEO4J_TENANT_AVAILABLE = False
 
 
 def _extract_tenant_id(request: Request | None) -> str | None:
-    """Extract tenant_id from authenticated governance context."""
-    if not request:
+    """Extract tenant_id from request context for multi-tenant security.
+    
+    Sprint 5: Centralized helper to eliminate code duplication across endpoints.
+    Returns None if tenant context is unavailable or NEO4J_TENANT_AVAILABLE is False.
+    
+    Args:
+        request: FastAPI Request object with optional state.context
+        
+    Returns:
+        Normalized tenant_id string or None
+    """
+    if not request or not NEO4J_TENANT_AVAILABLE:
         return None
-    ctx = getattr(request.state, "governance_context", None)
-    if ctx and getattr(ctx, "tenant_id", None):
+    ctx = getattr(request.state, "context", None)
+    if ctx and ctx.tenant_id:
         return str(ctx.tenant_id)
     return None
-
-def _require_tenant_id_from_context(
-    request: Request | None,
-    *,
-    missing_tenant_detail: str,
-) -> str:
-    """Fail-closed tenant guard for tenant-scoped endpoints."""
-    if not request:
-        raise HTTPException(status_code=401, detail="Authentication context is required")
-
-    ctx = getattr(request.state, "governance_context", None)
-    if ctx is None:
-        raise HTTPException(status_code=401, detail="Authentication context is required")
-
-    tenant_id = _extract_tenant_id(request)
-    if not tenant_id:
-        raise HTTPException(status_code=400, detail=missing_tenant_detail)
-
-    return tenant_id
-
-
-def _resolve_ingest_tenant_id(
-    authenticated_tenant_id: str,
-    header_tenant_id: str | None,
-    body_tenant_id: str | None,
-) -> str:
-    """Resolve Layer 2 ingestion tenant scope from authenticated context."""
-    normalized_authenticated = authenticated_tenant_id.strip()
-    normalized_header = header_tenant_id.strip() if header_tenant_id else ""
-    normalized_body = body_tenant_id.strip() if body_tenant_id else ""
-
-    if normalized_header and normalized_header != normalized_authenticated:
-        raise HTTPException(status_code=403, detail="X-Tenant-ID header does not match authenticated tenant context")
-
-    if normalized_body and normalized_body != normalized_authenticated:
-        raise HTTPException(status_code=403, detail="Request tenant_id does not match authenticated tenant context")
-
-    return normalized_authenticated
-
-
 from value_fabric.shared.identity.vault_check import is_vault_healthy
-from api.exceptions import (
+
+from .exceptions import (
     AuthenticationError,
     AuthorizationError,
     RateLimitError,
@@ -171,13 +145,12 @@ SHARED_ERROR_HANDLING_AVAILABLE = True
 # Import dataclass utilities
 from dataclasses import asdict
 
-from api.rate_limiter import add_rate_limiting
+from .rate_limiter import add_rate_limiting
 
 # Import cache modules
 try:
-    from cache import (
+    from ..cache import (
         CacheConfig,
-        get_request_deduplicator,
         initialize_cache,
     )
 
@@ -187,23 +160,23 @@ except ImportError:
 
 # Import metrics modules
 try:
-    from metrics import MetricsConfig, MetricsMiddleware, initialize_metrics
+    from ..metrics import MetricsConfig, MetricsMiddleware, initialize_metrics
 
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
 
 # Import versioning modules
-from api.models import (
+from .models import (
     AuditLogEntry,
     AuditLogResponse,
     BatchAnalyticsRequest,
-    BatchAnalyticsResult,
     BatchAnalyticsResponse,
+    BatchAnalyticsResult,
     BatchEntityOperation,
     BatchEntityRequest,
-    BatchEntityResult,
     BatchEntityResponse,
+    BatchEntityResult,
     CentralityRequest,
     CentralityResponse,
     Community,
@@ -241,7 +214,6 @@ from api.models import (
     SearchResponse,
     SearchResult,
     SearchType,
-    ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
     SubgraphResponse,
@@ -249,7 +221,7 @@ from api.models import (
     ValueTreeResponse,
     ValueTreeTraversal,
 )
-from api.versioning import (
+from .versioning import (
     VersionMiddleware,
     get_version_compatibility,
     initialize_versioning,
@@ -470,7 +442,7 @@ async def lifespan(app: FastAPI):
     version_compatibility = initialize_versioning("v1")
 
     # Register migration handlers
-    from api.versioning import (
+    from .versioning import (
         migrate_v1_to_v2_ingestion_request,
         migrate_v1_to_v2_search_request,
         transform_v1_health_response,
@@ -552,49 +524,47 @@ async def lifespan(app: FastAPI):
 
 
 # Initialize FastAPI app
-APP_DESCRIPTION = """
-## Layer 3: Knowledge Graph & Semantic Layer API
-
-The Value Fabric Knowledge Graph API provides intelligent semantic search,
-graph-based retrieval, and analytics capabilities for enterprise AI workflows.
-
-### Key Features
-- **GraphRAG Retrieval**: Context-aware graph-based question answering
-- **Hybrid Search**: Combined vector, keyword, and graph traversal search
-- **Entity Analytics**: Community detection, centrality analysis, and similarity metrics
-- **Schema Management**: Dynamic Neo4j schema initialization and monitoring
-- **Real-time Ingestion**: RDF/OWL data ingestion with provenance tracking
-
-### Architecture
-- **Database**: Neo4j 5.x for graph storage and relationships
-- **Vector Store**: Pinecone for semantic similarity search
-- **Embeddings**: OpenAI text-embedding-3-large (768 dimensions)
-- **Analytics**: NetworkX for graph algorithms and community detection
-
-### Authentication & Security
-- Rate limiting (configurable per endpoint)
-- Input validation and sanitization
-- Request tracking with unique IDs
-- Comprehensive security headers
-
-### Getting Started
-1. Explore the `/health` endpoint to verify service status
-2. Check `/v1/schema/status` to ensure database schema is ready
-3. Try `/v1/search` for basic entity discovery
-4. Use `/v1/graphrag` for complex question answering
-
-### Rate Limits
-- Default: 100 requests/minute, 200 burst
-- Health endpoints: 300 requests/minute
-- Search endpoints: 200 requests/minute
-- Schema operations: 10-60 requests/minute
-
-Check response headers `X-RateLimit-*` for current limits.
-"""
-
 app = FastAPI(
     title="Value Fabric - Knowledge Graph & Semantic Layer",
-    description=APP_DESCRIPTION,
+    description="""
+    ## Layer 3: Knowledge Graph & Semantic Layer API
+    
+    The Value Fabric Knowledge Graph API provides intelligent semantic search, 
+    graph-based retrieval, and analytics capabilities for enterprise AI workflows.
+    
+    ### Key Features
+    - **GraphRAG Retrieval**: Context-aware graph-based question answering
+    - **Hybrid Search**: Combined vector, keyword, and graph traversal search
+    - **Entity Analytics**: Community detection, centrality analysis, and similarity metrics
+    - **Schema Management**: Dynamic Neo4j schema initialization and monitoring
+    - **Real-time Ingestion**: RDF/OWL data ingestion with provenance tracking
+    
+    ### Architecture
+    - **Database**: Neo4j 5.x for graph storage and relationships
+    - **Vector Store**: Pinecone for semantic similarity search
+    - **Embeddings**: OpenAI text-embedding-3-large (768 dimensions)
+    - **Analytics**: NetworkX for graph algorithms and community detection
+    
+    ### Authentication & Security
+    - Rate limiting (configurable per endpoint)
+    - Input validation and sanitization
+    - Request tracking with unique IDs
+    - Comprehensive security headers
+    
+    ### Getting Started
+    1. Explore the `/health` endpoint to verify service status
+    2. Check `/v1/schema/status` to ensure database schema is ready
+    3. Try `/v1/search` for basic entity discovery
+    4. Use `/v1/graphrag` for complex question answering
+    
+    ### Rate Limits
+    - Default: 100 requests/minute, 200 burst
+    - Health endpoints: 300 requests/minute
+    - Search endpoints: 200 requests/minute  
+    - Schema operations: 10-60 requests/minute
+    
+    Check response headers `X-RateLimit-*` for current limits.
+    """,
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -651,7 +621,6 @@ app = FastAPI(
         },
     ],
 )
-configure_observability(app, service_name="layer3-knowledge", readiness_check=lambda: True)
 
 # P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
 if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
@@ -660,22 +629,18 @@ if OTEL_AVAILABLE and os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
 
 
 # Include routers from routes modules
-from api.routes import (
+from .routes import (
     benchmarks,
     calculators,
-    compat_aliases,
     competitive_intel,
     entities,
     evidence,
     formula_governance,
     formulas,
-    knowledge,
     models,
     products,
-    provenance_audit,
     query_search,
     roi_calculator,
-    signals,
     system,
     value_packs,
     value_trees,
@@ -694,20 +659,12 @@ include_router_mounts(
         RouterMount(models.router, prefix="/v1"),
         RouterMount(entities.router, prefix="/v1"),
         RouterMount(products.router, prefix="/v1"),
-        RouterMount(provenance_audit.router),
         RouterMount(evidence.router, prefix="/v1"),
         RouterMount(competitive_intel.router, prefix="/v1"),
         RouterMount(roi_calculator.router, prefix="/v1"),
         RouterMount(benchmarks.router, prefix="/v1/roi"),
-        RouterMount(knowledge.router, prefix="/v1"),
         RouterMount(calculators.router, prefix="/v1"),
         RouterMount(system.router),
-        RouterMount(compat_aliases.router),
-        RouterMount(system.router, prefix="/api/v1/system"),
-        RouterMount(entities.router, prefix="/api"),
-        RouterMount(compat_aliases.router, prefix="/api"),
-        # L2.5 Signal Refinery — ValueSignal graph persistence
-        RouterMount(signals.router),
     ],
 )
 
@@ -781,41 +738,6 @@ _security_config_l3 = add_security_validation_middleware(
     },
     strict_mode=True,
 )
-
-
-@app.middleware("http")
-async def enforce_openapi_request_body_contract(request: Request, call_next):
-    """Reject malformed/oversized request payloads at gateway boundary.
-
-    FastAPI performs model validation later in the pipeline; this middleware
-    performs early boundary checks for endpoints with OpenAPI request bodies.
-    """
-    if request.method in {"POST", "PUT", "PATCH"} and request.url.path.startswith("/v1/"):
-        openapi_spec = app.openapi()
-        path_spec = openapi_spec.get("paths", {}).get(request.url.path, {})
-        op_spec = path_spec.get(request.method.lower(), {})
-        requires_body = "requestBody" in op_spec
-        if requires_body:
-            content_length = request.headers.get("content-length")
-            if content_length and content_length.isdigit() and int(content_length) > _security_config_l3.max_body_size_bytes:
-                return JSONResponse(
-                    status_code=413,
-                    content={
-                        "detail": "Request body too large",
-                        "max_body_size_bytes": _security_config_l3.max_body_size_bytes,
-                    },
-                )
-            content_type = request.headers.get("content-type", "")
-            if "application/json" in content_type:
-                try:
-                    await request.json()
-                except Exception:
-                    return JSONResponse(
-                        status_code=400,
-                        content={"detail": "Malformed JSON payload rejected at API boundary"},
-                    )
-
-    return await call_next(request)
 
 class InitSchemaResult(TypedDictModel):
     drop_existing: Any
@@ -1002,10 +924,9 @@ async def global_exception_handler(request: Request, exc: Exception):
     else:
         # Legacy fallback
         error_response = {
-            "code": "INTERNAL_ERROR",
-            "message": "Unexpected server fault",
-            "details": None,
-            "context": {"endpoint": request.url.path, "method": request.method},
+            "error": "INTERNAL_SERVER_ERROR",
+            "message": "An unexpected error occurred",
+            "type": type(exc).__name__,
             "request_id": getattr(request.state, "request_id", None),
         }
         settings = _get_settings_with_fallback()
@@ -1058,7 +979,7 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
                 })
             )
         else:
-            from schema.initializer import SchemaInitializer
+            from ..schema.initializer import SchemaInitializer
 
             neo4j_checker = schema_initializer if schema_initializer is not None else SchemaInitializer()
             # Mark ad-hoc checkers as non-owning so close() won't destroy the shared singleton driver
@@ -1129,20 +1050,20 @@ async def check_dependencies(schema_initializer: Any | None = None) -> list[Depe
     summary="Basic Health Check",
     description="""
     Perform a basic health check of the service and its dependencies.
-
+    
     This endpoint checks:
     - Neo4j database connectivity
     - Overall service status
     - Basic system metrics
     - Schema validation status
-
+    
     Returns a simplified health status suitable for load balancers and monitoring systems.
-
+    
     **Response Headers:**
     - `X-RateLimit-*`: Current rate limiting information
     - `X-API-Version`: API version used
     - `X-Supported-Versions`: Supported API versions
-
+    
     **Status Codes:**
     - `200`: Service is healthy
     - `503`: Service or dependencies are unhealthy
@@ -1329,19 +1250,19 @@ async def health_check(
     summary="Detailed Health Check",
     description="""
     Perform a comprehensive health check with detailed system information.
-
+    
     This endpoint provides complete health information including:
     - All dependency status with response times
     - Detailed system metrics and resource usage
     - Configuration information (non-sensitive)
     - System information and platform details
     - Full schema validation results
-
+    
     Use this endpoint for detailed diagnostics and troubleshooting.
-
+    
     **Response Headers:**
     - `X-RateLimit-*`: Current rate limiting information
-
+    
     **Status Codes:**
     - `200`: Detailed health information returned
     - `503`: Service or dependencies are unhealthy
@@ -1402,7 +1323,7 @@ async def health_check(
                         },
                         "configuration": {
                             "api_host": "0.0.0.0",
-                            "api_port": 8003,
+                            "api_port": 8001,
                             "log_level": "INFO",
                             "log_format": "json",
                             "neo4j_database": "neo4j",
@@ -1448,7 +1369,7 @@ async def detailed_health_check(
     elif any(dep.status == "degraded" for dep in dependencies):
         overall_status = "degraded"
 
-    response_time_ms = round((time.time() - start_time) * 1000, 2)
+    _response_time_ms = round((time.time() - start_time) * 1000, 2)
 
     # System information
     system_info = {
@@ -1493,18 +1414,18 @@ async def detailed_health_check(
     summary="Get Schema Status",
     description="""
     Retrieve the current status of Neo4j schema elements.
-
+    
     This endpoint checks:
     - Constraint creation and validation
     - Index creation and status
     - Overall schema health
     - Missing elements that need attention
-
+    
     Use this endpoint to verify database schema integrity before operations.
-
+    
     **Response Headers:**
     - `X-RateLimit-*`: Current rate limiting information
-
+    
     **Status Codes:**
     - `200`: Schema status retrieved successfully
     - `503`: Database connection issues
@@ -1551,7 +1472,7 @@ async def init_schema(
     if schema_initializer is None:
         raise HTTPException(status_code=503, detail="Schema initializer not available")
     await schema_initializer.initialize_schema(drop_existing=drop_existing)
-    return init_schemaResult.model_validate({"status": "initialized", "drop_existing": drop_existing})
+    return {"status": "initialized", "drop_existing": drop_existing}
 
 
 @app.get("/v1/schema/statistics", response_model=SchemaStatistics)
@@ -1575,11 +1496,14 @@ async def get_schema_statistics(
 async def ingest_rdf(
     request: IngestRequest,
     sync_manager=Depends(get_sync_manager),
-    authenticated_tenant_id: str = Depends(get_verified_tenant_id),
     x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
 ):
     """Ingest RDF data from Layer 2 extraction pipeline."""
-    tenant_id = _resolve_ingest_tenant_id(authenticated_tenant_id, x_tenant_id, request.tenant_id)
+    # Extract tenant_id from header or request body (header takes precedence)
+    # Strip whitespace and fall back to "system" for empty/None values
+    tenant_id = (x_tenant_id or request.tenant_id or "system").strip()
+    if not tenant_id:
+        tenant_id = "system"
 
     try:
         stats = await sync_manager.sync_extraction_result(
@@ -1610,41 +1534,18 @@ async def ingest_rdf(
             "duration_seconds": stats.get("duration_seconds"),
             "error": stats.get("error"),
         })
-    except (ValueError, TypeError, PydanticValidationError) as exc:
-        logger.warning("Ingestion validation failed: %s", exc)
-        raise SharedValidationError(
-            message="Invalid ingestion payload",
-            details={"endpoint": "/v1/ingest"},
-        ) from exc
-    except TimeoutError as exc:
-        logger.warning("Ingestion timed out: %s", exc)
-        raise SharedValueFabricException(
-            message="Ingestion request timed out",
-            error_code=ErrorCode.TIMEOUT_ERROR,
-            status_code=504,
-            details={"endpoint": "/v1/ingest"},
-        ) from exc
-    except (ConnectionError, OSError) as exc:
-        logger.error("Ingestion dependency unavailable: %s", exc)
-        raise SharedServiceUnavailableError(
-            message="Ingestion backend unavailable",
-            service="layer3.sync_manager",
-            details={"endpoint": "/v1/ingest"},
-        ) from exc
+    except Exception as e:
+        logger.error(f"Ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail="Ingestion failed. Please try again later.")
 
 
 @app.get("/v1/ingest/status/{source_id}", response_model=SyncStatusResponse)
 async def get_sync_status(
     source_id: str,
-    request: Request,
     sync_manager=Depends(get_sync_manager),
 ):
     """Get synchronization status for a source."""
-    tenant_id = _require_tenant_id_from_context(
-        request,
-        missing_tenant_detail="tenant_id is required for sync status access",
-    )
-    status = await sync_manager.get_sync_status(source_id, tenant_id=tenant_id)
+    status = await sync_manager.get_sync_status(source_id)
 
     if not status:
         raise HTTPException(status_code=404, detail=f"Source {source_id} not found")
@@ -1662,15 +1563,10 @@ async def get_sync_status(
 @app.delete("/v1/ingest/{source_id}")
 async def delete_source(
     source_id: str,
-    request: Request,
     sync_manager=Depends(get_sync_manager),
 ):
     """Delete all data from a source."""
-    tenant_id = _require_tenant_id_from_context(
-        request,
-        missing_tenant_detail="tenant_id is required for source deletion",
-    )
-    stats = await sync_manager.delete_source(source_id, tenant_id=tenant_id)
+    stats = await sync_manager.delete_source(source_id)
     return DeleteSourceResult.model_validate({
         "status": "deleted",
         "source_id": source_id,
@@ -1731,11 +1627,624 @@ async def _execute_graph_rag_query(
     })
 
 
+@app.post("/v1/graphrag", response_model=GraphRAGResponse)
+async def graph_rag_legacy_alias(
+    query: GraphRAGQuery,
+    graph_rag=Depends(get_graph_rag),
+):
+    """Compatibility alias; implementation moved to routes.query_search."""
+    return await query_search.graph_rag_query_impl(query, graph_rag)
+
+
+@app.post("/v1/query/graph", response_model=GraphRAGResponse)
+@app.post("/v1/query", response_model=GraphRAGResponse)
+async def graph_rag_query(
+    query: GraphRAGQuery,
+    graph_rag=Depends(get_graph_rag),
+):
+    """Compatibility forwarder; implementation moved to routes.query_search."""
+    return await query_search.graph_rag_query_impl(query, graph_rag)
+
+
+@app.post("/v1/query/graph/stream")
+async def graph_rag_query_stream(
+    query: GraphRAGQuery,
+    graph_rag=Depends(get_graph_rag),
+):
+    """Compatibility forwarder; implementation moved to routes.query_search."""
+    return await query_search.graph_rag_query_stream_impl(query, graph_rag)
+
+
+# Search endpoints
+# Canonical route. Legacy `/v1/search` remains for backward compatibility.
+
+
+async def _execute_hybrid_search(
+    hybrid_search,
+    query: str,
+    entity_type: str | None,
+    search_type: SearchType | str,
+    top_k: int,
+    weights: dict | None,
+) -> SearchResponse:
+    """Execute hybrid search (extracted for caching/deduplication)."""
+    start_time = time.time()
+    search_type_value = search_type.value if isinstance(search_type, SearchType) else search_type
+    if search_type_value == "vector":
+        results = await hybrid_search.semantic_search(query, entity_type, top_k)
+    elif search_type_value == "fulltext":
+        results = await hybrid_search.fulltext_search(query, entity_type, top_k)
+    else:  # hybrid
+        results = await hybrid_search.search(
+            query,
+            [entity_type] if entity_type else None,
+            top_k,
+            weights,
+        )
+
+    # Convert HybridSearchResult dataclass objects to SearchResult Pydantic models
+    search_results = [
+        SearchResult(**asdict(result)) for result in results
+    ]
+    processing_time_ms = (time.time() - start_time) * 1000
+    normalized_search_type = SearchType(search_type_value)
+
+    return SearchResponse.model_validate({
+        "query": query,
+        "results": search_results,
+        "total_results": len(search_results),
+        "search_type": normalized_search_type,
+        "processing_time_ms": processing_time_ms,
+    })
+
+
+@app.post(
+    "/v1/search/hybrid",
+    response_model=SearchResponse,
+    deprecated=True,
+    summary="Deprecated: Use GET /v1/entities for entity listing",
+)
+@app.post("/v1/search", response_model=SearchResponse, deprecated=True)
+async def hybrid_search(
+    request: SearchRequest,
+    hybrid_search=Depends(get_hybrid_search),
+):
+    """DEPRECATED compatibility forwarder; implementation moved to routes.query_search."""
+    return await query_search.hybrid_search_impl(request, hybrid_search)
 
 
 # Entity endpoints
+@app.get("/v1/entity/{entity_id}/context", response_model=EntityContextResponse)
+async def get_entity_context(
+    entity_id: str,
+    hops: int = 2,
+    relationship_types: list[str] | None = None,
+    fields: str | None = Query(
+        None, description="Comma-separated fields to include (e.g., 'id,name,type')"
+    ),
+    cursor: str | None = Query(None, description="Pagination cursor for neighbors"),
+    limit: int = Query(100, ge=1, le=500, description="Max neighbors to return"),
+    graph_rag=Depends(get_graph_rag),
+):
+    """Get neighborhood context around an entity.
+
+    Supports field selection (?fields=id,name,type) to reduce payload size,
+    and cursor-based pagination (?cursor=xyz&limit=50) for large neighborhoods.
+    """
+    try:
+        context = await graph_rag.get_entity_context(
+            entity_id=entity_id,
+            hops=hops,
+            relationship_types=relationship_types,
+        )
+
+        if not context["center"]:
+            raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+        # Apply field selection if requested
+        if fields:
+            field_list = [f.strip() for f in fields.split(",")]
+            center = {
+                k: v
+                for k, v in context["center"].items()
+                if k in field_list or k == "id"
+            }
+            neighbors = [
+                {k: v for k, v in n.items() if k in field_list or k == "id"}
+                for n in context["neighbors"]
+            ]
+            relationships = [
+                {
+                    k: v
+                    for k, v in r.items()
+                    if k in field_list or k in ["source", "target", "type"]
+                }
+                for r in context["relationships"]
+            ]
+        else:
+            center = context["center"]
+            neighbors = context["neighbors"]
+            relationships = context["relationships"]
+
+        # Apply pagination to neighbors
+        pagination_info = None
+        if cursor or len(neighbors) > limit:
+            # Simple offset-based pagination (can be enhanced to cursor-based)
+            offset = int(cursor) if cursor and cursor.isdigit() else 0
+            total_neighbors = len(neighbors)
+            paginated_neighbors = neighbors[offset : offset + limit]
+            has_more = (offset + limit) < total_neighbors
+
+            pagination_info = {
+                "returned_count": len(paginated_neighbors),
+                "total_neighbors": total_neighbors,
+                "has_more": has_more,
+                "next_cursor": str(offset + limit) if has_more else None,
+            }
+            neighbors = paginated_neighbors
+
+        return EntityContextResponse(
+            entity_id=entity_id,
+            center=center,
+            neighbors=neighbors,
+            relationships=relationships,
+            entity_count=context["entity_count"],
+            relationship_count=context["relationship_count"],
+            pagination=pagination_info,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Context retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail="Context retrieval failed. Please try again later.")
 
 
+@app.post("/v1/entity/traverse", response_model=ValueTreeResponse)
+async def traverse_value_tree(
+    request: ValueTreeTraversal,
+    graph_rag=Depends(get_graph_rag),
+):
+    """Traverse the 4-layer value tree from an entity."""
+    try:
+        result = await graph_rag.traverse_value_tree(
+            start_entity_id=request.entity_id,
+            direction=request.direction,
+        )
+
+        return ValueTreeResponse(
+            start_entity_id=result["start_entity_id"],
+            direction=result["direction"],
+            paths=result["paths"],
+            path_count=result["path_count"],
+        )
+    except Exception as e:
+        logger.error(f"Value tree traversal failed: {e}")
+        raise HTTPException(status_code=500, detail="Value tree traversal failed. Please try again later.")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Canonical Entity Browser Endpoints (High-Quality Contract)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/v1/entities", response_model=EntityListResponse)
+async def list_entities(
+    request: Request,  # Sprint 5: For tenant context extraction
+    search_text: str | None = Query(None, max_length=200, description="Search across name and description"),
+    entity_types: list[str] | None = Query(None, description="Filter by entity types"),
+    domains: list[str] | None = Query(None, description="Filter by domains"),
+    statuses: list[str] | None = Query(None, description="Filter by status: validated, pending, draft, deprecated"),
+    min_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
+    max_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Maximum confidence"),
+    limit: int = Query(25, ge=1, le=100, description="Max results to return"),
+    offset: int = Query(0, ge=0, description="Results to skip"),
+    sort_by: str = Query("updated_at", description="Field to sort by: name, updated_at, confidence, entity_type, status"),
+    sort_order: str = Query("desc", description="Sort direction: asc or desc"),
+    _ctx: RequestContext = Depends(require_authenticated),
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """List entities with server-backed filtering and sorting.
+
+    This endpoint provides a canonical entity summary contract optimized for
+    browser table views. It supports filtering by domain, status, type, and
+    confidence—eliminating the need for client-side filtering of large datasets.
+
+    **Query Parameters:**
+    - `search_text`: Full-text search across entity names and descriptions
+    - `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)
+    - `domains`: Filter by business domain (e.g., Finance, Healthcare)
+    - `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)
+    - `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)
+    - `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)
+    - `sort_order`: Sort direction (asc, desc)
+    - `limit`/`offset`: Pagination control
+
+    **Response:** Returns EntityListResponse with canonical EntitySummary objects.
+    """
+    try:
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
+        # Require tenant_id for multi-tenant security
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for entity listing"
+            )
+
+        # Build dynamic Cypher query based on filters
+        where_clauses = ["e.tenant_id = $tenant_id"]  # Mandatory tenant filter
+        params: dict[str, Any] = {"tenant_id": tenant_id}
+
+        if search_text:
+            where_clauses.append("(toLower(e.name) CONTAINS toLower($search_text) OR toLower(e.description) CONTAINS toLower($search_text))")
+            params["search_text"] = search_text
+
+        if entity_types:
+            where_clauses.append("e.entity_type IN $entity_types")
+            params["entity_types"] = entity_types
+
+        if domains:
+            where_clauses.append("e.domain IN $domains")
+            params["domains"] = domains
+
+        if statuses:
+            where_clauses.append("e.status IN $statuses")
+            params["statuses"] = statuses
+
+        if min_confidence is not None:
+            where_clauses.append("e.confidence >= $min_confidence")
+            params["min_confidence"] = min_confidence
+
+        if max_confidence is not None:
+            where_clauses.append("e.confidence <= $max_confidence")
+            params["max_confidence"] = max_confidence
+
+        where_clause = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Validate sort_by to prevent injection
+        valid_sort_fields = {"name", "updated_at", "confidence", "entity_type", "status", "created_at"}
+        if sort_by not in valid_sort_fields:
+            sort_by = "updated_at"
+        sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+        # Build and execute count query
+        count_query = f"""
+            MATCH (e:Entity)
+            {where_clause}
+            RETURN count(e) as total
+        """
+
+        async with neo4j_driver.session() as session:
+            # Get total count
+            count_result = await session.run(count_query, params)
+            total_count_record = await count_result.single()
+            total_count = total_count_record["total"] if total_count_record else 0
+
+            # Build entity query with sorting and pagination
+            entity_query = f"""
+                MATCH (e:Entity)
+                {where_clause}
+                RETURN e {{
+                    .id, .name, .entity_type, .domain, .status,
+                    .confidence, .confidence_label, .description,
+                    .updated_at, .source_name, .extraction_job_id,
+                    .created_at, .created_by
+                }}
+                ORDER BY e.{sort_by} {sort_direction}
+                SKIP $offset
+                LIMIT $limit
+            """
+            params["offset"] = offset
+            params["limit"] = limit
+
+            # Execute entity query
+            result = await session.run(entity_query, params)
+            records = await result.fetch()
+
+            # Build summary objects
+            summaries = []
+            for record in records:
+                node = record["e"]
+                # Derive status and confidence_label if not stored
+                confidence = node.get("confidence", 0.0)
+                status = node.get("status")
+                if status is None:
+                    if confidence >= 0.9:
+                        status = "validated"
+                    elif confidence >= 0.7:
+                        status = "pending"
+                    else:
+                        status = "draft"
+
+                confidence_label = node.get("confidence_label")
+                if confidence_label is None:
+                    if confidence >= 0.9:
+                        confidence_label = "high"
+                    elif confidence >= 0.7:
+                        confidence_label = "medium"
+                    else:
+                        confidence_label = "low"
+
+                summary = EntitySummary(
+                    id=node.get("id", "unknown"),
+                    name=node.get("name", "Unknown"),
+                    entity_type=node.get("entity_type", "Capability"),
+                    domain=node.get("domain"),
+                    status=status,
+                    confidence=confidence,
+                    confidence_label=confidence_label,
+                    description=node.get("description"),
+                    updated_at=node.get("updated_at") or datetime.utcnow(),
+                    source_name=node.get("source_name"),
+                    extraction_job_id=node.get("extraction_job_id"),
+                )
+                summaries.append(summary)
+
+            # Get available filter values for UI dropdowns
+            available_domains = []
+            available_sources = []
+            if summaries:
+                domains_query = """
+                    MATCH (e:Entity {tenant_id: $tenant_id})
+                    WHERE e.domain IS NOT NULL
+                    RETURN collect(DISTINCT e.domain) as domains
+                """
+                domains_result = await session.run(domains_query, {"tenant_id": tenant_id})
+                domains_record = await domains_result.single()
+                if domains_record:
+                    available_domains = domains_record["domains"]
+
+                sources_query = """
+                    MATCH (e:Entity {tenant_id: $tenant_id})
+                    WHERE e.source_name IS NOT NULL
+                    RETURN collect(DISTINCT e.source_name) as sources
+                """
+                sources_result = await session.run(sources_query, {"tenant_id": tenant_id})
+                sources_record = await sources_result.single()
+                if sources_record:
+                    available_sources = sources_record["sources"]
+
+        has_more = (offset + len(summaries)) < total_count
+
+        return EntityListResponse(
+            results=summaries,
+            total_count=total_count,
+            filtered_count=total_count,  # Total matching filters
+            limit=limit,
+            offset=offset,
+            has_more=has_more,
+            available_domains=available_domains,
+            available_sources=available_sources,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity listing failed: {e}")
+        raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
+
+
+@app.get("/v1/entities/{entity_id}", response_model=EntityDetail)
+async def get_entity_detail(
+    entity_id: str,
+    request: Request,  # Sprint 5: For tenant context extraction
+    include_provenance: bool = Query(True, description="Include provenance chain"),
+    include_relationships: bool = Query(True, description="Include related entities"),
+    _ctx: RequestContext = Depends(require_authenticated),
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """Get full entity detail for inspection/drawer views.
+
+    Returns the canonical EntityDetail shape with all fields from EntitySummary
+    plus extended data: relationships, provenance, validation state, and raw properties.
+
+    **Path Parameters:**
+    - `entity_id`: Canonical entity identifier
+
+    **Query Parameters:**
+    - `include_provenance`: Whether to include audit trail (default: true)
+    - `include_relationships`: Whether to include related entities (default: true)
+
+    **Response:** Returns EntityDetail with full canonical contract.
+    """
+    try:
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for entity access"
+            )
+        
+        async with neo4j_driver.session() as session:
+            # Fetch main entity with mandatory tenant filtering
+            entity_query = """
+                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                RETURN e {
+                    .id, .name, .entity_type, .domain, .status,
+                    .confidence, .confidence_label, .description,
+                    .updated_at, .source_name, .extraction_job_id,
+                    .created_at, .created_by, .properties,
+                    .validation_errors, .last_validated_at
+                }
+            """
+            query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+            result = await session.run(entity_query, query_params)
+            record = await result.single()
+
+            if not record:
+                raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+            node = record["e"]
+
+            # Derive status and confidence_label if not stored
+            confidence = node.get("confidence", 0.0)
+            status = node.get("status")
+            if status is None:
+                if confidence >= 0.9:
+                    status = "validated"
+                elif confidence >= 0.7:
+                    status = "pending"
+                else:
+                    status = "draft"
+
+            confidence_label = node.get("confidence_label")
+            if confidence_label is None:
+                if confidence >= 0.9:
+                    confidence_label = "high"
+                elif confidence >= 0.7:
+                    confidence_label = "medium"
+                else:
+                    confidence_label = "low"
+
+            # Build relationships if requested
+            relationships = EntityRelationships(total_count=0)
+            if include_relationships:
+                # Outgoing relationships with mandatory tenant filtering
+                outgoing_query = """
+                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[r]->(target:Entity {tenant_id: $tenant_id})
+                    RETURN type(r) as rel_type, target.id as target_id,
+                           target.name as target_name, target.entity_type as target_type
+                    LIMIT 5
+                """
+                outgoing_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+                outgoing_result = await session.run(outgoing_query, outgoing_params)
+                outgoing_records = await outgoing_result.fetch()
+                outgoing_rels = [
+                    RelationshipPreview(
+                        relationship_type=r["rel_type"],
+                        target_entity_id=r["target_id"],
+                        target_entity_name=r["target_name"],
+                        target_entity_type=r["target_type"],
+                    )
+                    for r in outgoing_records
+                ]
+
+                # Incoming relationships with mandatory tenant filtering
+                incoming_query = """
+                    MATCH (source:Entity {tenant_id: $tenant_id})-[r]->(e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                    RETURN type(r) as rel_type, source.id as source_id,
+                           source.name as source_name, source.entity_type as source_type
+                    LIMIT 5
+                """
+                incoming_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+                incoming_result = await session.run(incoming_query, incoming_params)
+                incoming_records = await incoming_result.fetch()
+                incoming_rels = [
+                    RelationshipPreview(
+                        relationship_type=r["rel_type"],
+                        target_entity_id=r["source_id"],
+                        target_entity_name=r["source_name"],
+                        target_entity_type=r["source_type"],
+                    )
+                    for r in incoming_records
+                ]
+
+                # Total count with mandatory tenant filtering
+                count_query = """
+                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                    OPTIONAL MATCH (e)-[r1]->(:Entity {tenant_id: $tenant_id})
+                    OPTIONAL MATCH (e)<-[r2]-(:Entity {tenant_id: $tenant_id})
+                    RETURN count(r1) + count(r2) as total
+                """
+                count_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+                count_result = await session.run(count_query, count_params)
+                count_record = await count_result.single()
+                total_rels = count_record["total"] if count_record else 0
+
+                relationships = EntityRelationships(
+                    total_count=total_rels,
+                    incoming=incoming_rels,
+                    outgoing=outgoing_rels,
+                )
+
+            # Build provenance if requested
+            provenance: list[Any] = []
+            if include_provenance:
+                # For now, return basic provenance from entity fields
+                # This can be extended to query a separate provenance store
+                if node.get("extraction_job_id"):
+                    provenance.append({
+                        "event_type": "extracted",
+                        "timestamp": node.get("created_at") or datetime.utcnow(),
+                        "actor": node.get("extraction_job_id"),
+                        "details": {"source": node.get("source_name")},
+                    })
+
+            # Build detail response
+            detail = EntityDetail(
+                id=node.get("id", "unknown"),
+                name=node.get("name", "Unknown"),
+                entity_type=node.get("entity_type", "Capability"),
+                domain=node.get("domain"),
+                status=status,
+                confidence=confidence,
+                confidence_label=confidence_label,
+                description=node.get("description"),
+                updated_at=node.get("updated_at") or datetime.utcnow(),
+                source_name=node.get("source_name"),
+                extraction_job_id=node.get("extraction_job_id"),
+                created_at=node.get("created_at") or datetime.utcnow(),
+                created_by=node.get("created_by"),
+                provenance=provenance,
+                relationships=relationships,
+                properties=node.get("properties") or {},
+                validation_errors=node.get("validation_errors") or [],
+                last_validated_at=node.get("last_validated_at"),
+            )
+
+            return detail
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity detail retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail="Entity detail retrieval failed. Please try again later.")
+
+
+@app.post("/v1/entities/query", response_model=EntityListResponse)
+async def query_entities(
+    request: EntityFilterRequest,
+    fastapi_request: Request,
+    _ctx: RequestContext = Depends(require_authenticated),
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """Advanced entity filtering with complex criteria.
+
+    Supports complex filter combinations not easily expressed in query parameters.
+    Uses the same underlying logic as GET /v1/entities but with a request body.
+
+    **Request Body:** EntityFilterRequest with full filter specification
+
+    **Response:** Returns EntityListResponse with canonical EntitySummary objects.
+    """
+    try:
+        # Delegate to the same implementation as GET endpoint
+        # Convert request body to the same parameters
+        return await list_entities(
+            request=fastapi_request,
+            search_text=request.search_text,
+            entity_types=[str(entity_type) for entity_type in request.entity_types] if request.entity_types else None,
+            domains=request.domains,
+            statuses=[str(status) for status in request.statuses] if request.statuses else None,
+            min_confidence=request.min_confidence,
+            max_confidence=request.max_confidence,
+            limit=request.limit,
+            offset=request.offset,
+            sort_by=request.sort_by,
+            sort_order=request.sort_order,
+            neo4j_driver=neo4j_driver,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity query failed: {e}")
+        raise HTTPException(status_code=500, detail="Query failed. Please try again later.")
+
+
+# Analytics endpoints
 @app.post("/v1/analytics/communities", response_model=CommunityDetectionResponse)
 async def detect_communities(
     request: CommunityDetectionRequest,
@@ -1902,10 +2411,7 @@ async def batch_entity_operations(
     created_entities = []
 
     # Sprint 5: Extract tenant context for multi-tenant security
-    tenant_id = _require_tenant_id_from_context(
-        fastapi_request,
-        missing_tenant_detail="tenant_id is required for batch entity operations",
-    )
+    tenant_id = _extract_tenant_id(fastapi_request)
 
     try:
         for i, operation in enumerate(request.operations):
@@ -2128,10 +2634,10 @@ async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, A
             )
             record = await result.single()
             if record:
-                return _create_entityResult.model_validate({"success": True, "entity_id": record["entity_id"]})
-            return _create_entityResult.model_validate({"success": False, "error": "Failed to create entity"})
+                return {"success": True, "entity_id": record["entity_id"]}
+            return {"success": False, "error": "Failed to create entity"}
     except Exception as e:
-        return _create_entityResult.model_validate({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 
 async def _update_entity(
@@ -2150,8 +2656,8 @@ async def _update_entity(
     try:
         # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
         if not tenant_id:
-            return _update_entityResult.model_validate({"success": False, "error": "tenant_id is required for entity updates"})
-
+            return {"success": False, "error": "tenant_id is required for entity updates"}
+        
         async with driver.session() as session:
             # Update entity with mandatory tenant filtering
             query = """
@@ -2167,10 +2673,10 @@ async def _update_entity(
             result = await session.run(query, params)
             record = await result.single()
             if record:
-                return _update_entityResult.model_validate({"success": True})
-            return _update_entityResult.model_validate({"success": False, "error": "Entity not found"})
+                return {"success": True}
+            return {"success": False, "error": "Entity not found"}
     except Exception as e:
-        return _update_entityResult.model_validate({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 
 async def _delete_entity(
@@ -2189,8 +2695,8 @@ async def _delete_entity(
     try:
         # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
         if not tenant_id:
-            return _delete_entityResult.model_validate({"success": False, "error": "tenant_id is required for entity deletion"})
-
+            return {"success": False, "error": "tenant_id is required for entity deletion"}
+        
         async with driver.session() as session:
             # Delete entity with mandatory tenant filtering
             query = """
@@ -2202,10 +2708,10 @@ async def _delete_entity(
             result = await session.run(query, params)
             record = await result.single()
             if record and record["deleted"] > 0:
-                return _delete_entityResult.model_validate({"success": True})
-            return _delete_entityResult.model_validate({"success": False, "error": "Entity not found"})
+                return {"success": True}
+            return {"success": False, "error": "Entity not found"}
     except Exception as e:
-        return _delete_entityResult.model_validate({"success": False, "error": str(e)})
+        return {"success": False, "error": str(e)}
 
 
 async def _delete_entity_by_id(
@@ -2221,7 +2727,7 @@ async def _delete_entity_by_id(
     # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
     if not tenant_id:
         raise ValueError("tenant_id is required for entity deletion")
-
+    
     async with driver.session() as session:
         # Delete entity with mandatory tenant filtering
         query = "MATCH (n {id: $entity_id, tenant_id: $tenant_id}) DETACH DELETE n"
@@ -2391,11 +2897,11 @@ async def agent_workflow(
                 status_code=400, detail=f"Unknown workflow type: {workflow_type}"
             )
 
-        return agent_workflowResult.model_validate({
+        return {
             "workflow_type": workflow_type,
             "steps_completed": len(results),
             "results": results,
-        })
+        }
 
 
     except HTTPException:
@@ -2404,6 +2910,220 @@ async def agent_workflow(
         logger.error(f"Agent workflow failed: {e}")
         raise HTTPException(status_code=500, detail="Agent workflow failed. Please try again later.")
 
+
+# =============================================================================
+# PROVENANCE & AUDIT ENDPOINTS
+# =============================================================================
+
+
+@app.get(
+    "/v1/provenance/{entity_id}",
+    response_model=ProvenanceTrailResponse,
+    tags=["Provenance"],
+    summary="Get Entity Provenance Trail",
+    description="Returns full audit trail and provenance chain for an entity",
+)
+async def get_provenance(
+    entity_id: str,
+    request: Request,  # Sprint 5: For tenant context
+    app_state: AppState = Depends(get_app_state),
+):
+    """Get full provenance trail for an entity."""
+    # Validate entity_id
+    if not entity_id or not entity_id.strip():
+        raise HTTPException(status_code=400, detail="entity_id is required")
+
+    # Sprint 5: Extract tenant context for multi-tenant security
+    tenant_id = _extract_tenant_id(request)
+
+    # Sanitize entity_id to prevent injection
+    entity_id = entity_id.strip()
+    if len(entity_id) > 255:
+        raise HTTPException(
+            status_code=400, detail="entity_id too long (max 255 chars)"
+        )
+
+    try:
+        # Query Neo4j for entity and its provenance
+        neo4j = app_state.neo4j_driver
+        if not neo4j:
+            raise HTTPException(status_code=503, detail="Neo4j not available")
+
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for provenance access"
+            )
+        
+        # Get entity details with mandatory tenant filtering
+        entity_query = """
+        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+        RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
+               e.created_at as created_at, e.source as source,
+               e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
+        LIMIT 1
+        """
+        query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+        entity_result = await neo4j.execute_query(entity_query, query_params)
+
+        if not entity_result:
+            raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+        record = entity_result[0]
+
+        # Build provenance steps from related audit events with mandatory tenant filtering
+        steps_query = """
+        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+        OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
+        WITH a
+        WHERE a IS NOT NULL
+        RETURN a.step as step, a.label as label, a.detail as detail,
+               a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
+        ORDER BY a.step
+        """
+        steps_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+        steps_result = await neo4j.execute_query(steps_query, steps_params)
+
+        steps = [
+            ProvenanceStep(
+                step=s.get("step", i + 1),
+                label=s.get("label", f"Step {i + 1}"),
+                detail=s.get("detail", ""),
+                timestamp=s.get("timestamp", datetime.utcnow()),
+                agent=s.get("agent"),
+                entity_id=s.get("step_entity_id"),
+            )
+            for i, s in enumerate(steps_result)
+        ]
+
+        # If no steps found, provide default extraction steps
+        if not steps:
+            steps = [
+                ProvenanceStep(
+                    step=1,
+                    label="Entity Created",
+                    detail=f"Entity {entity_id} created from source",
+                    timestamp=record.get("created_at", datetime.utcnow()),
+                    agent="ExtractionEngine-v2.1",
+                    entity_id=entity_id,
+                )
+            ]
+
+        return ProvenanceTrailResponse(
+            entity_id=record.get("entity_id", entity_id),
+            entity_type=record.get("entity_type", "Unknown"),
+            entity_name=record.get("entity_name", "Unknown"),
+            created_at=record.get("created_at", datetime.utcnow()),
+            source=record.get("source", "unknown"),
+            extraction_job_id=record.get("extraction_job_id"),
+            steps=steps,
+            confidence_score=record.get("confidence_score"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Provenance query failed: {e}")
+        raise HTTPException(status_code=500, detail="Provenance query failed. Please try again later.")
+
+
+@app.get(
+    "/v1/audit/logs",
+    response_model=AuditLogResponse,
+    tags=["Audit"],
+    summary="List Audit Logs",
+    description="Query system audit events from Neo4j provenance or API access logs",
+)
+async def list_audit_logs(
+    source: Literal["all", "provenance", "access"] = Query(
+        "all", description="Source: 'provenance', 'access', or 'all'"
+    ),
+    from_date: datetime | None = Query(None, description="Start date filter"),
+    to_date: datetime | None = Query(None, description="End date filter"),
+    entity_type: str | None = Query(None, description="Filter by entity type"),
+    event_type: str | None = Query(None, description="Filter by event type"),
+    agent: str | None = Query(None, description="Filter by agent"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=100, description="Entries per page"),
+    app_state: AppState = Depends(get_app_state),
+):
+    """List audit log entries with filtering."""
+    try:
+        entries: list[AuditLogEntry] = []
+
+        # Query Neo4j provenance if source is 'provenance' or 'all'
+        if source in ("provenance", "all"):
+            neo4j = app_state.neo4j_driver
+            if neo4j:
+                try:
+                    # Use OPTIONAL MATCH to handle case where AuditEvent nodes don't exist yet
+                    query = """
+                    OPTIONAL MATCH (a:AuditEvent)
+                    WHERE ($from_date IS NULL OR a.timestamp >= $from_date)
+                      AND ($to_date IS NULL OR a.timestamp <= $to_date)
+                      AND ($entity_type IS NULL OR a.entity_type = $entity_type)
+                      AND ($event_type IS NULL OR a.event_type = $event_type)
+                      AND ($agent IS NULL OR a.agent = $agent)
+                    WITH a
+                    WHERE a IS NOT NULL
+                    RETURN a.id as id, a.timestamp as timestamp, a.event_type as event_type,
+                           a.entity_id as entity_id, a.entity_type as entity_type,
+                           a.action as action, a.agent as agent, a.details as details
+                    ORDER BY a.timestamp DESC
+                    SKIP $skip LIMIT $limit
+                    """
+                    params = {
+                        "from_date": from_date.isoformat() if from_date else None,
+                        "to_date": to_date.isoformat() if to_date else None,
+                        "entity_type": entity_type,
+                        "event_type": event_type,
+                        "agent": agent,
+                        "skip": (page - 1) * per_page,
+                        "limit": per_page,
+                    }
+
+                    result = await neo4j.execute_query(query, params)
+                    for r in result:
+                        if r.get("id"):  # Only add valid records
+                            entries.append(
+                                AuditLogEntry(
+                                    id=r.get("id", str(uuid.uuid4())),
+                                    timestamp=r.get("timestamp", datetime.utcnow()),
+                                    source="provenance",
+                                    event_type=r.get("event_type", "unknown"),
+                                    entity_id=r.get("entity_id"),
+                                    entity_type=r.get("entity_type"),
+                                    action=r.get("action", "unknown"),
+                                    agent=r.get("agent", "system"),
+                                    details=r.get("details") or {},
+                                )
+                            )
+                except Exception as neo4j_error:
+                    logger.warning(
+                        f"Neo4j audit query failed (schema may not exist yet): {neo4j_error}"
+                    )
+                    # Continue with empty entries - don't fail the whole request
+
+        # NOTE: API access log querying not yet implemented.
+        # When access logging table is available, extend this endpoint to query
+        # from both provenance (Neo4j) and access logs for unified audit view.
+
+        # Sort by timestamp descending (already sorted from Neo4j but ensure consistency)
+        entries.sort(key=lambda x: x.timestamp, reverse=True)
+
+        return AuditLogResponse(
+            entries=entries,
+            total=len(entries),
+            page=page,
+            per_page=per_page,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Audit log query failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to query audit logs")
 
 
 @app.post(
@@ -2574,10 +3294,14 @@ async def get_full_graph(
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
         # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _require_tenant_id_from_context(
-            request,
-            missing_tenant_detail="tenant_id is required for graph access",
-        )
+        tenant_id = _extract_tenant_id(request)
+
+        # Require tenant_id for multi-tenant security
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for graph access"
+            )
 
         # Query for nodes with limit and tenant filter
         nodes_query = """
@@ -2658,27 +3382,11 @@ async def get_full_graph(
 
     except HTTPException:
         raise
-    except (ValueError, TypeError, PydanticValidationError) as exc:
-        logger.warning("Graph query validation failed: %s", exc)
-        raise SharedValidationError(
-            message="Invalid graph query parameters",
-            details={"endpoint": "/v1/graph"},
-        ) from exc
-    except TimeoutError as exc:
-        logger.warning("Graph query timed out: %s", exc)
-        raise SharedValueFabricException(
-            message="Graph query timed out",
-            error_code=ErrorCode.TIMEOUT_ERROR,
-            status_code=504,
-            details={"endpoint": "/v1/graph"},
-        ) from exc
-    except (ConnectionError, OSError) as exc:
-        logger.error("Graph dependency unavailable: %s", exc)
-        raise SharedServiceUnavailableError(
-            message="Graph backend unavailable",
-            service="neo4j",
-            details={"endpoint": "/v1/graph"},
-        ) from exc
+    except Exception as e:
+        logger.error(f"Failed to retrieve graph: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve graph: {str(e)}"
+        )
 
 
 @app.get(
@@ -2740,14 +3448,18 @@ async def get_entity_subgraph(
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
         # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _require_tenant_id_from_context(
-            request,
-            missing_tenant_detail="tenant_id is required for value tree access",
-        )
+        tenant_id = _extract_tenant_id(request)
 
         # Clamp depth
         depth = max(1, min(depth, 5))
 
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for value tree access"
+            )
+        
         # Query for root entity with mandatory tenant filtering
         root_query = """
         MATCH (n {id: $entity_id, tenant_id: $tenant_id})
@@ -2842,27 +3554,11 @@ async def get_entity_subgraph(
 
     except HTTPException:
         raise
-    except (ValueError, TypeError, PydanticValidationError) as exc:
-        logger.warning("Subgraph validation failed for %s: %s", entity_id, exc)
-        raise SharedValidationError(
-            message="Invalid subgraph request",
-            details={"endpoint": "/entities/{entity_id}/subgraph"},
-        ) from exc
-    except TimeoutError as exc:
-        logger.warning("Subgraph query timed out for %s: %s", entity_id, exc)
-        raise SharedValueFabricException(
-            message="Subgraph query timed out",
-            error_code=ErrorCode.TIMEOUT_ERROR,
-            status_code=504,
-            details={"endpoint": "/entities/{entity_id}/subgraph"},
-        ) from exc
-    except (ConnectionError, OSError) as exc:
-        logger.error("Subgraph dependency unavailable for %s: %s", entity_id, exc)
-        raise SharedServiceUnavailableError(
-            message="Subgraph backend unavailable",
-            service="neo4j",
-            details={"endpoint": "/entities/{entity_id}/subgraph"},
-        ) from exc
+    except Exception as e:
+        logger.error(f"Failed to retrieve subgraph for {entity_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}"
+        )
 
 
 @app.get(
@@ -2933,10 +3629,14 @@ async def get_query_subgraph(
         root_id = center_entity_id or ""
 
         # Sprint 5: Extract tenant context for multi-tenant security
-        tenant_id = _require_tenant_id_from_context(
-            request,
-            missing_tenant_detail="tenant_id is required for graph explorer access",
-        )
+        tenant_id = _extract_tenant_id(request)
+        
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for graph explorer access"
+            )
 
         if center_entity_id:
             # Center mode: expand N hops from specific entity with mandatory tenant filtering
@@ -3124,27 +3824,11 @@ async def get_query_subgraph(
 
     except HTTPException:
         raise
-    except (ValueError, TypeError, PydanticValidationError) as exc:
-        logger.warning("Query subgraph validation failed: %s", exc)
-        raise SharedValidationError(
-            message="Invalid query subgraph request",
-            details={"endpoint": "/v1/graph/subgraph"},
-        ) from exc
-    except TimeoutError as exc:
-        logger.warning("Query subgraph timed out: %s", exc)
-        raise SharedValueFabricException(
-            message="Subgraph retrieval timed out",
-            error_code=ErrorCode.TIMEOUT_ERROR,
-            status_code=504,
-            details={"endpoint": "/v1/graph/subgraph"},
-        ) from exc
-    except (ConnectionError, OSError) as exc:
-        logger.error("Query subgraph dependency unavailable: %s", exc)
-        raise SharedServiceUnavailableError(
-            message="Subgraph dependency unavailable",
-            service="neo4j",
-            details={"endpoint": "/v1/graph/subgraph"},
-        ) from exc
+    except Exception as e:
+        logger.error(f"Failed to retrieve subgraph: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}"
+        )
 
 
 if __name__ == "__main__":

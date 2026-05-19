@@ -90,11 +90,15 @@ class TenantSettingsUpdateResponse(BaseModel):
 
 
 def _verify_tenant_access(tenant_id: UUID, context: RequestContext) -> None:
-    """Verify tenant access permissions."""
+    """Verify tenant access permissions.
+
+    A user may access a tenant's admin dashboard if they own that tenant
+    (JWT tenant_id matches) or if they hold the super_admin role.
+    is_super_admin() must be called as a method — reading it as an attribute
+    returns the bound method object (always truthy) and bypasses the check.
+    """
     if str(context.tenant_id) != str(tenant_id):
-        # Check if super admin
-        is_super = getattr(context, "is_super_admin", False)
-        if not is_super:
+        if not context.is_super_admin():
             raise HTTPException(status_code=403, detail="Access denied")
 
 

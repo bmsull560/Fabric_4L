@@ -79,7 +79,7 @@ class BillingCustomer(Base):
     )
 
     # Relationships
-    subscriptions: Mapped[list["BillingSubscription"]] = relationship(
+    subscriptions: Mapped[list[BillingSubscription]] = relationship(
         back_populates="customer",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -124,7 +124,7 @@ class BillingSubscription(Base):
     )
 
     # Relationships
-    customer: Mapped["BillingCustomer"] = relationship(back_populates="subscriptions")
+    customer: Mapped[BillingCustomer] = relationship(back_populates="subscriptions")
 
     __table_args__ = (
         Index("ix_billing_subscriptions_customer", "customer_id"),
@@ -301,13 +301,13 @@ class BillingInvoice(Base):
     invoice_pdf_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
-    items: Mapped[list["BillingInvoiceItem"]] = relationship(
+    items: Mapped[list[BillingInvoiceItem]] = relationship(
         "BillingInvoiceItem",
         back_populates="invoice",
         lazy="selectin",
         cascade="all, delete-orphan"
     )
-    charges: Mapped[list["BillingCharge"]] = relationship(
+    charges: Mapped[list[BillingCharge]] = relationship(
         "BillingCharge",
         back_populates="invoice",
         lazy="selectin"
@@ -387,7 +387,7 @@ class BillingInvoiceItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Relationships
-    invoice: Mapped["BillingInvoice"] = relationship("BillingInvoice", back_populates="items")
+    invoice: Mapped[BillingInvoice] = relationship("BillingInvoice", back_populates="items")
 
     __table_args__ = (
         Index("ix_billing_invoice_items_invoice", "invoice_id", "created_at"),
@@ -474,7 +474,7 @@ class BillingCharge(Base):
     refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    invoice: Mapped["BillingInvoice | None"] = relationship("BillingInvoice", back_populates="charges")
+    invoice: Mapped[BillingInvoice | None] = relationship("BillingInvoice", back_populates="charges")
 
     __table_args__ = (
         Index("ix_billing_charges_tenant_status", "tenant_id", "status"),

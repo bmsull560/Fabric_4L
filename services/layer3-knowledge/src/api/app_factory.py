@@ -1,4 +1,9 @@
-"""Layer 3 FastAPI app factory and lifespan wiring."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Layer 3 FastAPI app factory and lifespan wiring.
+"""
 
 from __future__ import annotations
 

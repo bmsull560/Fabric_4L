@@ -121,17 +121,19 @@ def test_production_config_passes_with_secure_values() -> None:
 
 
 @pytest.mark.parametrize(
-    ("flag_name", "flag_value"),
+    ("flag_name", "flag_value", "expected_match"),
     [
-        ("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true"),
-        ("DEV_AUTH_BYPASS", "true"),
-        ("AUTH_BYPASS_ENABLED", "true"),
-        ("JWT_FALLBACK_TO_QUERY_PARAM", "true"),
-        ("ALLOW_EPHEMERAL_ENCRYPTION", "true"),
-        ("ALLOW_DEV_AUTH_BYPASS", "I_UNDERSTAND_RISK"),
+        ("ALLOW_INSECURE_DEV_AUTH_BYPASS", "true", "ALLOW_INSECURE_DEV_AUTH_BYPASS"),
+        # Legacy aliases are folded into ALLOW_INSECURE_DEV_AUTH_BYPASS before the
+        # production check runs, so the error message names the canonical flag.
+        ("DEV_AUTH_BYPASS", "true", "ALLOW_INSECURE_DEV_AUTH_BYPASS"),
+        ("AUTH_BYPASS_ENABLED", "true", "ALLOW_INSECURE_DEV_AUTH_BYPASS"),
+        ("JWT_FALLBACK_TO_QUERY_PARAM", "true", "JWT_FALLBACK_TO_QUERY_PARAM"),
+        ("ALLOW_EPHEMERAL_ENCRYPTION", "true", "ALLOW_EPHEMERAL_ENCRYPTION"),
+        ("ALLOW_DEV_AUTH_BYPASS", "I_UNDERSTAND_RISK", "ALLOW_INSECURE_DEV_AUTH_BYPASS"),
     ],
 )
-def test_production_rejects_bypass_flags(flag_name: str, flag_value: str) -> None:
+def test_production_rejects_bypass_flags(flag_name: str, flag_value: str, expected_match: str) -> None:
     env = _base_env()
     env["ENVIRONMENT"] = "production"
     env["DATABASE_URL"] = "postgresql://postgres:postgres@db:5432/fabric?sslmode=verify-full"
@@ -139,7 +141,7 @@ def test_production_rejects_bypass_flags(flag_name: str, flag_value: str) -> Non
     env["NEO4J_URI"] = "neo4j+s://neo4j.example.com:7687"
     env[flag_name] = flag_value
 
-    with pytest.raises(ValidationError, match=flag_name):
+    with pytest.raises(ValidationError, match=expected_match):
         Layer6Settings.model_validate(env)
 
 

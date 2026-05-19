@@ -4,7 +4,6 @@
  */
 import { useState, useCallback } from "react";
 import { Loader2, AlertCircle, RefreshCw, Search, ZoomIn, ZoomOut, RotateCcw, Move } from "lucide-react";
-import { PageHeader as WfPageHeader, Btn, GraphLegend, SectionCard } from "@/components/WfPrimitives";
 import { Input } from "@/components/ui/input";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { PageShell } from "@/components/layout/PageShell";
@@ -16,6 +15,10 @@ import { useGraphCanvas } from "@/hooks/useGraphCanvas";
 import { useGraphData } from "@/hooks/useGraphData";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
 import { cn } from "@/lib/utils";
+import { PageHeader as WfPageHeader } from "@/components/ui/fabric";
+import { GraphLegend } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { Btn } from "@/components/ui/fabric";
 
 // Constants for graph configuration
 const GRAPH_NODE_LIMIT = 100;

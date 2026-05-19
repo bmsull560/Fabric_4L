@@ -1,4 +1,8 @@
-"""Entity API routes - Canonical Entity Browser endpoints.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Entity API routes - Canonical Entity Browser endpoints.
 
 This module provides the canonical entity browser API as specified in
 the Value Fabric API contract. It exposes endpoints for:
@@ -17,11 +21,13 @@ from value_fabric.shared.identity import RequestContext, require_authenticated
 from value_fabric.shared.identity.isolation import TenantScopedCypher
 
 from logging_config import get_logger
-from api.dependencies import (
+
+from ...api.dependencies import (
     AppState,
     get_app_state,
     get_graph_rag,
 )
+<<<<<<< HEAD
 from api.dependencies_tenant_secured import (
     Neo4jTenantSessionSecured as Neo4jTenantSession,
     get_neo4j_secured as get_neo4j_with_tenant,
@@ -29,6 +35,12 @@ from api.dependencies_tenant_secured import (
 from api.exception_mapping import map_exception_to_http_error
 from api.exceptions import DatabaseError, ValidationError
 from api.models import (
+=======
+from ...api.dependencies_tenant_secured import Neo4jTenantSession, get_neo4j_with_tenant
+from ...api.exception_mapping import map_exception_to_http_error
+from ...api.exceptions import DatabaseError, ValidationError
+from ...api.models import (
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     EntityDetail,
     EntityFilterRequest,
     EntityListResponse,

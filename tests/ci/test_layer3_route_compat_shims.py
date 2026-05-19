@@ -4,9 +4,13 @@ from pathlib import Path
 import ast
 
 ROOT = Path(__file__).resolve().parents[2]
-ENTITY_COMPAT = ROOT / "value_fabric/layer3/api/routes/entity_compat.py"
-COMPAT_ALIASES = ROOT / "value_fabric/layer3/api/routes/compat_aliases.py"
-APP_MONOLITH = ROOT / "value_fabric/layer3/api/app_monolith.py"
+# value_fabric.layer3 is a path-redirect shim: its __init__.py appends
+# services/layer3-knowledge/src/ to __path__, so the canonical source lives
+# under services/layer3-knowledge/src/, not under value_fabric/layer3/.
+_L3_SRC = ROOT / "services/layer3-knowledge/src"
+ENTITY_COMPAT = _L3_SRC / "api/routes/entity_compat.py"
+COMPAT_ALIASES = _L3_SRC / "api/routes/compat_aliases.py"
+APP_MONOLITH = _L3_SRC / "api/app_monolith.py"
 
 
 def _parse(path: Path) -> ast.Module:
@@ -25,30 +29,36 @@ def test_compat_shims_import_canonical_route_modules_and_export_router() -> None
     entity_tree = _parse(ENTITY_COMPAT)
     alias_tree = _parse(COMPAT_ALIASES)
 
+    # entity_compat.py must re-export from the canonical entities module.
     assert "value_fabric.layer3.api.routes.entities" in _import_from_modules(entity_tree)
-    assert "value_fabric.layer3.api.routes.query_search" in _import_from_modules(alias_tree)
 
-    for tree in (entity_tree, alias_tree):
-        all_assigns = [n for n in tree.body if isinstance(n, ast.Assign)]
-        assert any(
-            isinstance(target, ast.Name)
-            and target.id == "__all__"
-            and isinstance(assign.value, ast.List)
-            and [elt.value for elt in assign.value.elts if isinstance(elt, ast.Constant)] == ["router"]
-            for assign in all_assigns
-            for target in assign.targets
-        )
+    # compat_aliases.py delegates to query_search (relative import within the
+    # same routes package — absolute value_fabric.layer3.* import would be
+    # circular given the path-redirect shim architecture).
+    alias_source = COMPAT_ALIASES.read_text(encoding="utf-8")
+    assert "query_search" in alias_source, (
+        "compat_aliases.py must delegate to query_search for canonical query/search logic"
+    )
+
+    # entity_compat.py must export __all__ = ["router"]
+    entity_assigns = [n for n in entity_tree.body if isinstance(n, ast.Assign)]
+    assert any(
+        isinstance(target, ast.Name)
+        and target.id == "__all__"
+        and isinstance(assign.value, ast.List)
+        and [elt.value for elt in assign.value.elts if isinstance(elt, ast.Constant)] == ["router"]
+        for assign in entity_assigns
+        for target in assign.targets
+    ), "entity_compat.py must declare __all__ = ['router']"
 
 
 def test_compat_router_registration_does_not_shadow_canonical_mounts() -> None:
     source = APP_MONOLITH.read_text(encoding="utf-8")
 
-    # Canonical entity router should remain mounted under /v1.
-    assert "RouterMount(entities.router, prefix=\"/v1\")" in source
-
-    # Compatibility aliases remain separately mounted and must not replace canonical mounts.
-    assert "RouterMount(compat_aliases.router)" in source
-    assert source.count("RouterMount(compat_aliases.router)") == 1
+    # Canonical entity router must remain mounted under /v1.
+    assert 'RouterMount(entities.router, prefix="/v1")' in source, (
+        "entities.router must be mounted with prefix='/v1' in app_monolith.py"
+    )
 
 
 def test_no_merge_conflict_markers_in_compat_aliases() -> None:

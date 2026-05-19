@@ -1,5 +1,8 @@
-"""
-Scenario Engine for What-If Analysis
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Scenario Engine for What-If Analysis
 Handles sensitivity analysis and scenario comparison for business cases.
 """
 

@@ -33,7 +33,7 @@ from ..models.tool_schemas import (
     ToolCategory,
 )
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
-from ..services.llm_provider import get_openai_provider
+from ..services.llm_provider import get_llm_provider
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -84,49 +84,65 @@ Maximum {max_length} words.""",
     }
 
     async def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
-        """Call LLM to generate content."""
-        initial_model = "gpt-4o"
-        decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
+        """Call LLM to generate content via GovernedLLMClient.
+
+        Routes through GovernedLLMClient so every call is traced, cost-governed,
+        and attributed to a HarnessRun.  The system prompt is loaded from the
+        narrative_builder prompt registry rather than inlined here.
+        """
+        decision = await get_llm_budget_guardrails().precheck_or_raise("gpt-4o")
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
 
-        provider = get_openai_provider(self.config)
+        ctx = require_context()
+        tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
 
-        response = await provider.complete_text(
-            model=decision.model,
+        from ..harness.models import HarnessRun, HarnessWorkflowType, InitiatedBy
+        from ..harness.prompt_registry import get_prompt_registry
+        from ..services.governed_llm_client import GovernedLLMClient
+
+        prompt_registry = get_prompt_registry()
+        system_tmpl = prompt_registry.get("narrative_builder", "system")
+
+        harness_run = HarnessRun(
+            tenant_id=tenant_id,
+            workflow_type=HarnessWorkflowType.BUSINESS_CASE_GENERATION,
+            initiated_by=InitiatedBy.SYSTEM,
+        )
+        import os
+        provider_name = (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (self.config.get("llm_provider") if isinstance(self.config, dict) else None)
+            or "together"
+        )
+        provider = get_llm_provider(self.config)
+        llm_client = GovernedLLMClient(
+            provider=provider,
+            provider_name=provider_name,
+            run=harness_run,
+        )
+
+        llm_result = await llm_client.call(
+            model_task="narrative",
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are a professional business writer creating business case content.",
-                },
+                {"role": "system", "content": system_tmpl.body},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.3,
             max_tokens=max_tokens,
         )
 
-        prompt_tokens = response.usage.prompt_tokens
-        completion_tokens = response.usage.completion_tokens
-        cost = LLMCostCalculator().calculate_cost(
-            provider="openai",
-            model=decision.model,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-        )
-        await get_llm_budget_guardrails().record_usage(cost_usd=cost)
-
-        ctx = require_context()
-        tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
+        await get_llm_budget_guardrails().record_usage(cost_usd=llm_result.cost_usd)
 
         from ..metrics.llm_cost_metrics import record_cost
         from ..models.cost_record import CostRecord
 
         record = CostRecord(
-            model=decision.model,
-            provider="openai",
-            input_tokens=prompt_tokens,
-            output_tokens=completion_tokens,
-            cost_usd=cost,
+            model=llm_result.model,
+            provider=llm_result.provider,
+            input_tokens=llm_result.prompt_tokens,
+            output_tokens=llm_result.completion_tokens,
+            cost_usd=llm_result.cost_usd,
             tenant_id=tenant_id,
             metadata={"status": "throttled" if decision.escalation_required else "success"},
         )
@@ -135,10 +151,10 @@ Maximum {max_length} words.""",
         if decision.escalation_required:
             logger.warning(
                 "Tenant approaching LLM budget soft cap; escalation required",
-                extra={"tenant_id": tenant_id, "model": decision.model},
+                extra={"tenant_id": tenant_id, "model": llm_result.model},
             )
 
-        return response.content
+        return llm_result.content
 
     async def execute(self, input_data: GenerateSectionInput) -> GenerateSectionOutput:
         """Generate a business case section."""

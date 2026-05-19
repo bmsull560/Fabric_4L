@@ -1,6 +1,8 @@
-"""
+"""Allowed service-local exception for Layer 3 service wrapper.
 
-Provides endpoints for Value Model CRUD and management.
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Provides endpoints for Value Model CRUD and management.
 
 All Cypher queries are tenant-scoped via `create_neo4j_tenant_session`.
 """
@@ -14,9 +16,10 @@ from pydantic import BaseModel, Field, field_validator
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.identity.dependencies import require_tenant_context
 
-from api.dependencies_tenant import create_neo4j_tenant_session
-from api.exceptions import DatabaseError, ValidationError
 from logging_config import get_logger
+
+from ...api.dependencies_tenant_secured import create_neo4j_tenant_session
+from ...api.exceptions import DatabaseError, ValidationError
 
 logger = get_logger(__name__)
 router = APIRouter()
@@ -175,10 +178,10 @@ async def _ensure_constraints(neo4j: Any) -> None:
                 "FOR (m:ValueModel) REQUIRE m.model_id IS UNIQUE"
             )
             logger.info("Created ValueModel constraint: model_id_unique")
-    except (ValidationError, DatabaseError) as exc:
+    except (ValidationError, DatabaseError):
         context = {"tenant": "unknown", "endpoint": "/models", "operation": "ensure_constraints"}
         logger.warning("Constraint check mapped exception", extra={"context": context}, exc_info=True)
-    except Exception as exc:
+    except Exception:
         context = {"tenant": "unknown", "endpoint": "/models", "operation": "ensure_constraints"}
         logger.warning("Constraint check/creation skipped", extra={"context": context}, exc_info=True)
 

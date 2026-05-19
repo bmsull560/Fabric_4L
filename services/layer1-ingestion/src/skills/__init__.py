@@ -8,7 +8,7 @@ without replacing the execution substrate.
 from .base import BaseSkill, SkillConfig
 from .licensing_company_intake import LicensingCompanyIntakeSkill
 from .prospect_research import ProspectResearchSkill
-from .registry import SKILL_REGISTRY, get_skill, get_extraction_schema
+from .registry import SKILL_REGISTRY, get_extraction_schema, get_skill
 
 __all__ = [
     "BaseSkill",

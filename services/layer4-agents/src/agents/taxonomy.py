@@ -32,7 +32,7 @@ from typing import Any
 from value_fabric.shared.identity.context import get_request_context
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from .base import AgentCapability, BaseAgent
+from .base import AgentCapability, AgentResult, BaseAgent
 
 
 class ContextExtractionAgent_executeResult(TypedDictModel):
@@ -173,6 +173,79 @@ async def _gate_execute(
     )
 
 
+# ---------------------------------------------------------------------------
+# Governance helpers
+# ---------------------------------------------------------------------------
+
+def _governed_result(
+    payload: dict[str, Any],
+    workflow_type: str,
+    context: dict[str, Any],
+    *,
+    confidence: float = 0.8,
+    hypothesis: str | None = None,
+) -> dict[str, Any]:
+    """Wrap a tool-layer payload in an AgentResult governance envelope.
+
+    All taxonomy agents return tool-delegated payloads.  This helper
+    ensures every response carries the standard governance flags
+    (customer_facing_allowed, human_review_required, degraded_reason)
+    so downstream consumers can make safe surfacing decisions.
+
+    **Governance invariant — llm_enrichment=False:**
+    Taxonomy agents delegate to ABOM tools rather than calling an LLM
+    directly, so ``llm_enrichment`` is always ``False`` here.
+    ``AgentResult.__post_init__`` therefore forces
+    ``customer_facing_allowed=False`` and ``human_review_required=True``
+    for *every* result, regardless of confidence.  Downstream consumers
+    that gate on ``customer_facing_allowed`` will never see ``True`` from
+    any taxonomy agent.
+
+    If a future taxonomy capability produces LLM-backed output that should
+    be promotable to customer-facing, introduce a ``tool_enriched=True``
+    flag on ``AgentResult`` (or call ``result.mark_llm_enriched(...)``
+    after construction) rather than changing this helper.
+
+    Args:
+        payload: The raw tool output dict.
+        workflow_type: Canonical workflow identifier string.
+        context: Agent execution context (used to extract tenant_id/trace_id).
+        confidence: Aggregate confidence score [0.0, 1.0].
+        hypothesis: Optional one-line hypothesis about the extracted content.
+    """
+    tenant_id = str(context.get("tenant_id") or "")
+    trace_id = str(context.get("trace_id") or "")
+    result = AgentResult(
+        payload=payload if hypothesis is None else {**payload, "hypothesis": hypothesis},
+        workflow_type=workflow_type,
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+        llm_enrichment=False,  # taxonomy agents delegate to tools, not LLM directly
+        confidence=confidence,
+    )
+    return result.to_dict()
+
+
+def _degraded_result(
+    workflow_type: str,
+    context: dict[str, Any],
+    reason: str,
+) -> dict[str, Any]:
+    """Return a degraded AgentResult for unknown capability or tool failure."""
+    tenant_id = str(context.get("tenant_id") or "")
+    trace_id = str(context.get("trace_id") or "")
+    result = AgentResult(
+        payload={},
+        workflow_type=workflow_type,
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+        llm_enrichment=False,
+        confidence=0.0,
+        degraded_reason=reason,
+    )
+    return result.to_dict()
+
+
 # ============================================================================
 # 1. CONTEXT EXTRACTION AGENT
 # ============================================================================
@@ -268,47 +341,49 @@ class ContextExtractionAgent(BaseAgent):
         params = task.get("parameters", {})
 
         if capability == "extract_profile":
-            # Use graph tools to gather existing account data
             account_data = await _gate_execute(
                 context, "get_entity",
                 {"entity_type": "Account", "entity_id": params["account_id"]},
             )
-            # Enrich with semantic search across ingested documents
             enrichment = await _gate_execute(
                 context, "semantic_search",
                 {"query": f"company profile {params['account_id']}", "top_k": 10},
             )
-            return ContextExtractionAgent_executeResult.model_validate({
+            payload = {
                 "profile": {**account_data, "enrichment_sources": enrichment.get("results", [])},
                 "confidence": enrichment.get("avg_score", 0.0),
-            })
-
+            }
+            return _governed_result(payload, "account_intelligence", context,
+                                    confidence=float(enrichment.get("avg_score", 0.8)))
 
         elif capability == "extract_stakeholders":
             results = await _gate_execute(
                 context, "get_relationships",
                 {"entity_id": params["account_id"], "relationship_type": "HAS_STAKEHOLDER"},
             )
-            return ContextExtractionAgent_executeResult.model_validate({"stakeholders": results.get("relationships", [])})
+            payload = {"stakeholders": results.get("relationships", [])}
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "extract_pain_points":
             search_results = await _gate_execute(
                 context, "semantic_search",
                 {"query": f"pain points challenges {params.get('context_text', '')}", "top_k": 20},
             )
-            # Validate extracted pain points
             validated = await _gate_execute(
                 context, "validate_input",
                 {"data": search_results.get("results", []), "schema": "pain_point"},
             )
-            return ContextExtractionAgent_executeResult.model_validate({
-                "pain_points": validated.get("valid_items", []),
-                "categories": validated.get("categories", []),
-            })
-
+            pain_points = validated.get("valid_items", [])
+            categories = validated.get("categories", [])
+            # Hypothesis: summarise the dominant pain category for downstream agents.
+            hypothesis = (
+                f"Primary pain category: {categories[0]}" if categories else None
+            )
+            payload = {"pain_points": pain_points, "categories": categories}
+            return _governed_result(payload, "account_intelligence", context,
+                                    hypothesis=hypothesis)
 
         elif capability == "extract_financials":
-            # Delegate to Layer 2 for base extraction, then enrich via graph
             if self.layer2_client:
                 extraction = await self.layer2_client.extract_filing(
                     url=params["filing_url"],
@@ -317,8 +392,6 @@ class ContextExtractionAgent(BaseAgent):
                 )
             else:
                 extraction = {"financial_data": {}, "period": "unknown"}
-
-            # Store extracted data in graph for downstream agents
             await _gate_execute(
                 context, "query_graph",
                 {
@@ -327,20 +400,21 @@ class ContextExtractionAgent(BaseAgent):
                     "data": extraction,
                 },
             )
-            return extraction
+            return _governed_result(extraction, "account_intelligence", context)
 
         elif capability == "extract_risk_factors":
             search_results = await _gate_execute(
                 context, "semantic_search",
                 {"query": "risk factors regulatory compliance", "top_k": 15},
             )
-            return ContextExtractionAgent_executeResult.model_validate({
+            payload = {
                 "risks": search_results.get("results", []),
                 "categories": ["regulatory", "market", "operational", "financial"],
-            })
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
-
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("account_intelligence", context,
+                                reason=f"unknown_capability:{capability}")
 
 
 # ============================================================================
@@ -414,17 +488,14 @@ class ValueModelAgent(BaseAgent):
         params = task.get("parameters", {})
 
         if capability == "project_value_tree":
-            # Traverse existing capability graph
             capabilities = await _gate_execute(
                 context, "traverse_tree",
                 {"root_id": "capability_root", "max_depth": 4},
             )
-            # Match pain points to capabilities via semantic search
             matches = await _gate_execute(
                 context, "semantic_search",
                 {"query": " ".join(params.get("pain_points", [])), "top_k": 20},
             )
-            # Build value tree relationships in graph
             tree = await _gate_execute(
                 context, "query_graph",
                 {
@@ -434,14 +505,10 @@ class ValueModelAgent(BaseAgent):
                     "capabilities": capabilities.get("nodes", []),
                 },
             )
-            return ValueModelAgent_executeResult.model_validate({
-                "value_tree": tree,
-                "nodes_created": tree.get("nodes_created", 0),
-            })
-
+            payload = {"value_tree": tree, "nodes_created": tree.get("nodes_created", 0)}
+            return _governed_result(payload, "value_model_generation", context)
 
         elif capability == "identify_gaps":
-            # Find paths between needs and capabilities
             gap_analysis = await _gate_execute(
                 context, "find_paths",
                 {
@@ -450,11 +517,18 @@ class ValueModelAgent(BaseAgent):
                     "prospect_id": params["prospect_id"],
                 },
             )
-            return ValueModelAgent_executeResult.model_validate({
-                "gaps": gap_analysis.get("unmatched", []),
-                "coverage_percentage": gap_analysis.get("coverage_pct", 0.0),
-            })
-
+            gaps = gap_analysis.get("unmatched", [])
+            coverage = float(gap_analysis.get("coverage_pct", 0.0))
+            # Hypothesis: characterise the gap severity for downstream narrative agents.
+            if coverage >= 0.8:
+                hypothesis = f"High capability coverage ({coverage:.0%}); minor gaps only."
+            elif coverage >= 0.5:
+                hypothesis = f"Moderate coverage ({coverage:.0%}); targeted gap-fill recommended."
+            else:
+                hypothesis = f"Low coverage ({coverage:.0%}); significant whitespace opportunity."
+            payload = {"gaps": gaps, "coverage_percentage": coverage}
+            return _governed_result(payload, "value_model_generation", context,
+                                    confidence=coverage, hypothesis=hypothesis)
 
         elif capability == "calculate_roi":
             result = await _gate_execute(
@@ -465,7 +539,7 @@ class ValueModelAgent(BaseAgent):
                     "unit": params.get("unit", "USD"),
                 },
             )
-            return result
+            return _governed_result(result, "value_model_generation", context)
 
         elif capability == "sensitivity_analysis":
             result = await _gate_execute(
@@ -475,7 +549,7 @@ class ValueModelAgent(BaseAgent):
                     "variable_ranges": params["variable_ranges"],
                 },
             )
-            return result
+            return _governed_result(result, "value_model_generation", context)
 
         elif capability == "compare_benchmarks":
             result = await _gate_execute(
@@ -485,9 +559,10 @@ class ValueModelAgent(BaseAgent):
                     "industry": params["industry"],
                 },
             )
-            return result
+            return _governed_result(result, "value_model_generation", context)
 
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("value_model_generation", context,
+                                reason=f"unknown_capability:{capability}")
 
 
 # ============================================================================
@@ -559,7 +634,6 @@ class IntegrityAgent(BaseAgent):
                         "message": "Claim has no evidence pointers",
                     })
                     continue
-                # Verify each evidence pointer exists in graph
                 for ref in evidence_refs:
                     entity = await _gate_execute(
                         context, "get_entity",
@@ -574,7 +648,10 @@ class IntegrityAgent(BaseAgent):
                             "type": "evidence_not_found",
                             "message": f"Evidence {ref} not found in graph",
                         })
-            return IntegrityAgent_executeResult.model_validate({"validated": validated, "violations": violations})
+            total = len(validated) + len(violations)
+            confidence = len(validated) / total if total > 0 else 0.0
+            payload = {"validated": validated, "violations": violations}
+            return _governed_result(payload, "evidence_matching", context, confidence=confidence)
 
         elif capability == "verify_formulas":
             verified = []
@@ -600,7 +677,8 @@ class IntegrityAgent(BaseAgent):
                 else:
                     entry["status"] = "verified"
                     verified.append(entry)
-            return IntegrityAgent_executeResult.model_validate({"verified": verified, "discrepancies": discrepancies})
+            payload = {"verified": verified, "discrepancies": discrepancies}
+            return _governed_result(payload, "evidence_matching", context)
 
         elif capability == "audit_evidence":
             audit_results = []
@@ -611,18 +689,18 @@ class IntegrityAgent(BaseAgent):
                     {"entity_type": "Evidence", "entity_id": eid},
                 )
                 audit_results.append(entity)
-                # Check freshness
                 age_days = entity.get("age_days", 999)
                 max_age = params.get("max_age_days", 90)
                 if age_days > max_age:
                     stale.append({"evidence_id": eid, "age_days": age_days})
-            return IntegrityAgent_executeResult.model_validate({
+            payload = {
                 "audit_result": {"total": len(audit_results), "stale_count": len(stale)},
                 "stale_evidence": stale,
-            })
+            }
+            return _governed_result(payload, "evidence_matching", context)
 
-
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("evidence_matching", context,
+                                reason=f"unknown_capability:{capability}")
 
 
 # ============================================================================
@@ -704,11 +782,8 @@ class NarrativeAgent(BaseAgent):
         params = task.get("parameters", {})
 
         if capability == "generate_executive_summary":
-            # Gather source data from graph
             roi_data = params.get("roi_data", {})
             gap_data = params.get("gap_analysis", {})
-
-            # Generate each section
             sections = []
             for section_name in ["executive_overview", "value_proposition", "roi_summary", "next_steps"]:
                 section = await _gate_execute(
@@ -721,18 +796,16 @@ class NarrativeAgent(BaseAgent):
                     },
                 )
                 sections.append(section)
-
-            # Assemble into final document
             assembled = await _gate_execute(
                 context, "assemble_document",
                 {"sections": sections, "template": params.get("template")},
             )
-            return NarrativeAgent_executeResult.model_validate({
+            payload = {
                 "summary": assembled.get("content", ""),
                 "key_points": assembled.get("key_points", []),
                 "word_count": assembled.get("word_count", 0),
-            })
-
+            }
+            return _governed_result(payload, "business_case_generation", context)
 
         elif capability == "create_slide_deck":
             content = params.get("content", {})
@@ -744,7 +817,8 @@ class NarrativeAgent(BaseAgent):
                     {"chart_type": "auto", "data": content, "slide_index": i},
                 )
                 slides.append(chart)
-            return NarrativeAgent_executeResult.model_validate({"slides": slides, "speaker_notes": []})
+            payload = {"slides": slides, "speaker_notes": []}
+            return _governed_result(payload, "business_case_generation", context)
 
         elif capability == "draft_proposal":
             business_case = params.get("business_case", {})
@@ -757,14 +831,16 @@ class NarrativeAgent(BaseAgent):
                     "risk_assessment": risk_assessment,
                 },
             )
-            return NarrativeAgent_executeResult.model_validate({
+            payload = {
                 "proposal": proposal.get("content", ""),
                 "risk_mitigation": proposal.get("risk_mitigation", []),
-            })
-
+            }
+            return _governed_result(payload, "business_case_generation", context)
 
         elif capability == "export_document":
-            # This tool requires human approval per ABOM invariant
+            # export_document requires human approval per ABOM invariant.
+            # Return result wrapped in governance envelope; customer_facing_allowed
+            # remains False until the human gate is cleared.
             result = await _gate_execute(
                 context, "export_document",
                 {
@@ -773,9 +849,10 @@ class NarrativeAgent(BaseAgent):
                     "format": params.get("format", "pdf"),
                 },
             )
-            return result
+            return _governed_result(result, "business_case_generation", context)
 
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("business_case_generation", context,
+                                reason=f"unknown_capability:{capability}")
 
 
 # ============================================================================
@@ -831,7 +908,6 @@ class CompetitiveIntelAgent(BaseAgent):
         params = task.get("parameters", {})
 
         if capability == "analyze_competitors":
-            # Fetch competitor data from graph
             competitors = []
             for comp_name in params.get("competitors", []):
                 comp_data = await _gate_execute(
@@ -839,8 +915,6 @@ class CompetitiveIntelAgent(BaseAgent):
                     {"query": f"competitor {comp_name}", "top_k": 5},
                 )
                 competitors.append(comp_data)
-
-            # Run competitive analysis tool
             analysis = await _gate_execute(
                 context, "analyze_competition",
                 {
@@ -848,14 +922,10 @@ class CompetitiveIntelAgent(BaseAgent):
                     "competitor_data": competitors,
                 },
             )
-            return CompetitiveIntelAgent_executeResult.model_validate({
-                "analysis": analysis,
-                "battlecard": analysis.get("battlecard", {}),
-            })
-
+            payload = {"analysis": analysis, "battlecard": analysis.get("battlecard", {})}
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "win_loss_analysis":
-            # Query historical deal outcomes
             deals = await _gate_execute(
                 context, "query_graph",
                 {
@@ -864,11 +934,11 @@ class CompetitiveIntelAgent(BaseAgent):
                     "deal_ids": params.get("deal_ids", []),
                 },
             )
-            return CompetitiveIntelAgent_executeResult.model_validate({
+            payload = {
                 "win_rate": deals.get("win_rate", 0.0),
                 "factors": deals.get("contributing_factors", []),
-            })
-
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "market_positioning":
             positioning = await _gate_execute(
@@ -879,13 +949,14 @@ class CompetitiveIntelAgent(BaseAgent):
                     "analysis_type": "positioning",
                 },
             )
-            return CompetitiveIntelAgent_executeResult.model_validate({
+            payload = {
                 "positioning": positioning.get("positioning", {}),
                 "differentiators": positioning.get("differentiators", []),
-            })
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
-
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("account_intelligence", context,
+                                reason=f"unknown_capability:{capability}")
 
 
 # ============================================================================
@@ -953,26 +1024,25 @@ class ConversationAgent(BaseAgent):
         params = task.get("parameters", {})
 
         if capability == "classify_intent":
-            # Use semantic search to match intent patterns
             search = await _gate_execute(
                 context, "semantic_search",
                 {"query": params["message"], "top_k": 3, "index": "intent_patterns"},
             )
             top_match = search.get("results", [{}])[0] if search.get("results") else {}
-            return ConversationAgent_executeResult.model_validate({
+            payload = {
                 "intent": top_match.get("intent", "general_question"),
                 "confidence": top_match.get("score", 0.0),
                 "entities": top_match.get("entities", {}),
-            })
-
+            }
+            return _governed_result(payload, "account_intelligence", context,
+                                    confidence=float(top_match.get("score", 0.8)))
 
         elif capability == "gather_context":
             intent = params.get("intent", "general_question")
             account_id = params.get("account_id")
-            context_data = {}
+            context_data: dict[str, Any] = {}
 
             if account_id:
-                # Fetch account profile
                 account = await _gate_execute(
                     context, "get_entity",
                     {"entity_type": "Account", "entity_id": account_id},
@@ -980,56 +1050,59 @@ class ConversationAgent(BaseAgent):
                 context_data["account"] = account
 
                 if intent in ("value_analysis", "competitive_intel"):
-                    # Fetch relationships
                     rels = await _gate_execute(
                         context, "get_relationships",
                         {"entity_id": account_id, "relationship_type": "ALL"},
                     )
                     context_data["relationships"] = rels
 
-            return ConversationAgent_executeResult.model_validate({
+            payload = {
                 "context_data": context_data,
-                "sources": [s.get("source", "graph") for s in context_data.values() if isinstance(s, dict)],
-            })
-
+                "sources": [s.get("source", "graph") for s in context_data.values()
+                            if isinstance(s, dict)],
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "chat":
-            # Full chat pipeline: classify → gather → respond
-            # Step 1: Classify intent
-            intent_result = await self.execute(
+            # Full chat pipeline: classify → gather → respond.
+            # Sub-calls now return AgentResult dicts; extract payload for field access.
+            intent_envelope = await self.execute(
                 {"capability": "classify_intent", "parameters": {"message": params["message"]}},
                 context,
             )
-            # Step 2: Gather context
-            context_result = await self.execute(
+            intent_payload = intent_envelope.get("payload", intent_envelope)
+
+            context_envelope = await self.execute(
                 {
                     "capability": "gather_context",
                     "parameters": {
-                        "intent": intent_result["intent"],
-                        "entities": intent_result.get("entities", {}),
+                        "intent": intent_payload.get("intent", "general_question"),
+                        "entities": intent_payload.get("entities", {}),
                         "account_id": params.get("account_id"),
                     },
                 },
                 context,
             )
-            # Step 3: Generate response section
+            context_payload = context_envelope.get("payload", context_envelope)
+
             response = await _gate_execute(
                 context, "generate_section",
                 {
                     "section_type": "chat_response",
-                    "intent": intent_result["intent"],
-                    "context_data": context_result["context_data"],
+                    "intent": intent_payload.get("intent", "general_question"),
+                    "context_data": context_payload.get("context_data", {}),
                     "user_message": params["message"],
                 },
             )
-            return ConversationAgent_executeResult.model_validate({
+            payload = {
                 "response": response.get("content", "I can help with that."),
-                "intent": intent_result["intent"],
+                "intent": intent_payload.get("intent", "general_question"),
                 "actions_taken": response.get("actions", []),
-            })
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
-
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("account_intelligence", context,
+                                reason=f"unknown_capability:{capability}")
 
 
 # ============================================================================
@@ -1115,7 +1188,6 @@ class OrchestrationController(BaseAgent):
         params = task.get("parameters", {})
 
         if capability == "schedule_workflow":
-            # Create a task in the system
             task_result = await _gate_execute(
                 context, "create_task",
                 {
@@ -1124,11 +1196,11 @@ class OrchestrationController(BaseAgent):
                     "priority": params.get("priority", "normal"),
                 },
             )
-            return OrchestrationController_executeResult.model_validate({
+            payload = {
                 "schedule_id": task_result.get("task_id", "unknown"),
                 "estimated_start": task_result.get("estimated_start", "immediate"),
-            })
-
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "distribute_tasks":
             assignments = []
@@ -1138,14 +1210,13 @@ class OrchestrationController(BaseAgent):
                     "assigned_agent": t.get("agent_type", "auto"),
                     "status": "queued",
                 })
-            return OrchestrationController_executeResult.model_validate({
+            payload = {
                 "assignments": assignments,
                 "agent_load": {"active": len(self.running_tasks), "queued": len(self.task_queue)},
-            })
-
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "recover_failure":
-            # Notify about failure and schedule retry
             await _gate_execute(
                 context, "send_notification",
                 {
@@ -1154,20 +1225,18 @@ class OrchestrationController(BaseAgent):
                     "reason": params["failure_reason"],
                 },
             )
-            return OrchestrationController_executeResult.model_validate({
-                "recovery_action": "retry_with_backoff",
-                "retry_scheduled": True,
-            })
-
+            payload = {"recovery_action": "retry_with_backoff", "retry_scheduled": True}
+            return _governed_result(payload, "account_intelligence", context)
 
         elif capability == "manage_resources":
-            return OrchestrationController_executeResult.model_validate({
+            payload = {
                 "scaling_action": "no_change",
                 "current_instances": len(self.agent_pool),
-            })
+            }
+            return _governed_result(payload, "account_intelligence", context)
 
-
-        raise ValueError(f"Unknown capability: {capability}")
+        return _degraded_result("account_intelligence", context,
+                                reason=f"unknown_capability:{capability}")
 
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller."""

@@ -12,7 +12,6 @@ from urllib.parse import parse_qs, urlparse
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import Response
-
 from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.identity.policy_registry import authorize_action
 from value_fabric.shared.models.typed_dict import TypedDictModel
@@ -97,8 +96,6 @@ def _public_startup_config() -> dict[str, Any]:
         "testing": _SETTINGS.testing,
         "auth_required": _SETTINGS.auth_required,
         "allow_insecure_dev_auth_bypass": _SETTINGS.allow_insecure_dev_auth_bypass,
-        "dev_auth_bypass": _SETTINGS.dev_auth_bypass,
-        "auth_bypass_enabled": _SETTINGS.auth_bypass_enabled,
         "jwt_fallback_to_query_param": _SETTINGS.jwt_fallback_to_query_param,
         "allow_ephemeral_encryption": _SETTINGS.allow_ephemeral_encryption,
         "database_scheme": db_url.scheme,

@@ -1,6 +1,6 @@
 """Load balancing package initialization."""
 
-from load_balancing.manager import (
+from ..load_balancing.manager import (
     AutoScaler,
     AutoScalingConfig,
     BackendServer,

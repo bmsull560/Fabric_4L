@@ -496,10 +496,14 @@ export interface components {
          * @enum {string}
          */
         DisputeReason: "conflicting_sources" | "stale_data" | "methodology_flaw" | "out_of_scope" | "superseded" | "other";
+<<<<<<< HEAD
         /**
          * FreshnessCheckResponse
          * @description Result envelope returned after a freshness reconciliation run.
          */
+=======
+        /** FreshnessCheckResponse */
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         FreshnessCheckResponse: {
             /** Checked */
             checked: number;
@@ -512,10 +516,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+<<<<<<< HEAD
         /**
          * FreshnessCounts
          * @description Aggregated TruthObject freshness counts for a tenant.
          */
+=======
+        /** FreshnessCounts */
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         FreshnessCounts: {
             /** Stale */
             stale: number;
@@ -526,10 +534,14 @@ export interface components {
             /** Total */
             total: number;
         };
+<<<<<<< HEAD
         /**
          * FreshnessSummaryResponse
          * @description Tenant-scoped summary of TruthObject freshness state.
          */
+=======
+        /** FreshnessSummaryResponse */
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         FreshnessSummaryResponse: {
             /** Tenant Id */
             tenant_id: string;

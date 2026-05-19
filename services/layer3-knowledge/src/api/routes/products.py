@@ -1,4 +1,8 @@
-"""Product Portfolio API routes for the Knowledge Graph.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Product Portfolio API routes for the Knowledge Graph.
 
 Provides CRUD operations for Products and Features, capability linking,
 signal-to-product matching, and portfolio analytics.
@@ -14,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from value_fabric.shared.security.dil_auth import get_verified_tenant_id
 
-from api.dependencies import get_neo4j_driver
+from ...api.dependencies import get_neo4j_driver
 
 router = APIRouter(prefix="/products", tags=["products"])
 

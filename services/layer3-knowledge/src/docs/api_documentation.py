@@ -1,4 +1,9 @@
-"""Comprehensive API documentation with interactive examples and developer guides."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Comprehensive API documentation with interactive examples and developer guides.
+"""
 
 from typing import Any
 

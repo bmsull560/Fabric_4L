@@ -1,6 +1,15 @@
 # Environment Promotion Workflow
 # Automated Dev -> Staging -> Prod promotion with approval gates
 # Triggers on successful builds to main branch
+#
+# OPERATIONAL GAP — ArgoCD not installed:
+# ArgoCD Application resources are defined in k8s/gitops/argocd-applications.yaml and
+# Argo Rollouts canary manifests exist in k8s/gitops/rollouts/ for L1 and L4, but there
+# is no ArgoCD installation manifest in this repository and no argocd namespace setup.
+# Until ArgoCD is operationally installed, the deploy-dev job commits kustomization changes
+# to Git and relies on manual kubectl apply or an external GitOps operator.
+# The "Trigger ArgoCD sync" steps are no-ops until ArgoCD is wired in.
+# Tracking issue: create an issue to install ArgoCD and wire the sync steps.
 name: Environment Promotion
 
 on:
@@ -94,6 +103,7 @@ jobs:
           for metadata_file in artifacts/build-metadata/*.json; do
             layer=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["layer"])' "$metadata_file")
             digest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["image_digest"])' "$metadata_file")
+            tag=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["published_tag"])' "$metadata_file")
             image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}@${digest}"
             if ! docker manifest inspect "$image" > /dev/null 2>&1; then
               echo "❌ Image digest not found: $image"
@@ -156,6 +166,10 @@ jobs:
         uses: imranismail/setup-kustomize@v2
         with:
           kustomize-version: "5.4.3"
+
+      - name: Guard against placeholder digests
+        run: |
+          bash scripts/check-no-placeholder-digests.sh k8s/envs/prod/kustomization.yaml
 
       - name: Update Dev overlay with new image tags
         run: |
@@ -262,11 +276,17 @@ jobs:
             echo "❌ Missing $kustomization_file"
             exit 1
           fi
-          
+
+      - name: Block placeholder image digests (staging)
+        # Guard runs after digest injection so it validates the updated file, not the pre-existing one.
+        run: bash scripts/check-no-placeholder-digests.sh k8s/envs/staging/kustomization.yaml
+
+      - name: Commit and push staging promotion branch
+        run: |
           git add k8s/envs/staging/
           git commit -m "chore(staging): promote ${{ needs.validate-build.outputs.image_ref }} to staging"
-          git push origin "$branch_name"
-          echo "branch_name=$branch_name" >> $GITHUB_ENV
+          git push origin "promote/staging-${{ needs.validate-build.outputs.image_ref }}"
+          echo "branch_name=promote/staging-${{ needs.validate-build.outputs.image_ref }}" >> $GITHUB_ENV
 
       - name: Create Pull Request
         uses: actions/github-script@v7
@@ -387,6 +407,12 @@ jobs:
       name: production
       url: https://fabric.internal
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Block placeholder image digests (prod)
+        run: bash scripts/check-no-placeholder-digests.sh k8s/envs/prod/kustomization.yaml
+
       - name: Verify approval context
         run: |
           echo "🔒 Production deployment requires:"

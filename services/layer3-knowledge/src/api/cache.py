@@ -1,5 +1,8 @@
-"""
-Redis cache layer with tenant isolation.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Redis cache layer with tenant isolation.
 
 All cache operations are tenant-scoped to prevent cross-tenant data leakage.
 Cache keys follow the pattern: cache:tenant:{tenant_id}:{resource_type}:{resource_id}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -16,6 +17,8 @@ except ImportError:
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..agents.base import AgentResult
+from ..harness.prompt_registry import get_prompt_registry
 from ..integration.layer5_client import Layer5GroundTruthClient
 from ..models.agent_state import (
     BusinessCaseAgentState,
@@ -24,6 +27,8 @@ from ..models.agent_state import (
     WorkflowStatus,
 )
 from ..models.workflow_config import BUSINESS_CASE_WORKFLOW_CONFIG
+from ..services.governed_llm_client import GovernedLLMClient
+from ..services.llm_provider import get_llm_provider
 from ..tools.registry import ToolRegistry, ToolResult
 from .base import BaseWorkflow
 
@@ -160,7 +165,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             return await self._execute_gather_inputs(state)
         elif tool_name == "verify_truth_requirements":
             return await self._execute_verify_truth_requirements(state)
-
+        elif tool_name == "validate_claims":
+            return await self._execute_validate_claims(state)
         elif tool_name == "assemble_document":
             return await self._execute_assemble_document(state)
 
@@ -177,6 +183,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         """Execute LLM node for section generation."""
         if node_config.id == "generate_narrative":
             return await self._execute_generate_sections(state)
+        if node_config.id == "validate_claims":
+            return await self._execute_validate_claims(state)
 
         return BusinessCaseGeneratorWorkflow__execute_llmResult.model_validate({"status": "llm_not_implemented"})
 
@@ -368,55 +376,103 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             "next_steps": "Recommended Next Steps",
         }
 
+        trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id") if state.metadata else None
+        tenant_id_for_run = (
+            state.metadata.get("authenticated_tenant_id") or state.metadata.get("tenant_id", "")
+            if state.metadata else ""
+        )
+
+        # Build governed LLM client for section generation
+        try:
+            registry = get_prompt_registry()
+            system_tmpl = registry.get("business_case", "system")
+            section_tmpl = registry.get("business_case", "generate_sections")
+            provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "business_case_generation",
+                tenant_id=tenant_id_for_run or "unknown",
+                trace_id=trace_id,
+            )
+            llm_client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(),
+                run=harness_run,
+            )
+            system_msg = {"role": "system", "content": system_tmpl.body}
+            use_llm = True
+        except Exception as exc:
+            logger.warning("Could not initialise LLM client for section generation: %s", exc)
+            llm_client = None
+            system_msg = None
+            section_tmpl = None
+            use_llm = False
+
         for section_type in requested_sections:
             title = section_titles.get(section_type, section_type.replace("_", " ").title())
 
             try:
-                # Generate section content
-                section_result = await self.tool_registry.execute(
-                    "generate_section",
-                    {
+                content = ""
+
+                if use_llm and llm_client and section_tmpl:
+                    # Use prompt registry + GovernedLLMClient for section content
+                    brief = {
                         "section_type": section_type,
-                        "context": context,
-                        "tone": "professional",
-                        "max_length": 500,
-                    },
-                )
+                        "company_name": context["company_name"],
+                        "industry": context["industry"],
+                        "roi_percent": context["roi_percent"],
+                        "payback_months": context["payback_months"],
+                        "three_year_npv": context["three_year_npv"],
+                        "pain_points": context["pain_points"],
+                    }
+                    user_content = section_tmpl.render(
+                        account_name=context["company_name"],
+                        section_type=section_type,
+                        brief_json=json.dumps(brief, indent=2),
+                        section_context_json=json.dumps(context, indent=2),
+                    )
+                    llm_result = await llm_client.call(
+                        model_task=section_tmpl.model_task,
+                        messages=[system_msg, {"role": "user", "content": user_content}],
+                        temperature=section_tmpl.temperature,
+                        max_tokens=section_tmpl.max_tokens,
+                        call_id=f"bc_section_{section_type}_{trace_id or 'unknown'}",
+                    )
+                    parsed = llm_client._parse_json(llm_result.content)
+                    content = parsed.get("content", llm_result.content)
+                else:
+                    # Fallback: tool-based generation
+                    section_result = await self.tool_registry.execute(
+                        "generate_section",
+                        {
+                            "section_type": section_type,
+                            "context": context,
+                            "tone": "professional",
+                            "max_length": 500,
+                        },
+                    )
+                    content = _unwrap_tool_data(section_result).get("content", "")
 
                 # Create charts for ROI section
                 charts = []
                 if section_type == "roi_analysis" and roi_results:
-                    # ROI bar chart
                     chart_result = await self.tool_registry.execute(
                         "create_chart",
                         {
                             "chart_type": "bar",
                             "data": [
-                                {
-                                    "label": "Investment",
-                                    "value": roi_results.get("investment_required", 0),
-                                },
-                                {
-                                    "label": "Year 1 Value",
-                                    "value": roi_results.get("total_annual_value", 0),
-                                },
-                                {
-                                    "label": "3-Year NPV",
-                                    "value": roi_results.get("three_year_npv", 0),
-                                },
+                                {"label": "Investment", "value": roi_results.get("investment_required", 0)},
+                                {"label": "Year 1 Value", "value": roi_results.get("total_annual_value", 0)},
+                                {"label": "3-Year NPV", "value": roi_results.get("three_year_npv", 0)},
                             ],
                             "title": "ROI Summary",
                         },
                     )
                     charts.append(_unwrap_tool_data(chart_result).get("chart_data", {}))
 
-                section = BusinessCaseSection(
-                    title=title, content=_unwrap_tool_data(section_result).get("content", ""), charts=charts, tables=[]
-                )
+                section = BusinessCaseSection(title=title, content=content, charts=charts, tables=[])
                 sections_generated.append(section)
 
             except Exception as e:
-                # Add error section
                 section = BusinessCaseSection(
                     title=title, content=f"Error generating section: {str(e)}", charts=[], tables=[]
                 )
@@ -912,6 +968,208 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         finally:
             await client.close()
+
+    # -----------------------------------------------------------------------
+    # LLM claim validation
+    # -----------------------------------------------------------------------
+    async def _execute_validate_claims(self, state: BusinessCaseAgentState) -> dict[str, Any]:
+        """Extract claims from generated sections and validate against Layer 5.
+
+        Uses the ``business_case/validate_claims`` prompt to extract structured
+        claims from section content, then submits each claim to the live L5
+        validator.  Returns an ``AgentResult`` with:
+        - ``validated_claims``: list of claims with validation status
+        - ``unverified_claims``: claims that could not be validated
+        - ``human_review_required``: True if any claim is unverified
+
+        The human gate in ``harness.runtime.yaml`` (``VALIDATE_CLAIMS``) is
+        triggered when ``human_review_required=True``.
+        """
+        trace_id = state.metadata.get("trace_id") or state.metadata.get("run_id") if state.metadata else None
+        account_name = (
+            state.case_input.custom_inputs.get("account_name", "")
+            if state.case_input
+            else state.input_data.get("account_name", "Unknown Account")
+        )
+
+        # AgentResult is constructed with an empty tenant_id initially; it is
+        # populated after tenant resolution inside the try block below.
+        agent_result = AgentResult(
+            payload={},
+            workflow_type="business_case",
+            tenant_id="",
+            trace_id=trace_id,
+        )
+
+        sections_prior = state.output_data.get("generate_narrative", {})
+        sections = sections_prior.get("sections", [])
+
+        if not sections:
+            agent_result.payload = {
+                "validated_claims": [],
+                "unverified_claims": [],
+                "claim_count": 0,
+            }
+            agent_result.degraded_reason = "no_sections_to_validate"
+            return agent_result.to_dict()
+
+        try:
+            # Resolve tenant first — MissingTenantContextError must degrade, not crash.
+            organization_id = self._resolve_organization_id(state)
+            agent_result.tenant_id = organization_id
+
+            registry = get_prompt_registry()
+            system_tmpl = registry.get("business_case", "system")
+            validate_tmpl = registry.get("business_case", "validate_claims")
+
+            provider = get_llm_provider(self.config)
+            harness_run = self._make_harness_run(
+                "business_case_generation",
+                tenant_id=organization_id,
+                trace_id=trace_id,
+            )
+            llm_client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(),
+                run=harness_run,
+            )
+
+            user_content = validate_tmpl.render(
+                account_name=account_name,
+                sections_json=json.dumps(sections, indent=2),
+            )
+            llm_result = await llm_client.call(
+                model_task=validate_tmpl.model_task,
+                messages=[
+                    {"role": "system", "content": system_tmpl.body},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=validate_tmpl.temperature,
+                max_tokens=validate_tmpl.max_tokens,
+                call_id=f"bc_validate_{trace_id or 'unknown'}",
+            )
+            parsed = llm_client._parse_json(llm_result.content)
+            extracted_claims = parsed.get("claims", [])
+
+            # Build one Layer 5 client and validator for the entire validation run.
+            from ..harness.live_l5_validator import LiveL5Validator
+
+            layer5_url: str | None = os.getenv(
+                "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
+            )
+            service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
+
+            # Validate each claim against Layer 5 (best-effort)
+            validated: list[dict] = []
+            unverified: list[dict] = []
+
+            if not layer5_url:
+                # L5 unavailable due to missing config — mark all claims as unavailable.
+                logger.warning("LAYER5_GROUND_TRUTH_URL not set; skipping L5 claim validation")
+                for claim in extracted_claims[:20]:
+                    claim_text = claim.get("claim_text", "")
+                    if claim_text:
+                        unverified.append({
+                            **claim,
+                            "l5_status": "unavailable",
+                            "reason": "Layer 5 validator unavailable: missing configuration",
+                        })
+            else:
+                l5_client = Layer5GroundTruthClient(
+                    base_url=layer5_url,
+                    service_token=service_token,
+                    tenant_id=organization_id if not service_token else None,
+                )
+                validator = LiveL5Validator(client=l5_client)
+                try:
+                    from ..harness.validation_hooks import ClaimValidationRequest
+                    for claim in extracted_claims[:20]:  # cap at 20 claims per run
+                        claim_text = claim.get("claim_text", "")
+                        if not claim_text:
+                            continue
+                        try:
+                            result = await validator.validate(
+                                ClaimValidationRequest(
+                                    tenant_id=organization_id,
+                                    claim_id=claim.get("claim_id", claim_text[:64]),
+                                    claim_text=claim_text,
+                                    evidence_refs=claim.get("evidence_refs", []),
+                                    account_id=str(state.case_input.opportunity_id) if state.case_input else None,
+                                    value_pack_id="business_case",
+                                )
+                            )
+                            if result.validation_state.value == "passed":
+                                validated.append({**claim, "l5_status": "validated", "evidence": result.evidence_refs})
+                            else:
+                                unverified.append({**claim, "l5_status": result.validation_state.value, "reason": result.reason})
+                        except Exception as val_exc:
+                            logger.debug("L5 validation unavailable for claim: %s", val_exc)
+                            unverified.append({**claim, "l5_status": "unavailable"})
+                finally:
+                    await l5_client.close()
+
+            has_unverified = len(unverified) > 0
+            confidence = (
+                len(validated) / len(extracted_claims)
+                if extracted_claims
+                else 0.5
+            )
+
+            agent_result.payload = {
+                "validated_claims": validated,
+                "unverified_claims": unverified,
+                "claim_count": len(extracted_claims),
+                "validated_count": len(validated),
+                "unverified_count": len(unverified),
+            }
+            # Force human review if any claims are unverified — business case
+            # must not publish unvalidated claims (harness.runtime.yaml: on_l5_unavailable: block)
+            agent_result.mark_llm_enriched(
+                model=llm_result.model,
+                prompt_tokens=llm_result.prompt_tokens,
+                completion_tokens=llm_result.completion_tokens,
+                confidence=confidence,
+            )
+            if has_unverified:
+                agent_result.human_review_required = True
+                agent_result.customer_facing_allowed = False
+                agent_result.degraded_reason = f"unverified_claims:{len(unverified)}"
+
+            logger.info(
+                "Business case claim validation: %d validated, %d unverified",
+                len(validated), len(unverified),
+            )
+
+        except MissingTenantContextError as exc:
+            logger.warning("Business case claim validation: missing tenant context: %s", exc)
+            agent_result.payload = {
+                "validated_claims": [],
+                "unverified_claims": [],
+                "claim_count": 0,
+            }
+            agent_result.degraded_reason = "missing_tenant_context"
+            agent_result.human_review_required = True
+            agent_result.customer_facing_allowed = False
+
+        except Exception:
+            logger.warning("Business case claim validation failed", extra={"code": "llm_failed"})
+            agent_result.payload = {
+                "validated_claims": [],
+                "unverified_claims": [],
+                "claim_count": 0,
+            }
+            agent_result.degraded_reason = "llm_failed"
+
+        return agent_result.to_dict()
+
+    def _resolve_provider_name(self) -> str:
+        import os
+        return (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (self.config.get("llm_provider") if isinstance(self.config, dict) else None)
+            or getattr(self.config, "llm_provider", None)
+            or "together"
+        )
 
     def _resolve_organization_id(self, state: BusinessCaseAgentState) -> str:
         """Resolve tenant/organization ID from authenticated workflow state."""

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+logger = logging.getLogger(__name__)
 
 from pydantic import ConfigDict, create_model
 
@@ -12,6 +15,7 @@ from .llm_adapter_interfaces import (
     CompletionRequest,
     CompletionResult,
     ErrorCategory,
+    ProviderNotImplementedError,
     StructuredOutputAdapter,
     ToolCall,
     ToolCallingAdapter,
@@ -211,8 +215,8 @@ class OpenAIProvider(StructuredOutputAdapter, ToolCallingAdapter):
             )
             # CONTRACT §2.5: Validate structured LLM output with Pydantic, not raw JSON.parse
             content = response.choices[0].message.content or "{}"
-            Model = self._build_model_from_schema(schema)
-            return Model.model_validate_json(content).model_dump()
+            model_cls = self._build_model_from_schema(schema)
+            return model_cls.model_validate_json(content).model_dump()
         except Exception as exc:  # pragma: no cover - defensive normalization
             return self._normalize_error(exc)
 
@@ -240,3 +244,61 @@ def get_openai_provider(config: dict[str, Any] | None = None) -> OpenAIProvider:
 def get_provider_adapters(config: dict[str, Any] | None = None) -> dict[str, OpenAIProvider]:
     """Registry of configured provider adapters for conformance tests and orchestration wiring."""
     return {"openai": get_openai_provider(config)}
+
+
+def get_llm_provider(config: dict[str, Any] | None = None) -> Any:
+    """Return the active LLM provider based on ``LAYER4_LLM_PROVIDER`` env var.
+
+    Provider resolution order:
+    1. ``LAYER4_LLM_PROVIDER`` environment variable
+    2. ``config["llm_provider"]`` if present
+    3. Default: ``"together"``
+
+    Supported values: ``"together"``, ``"openai"``
+
+    Returns an instance implementing the ``LLMProvider`` protocol.
+    """
+    import os
+
+    provider_name = (
+        os.getenv("LAYER4_LLM_PROVIDER")
+        or (config.get("llm_provider") if config and hasattr(config, "get") else None)
+        or getattr(config, "llm_provider", None)
+        or "together"
+    ).lower()
+
+    if provider_name == "together":
+        from .together_provider import TogetherAIProvider
+
+        api_key = (
+            os.getenv("LAYER4_TOGETHER_API_KEY")
+            or (config.get("together_api_key") if config and hasattr(config, "get") else None)
+            or getattr(config, "together_api_key", None)
+        )
+        base_url = (
+            os.getenv("LAYER4_TOGETHER_BASE_URL", "https://api.together.ai/v1")
+        )
+        timeout = float(os.getenv("LAYER4_TOGETHER_TIMEOUT_SECONDS", "60"))
+        return TogetherAIProvider(api_key=api_key, base_url=base_url, timeout=timeout)
+
+    if provider_name == "openai":
+        return get_openai_provider(config)
+
+    if provider_name == "anthropic":
+        raise ProviderNotImplementedError("anthropic")
+
+    logger.warning(
+        "Unknown LLM provider %r — falling back to Together.ai. "
+        "Set LAYER4_LLM_PROVIDER to 'together' or 'openai' to suppress this warning.",
+        provider_name,
+    )
+    from .together_provider import TogetherAIProvider
+
+    api_key = (
+        os.getenv("LAYER4_TOGETHER_API_KEY")
+        or (config.get("together_api_key") if config and hasattr(config, "get") else None)
+        or getattr(config, "together_api_key", None)
+    )
+    base_url = os.getenv("LAYER4_TOGETHER_BASE_URL", "https://api.together.ai/v1")
+    timeout = float(os.getenv("LAYER4_TOGETHER_TIMEOUT_SECONDS", "60"))
+    return TogetherAIProvider(api_key=api_key, base_url=base_url, timeout=timeout)

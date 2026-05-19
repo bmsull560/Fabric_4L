@@ -1,4 +1,8 @@
-"""Whitespace Analysis Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Whitespace Analysis Agent.
 
 Implements gap identification, maturity assessment, and expansion pathway generation.
 """
@@ -13,8 +17,13 @@ from typing import Any
 from neo4j import AsyncDriver
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+<<<<<<< HEAD
 from agents.base import AgentResult, BaseAgent
 from db.query_execution import run_validated_query
+=======
+from ..agents.base import AgentResult, BaseAgent
+from ..db.query_execution import run_validated_query
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 class WhitespaceAnalysisAgent__identify_gapsResult(TypedDictModel):

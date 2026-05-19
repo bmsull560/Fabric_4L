@@ -16,40 +16,40 @@ import httpx
 import structlog
 from celery import Celery, chain
 from jsonschema import Draft7Validator
-from ..crawler.decision_store import CrawlDecisionRecord, CrawlDecisionRepository
-from ..crawler.httpx_crawler import HttpxCrawler
-from ..crawler.playwright_crawler import PlaywrightCrawler
-from ..crawler.quality_gate import QualityGate
-from ..crawler.smart_router import RouteType, SmartRouter
 
 from ..compliance.pii_scanner import PIIScanner
 from ..compliance.robots_checker import RobotsChecker
+from ..crawler.decision_store import CrawlDecisionRecord, CrawlDecisionRepository
+from ..crawler.httpx_crawler import HttpxCrawler
+from ..crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
+from ..crawler.quality_gate import QualityGate
+from ..crawler.smart_router import RouteType, SmartRouter
 
 if TYPE_CHECKING:
     from ..crawler.httpx_crawler import FastPathResult
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from ..skills import get_extraction_schema, get_skill
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import (
     AccountIntelligencePacket,
-    EventOutbox,
-    OutboxStatus,
-    ScrapingJobType,
-    SourceCorpus,
     ComplianceEventType,
     ComplianceLog,
+    EventOutbox,
     ExtractedData,
     ExtractionMethod,
     JobError,
     JobStageDetail,
     JobStatus,
+    OutboxStatus,
     PipelineStage,
     RawContent,
     ScrapingJob,
+    ScrapingJobType,
     ScrapingTarget,
+    SourceCorpus,
 )
+from ..skills import get_extraction_schema, get_skill
 
 # Maximum delivery attempts before an outbox event is dead-lettered.
 MAX_DISPATCH_ATTEMPTS = 5
@@ -1260,7 +1260,7 @@ def dispatch_outbox_event(self, event_id: str):
 
 
 def _update_stage(
-    session, job_id: UUID, stage: PipelineStage, status: str, error_message: str = None
+    session, job_id: UUID, stage: PipelineStage, status: str, error_message: str | None = None
 ):
     """Update pipeline stage status."""
     stage_detail = (

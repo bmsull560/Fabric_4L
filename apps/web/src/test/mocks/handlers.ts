@@ -1271,4 +1271,210 @@ export const handlers = [
       ],
     });
   }),
+
+  // ── Layer 1 — Scraping Targets ────────────────────────────────────────────
+  // Response shapes match ApiTargetListResponse / ScrapingTargetDetail /
+  // TargetStatsResponse as defined in useTargets.ts.
+
+  http.get('/api/v1/ingest/targets', () => {
+    return HttpResponse.json({
+      data: [
+        {
+          id: 'target-1',
+          name: 'Acme Corp',
+          url: 'https://acme.com',
+          target_type: 'SPIDER',
+          source_category: 'CRM',
+          status: 'ACTIVE',
+          tags: ['prospect'],
+          success_count: 10,
+          error_count: 1,
+          average_execution_time_ms: 1200,
+          last_success_at: '2024-01-15T10:00:00Z',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+        },
+      ],
+      pagination: { page: 1, limit: 25, total: 1, total_pages: 1 },
+    });
+  }),
+
+  http.get('/api/v1/ingest/targets/stats', () => {
+    return HttpResponse.json({
+      total: 5,
+      connected: 3,
+      disconnected: 1,
+      error: 1,
+      total_records: 500,
+      average_health_score: 85,
+    });
+  }),
+
+  http.get('/api/v1/ingest/targets/:id', ({ params }) => {
+    return HttpResponse.json({
+      id: params.id,
+      name: 'Acme Corp',
+      url: 'https://acme.com',
+      target_type: 'SPIDER',
+      source_category: 'CRM',
+      status: 'ACTIVE',
+      tags: ['prospect'],
+      tenant_id: 'tenant-1',
+      description: 'Acme Corp target',
+      url_pattern: null,
+      crawl_path: 'browser',
+      extraction_config: { method: 'llm' },
+      browser_config: {},
+      schedule: { enabled: false },
+      rate_limit: { requests_per_second: 1 },
+      compliance: { respect_robots_txt: true },
+      success_count: 10,
+      error_count: 1,
+      average_execution_time_ms: 1200,
+      last_success_at: '2024-01-15T10:00:00Z',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-15T10:00:00Z',
+    });
+  }),
+
+  http.get('/api/v1/ingest/jobs', () => {
+    return HttpResponse.json({
+      data: [],
+      pagination: { page: 1, limit: 10, total: 0, total_pages: 0 },
+    });
+  }),
+
+  http.post('/api/v1/ingest/targets', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({
+      id: 'new-target',
+      name: body.name ?? 'New Target',
+      url: body.url ?? 'https://example.com',
+      target_type: body.target_type ?? 'SPIDER',
+      source_category: body.source_category ?? 'CRM',
+      status: 'ACTIVE',
+      tags: [],
+      tenant_id: 'tenant-1',
+      description: null,
+      url_pattern: null,
+      crawl_path: 'browser',
+      extraction_config: {},
+      browser_config: {},
+      schedule: null,
+      rate_limit: {},
+      compliance: {},
+      success_count: 0,
+      error_count: 0,
+      average_execution_time_ms: 0,
+      last_success_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { status: 201 });
+  }),
+
+  http.put('/api/v1/ingest/targets/:id', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({
+      id: params.id,
+      name: body.name ?? 'Updated Target',
+      url: body.url ?? 'https://example.com',
+      target_type: body.target_type ?? 'SPIDER',
+      source_category: 'CRM',
+      status: 'ACTIVE',
+      tags: [],
+      tenant_id: 'tenant-1',
+      description: null,
+      url_pattern: null,
+      crawl_path: 'browser',
+      extraction_config: {},
+      browser_config: {},
+      schedule: null,
+      rate_limit: {},
+      compliance: {},
+      success_count: 10,
+      error_count: 1,
+      average_execution_time_ms: 1200,
+      last_success_at: '2024-01-15T10:00:00Z',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
+  http.patch('/api/v1/ingest/targets/:id/status', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({
+      id: params.id,
+      name: 'Acme Corp',
+      url: 'https://acme.com',
+      target_type: 'SPIDER',
+      source_category: 'CRM',
+      status: body.status ?? 'ACTIVE',
+      tags: ['prospect'],
+      tenant_id: 'tenant-1',
+      description: null,
+      url_pattern: null,
+      crawl_path: 'browser',
+      extraction_config: {},
+      browser_config: {},
+      schedule: null,
+      rate_limit: {},
+      compliance: {},
+      success_count: 10,
+      error_count: 1,
+      average_execution_time_ms: 1200,
+      last_success_at: '2024-01-15T10:00:00Z',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: new Date().toISOString(),
+    });
+  }),
+
+  http.post('/api/v1/ingest/targets/batch', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const ids = (body.target_ids as string[]) ?? [];
+    return HttpResponse.json({
+      succeeded: ids,
+      failed: [],
+      operation: body.operation,
+    });
+  }),
+
+  http.post('/api/v1/ingest/targets/:id/execute', ({ params }) => {
+    return HttpResponse.json({
+      job_id: `job-${String(params.id)}`,
+      target_id: params.id,
+      status: 'QUEUED',
+      created_at: new Date().toISOString(),
+    }, { status: 202 });
+  }),
+
+  http.post('/api/v1/ingest/targets/:id/validate', ({ params }) => {
+    return HttpResponse.json({
+      target_id: params.id,
+      valid: true,
+      errors: [],
+      warnings: [],
+    });
+  }),
+
+  http.delete('/api/v1/ingest/targets/:id', () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ── Layer 4 — Harness runs (MSW fallback for tests that don't mock apiClient) ─
+
+  http.get('/api/v1/agents/harness/runs', () => {
+    return HttpResponse.json({
+      items: [],
+      total: 0,
+    });
+  }),
+
+  // ── Layer 3 — Value Signals ───────────────────────────────────────────────
+
+  http.get('/api/v1/signals', () => {
+    return HttpResponse.json({
+      items: [],
+      total: 0,
+    });
+  }),
 ];

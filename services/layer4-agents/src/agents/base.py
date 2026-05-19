@@ -451,3 +451,119 @@ class AgentNotFoundError(Exception):
     """Raised when requested agent type is not found."""
 
     pass
+
+
+# ---------------------------------------------------------------------------
+# Degraded output contract
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class AgentResult:
+    """Typed output envelope for all Layer 4 agent workflows.
+
+    Carries the structured payload alongside governance flags that downstream
+    consumers (UI, Layer 5, Narrative Builder) must respect before surfacing
+    results to end users.
+
+    Governance rules (enforced by ``__post_init__``):
+    - ``llm_enrichment=False`` always forces ``customer_facing_allowed=False``
+      and ``human_review_required=True``.
+    - ``confidence < 0.4`` forces ``human_review_required=True``.
+    - ``human_review_required=True`` forces ``customer_facing_allowed=False``.
+
+    Attributes:
+        payload:                 The structured agent output (workflow-specific).
+        workflow_type:           Canonical workflow identifier (e.g. "roi_calculator").
+        tenant_id:               Owning tenant — must be set before persistence.
+        llm_enrichment:          True when the payload was produced with LLM assistance.
+        confidence:              Aggregate confidence score [0.0, 1.0].
+        customer_facing_allowed: Safe to surface directly to end users.
+        human_review_required:   Must be reviewed by a human before use.
+        degraded_reason:         Human-readable explanation when degraded.
+        trace_id:                Harness run or request trace identifier.
+        model_used:              LLM model identifier, if applicable.
+        prompt_tokens:           Input token count for cost tracking.
+        completion_tokens:       Output token count for cost tracking.
+        metadata:                Arbitrary additional context.
+    """
+
+    payload: dict[str, Any]
+    workflow_type: str
+    tenant_id: str = ""
+    llm_enrichment: bool = False
+    confidence: float = 0.0
+    customer_facing_allowed: bool = False
+    human_review_required: bool = True
+    degraded_reason: str | None = None
+    trace_id: str | None = None
+    model_used: str | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self._apply_governance_rules()
+
+    def _apply_governance_rules(self) -> None:
+        """Enforce degraded-output invariants."""
+        # Clamp confidence to valid range before any governance decisions.
+        self.confidence = max(0.0, min(1.0, self.confidence))
+        reasons: list[str] = []
+
+        if not self.llm_enrichment:
+            self.customer_facing_allowed = False
+            self.human_review_required = True
+            reasons.append("no_llm_enrichment")
+
+        if self.confidence < 0.4:
+            self.human_review_required = True
+            reasons.append(f"low_confidence:{self.confidence:.2f}")
+
+        if self.human_review_required:
+            self.customer_facing_allowed = False
+
+        if reasons and self.degraded_reason is None:
+            self.degraded_reason = "; ".join(reasons)
+
+    def mark_llm_enriched(
+        self,
+        model: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        confidence: float,
+    ) -> None:
+        """Update enrichment fields after a successful LLM call.
+
+        Resets governance flags to their optimistic defaults before
+        re-applying rules, so a high-confidence enrichment can promote
+        a previously degraded result to customer-facing.
+        """
+        self.llm_enrichment = True
+        self.model_used = model
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+        self.confidence = confidence
+        self.degraded_reason = None
+        # Reset to optimistic defaults before re-evaluation
+        self.customer_facing_allowed = True
+        self.human_review_required = False
+        self._apply_governance_rules()
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a plain dict suitable for API responses."""
+        return {
+            "payload": self.payload,
+            "workflow_type": self.workflow_type,
+            "tenant_id": self.tenant_id,
+            "llm_enrichment": self.llm_enrichment,
+            "confidence": self.confidence,
+            "customer_facing_allowed": self.customer_facing_allowed,
+            "human_review_required": self.human_review_required,
+            "degraded_reason": self.degraded_reason,
+            "trace_id": self.trace_id,
+            "model_used": self.model_used,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "metadata": self.metadata,
+        }

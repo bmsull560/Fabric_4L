@@ -1,4 +1,8 @@
-"""Formula API routes.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Formula API routes.
 
 Provides endpoints for formula evaluation and variable registry.
 Delegates calculation logic to the ROI calculation agent.
@@ -12,10 +16,6 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
-from agents.scenario_engine import VariableAdjustment, scenario_engine
-from auth.api_keys import APIKey
-from auth.middleware import get_current_api_key, require_admin_role
-from api.dependencies_tenant import create_neo4j_tenant_session
 from logging_config import get_logger
 
 from ...agents.scenario_engine import VariableAdjustment, scenario_engine
@@ -130,6 +130,14 @@ class VariableMetadata(BaseModel):
     min_value: float | None = Field(None, description="Minimum allowed value")
     max_value: float | None = Field(None, description="Maximum allowed value")
     required: bool = Field(default=True, description="Whether variable is required")
+    category: str | None = Field(
+        None,
+        description=(
+            "Variable category (Financial, Operational, Efficiency, Quality). "
+            "When set, used directly for filtering. When None, category is inferred "
+            "from the variable name via keyword patterns."
+        ),
+    )
 
 
 class FormulaMetadata(BaseModel):
@@ -221,6 +229,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="USD",
         required=True,
         min_value=0,
+        category="Financial",
     ),
     VariableMetadata(
         name="implementation_cost",
@@ -230,6 +239,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="USD",
         required=True,
         min_value=0,
+        category="Financial",
     ),
     VariableMetadata(
         name="annual_revenue_increase",
@@ -239,6 +249,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="USD",
         default_value=0,
         min_value=0,
+        category="Financial",
     ),
     VariableMetadata(
         name="time_period_years",
@@ -249,6 +260,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         default_value=3,
         min_value=1,
         max_value=10,
+        category="Operational",
     ),
     VariableMetadata(
         name="discount_rate",
@@ -259,6 +271,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         default_value=0.10,
         min_value=0,
         max_value=1,
+        category="Financial",
     ),
     VariableMetadata(
         name="current_manual_hours",
@@ -268,6 +281,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="hours",
         required=True,
         min_value=0,
+        category="Operational",
     ),
     VariableMetadata(
         name="hourly_rate",
@@ -277,6 +291,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="USD",
         default_value=75.0,
         min_value=0,
+        category="Financial",
     ),
     VariableMetadata(
         name="automation_efficiency",
@@ -287,6 +302,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         default_value=0.70,
         min_value=0,
         max_value=1,
+        category="Efficiency",
     ),
     VariableMetadata(
         name="monthly_transaction_volume",
@@ -296,6 +312,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="transactions",
         required=True,
         min_value=0,
+        category="Operational",
     ),
     VariableMetadata(
         name="error_rate_before",
@@ -306,6 +323,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         default_value=0.05,
         min_value=0,
         max_value=1,
+        category="Efficiency",
     ),
     VariableMetadata(
         name="error_rate_after",
@@ -316,6 +334,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         default_value=0.01,
         min_value=0,
         max_value=1,
+        category="Efficiency",
     ),
     VariableMetadata(
         name="cost_per_error",
@@ -325,6 +344,7 @@ VARIABLE_REGISTRY: list[VariableMetadata] = [
         unit="USD",
         default_value=500.0,
         min_value=0,
+        category="Efficiency",
     ),
 ]
 
@@ -566,6 +586,57 @@ async def evaluate_formula(
         )
 
 
+_VARIABLE_CATEGORY_PATTERNS: dict[str, list[str]] = {
+    # Efficiency is checked before Financial so that "error_rate" and
+    # "automation_efficiency" match here rather than on "rate"/"cost".
+    "Efficiency": [
+        "automation", "efficiency", "error_rate", "error", "reduction",
+        "improvement", "productivity",
+    ],
+    "Operational": [
+        "volume", "transaction", "process", "manual", "hours", "time_period",
+        "period", "cycle", "throughput",
+    ],
+    "Financial": [
+        "cost", "revenue", "savings", "rate", "discount", "price", "budget",
+        "investment", "roi", "npv", "payback", "benefit",
+    ],
+    "Quality": [
+        "accuracy", "quality", "defect", "compliance", "satisfaction",
+        "score", "rating",
+    ],
+}
+
+
+def _infer_variable_category(variable_name: str) -> str:
+    """Infer a category for a variable from its name using keyword patterns.
+
+    Returns the first matching category, or "Financial" as the default
+    (most variables in the registry are financial in nature).
+    """
+    lower = variable_name.lower()
+    for category, keywords in _VARIABLE_CATEGORY_PATTERNS.items():
+        if any(kw in lower for kw in keywords):
+            return category
+    return "Financial"
+
+
+def _filter_variables_by_category(
+    variables: list[VariableMetadata], category: str
+) -> list[VariableMetadata]:
+    """Return only variables whose category matches *category* (case-insensitive).
+
+    Uses the explicit ``VariableMetadata.category`` field when set.  Falls back
+    to keyword-pattern inference for variables that have no explicit category.
+    """
+    target = category.strip().lower()
+    return [
+        v
+        for v in variables
+        if (v.category or _infer_variable_category(v.name)).lower() == target
+    ]
+
+
 @router.get(
     "/formulas/variables",
     response_model=VariablesRegistryResponse,
@@ -580,8 +651,7 @@ async def get_variables_registry(
     variables = VARIABLE_REGISTRY
 
     if category:
-        # Filter by implied category from name patterns
-        pass  # All variables returned for now
+        variables = _filter_variables_by_category(variables, category)
 
     categories = list(set(["Financial", "Operational", "Efficiency", "Quality"]))
 

@@ -10,6 +10,7 @@ Orchestrates the complete signal detection pipeline:
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -17,20 +18,26 @@ from typing import Any
 from value_fabric.shared.identity.context import RequestContext
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..harness.prompt_registry import get_prompt_registry
+from ..services.llm_output_parser import parse_llm_json
 from ..messaging.signal_events import (
+    ErrorCategory,
     SignalCompletedEvent,
     SignalDiscoveredEvent,
     SignalFailedEvent,
     SignalStreamCompleteEvent,
 )
 from ..models.pain_signal import EvidenceMatch, PainSignal, SignalCategory, TrendDirection
-from .base import AgentCapability, BaseAgent
+from ..services.governed_llm_client import GovernedLLMClient
+from ..services.llm_provider import get_llm_provider
+from .base import AgentCapability, AgentResult, BaseAgent
 
 
 class SignalDetectionAgent__detect_signalsResult(TypedDictModel):
     message: str
     processing_metadata: Any
     signals: list[Any]
+    llm_output: Any | None = None
 
 class SignalDetectionAgent__extract_signals_from_layer2Result(TypedDictModel):
     duration_ms: int
@@ -86,7 +93,7 @@ class SignalDetectionAgent(BaseAgent):
     def _get_layer3_client(self):
         """Get or create Layer 3 knowledge client."""
         if self.layer3_client is None:
-            from ..integration.layer3_client import Layer3KnowledgeClient
+            from ..integration.layer3_client import Layer3Client as Layer3KnowledgeClient
 
             self.layer3_client = Layer3KnowledgeClient(
                 base_url=self.config.get("layer3_url", "http://layer3-knowledge:8000"),
@@ -229,6 +236,8 @@ class SignalDetectionAgent(BaseAgent):
             enrichment_start = datetime.now(UTC)
             for idx, raw_signal in enumerate(raw_signals):
                 signal = self._create_pain_signal(raw_signal, prospect_data, ctx)
+                if signal is None:
+                    continue
 
                 if include_evidence:
                     signal = await self._enrich_with_evidence(signal, ctx)
@@ -307,10 +316,14 @@ class SignalDetectionAgent(BaseAgent):
                 )
                 await self._emit_event(event)
 
+            # Stage 4: LLM classification, hypothesis generation, narrative
+            llm_output = await self._execute_llm_layer(signals, prospect_data, ctx)
+
             return SignalDetectionAgent__detect_signalsResult.model_validate({
                 "signals": [s.model_dump() for s in signals],
                 "processing_metadata": processing_metadata,
                 "message": f"Detected {len(signals)} operational signals",
+                "llm_output": llm_output,
             })
 
 
@@ -323,16 +336,46 @@ class SignalDetectionAgent(BaseAgent):
                 },
             )
 
+            # Always emit the stream failure event before deciding how to handle.
             if self.stream_callback:
                 event = SignalFailedEvent(
                     prospect_id=prospect_data.get("account_id", ""),
-                    error=str(e),
-                    stage="extraction",
-                    recoverable=False,
+                    error_category=ErrorCategory.UNKNOWN,
+                    error_message=str(e),
+                    retryable=False,
                 )
                 await self._emit_event(event)
 
-            raise
+            # Governance and programming errors (ValueError subclasses: missing
+            # tenant context, invalid state, policy violations) must propagate so
+            # the caller can handle them explicitly. Safe LLM runtime failures
+            # (network, timeout, rate-limit, parse) degrade gracefully.
+            if isinstance(e, ValueError):
+                raise
+
+            agent_result = AgentResult(
+                payload={},
+                workflow_type="signal_detection",
+                tenant_id=ctx.tenant_id or "",
+                trace_id=ctx.trace_id or "",
+            )
+            agent_result.payload = {
+                "classified_signals": [],
+                "hypotheses": [],
+                "narrative": "",
+                "top_signals": [],
+                "evidence_refs": [],
+            }
+            agent_result.degraded_reason = "llm_failed"
+            agent_result.human_review_required = True
+            agent_result.customer_facing_allowed = False
+
+            return SignalDetectionAgent__detect_signalsResult.model_validate({
+                "signals": [],
+                "processing_metadata": processing_metadata,
+                "message": f"Signal detection degraded: {type(e).__name__}",
+                "llm_output": agent_result.to_dict(),
+            })
 
     async def _stream_detection(
         self,
@@ -384,21 +427,40 @@ class SignalDetectionAgent(BaseAgent):
         raw_signal: dict[str, Any],
         prospect_data: dict[str, Any],
         ctx: RequestContext,
-    ) -> PainSignal:
-        """Create PainSignal from raw extraction result."""
+    ) -> PainSignal | None:
+        """Create PainSignal from raw extraction result.
+
+        Returns ``None`` (and logs a warning) when ``account_id`` is absent from
+        *prospect_data*, so the caller can skip the record rather than persisting
+        a signal with an empty account identifier.
+        """
+        account_id = prospect_data.get("account_id")
+        if not account_id:
+            logger.warning(
+                "Skipping pain signal creation: account_id missing from prospect_data"
+            )
+            return None
+
+        raw_explanation = raw_signal.get("confidence_explanation", "")
+        # PainSignal requires confidence_explanation min_length=10; pad if needed
+        confidence_explanation = (
+            raw_explanation if len(raw_explanation) >= 10
+            else (raw_explanation.strip() + " (extracted)").ljust(10)
+        )
+        description = raw_signal.get("description", "")
+        # PainSignal requires description min_length=10
+        if len(description) < 10:
+            description = (description.strip() + " (extracted)").ljust(10)
         return PainSignal(
             id=f"sig_{self._id_gen.generate()[:12]}",
             name=raw_signal.get("name", "Unknown Signal"),
             category=SignalCategory.OPERATIONAL,
-            description=raw_signal.get("description", ""),
+            description=description,
             confidence_score=raw_signal.get("confidence_score", 0.0),
-            confidence_explanation=raw_signal.get("confidence_explanation", ""),
+            confidence_explanation=confidence_explanation,
             trend_direction=TrendDirection(raw_signal.get("trend_direction", "new")),
             trend_explanation=raw_signal.get("trend_explanation", ""),
-            impact_indicators=raw_signal.get("impact_indicators", []),
-            stakeholder_quotes=raw_signal.get("stakeholder_quotes", []),
-            likely_value_drivers=raw_signal.get("likely_value_drivers", []),
-            account_id=prospect_data.get("account_id", ""),
+            account_id=account_id,
             tenant_id=ctx.tenant_id,
             extraction_trace_id=ctx.trace_id,
             source_prompt_id=prospect_data.get("prompt_id", ""),
@@ -482,6 +544,183 @@ class SignalDetectionAgent(BaseAgent):
             logger.warning(f"Impact quantification failed for signal {signal.id}: {e}")
 
         return signal
+
+    async def _execute_llm_layer(
+        self,
+        signals: list[PainSignal],
+        prospect_data: dict[str, Any],
+        ctx: RequestContext,
+    ) -> dict[str, Any]:
+        """Run LLM classification, hypothesis generation, and narrative over detected signals.
+
+        Three sequential prompts:
+        1. ``classification`` — classify each signal by type and confidence
+        2. ``hypothesis_generation`` — generate value hypotheses from high-confidence clusters
+        3. ``narrative`` — produce a 1-paragraph signal summary
+
+        Returns an ``AgentResult`` serialised to dict.  Degrades gracefully on failure.
+        """
+        account_name = (
+            prospect_data.get("account_name")
+            or prospect_data.get("name")
+            or prospect_data.get("account_id", "Unknown Account")
+        )
+        tenant_id = ctx.tenant_id or ""
+        trace_id = ctx.trace_id or ""
+
+        agent_result = AgentResult(
+            payload={},
+            workflow_type="signal_detection",
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+        )
+
+        if not signals:
+            agent_result.payload = {"signals": [], "hypotheses": [], "narrative": ""}
+            agent_result.degraded_reason = "no_signals"
+            return agent_result.to_dict()
+
+        try:
+            registry = get_prompt_registry()
+            system_tmpl = registry.get("signal_detection", "system")
+            class_tmpl = registry.get("signal_detection", "classification")
+            hyp_tmpl = registry.get("signal_detection", "hypothesis_generation")
+            narr_tmpl = registry.get("signal_detection", "narrative")
+
+            provider = get_llm_provider(self.config)
+            client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(),
+            )
+            system_msg = {"role": "system", "content": system_tmpl.body}
+
+            # Compact signal representation for prompts
+            signals_json = json.dumps(
+                [
+                    {
+                        "id": s.id,
+                        "category": s.category.value if hasattr(s.category, "value") else str(s.category),
+                        "description": s.description,
+                        "confidence": s.confidence_score,
+                        "source": getattr(s, "source_ref", ""),
+                    }
+                    for s in signals[:15]  # cap at 15 signals
+                ],
+                indent=2,
+            )
+            entities_json = json.dumps(
+                list({s.category.value if hasattr(s.category, "value") else str(s.category) for s in signals}),
+                indent=2,
+            )
+
+            # ── Step 1: classification ──────────────────────────────────
+            class_content = class_tmpl.render(
+                account_name=account_name,
+                signals_json=signals_json,
+                entities_json=entities_json,
+            )
+            class_result = await client.call(
+                model_task=class_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": class_content}],
+                temperature=class_tmpl.temperature,
+                max_tokens=class_tmpl.max_tokens,
+                call_id=f"sd_class_{trace_id}",
+            )
+            classified = parse_llm_json(class_result.content)
+
+            # ── Step 2: hypothesis generation (high-confidence only) ────
+            high_conf = [
+                s for s in signals if s.confidence_score >= 0.6
+            ]
+            high_conf_json = json.dumps(
+                [
+                    {
+                        "id": s.id,
+                        "category": s.category.value if hasattr(s.category, "value") else str(s.category),
+                        "description": s.description,
+                        "confidence": s.confidence_score,
+                    }
+                    for s in high_conf[:10]
+                ],
+                indent=2,
+            )
+            hyp_content = hyp_tmpl.render(
+                account_name=account_name,
+                high_confidence_signals_json=high_conf_json,
+            )
+            hyp_result = await client.call(
+                model_task=hyp_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": hyp_content}],
+                temperature=hyp_tmpl.temperature,
+                max_tokens=hyp_tmpl.max_tokens,
+                call_id=f"sd_hyp_{trace_id}",
+            )
+            hypotheses = parse_llm_json(hyp_result.content)
+
+            # ── Step 3: narrative ───────────────────────────────────────
+            signal_summary = {
+                "total": len(signals),
+                "high_confidence": len(high_conf),
+                "classified_types": classified.get("signal_types", []),
+            }
+            narr_content = narr_tmpl.render(
+                account_name=account_name,
+                hypotheses_json=json.dumps(hypotheses.get("hypotheses", []), indent=2),
+                signal_summary_json=json.dumps(signal_summary, indent=2),
+            )
+            narr_result = await client.call(
+                model_task=narr_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": narr_content}],
+                temperature=narr_tmpl.temperature,
+                max_tokens=narr_tmpl.max_tokens,
+                call_id=f"sd_narr_{trace_id}",
+            )
+            narrative_data = parse_llm_json(narr_result.content)
+
+            total_prompt = class_result.prompt_tokens + hyp_result.prompt_tokens + narr_result.prompt_tokens
+            total_completion = class_result.completion_tokens + hyp_result.completion_tokens + narr_result.completion_tokens
+            confidence = float(narrative_data.get("confidence", 0.7))
+
+            agent_result.payload = {
+                "classified_signals": classified.get("classified_signals", []),
+                "hypotheses": hypotheses.get("hypotheses", []),
+                "narrative": narrative_data.get("narrative", ""),
+                "top_signals": narrative_data.get("top_signals", []),
+                "evidence_refs": narrative_data.get("evidence_refs", []),
+            }
+            agent_result.mark_llm_enriched(
+                model=narr_result.model,
+                prompt_tokens=total_prompt,
+                completion_tokens=total_completion,
+                confidence=confidence,
+            )
+            logger.info(
+                "Signal detection LLM layer complete: model=%s tokens=%d",
+                narr_result.model,
+                total_prompt + total_completion,
+            )
+
+        except Exception:
+            logger.warning("Signal detection LLM layer failed", extra={"code": "llm_failed"})
+            agent_result.payload = {
+                "classified_signals": [],
+                "hypotheses": [],
+                "narrative": "",
+                "top_signals": [],
+                "evidence_refs": [],
+            }
+            agent_result.degraded_reason = "llm_failed"
+
+        return agent_result.to_dict()
+
+    def _resolve_provider_name(self) -> str:
+        import os
+        return (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (self.config.get("llm_provider") if isinstance(self.config, dict) else None)
+            or getattr(self.config, "llm_provider", None)
+            or "together"
+        )
 
     async def _persist_signal(
         self,

@@ -19,7 +19,11 @@ from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+<<<<<<< HEAD
 from .tenant_query_helper import run_tenant_validated_query
+=======
+from .tenant_cypher import fetch_tenant_validated_records, fetch_tenant_validated_single
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 logger = logging.getLogger(__name__)
 
@@ -182,14 +186,25 @@ class ContextGatheringService:
             ORDER BY s.confidence_score DESC
             LIMIT $limit
             """
+<<<<<<< HEAD
             records = await run_tenant_validated_query(
                 driver=self._driver,
                 query=query,
                 tenant_id=tenant_id,
+=======
+            records = await fetch_tenant_validated_records(
+                driver=self._driver,
+                query=query,
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 params={
                     "account_id": account_id,
                     "limit": MAX_SIGNALS,
                 },
+<<<<<<< HEAD
+=======
+                tenant_id=tenant_id,
+                operation="context_gatherer.account_signals",
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             )
 
             return [
@@ -224,14 +239,25 @@ class ContextGatheringService:
             ORDER BY vh.confidence_score DESC
             LIMIT $limit
             """
+<<<<<<< HEAD
             records = await run_tenant_validated_query(
                 driver=self._driver,
                 query=query,
                 tenant_id=tenant_id,
+=======
+            records = await fetch_tenant_validated_records(
+                driver=self._driver,
+                query=query,
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 params={
                     "account_id": account_id,
                     "limit": MAX_HYPOTHESES,
                 },
+<<<<<<< HEAD
+=======
+                tenant_id=tenant_id,
+                operation="context_gatherer.account_hypotheses",
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             )
 
             return [
@@ -278,6 +304,7 @@ class ContextGatheringService:
                    avg(COALESCE(e.time_to_value_days, 180)) AS avg_ttv
             """
 
+<<<<<<< HEAD
             records = await run_tenant_validated_query(
                 driver=self._driver,
                 query=query,
@@ -285,6 +312,15 @@ class ContextGatheringService:
                 params=params,
             )
             record = records[0] if records else None
+=======
+            record = await fetch_tenant_validated_single(
+                driver=self._driver,
+                query=query,
+                params=params,
+                tenant_id=tenant_id,
+                operation="context_gatherer.evidence_summary",
+            )
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
             if not record:
                 return None

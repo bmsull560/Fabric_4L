@@ -3,28 +3,99 @@
 Validates that X-Tenant-ID header cannot override JWT tenant claim.
 
 Production Invariant: JWT tenant claim takes precedence; mismatches rejected.
-
-Author: Autonomous Test Assurance Agent
-Date: 2026-04-28
+The ``validate_context_consistency`` function in GovernanceMiddleware enforces
+this: a JWT-authenticated request carrying an X-Tenant-ID that differs from
+the JWT tenant_id claim is rejected with HTTP 403.
 """
 
 from __future__ import annotations
 
+import os
+import time
+
 import pytest
 
-try:
-    from fastapi.testclient import TestClient
-    TESTCLIENT_AVAILABLE = True
-except ImportError:
-    TESTCLIENT_AVAILABLE = False
+# Ensure GovernanceMiddleware uses HS256 test tokens and no OIDC path.
+os.environ.setdefault("JWT_SECRET", "test-secret-key-must-be-at-least-32-bytes!!")
+os.environ.setdefault("JWT_ALGORITHM", "HS256")
+os.environ.setdefault("JWT_ISSUER", "value-fabric-internal")
+os.environ.setdefault("JWT_AUDIENCE", "value-fabric-services")
+os.environ.setdefault("OIDC_ISSUER", "")
+os.environ.setdefault("OIDC_AUDIENCE", "")
+os.environ.setdefault("TESTING", "true")
+os.environ.setdefault("ALLOW_LEGACY_TEST_TENANT_IDS", "true")
 
+try:
+    from fastapi import FastAPI, HTTPException, Request
+    from fastapi.testclient import TestClient
+    _FASTAPI_AVAILABLE = True
+except ImportError:
+    _FASTAPI_AVAILABLE = False
+    TestClient = None  # type: ignore[assignment,misc]
 
 pytestmark = [
-    pytest.mark.skipif(not TESTCLIENT_AVAILABLE, reason="FastAPI TestClient not available"),
+    pytest.mark.skipif(not _FASTAPI_AVAILABLE, reason="fastapi not installed"),
     pytest.mark.security,
     pytest.mark.tenant_mismatch,
     pytest.mark.tenant_boundary,
 ]
+
+_TEST_JWT_SECRET = os.environ["JWT_SECRET"]
+_TEST_ISSUER = os.environ["JWT_ISSUER"]
+_TEST_AUDIENCE = os.environ["JWT_AUDIENCE"]
+
+
+# ---------------------------------------------------------------------------
+# Module-level fixtures — override the shared conftest equivalents so these
+# tests exercise the real GovernanceMiddleware rather than the L1 app.
+# Pattern mirrors test_adversarial_auth.py and test_cross_tenant_jwt.py.
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def _mismatch_app():
+    """Minimal FastAPI app backed by real GovernanceMiddleware."""
+    if not _FASTAPI_AVAILABLE:
+        pytest.skip("fastapi not installed")
+
+    from value_fabric.shared.identity.middleware import GovernanceMiddleware
+
+    app = FastAPI()
+    app.add_middleware(GovernanceMiddleware, rate_limiter=None)
+
+    @app.get("/api/v1/entities")
+    def entities(request: Request):
+        ctx = getattr(request.state, "governance_context", None)
+        if ctx is None:
+            raise HTTPException(status_code=401, detail="Unauthenticated")
+        return {"items": [], "tenant_id": str(ctx.tenant_id)}
+
+    return app
+
+
+@pytest.fixture(scope="module")
+def client(_mismatch_app):
+    """TestClient wired to the real GovernanceMiddleware app."""
+    return TestClient(_mismatch_app, raise_server_exceptions=False)
+
+
+@pytest.fixture(scope="module")
+def tenant_a_token():
+    """JWT for tenant-a, signed with the test secret."""
+    import jwt as _jwt
+    now = int(time.time())
+    return _jwt.encode(
+        {
+            "sub": "user-123",
+            "tenant_id": "tenant-a",
+            "roles": ["analyst"],
+            "iss": _TEST_ISSUER,
+            "aud": _TEST_AUDIENCE,
+            "iat": now,
+            "exp": now + 3600,
+        },
+        _TEST_JWT_SECRET,
+        algorithm="HS256",
+    )
 
 
 class TestTenantHeaderMismatch:

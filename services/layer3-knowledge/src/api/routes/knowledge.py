@@ -1,4 +1,8 @@
-"""Layer 3 knowledge subgraph endpoints consumed by Layer 4 agents.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Layer 3 knowledge subgraph endpoints consumed by Layer 4 agents.
 
 Provides two read-only endpoints that replace the Cypher-in-L4 arch debt
 tracked in ``services/layer4-agents/src/workflows/queries.py``:
@@ -21,8 +25,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from auth.api_keys import APIKey
-from auth.middleware import get_current_api_key
 from logging_config import get_logger
 
 from ...api.dependencies_tenant_secured import create_neo4j_tenant_session

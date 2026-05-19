@@ -57,7 +57,16 @@ def test_route_table_integrity_after_refactor():
     assert any(p.startswith("/v1/workflows") for p in paths)
 
 
-def test_request_id_middleware_contract_is_canonical_and_stable():
+def test_request_id_middleware_contract_is_canonical_and_stable(monkeypatch):
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def _noop_lifespan(app):
+        yield
+
+    # Bypass all infrastructure startup checks (DB, Redis, checkpoint, etc.)
+    monkeypatch.setattr("value_fabric.layer4.api.app_factory.build_lifespan", lambda **_: _noop_lifespan)
+
     app = create_app()
 
     middleware_names = [mw.cls.__name__ for mw in app.user_middleware]

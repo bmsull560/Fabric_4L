@@ -1,4 +1,8 @@
-"""Thin FastAPI composition root for Layer 3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Thin FastAPI composition root for Layer 3.
 
 Migration ledger:
 - moved router groups: system, entity/browser, value tree, formulas, benchmarks, query/search helpers.
@@ -12,7 +16,7 @@ Canonical route ownership:
 
 from __future__ import annotations
 
-from api.app_monolith import (
+from ..api.app_monolith import (
     _security_config_l3,
     app,
     close_app_state,
@@ -20,7 +24,7 @@ from api.app_monolith import (
     init_telemetry,
     lifespan,
 )
-from api.routes.system import get_system_metrics, set_app_metrics
+from ..api.routes.system import get_system_metrics, set_app_metrics
 
 __all__ = [
     "_security_config_l3",

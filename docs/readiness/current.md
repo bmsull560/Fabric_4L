@@ -2,8 +2,8 @@
 
 - **Canonical Source:** This document is the single source of truth for launch readiness criteria and percentage.
 - **Generated From CI:** `make verify` (lint, type-check, tests, contract tests, build gates) and release-gate evidence scripts.
-- **Snapshot Date (UTC):** 2026-05-02
-- **Launch Readiness:** **95%**
+- **Snapshot Date (UTC):** 2026-05-17
+- **Launch Readiness:** **97%**
 
 ## CI Evidence Inputs
 
@@ -15,6 +15,15 @@
 - `scripts/ci/platform_contract_lint.py`
 - `scripts/ci/check_tool_contracts.py`
 - `.github/workflows/graph-module-tests.yml` (Graph Query module quality gates on PR + release branches)
+
+## Sprint Roadmap Progress (as of 2026-05-17)
+
+| Sprint | Status | Key outcomes |
+|---|---|---|
+| S1 — Foundations | ✅ Complete | `PYTEST` var fixed to use pipx binary; `make setup` installs into pytest venv; root `pytest.ini` `addopts` scoped (removed `--timeout`/`--randomly-seed`); `CONTRIBUTING.md` updated |
+| S2 — Core fixes | ✅ Complete | `get_openai_provider` mock → `get_llm_provider`; `Layer3KnowledgeClient` → `Layer3Client` import fixed (0-signal regression resolved); `HarnessRunRepository.list()` tuple handling verified; `CoreferenceResolver` verified implemented; `platform-contract` verified Pydantic v2 |
+| S3 — Integration | ✅ Complete | Formula category filter verified implemented; k8s Kustomize overlay verified correct; Layer 4 secret names verified (`llm-provider-secret` + `TOGETHER_API_KEY`) |
+| S4 — Release prep | ✅ Complete | Layer 3 Neo4j tenant isolation audit verified (see `docs/reference/layer3-tenant-isolation-audit.md`); `SqlTelemetryEmitter.get_events()` verified intentional `NotImplementedError`; readiness doc updated |
 
 ## Launch Criteria
 
@@ -36,3 +45,7 @@ Any archived readiness note that includes percentages must include at least one 
 - Filename prefix `ARCHIVED_`
 
 This allows automated checks to distinguish historical records from canonical readiness state.
+
+## Decision Artifact
+
+- Canonical launch decision package: `docs/readiness/launch-decision-artifact.md`

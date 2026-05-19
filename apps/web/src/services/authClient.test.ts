@@ -80,6 +80,18 @@ describe('AuthClient', () => {
       ).rejects.toMatchObject({ category: AuthErrorCategory.AUTHENTICATION, statusCode: 401 });
     });
 
+
+
+    it('blocks unsafe tenant slug input with an operator-safe validation message', async () => {
+      await expect(
+        client.initiateLogin('<script>alert(1)</script>', 'https://localhost:3000/callback')
+      ).rejects.toMatchObject({
+        category: AuthErrorCategory.VALIDATION,
+        message: 'Tenant slug contains unsafe characters. Contact your administrator.',
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('encodes redirect URI', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,

@@ -7,15 +7,15 @@ metadata:
     app: layer3-knowledge
     component: layer3
 spec:
-  replicas: 2
+  replicas: 1
+  selector:
+    matchLabels:
+      app: layer3-knowledge
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
-  selector:
-    matchLabels:
-      app: layer3-knowledge
   template:
     metadata:
       labels:
@@ -56,10 +56,8 @@ spec:
         - name: init-tmp
           emptyDir: {}
       containers:
-        # NOTE: CI/CD may override this branch tag with immutable digests for staging and production
         - name: api
-          image: services/layer3-knowledge:main
-          imagePullPolicy: Always
+          image: value-fabric/layer3-knowledge:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -71,41 +69,24 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
-            - secretRef:
-                name: layer3-db-credentials
-                optional: false
-            - secretRef:
-                name: layer3-secrets
-                optional: false
-            - secretRef:
-                name: layer3-auth
-                optional: false
-            - secretRef:
-                name: neo4j-secret
-                optional: false
           env:
-            # Dynamic database credentials (required)
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: layer3-db-credentials
-                  key: DATABASE_URL
-            # Neo4j from ExternalSecret
             - name: NEO4J_URI
-              valueFrom:
-                secretKeyRef:
-                  name: layer3-secrets
-                  key: NEO4J_URI
+              value: "bolt://neo4j:7687"
             - name: NEO4J_USER
-              valueFrom:
-                secretKeyRef:
-                  name: layer3-secrets
-                  key: NEO4J_USER
+              value: "neo4j"
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: layer3-secrets
-                  key: NEO4J_PASSWORD
+                  name: neo4j-secret
+                  key: auth
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pinecone-secret
+                  key: api-key
+                  optional: true
             - name: PINECONE_INDEX
               valueFrom:
                 configMapKeyRef:
@@ -131,20 +112,12 @@ spec:
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /health
               port: 8001
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          startupProbe:
-            httpGet:
-              path: /health
-              port: 8001
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 30
 ---
 apiVersion: v1
 kind: Service

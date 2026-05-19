@@ -11,9 +11,9 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from value_fabric.shared.security import validate_production_safety
-from value_fabric.shared.observability import configure_observability
 from value_fabric.shared.fastapi_framework import create_fabric_app
+from value_fabric.shared.observability import configure_observability
+from value_fabric.shared.security import validate_production_safety
 
 from ..config.settings import settings
 

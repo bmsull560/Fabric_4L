@@ -53,6 +53,39 @@ L4 Agents (harness)
 16. The harness must not create a second tenant-context mechanism.
 17. The harness must degrade gracefully when optional downstream services are unavailable.
 
+## L5 Validation Integration
+
+The `ValidationHook` delegates claim validation to a `ClaimValidator` implementation.
+Two implementations are provided:
+
+### LiveL5Validator (`src/harness/live_l5_validator.py`)
+
+Backed by `Layer5GroundTruthClient` (`src/integration/layer5_client.py`).
+
+**Flow (idempotent):**
+1. Call `list_truths` scoped to `organization_id=request.tenant_id`.
+2. Match an existing `TruthObject` by normalized claim text (lowercased, stripped).
+3. If found: map `TruthStatus → ValidationState`. Approved truths older than `stale_threshold_hours` are downgraded to `NEEDS_REVIEW`.
+4. If not found: call `submit_truth` and return `NEEDS_REVIEW`.
+5. On any exception: return `INSUFFICIENT_EVIDENCE` — never raises, never silently approves.
+
+**TruthStatus mapping:**
+
+| L5 TruthStatus | ValidationState |
+|---|---|
+| `extracted` | `NEEDS_REVIEW` |
+| `supported` | `NEEDS_REVIEW` |
+| `corroborated` | `NEEDS_REVIEW` |
+| `approved` | `PASSED` (or `NEEDS_REVIEW` if stale) |
+| `disputed` | `FAILED` |
+| anything else | `INSUFFICIENT_EVIDENCE` |
+
+**Tenant isolation invariant:** `list_truths` is always called with `organization_id=request.tenant_id`. Cross-tenant `TruthObjects` are never reused.
+
+### Factory
+
+`make_live_l5_registry(session, tenant_id, ...)` in `src/harness/factory.py` constructs a `SqlHarnessRegistry` with `LiveL5Validator` as the primary validator. L5 connection settings are read from environment variables `L5_BASE_URL` and `L5_SERVICE_TOKEN`.
+
 ## Non-Decisions (Out of Scope)
 
 - Full self-improvement automation (loop 7 from the blueprint)
@@ -61,15 +94,19 @@ L4 Agents (harness)
 - Complex rollback orchestration for every tool
 - Multi-zone deployment model
 - Full procedural memory system
-- SQL persistence (in-memory MVP; upgrade path documented)
-- FastAPI routes (deferred; test patterns established)
+- FastAPI routes (implemented; see `src/api/routes/harness.py` and `docs/architecture/harness-agent-integration.md`)
 - Frontend changes (deferred until backend validated)
+
+> **Note on gate decide endpoint:** The canonical path is `POST /v1/harness/gates/{gate_id}/decide`
+> (gate-scoped). The run-scoped variant `POST /v1/harness/runs/{run_id}/gates/{gate_id}/decide`
+> is **not implemented**. `decision_by` is always derived from auth context, never from the request body.
 
 ## Implementation Notes
 
 - Uses Pydantic v2 for all models.
-- In-memory storage for MVP.
+- SQL-backed stores via `SqlHarnessRegistry` (`src/harness/sql_stores.py`).
 - Deterministic SHA-256 hashing for checkpoints.
 - Explicit error types for all failure modes.
 - Structured trace events (no free-text-only logs).
-- Test coverage for all state transitions, policies, and invariants.
+- All `ClaimValidator` and `ValidationHook` methods are async.
+- Test coverage for all state transitions, policies, invariants, and L5 validator behavior.

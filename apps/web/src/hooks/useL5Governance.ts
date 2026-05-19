@@ -66,7 +66,7 @@ function buildTruthsPath(params: L5TruthQueryParams = {}): string {
 
 export function useL5Truths(params: L5TruthQueryParams = {}) {
   return useQuery({
-    queryKey: QK.groundTruth.truths(params),
+    queryKey: QK.groundTruth.list(params),
     queryFn: () => fetchJson<L5TruthListResponse>(buildTruthsPath(params)),
     staleTime: STALE_TIME.poll,
   });
@@ -82,7 +82,7 @@ export function useL5MaturityLadder() {
 
 export function useL5TruthAudit(truthId: string | null) {
   return useQuery({
-    queryKey: QK.groundTruth.truthAudit(truthId),
+    queryKey: QK.groundTruth.audit(truthId),
     queryFn: () => fetchJson<L5TruthAuditEntry[]>(`/api/v1/truths/${encodeURIComponent(truthId || '')}/audit`),
     enabled: Boolean(truthId),
     staleTime: STALE_TIME.activity,

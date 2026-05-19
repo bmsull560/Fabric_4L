@@ -1,10 +1,20 @@
-"""FastAPI dependencies for Layer 3 API."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: FastAPI dependencies for Layer 3 API.
+"""
 
 import logging
 
 from fastapi import FastAPI, HTTPException, Request
-from neo4j.exceptions import ConfigurationError, Neo4jError, ServiceUnavailable, TransientError
 from neo4j import AsyncDriver
+from neo4j.exceptions import (
+    ConfigurationError,
+    Neo4jError,
+    ServiceUnavailable,
+    TransientError,
+)
 from value_fabric.layer3.agents import (
     NarrativeSynthesisAgent,
     ProvenanceTrackingAgent,

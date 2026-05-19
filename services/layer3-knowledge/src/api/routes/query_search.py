@@ -1,4 +1,8 @@
-"""Graph query/search route helpers extracted from Layer 3 monolith.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Graph query/search route helpers extracted from Layer 3 monolith.
 
 Migration ledger:
 - moved groups: graphrag query aliases, streaming graphrag query, hybrid search execution.
@@ -15,16 +19,22 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
-from asyncio import TimeoutError as AsyncTimeoutError
-from fastapi import HTTPException, Request
+from fastapi import Request
+from fastapi.responses import StreamingResponse
 from pydantic import ValidationError as PydanticValidationError
 from value_fabric.shared.identity import RequestContext
-from fastapi.responses import StreamingResponse
 
-from api.cache import get_request_deduplicator
-from api.exception_mapping import map_exception_to_http_error
-from api.exceptions import SearchError, VectorStoreError
-from api.models import GraphRAGQuery, GraphRAGResponse, SearchRequest, SearchResponse, SearchResult, SearchType
+from ...api.cache import get_request_deduplicator
+from ...api.exception_mapping import map_exception_to_http_error
+from ...api.exceptions import SearchError, VectorStoreError
+from ...api.models import (
+    GraphRAGQuery,
+    GraphRAGResponse,
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+    SearchType,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +162,7 @@ async def graph_rag_query_impl(
         context["error_code"] = "VALIDATION_ERROR"
         logger.warning("GraphRAG query validation failed", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
-    except (AsyncTimeoutError, TimeoutError) as exc:
+    except TimeoutError as exc:
         context = _build_error_context(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
             endpoint="/v1/query",
@@ -197,7 +207,7 @@ async def graph_rag_query_stream_impl(
                     "progress_percent": event.get("progress_percent", 0.0),
                 }
                 yield f"data: {json.dumps(event_data)}\\n\\n"
-        except (AsyncTimeoutError, TimeoutError, RuntimeError, ValueError, TypeError) as exc:
+        except (TimeoutError, RuntimeError, ValueError, TypeError) as exc:
             logger.error("Streaming GraphRAG query failed", extra={"context": {"tenant": str(ctx.tenant_id) if ctx and ctx.tenant_id else "unknown", "endpoint": "/v1/query/stream", "operation": "graph_rag_query_stream", "error_type": exc.__class__.__name__}}, exc_info=True)
             trace_id = None
             if isinstance(exc, Exception):
@@ -310,7 +320,7 @@ async def hybrid_search_impl(
         context["error_code"] = "VALIDATION_ERROR"
         logger.warning("Search validation failed", extra={"context": context}, exc_info=True)
         raise map_exception_to_http_error(exc, context=context)
-    except (AsyncTimeoutError, TimeoutError) as exc:
+    except TimeoutError as exc:
         context = _build_error_context(
             tenant_id=str(ctx.tenant_id) if ctx and ctx.tenant_id else None,
             endpoint="/v1/search",

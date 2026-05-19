@@ -195,6 +195,18 @@ def _allow_legacy_test_tenant_ids() -> bool:
     ) and environment.strip().lower() not in {"prod", "production", "staging", "stage"}
 
 
+_KNOWN_PERMISSION_VALUES: frozenset[str] = frozenset(p.value for p in Permission)
+
+
+def _is_known_permission(value: str) -> bool:
+    """Return True only for strings that map to a known Permission enum value.
+
+    Wildcards (``"*"``, ``"all"``) and any other unrecognised strings return
+    False so they are silently discarded when building a RequestContext.
+    """
+    return value in _KNOWN_PERMISSION_VALUES
+
+
 def _coerce_tenant_id_for_context(raw_tenant_id: Any) -> UUID | str:
     try:
         return UUID(str(raw_tenant_id))
@@ -241,9 +253,17 @@ def extract_context_from_jwt(payload: dict[str, Any]) -> RequestContext:
         except (TypeError, ValueError):
             workspace_id = str(raw_workspace)
 
-    permissions = payload.get("permissions") or []
-    if len(permissions) > 1024:
+    raw_permissions = payload.get("permissions") or []
+    if len(raw_permissions) > 1024:
         raise ValueError("Too many permissions in JWT claims")
+    # Filter to known Permission enum values only. Unknown strings (including
+    # wildcards like "*" or "all") are silently discarded — they must never
+    # grant access. This prevents wildcard injection via JWT claims.
+    permissions: frozenset[Permission] = frozenset(
+        Permission(str(p))
+        for p in raw_permissions
+        if _is_known_permission(str(p))
+    )
     roles = payload.get("roles") or []
     if not roles and payload.get("role"):
         roles = [payload.get("role")]
@@ -257,7 +277,7 @@ def extract_context_from_jwt(payload: dict[str, Any]) -> RequestContext:
         org_id=org_id,
         workspace_id=workspace_id,
         roles=list(roles),
-        permissions=frozenset(str(permission) for permission in permissions),
+        permissions=permissions,
         source="jwt",
         raw=dict(payload),
         impersonator_id=payload.get("impersonator_id"),
@@ -441,10 +461,38 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 _current_context.reset(token)
                 token = set_request_context(ctx)
                 request.state.governance_context = ctx
-                request.state.context = ctx
+
+                # Tenant lifecycle enforcement — must run before business logic.
+                # tenant_status is carried in the JWT raw claims or context raw dict.
+                tenant_status = None
+                if ctx.raw:
+                    tenant_status = ctx.raw.get("tenant_status")
+                if tenant_status == "suspended":
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={
+                            "detail": "Tenant account is suspended. Please contact support.",
+                            "error": "tenant_suspended",
+                        },
+                    )
+                if tenant_status == "pending":
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={
+                            "detail": "Tenant account is pending activation.",
+                            "error": "tenant_pending",
+                        },
+                    )
+                if tenant_status == "deleted":
+                    return JSONResponse(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        content={
+                            "detail": "Tenant not found.",
+                            "error": "tenant_not_found",
+                        },
+                    )
             else:
                 request.state.governance_context = None
-                request.state.context = None
 
             # Rate limiting check (after identity, before request handling)
             if ctx is not None and self._rate_limiter is not None:
@@ -871,6 +919,22 @@ class SuspendedTenantError(Exception):
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
         super().__init__(f"Tenant {tenant_id} is suspended. Please contact support.")
+
+
+class PendingTenantError(Exception):
+    """Raised when tenant is pending activation and cannot access resources."""
+
+    def __init__(self, tenant_id: str):
+        self.tenant_id = tenant_id
+        super().__init__(f"Tenant {tenant_id} is pending activation.")
+
+
+class DeletedTenantError(Exception):
+    """Raised when tenant has been deleted and cannot access resources."""
+
+    def __init__(self, tenant_id: str):
+        self.tenant_id = tenant_id
+        super().__init__(f"Tenant {tenant_id} not found.")
 
 
 # Compatibility exports used by mandatory security regression tests.

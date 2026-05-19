@@ -17,6 +17,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/mocks/server';
+import { QK } from './queryKeys';
 import {
   useTargets,
   useTarget,
@@ -73,7 +74,8 @@ const mockStats = {
   average_health_score: 80,
 };
 
-const L1_PREFIX = '/ingest';
+// Full URL prefix: VITE_API_VERSION_PREFIX (/api/v1) + l1 layer prefix (/ingest)
+const L1_PREFIX = '/api/v1/ingest';
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
@@ -165,7 +167,7 @@ describe('useTargets', () => {
   });
 
   it('different filter objects produce distinct query keys', () => {
-    const { QK } = require('./queryKeys');
+    
     const k1 = QK.targets.list({ status: 'ACTIVE' });
     const k2 = QK.targets.list({ status: 'PAUSED' });
     expect(k1).not.toEqual(k2);
@@ -387,19 +389,19 @@ describe('useValidateTarget', () => {
 
 describe('Query key namespace', () => {
   it('uses QK.targets namespace', () => {
-    const { QK } = require('./queryKeys');
+    
     expect(QK.targets).toBeDefined();
     expect(QK.targets.all).toEqual(['targets']);
     expect(QK.targets.stats).toEqual(['targets', 'stats']);
   });
 
   it('detail key includes target ID', () => {
-    const { QK } = require('./queryKeys');
+    
     expect(QK.targets.detail('abc')).toContain('abc');
   });
 
   it('jobs key includes target ID', () => {
-    const { QK } = require('./queryKeys');
+    
     expect(QK.targets.jobs('abc')).toContain('abc');
   });
 });

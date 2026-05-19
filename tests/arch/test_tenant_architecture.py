@@ -145,10 +145,21 @@ def test_tenant_required_api_dependencies_reject_missing_and_invalid_tenant() ->
 
     require_authenticated = _get_function(deps_tree, "require_authenticated")
     assert require_authenticated is not None, "dependencies.py must define require_authenticated"
-    assert _function_mentions_names(
-        require_authenticated,
-        {"HTTPException", "status"},
-    ), "require_authenticated should raise HTTPException with status metadata"
+    # The function may delegate to a private helper (e.g. _unauthorized) that raises
+    # HTTPException, rather than referencing HTTPException/status directly.  Accept
+    # either pattern: direct reference OR a call to a helper whose name contains
+    # "unauthorized" or "forbidden" (which by convention wraps HTTPException).
+    direct_mention = _function_mentions_names(require_authenticated, {"HTTPException", "status"})
+    helper_call = any(
+        isinstance(n, ast.Call)
+        and isinstance(n.func, ast.Name)
+        and any(kw in n.func.id.lower() for kw in ("unauthorized", "forbidden", "http_exc"))
+        for n in ast.walk(require_authenticated)
+    )
+    assert direct_mention or helper_call, (
+        "require_authenticated must raise HTTPException (directly or via a helper such as "
+        "_unauthorized/_forbidden) to reject unauthenticated requests"
+    )
 
     require_tenant = _get_function(deps_tree, "require_tenant")
     assert require_tenant is not None, "dependencies.py must define require_tenant"

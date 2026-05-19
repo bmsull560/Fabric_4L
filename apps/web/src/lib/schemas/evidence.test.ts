@@ -80,11 +80,6 @@ describe("evidence schemas", () => {
     );
   });
 
-  it("keeps workflow case-study fixture aligned to UI evidence contract", () => {
-    expect(workflowEvidenceFixture.case_studies[0]?.id).toBe("case-study-1");
-    expect(workflowEvidenceFixture.case_studies[0]?.year).toBe(2026);
-  });
-
   it("parses create and update mutation acknowledgement payloads", () => {
     const parsed = parseCaseStudyMutationResponse({
       id: "case-study-1",

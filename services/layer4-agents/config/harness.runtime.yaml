@@ -1,0 +1,273 @@
+# harness.runtime.yaml — Agent/workflow runtime configuration for the Fabric Harness.
+#
+# Defines per-workflow-type behavior: allowed tools, budget limits, invariants,
+# validation requirements, checkpointing, failure handling, and audit settings.
+#
+# Each workflow section references its corresponding .abom.json manifest in
+# services/layer4-agents/manifests/ for tool-level privilege definitions.
+#
+# Schema version must be bumped when adding required keys.
+
+schema_version: "1.0"
+
+# ── LLM provider and model routing ───────────────────────────────────────────
+#
+# GovernedLLMClient reads this section to resolve which model to use for each
+# model_task (reasoning | extraction | narrative).  The active provider is set
+# by the LAYER4_LLM_PROVIDER environment variable; this block defines the
+# model assignments and per-task budget caps.
+#
+# model_task values map directly to the `model_task` field in prompt frontmatter.
+
+llm:
+  provider: together   # together | openai | anthropic  (env var overrides)
+
+  models:
+    # Together.ai model assignments by task type
+    # reasoning  → Maverick (high-context, multi-step reasoning)
+    # extraction → Scout (fast classification and structured extraction)
+    # narrative  → 70B fallback (stable, cost-effective generation)
+    together:
+      reasoning:  "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"
+      extraction: "meta-llama/Llama-4-Scout-17B-16E-Instruct"
+      narrative:  "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+      embedding:  "togethercomputer/m2-bert-80M-8k-retrieval"
+
+    openai:
+      reasoning:  "gpt-4o"
+      extraction: "gpt-4o-mini"
+      narrative:  "gpt-4o"
+      embedding:  "text-embedding-3-small"
+
+    anthropic:
+      reasoning:  "claude-3-5-sonnet-20241022"
+      extraction: "claude-3-haiku-20240307"
+      narrative:  "claude-3-5-sonnet-20241022"
+      embedding:  null   # Anthropic has no embedding API; falls back to together/openai
+
+  # Per-call token budget caps (applied by GovernedLLMClient before dispatch)
+  token_budgets:
+    reasoning:
+      max_prompt_tokens: 8000
+      max_completion_tokens: 3000
+    extraction:
+      max_prompt_tokens: 6000
+      max_completion_tokens: 2000
+    narrative:
+      max_prompt_tokens: 4000
+      max_completion_tokens: 1200
+
+  # Retry policy for transient provider errors
+  retry:
+    max_attempts: 3
+    backoff_seconds: 2.0
+    retryable_categories:
+      - TIMEOUT
+      - RATE_LIMIT
+
+  # Cost guardrail: abort if a single call would exceed this threshold
+  max_cost_per_call_usd: 0.50
+
+# ── Workflow-type runtime policies ────────────────────────────────────────────
+
+workflows:
+
+  roi_calculator:
+    # Manifest: services/layer4-agents/manifests/value_model_agent.abom.json
+    manifest_ref: "manifests/value_model_agent.abom.json"
+
+    allowed_tools:
+      - query_graph
+      - semantic_search
+      - get_entity
+      - get_relationships
+      - evaluate_formula
+      - calculate_roi
+      - compare_benchmarks
+      - sensitivity_analysis
+      - validate_input
+      - format_currency
+
+    denied_tools:
+      - update_opportunity
+      - export_to_crm
+      - send_notification
+      - export_document
+
+    budget:
+      max_steps: 40
+      max_retries: 3
+      timeout_seconds: 300
+      max_cost_usd: 2.00
+
+    invariants:
+      max_tool_calls_per_run: 80
+      require_human_approval:
+        - VALIDATE_CLAIMS   # gate required before publishing ROI output
+      custom:
+        max_formula_evaluations_per_run: 50
+        max_sensitivity_iterations: 1000
+
+    validation:
+      require_l5_validation: true
+      stale_threshold_hours: 24
+
+    checkpointing:
+      enabled: true
+      checkpoint_on_states:
+        - RESOLVE_CONTEXT
+        - QUANTIFY_IMPACT
+        - VALIDATE_CLAIMS
+
+    failure_policy:
+      on_l5_unavailable: degrade   # return INSUFFICIENT_EVIDENCE, do not block
+      on_gate_timeout: expire      # auto-expire gate after timeout
+
+    audit:
+      emit_trace_events: true
+      log_level: INFO
+
+  whitespace_analysis:
+    # Manifest: services/layer4-agents/manifests/value_model_agent.abom.json
+    manifest_ref: "manifests/value_model_agent.abom.json"
+
+    allowed_tools:
+      - query_graph
+      - semantic_search
+      - get_entity
+      - get_relationships
+      - find_paths
+      - score_lead
+      - get_prospect_data
+      - validate_input
+
+    denied_tools:
+      - update_opportunity
+      - export_to_crm
+      - send_notification
+
+    budget:
+      max_steps: 30
+      max_retries: 2
+      timeout_seconds: 180
+      max_cost_usd: 1.00
+
+    invariants:
+      max_tool_calls_per_run: 60
+      require_human_approval: []
+
+    validation:
+      require_l5_validation: false
+      stale_threshold_hours: 48
+
+    checkpointing:
+      enabled: true
+      checkpoint_on_states:
+        - RESOLVE_CONTEXT
+        - RETRIEVE_KNOWLEDGE
+
+    failure_policy:
+      on_l5_unavailable: degrade
+      on_gate_timeout: expire
+
+    audit:
+      emit_trace_events: true
+      log_level: INFO
+
+  business_case:
+    # Manifest: services/layer4-agents/manifests/narrative_agent.abom.json
+    manifest_ref: "manifests/narrative_agent.abom.json"
+
+    allowed_tools:
+      - query_graph
+      - semantic_search
+      - get_entity
+      - evaluate_formula
+      - calculate_roi
+      - compare_benchmarks
+      - generate_section
+      - format_table
+      - format_currency
+      - validate_input
+      - export_document
+
+    denied_tools:
+      - update_opportunity
+      - export_to_crm
+      - send_notification
+
+    budget:
+      max_steps: 60
+      max_retries: 3
+      timeout_seconds: 600
+      max_cost_usd: 5.00
+
+    invariants:
+      max_tool_calls_per_run: 100
+      require_human_approval:
+        - VALIDATE_CLAIMS
+        - PUBLISH_OUTPUT   # final approval before customer-facing output
+
+    validation:
+      require_l5_validation: true
+      stale_threshold_hours: 24
+
+    checkpointing:
+      enabled: true
+      checkpoint_on_states:
+        - RESOLVE_CONTEXT
+        - GENERATE_HYPOTHESES
+        - QUANTIFY_IMPACT
+        - VALIDATE_CLAIMS
+
+    failure_policy:
+      on_l5_unavailable: block    # business case must not publish unvalidated claims
+      on_gate_timeout: expire
+
+    audit:
+      emit_trace_events: true
+      log_level: INFO
+
+  orchestrator:
+    # Manifest: services/layer4-agents/manifests/orchestration_controller.abom.json
+    manifest_ref: "manifests/orchestration_controller.abom.json"
+
+    allowed_tools:
+      - query_graph
+      - semantic_search
+      - get_entity
+      - get_relationships
+      - create_task
+      - send_notification
+      - validate_input
+
+    denied_tools:
+      - export_to_crm
+      - export_document
+
+    budget:
+      max_steps: 20
+      max_retries: 2
+      timeout_seconds: 120
+      max_cost_usd: 0.50
+
+    invariants:
+      max_tool_calls_per_run: 40
+      require_human_approval: []
+
+    validation:
+      require_l5_validation: false
+      stale_threshold_hours: 72
+
+    checkpointing:
+      enabled: true
+      checkpoint_on_states:
+        - RESOLVE_CONTEXT
+
+    failure_policy:
+      on_l5_unavailable: degrade
+      on_gate_timeout: expire
+
+    audit:
+      emit_trace_events: true
+      log_level: DEBUG

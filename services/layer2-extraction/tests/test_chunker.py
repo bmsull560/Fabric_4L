@@ -1,25 +1,8 @@
 """Tests for semantic chunker (layer2-extraction/src/.../extraction/chunker.py)."""
 
-import importlib
-from pathlib import Path
-
 import pytest
 
-# Import the chunker module directly (avoid __init__.py chain that pulls numpy)
-_chunker_path = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "layer2_extraction"
-    / "extraction"
-    / "chunker.py"
-)
-spec = importlib.util.spec_from_file_location("chunker", _chunker_path)
-_chunker_mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(_chunker_mod)
-
-Chunk = _chunker_mod.Chunk
-SemanticChunker = _chunker_mod.SemanticChunker
-chunk_markdown = _chunker_mod.chunk_markdown
+from layer2_extraction.extraction.chunker import Chunk, SemanticChunker, chunk_markdown
 
 
 # ═══════════════════════════════════════════════════════════════════════════

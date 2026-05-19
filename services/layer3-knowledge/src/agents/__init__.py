@@ -1,4 +1,8 @@
-"""Backend agents for Value Fabric knowledge graph operations.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Backend agents for Value Fabric knowledge graph operations.
 
 This module implements the agent framework defined in the backend logic spec:
 - ValueTreeProjectionAgent: Value tree traversal and projection
@@ -8,18 +12,18 @@ This module implements the agent framework defined in the backend logic spec:
 - ProvenanceTrackingAgent: PROV-O lineage tracking
 """
 
-from agents.narrative_synthesis import NarrativeSynthesisAgent
-from agents.provenance_tracking import ProvenanceTrackingAgent
-from agents.roi_calculation import ROICalculationAgent
-from agents.scenario_engine import (
+from ..agents.narrative_synthesis import NarrativeSynthesisAgent
+from ..agents.provenance_tracking import ProvenanceTrackingAgent
+from ..agents.roi_calculation import ROICalculationAgent
+from ..agents.scenario_engine import (
     SavedScenario,
     ScenarioEngine,
     ScenarioResult,
     VariableAdjustment,
     scenario_engine,
 )
-from agents.value_tree_projection import ValueTreeProjectionAgent
-from agents.whitespace_analysis import WhitespaceAnalysisAgent
+from ..agents.value_tree_projection import ValueTreeProjectionAgent
+from ..agents.whitespace_analysis import WhitespaceAnalysisAgent
 
 __all__ = [
     "ValueTreeProjectionAgent",

@@ -7,10 +7,8 @@ Fails fast on startup if required configuration is missing or invalid.
 from __future__ import annotations
 
 import importlib
-import secrets
-
 import logging
-
+import secrets
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -131,6 +129,33 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
     anthropic_model: str = Field(default="claude-3-sonnet-20240229", description="Default Anthropic model")
     anthropic_timeout_seconds: int = Field(default=60, description="Anthropic API timeout")
+
+    # Together.ai
+    together_api_key: str | None = Field(
+        default=None,
+        description="Together.ai API key for LLM operations",
+    )
+    together_base_url: str = Field(
+        default="https://api.together.ai/v1",
+        description="Together.ai API base URL (OpenAI-compatible)",
+    )
+    together_default_model: str = Field(
+        default="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        description="Default Together.ai model when not specified by harness config",
+    )
+    together_timeout_seconds: int = Field(
+        default=60,
+        description="Together.ai API timeout in seconds",
+    )
+
+    # LLM provider selection
+    llm_provider: str = Field(
+        default="together",
+        description=(
+            "Active LLM provider: 'together' | 'openai' | 'anthropic'. "
+            "Governs which provider GovernedLLMClient uses for agent workflows."
+        ),
+    )
 
     # ==========================================================================
     # Layer Integration
@@ -538,7 +563,7 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def validate_prod_neo4j_aura(self) -> "Settings":
+    def validate_prod_neo4j_aura(self) -> Settings:
         """Production/staging must use managed Aura, not in-cluster Neo4j."""
         validate_neo4j_aura_config(
             uri=self.neo4j_uri,

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from value_fabric.shared.error_handling import register_exception_handlers
 from value_fabric.shared.fastapi_framework.middleware import resolve_cors_policy
 from value_fabric.shared.identity.middleware import GovernanceMiddleware
 from value_fabric.shared.security import SecurityConfig, add_security_middleware
 
+from ..database import db_session_for_context
 from ..metrics import get_metrics
 from ..tenants import get_tenant_settings, lookup_api_key_by_hash
-from ..database import db_session_for_context
 
 
 def on_rate_limit_hit(tenant_id: str, scope: str):

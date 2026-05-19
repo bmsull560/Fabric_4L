@@ -5,9 +5,11 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
+# value_fabric/layer3 is a path-redirect shim; canonical source lives under
+# services/layer3-knowledge/src/ (ADR-027).
 FILES = [
-    ROOT / 'value_fabric/layer3/analytics/similarity.py',
-    ROOT / 'value_fabric/layer3/agents/roi_calculation.py',
+    ROOT / 'services/layer3-knowledge/src/analytics/similarity.py',
+    ROOT / 'services/layer3-knowledge/src/agents/roi_calculation.py',
 ]
 ALLOW_MARKER = 'strict-scoped-query-execution'
 

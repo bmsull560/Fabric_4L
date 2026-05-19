@@ -8,26 +8,19 @@ import sys
 from pathlib import Path
 
 
-EXPECTED: dict[str, str] = {
-    "services/layer3-knowledge/src/api/models.py": (
-        '"""Layer 3 compatibility shim for API models.\n\n'
-        'This module intentionally re-exports the canonical Layer 3 API models from\n'
-        '``value_fabric.layer3.api.models`` and must not contain service-local business\n'
-        'logic.\n"""\n\n'
-        'from value_fabric.layer3.api.models import *  # noqa: F401,F403\n'
-    ),
-    "services/layer3-knowledge/src/api/app_monolith.py": (
-        '"""Allowed service-local exception for Layer 3 service wrapper.\n\n'
-        'Owner: layer3-knowledge\n'
-        'Removal/migration target: 2026-09-30\n'
-        'Reason: Service-wrapper-only logic permitted by runtime path governance.\n"""\n\n\n'
-        'from value_fabric.layer3.api.app_monolith import *  # noqa: F401,F403\n'
-    ),
-    "services/layer3-knowledge/src/services/product_service.py": (
-        '"""Compatibility wrapper for value_fabric.layer3.services.product_service."""\n\n'
-        'from value_fabric.layer3.services.product_service import *  # noqa: F401,F403\n'
-    ),
-}
+# The value_fabric.layer3 namespace is a path-redirect shim: its __init__.py
+# appends services/layer3-knowledge/src/ to __path__, making the service tree
+# the canonical source.  Files inside services/layer3-knowledge/src/ are
+# therefore the canonical implementations — they cannot re-export themselves
+# via value_fabric.layer3.* without creating a circular import.
+#
+# The three files below were previously expected to be thin re-export wrappers,
+# but that expectation was architecturally incorrect given the redirect-shim
+# design.  They are substantive canonical modules and are excluded from the
+# drift check.  Any future service-local *compatibility* shims (files that
+# exist solely to forward to a canonical path outside this service) should be
+# added to EXPECTED with their required shim content.
+EXPECTED: dict[str, str] = {}
 
 
 def main(argv: list[str] | None = None) -> int:

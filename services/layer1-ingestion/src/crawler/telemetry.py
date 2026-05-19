@@ -73,10 +73,30 @@ def init_telemetry(
     resource = Resource.create(resource_attrs)
     provider = TracerProvider(resource=resource)
 
-    # Use console exporter as default (production should use OTLP)
-    from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+    # Use OTLP exporter when OTEL_EXPORTER_OTLP_ENDPOINT is configured.
+    # Fall back to ConsoleSpanExporter in development/test environments only.
+    # A misconfigured production pod (missing endpoint) will log a warning so
+    # the gap is visible in logs rather than silently dropping traces.
+    import os as _os
+    otlp_endpoint = _os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+    if otlp_endpoint:
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+        exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+        logger.info(
+            "Telemetry using OTLP exporter",
+            service=service_name,
+            endpoint=otlp_endpoint,
+        )
+    else:
+        from opentelemetry.sdk.trace.export import ConsoleSpanExporter
+        exporter = ConsoleSpanExporter()
+        logger.warning(
+            "OTEL_EXPORTER_OTLP_ENDPOINT not set — traces written to stdout only. "
+            "Set this variable in production to send traces to an OTel collector.",
+            service=service_name,
+        )
 
-    processor = BatchSpanProcessor(ConsoleSpanExporter())
+    processor = BatchSpanProcessor(exporter)
     provider.add_span_processor(processor)
 
     trace.set_tracer_provider(provider)

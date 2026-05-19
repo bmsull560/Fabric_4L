@@ -1,4 +1,9 @@
-"""Provenance and audit read-only route group extracted from app_monolith."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Provenance and audit read-only route group extracted from app_monolith.
+"""
 
 import logging
 import uuid
@@ -7,8 +12,13 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from api.dependencies import AppState, get_app_state
-from api.models import AuditLogEntry, AuditLogResponse, ProvenanceStep, ProvenanceTrailResponse
+from ...api.dependencies import AppState, get_app_state
+from ...api.models import (
+    AuditLogEntry,
+    AuditLogResponse,
+    ProvenanceStep,
+    ProvenanceTrailResponse,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

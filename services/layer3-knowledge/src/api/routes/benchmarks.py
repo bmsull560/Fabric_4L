@@ -1,4 +1,8 @@
-"""Benchmark API routes for Layer 3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Benchmark API routes for Layer 3.
 
 Provides endpoints for benchmark CRUD and policy management.
 Benchmarks are stored as Neo4j Benchmark nodes and may be linked to
@@ -13,8 +17,6 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from auth.api_keys import APIKey
-from auth.middleware import get_current_api_key
 from logging_config import get_logger
 
 from ...api.dependencies_tenant_secured import create_neo4j_tenant_session

@@ -2,17 +2,24 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+import uuid
+
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 
+from app.core.config import get_settings
 from app.core.database import db
+from value_fabric.shared.database.tenant_validation import SYSTEM_TENANT_ID
 from app.core.security import (
     create_access_token,
     get_current_user,
     hash_password,
+    is_account_locked,
+    record_failed_login,
+    record_successful_login,
+    validate_password_strength,
     verify_password,
 )
 from app.models.schemas import Tenant, User
@@ -29,7 +36,9 @@ class SignupRequest(BaseModel):
     password: str
     name: str
     tenant_name: str
-    plan: str = "team"
+    # plan is intentionally absent: unauthenticated callers must not self-assign
+    # a billing tier. New tenants always start on "free". Plan upgrades require
+    # a separate authenticated + authorized flow (F-04).
 
 
 class LoginRequest(BaseModel):
@@ -46,7 +55,9 @@ class TokenResponse(BaseModel):
 class InviteRequest(BaseModel):
     email: EmailStr
     name: str
-    role: Literal["admin", "editor", "viewer"] = "editor"
+    # Canonical role schema — must match User.role (F-14).
+    # super_admin cannot be granted via invite (F-11).
+    role: Literal["tenant_admin", "content_admin", "analyst", "read_only"] = "analyst"
 
 
 class AcceptInviteRequest(BaseModel):
@@ -72,29 +83,38 @@ class UserResponse(BaseModel):
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def signup(payload: SignupRequest) -> TokenResponse:
     """Create a new tenant and user, then return a JWT."""
-    # Check for existing user with the same email
-    existing = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    # Validate password strength server-side before any DB work (F-02).
+    try:
+        validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    # Cross-tenant email uniqueness check — requires explicit allow_system_scope
+    # so the bypass cannot be triggered by an arbitrary caller passing "system".
+    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with this email already exists",
         )
 
-    tenant_id = f"tenant-{payload.email.split('@')[0].lower()}"
+    tenant_id = str(uuid.uuid4())
     tenant = Tenant(
         id=tenant_id,
         name=payload.tenant_name,
-        plan=payload.plan,  # type: ignore[arg-type]
+        plan="free",  # always start on free; upgrades require a separate authorized flow
     )
     db.tenants.insert(tenant.id, tenant)
 
-    user_id = f"user-{payload.email.split('@')[0].lower()}"
+    # User IDs must be opaque UUIDs — never derived from email or any
+    # user-supplied input (F-01: predictable IDs enable enumeration/IDOR).
+    user_id = str(uuid.uuid4())
     user = User(
         id=user_id,
         tenant_id=tenant_id,
         email=payload.email,
         name=payload.name,
-        role="admin",
+        role="tenant_admin",
         password_hash=hash_password(payload.password),
         status="active",
     )
@@ -103,28 +123,41 @@ async def signup(payload: SignupRequest) -> TokenResponse:
     access_token = create_access_token(
         subject=user.id,
         tenant_id=tenant_id,
-        expires_delta=timedelta(hours=24),
+        # expires_delta=None → uses settings.access_token_expire_minutes (F-08)
     )
 
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=24 * 60 * 60,
+        expires_in=get_settings().access_token_expire_minutes * 60,
     )
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(payload: LoginRequest) -> TokenResponse:
     """Authenticate a user and return a JWT."""
-    users = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    # Use a generic error for all auth failures to prevent email enumeration (F-05).
+    _auth_fail = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    # Cross-tenant email lookup — requires explicit allow_system_scope.
+    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if not users:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise _auth_fail
 
     user = users[0]
+
+    # Check account lockout before any other status check (F-05).
+    if is_account_locked(user):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Account temporarily locked due to repeated failed login attempts. Try again later.",
+            headers={"WWW-Authenticate": "Bearer", "Retry-After": "900"},
+        )
+
     if user.status == "invited":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -138,23 +171,36 @@ async def login(payload: LoginRequest) -> TokenResponse:
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.password_hash or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        # Record the failure and persist the updated attempt count.
+        updated = record_failed_login(user)
+        db.users.insert(updated.id, updated)
+        raise _auth_fail
+
+    # Successful login — reset the failure counter.
+    updated = record_successful_login(user)
+    db.users.insert(updated.id, updated)
 
     access_token = create_access_token(
-        subject=user.id,
-        tenant_id=user.tenant_id,
-        expires_delta=timedelta(hours=24),
+        subject=updated.id,
+        tenant_id=updated.tenant_id,
     )
 
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=24 * 60 * 60,
+        expires_in=get_settings().access_token_expire_minutes * 60,
     )
+
+
+# Role hierarchy for escalation guard (F-11).
+# An inviter may only grant roles strictly below their own rank.
+_ROLE_RANK: dict[str, int] = {
+    "super_admin": 100,
+    "tenant_admin": 80,
+    "content_admin": 60,
+    "analyst": 40,
+    "read_only": 20,
+}
 
 
 @router.post("/invite", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -162,21 +208,31 @@ async def invite_user(
     payload: InviteRequest,
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    """Invite a new user to the current tenant (requires admin role)."""
-    if current_user.role not in ("admin", "super_admin"):
+    """Invite a new user to the current tenant.
+
+    An inviter may only grant roles with a rank strictly lower than their own
+    (F-11). This applies to all authenticated roles: a content_admin can invite
+    analysts and read_only users; an analyst cannot invite anyone because no
+    canonical role has a rank below theirs except read_only, and read_only has
+    rank 20 < analyst rank 40, so analysts can invite read_only users.
+    Roles with an unrecognised name resolve to rank 0 and are always blocked.
+    """
+    inviter_rank = _ROLE_RANK.get(current_user.role, 0)
+    invitee_rank = _ROLE_RANK.get(payload.role, 0)
+    if inviter_rank == 0 or invitee_rank >= inviter_rank:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only tenant admins can invite users",
+            detail="Cannot invite a user to a role equal to or higher than your own",
         )
 
-    existing = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    existing = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with this email already exists",
         )
 
-    user_id = f"user-{payload.email.split('@')[0].lower()}"
+    user_id = str(uuid.uuid4())
     user = User(
         id=user_id,
         tenant_id=current_user.tenant_id,
@@ -201,7 +257,12 @@ async def invite_user(
 @router.post("/accept-invite", response_model=TokenResponse)
 async def accept_invite(payload: AcceptInviteRequest) -> TokenResponse:
     """Accept an invitation by setting a password and activating the account."""
-    users = db.users.list(filter_fn=lambda u: u.email == payload.email)
+    try:
+        validate_password_strength(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    users = db.users.list(tenant_id=SYSTEM_TENANT_ID, filter_fn=lambda u: u.email == payload.email, allow_system_scope=True)
     if not users:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -226,14 +287,31 @@ async def accept_invite(payload: AcceptInviteRequest) -> TokenResponse:
     access_token = create_access_token(
         subject=updated.id,
         tenant_id=updated.tenant_id,
-        expires_delta=timedelta(hours=24),
+        # expires_delta=None → uses settings.access_token_expire_minutes (F-08)
     )
 
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=24 * 60 * 60,
+        expires_in=get_settings().access_token_expire_minutes * 60,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    _user: User = Depends(get_current_user),
+) -> None:
+    """Invalidate the current session.
+
+    For stateless JWTs the token continues to be cryptographically valid until
+    its exp claim, but the client must discard it. A full server-side blocklist
+    (Redis-backed) is tracked as a follow-up (F-09 TODO).
+    The endpoint exists so clients have a canonical logout path and the session
+    cookie can be cleared server-side in cookie-based flows.
+    """
+    # TODO(F-09): add jti claim to tokens and maintain a Redis blocklist so
+    # that logout immediately invalidates the token server-side.
+    return None
 
 
 @router.get("/me", response_model=UserResponse)

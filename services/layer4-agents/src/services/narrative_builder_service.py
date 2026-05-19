@@ -36,6 +36,11 @@ from typing import Any
 import structlog
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+from ..agents.base import AgentResult
+from ..harness.prompt_registry import get_prompt_registry
+from ..services.governed_llm_client import GovernedLLMClient
+from ..services.llm_provider import get_llm_provider
+
 
 class NarrativeBuilderService__build_contextResult(TypedDictModel):
     company_name: Any
@@ -264,6 +269,176 @@ class NarrativeBuilderService:
         )
 
         return stored
+
+    async def generate_narrative_llm(
+        self,
+        request: NarrativeRequest,
+        *,
+        tenant_id: str,
+        account_data: dict[str, Any] | None = None,
+        signals_data: list[dict[str, Any]] | None = None,
+        hypotheses_data: list[dict[str, Any]] | None = None,
+        roi_data: dict[str, Any] | None = None,
+        trace_id: str | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate a narrative using LLM prompts via GovernedLLMClient.
+
+        Runs three sequential prompts:
+        1. ``executive_summary`` — 3-5 sentence executive summary
+        2. ``value_narrative`` — 2-4 paragraph value story
+        3. ``risk_narrative`` — risk and mitigation section
+
+        Falls back to ``generate_narrative()`` (template-based) if LLM fails.
+        Returns an ``AgentResult`` serialised to dict, merged with the stored
+        narrative record.
+        """
+        trusted_tenant_id = self._resolve_trusted_tenant_id(request=request, tenant_id=tenant_id)
+        account_name = (
+            (account_data or {}).get("name")
+            or (account_data or {}).get("company_name")
+            or str(request.account_id)
+        )
+
+        agent_result = AgentResult(
+            payload={},
+            workflow_type="narrative_builder",
+            tenant_id=trusted_tenant_id,
+            trace_id=trace_id,
+        )
+
+        try:
+            registry = get_prompt_registry()
+            system_tmpl = registry.get("narrative_builder", "system")
+            exec_tmpl = registry.get("narrative_builder", "executive_summary")
+            value_tmpl = registry.get("narrative_builder", "value_narrative")
+            risk_tmpl = registry.get("narrative_builder", "risk_narrative")
+
+            provider = get_llm_provider(config)
+            client = GovernedLLMClient(
+                provider=provider,
+                provider_name=self._resolve_provider_name(config),
+            )
+            system_msg = {"role": "system", "content": system_tmpl.body}
+
+            # Build shared context
+            roi_summary = {
+                "simple_roi_percent": (roi_data or {}).get("simple_roi_percent"),
+                "three_year_npv": (roi_data or {}).get("three_year_npv"),
+                "payback_period_months": (roi_data or {}).get("payback_period_months"),
+                "total_annual_value": (roi_data or {}).get("total_annual_value"),
+            }
+            validated_claims: list[dict] = []  # populated from business case if available
+
+            # ── Step 1: executive summary ───────────────────────────────
+            exec_content = exec_tmpl.render(
+                account_name=account_name,
+                sections_json=json.dumps([], indent=2),  # sections not yet generated
+                validated_claims_json=json.dumps(validated_claims, indent=2),
+                roi_summary_json=json.dumps(roi_summary, indent=2),
+            )
+            exec_result = await client.call(
+                model_task=exec_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": exec_content}],
+                temperature=exec_tmpl.temperature,
+                max_tokens=exec_tmpl.max_tokens,
+                call_id=f"nb_exec_{trace_id or 'unknown'}",
+            )
+            exec_data = client._parse_json(exec_result.content)
+
+            # ── Step 2: value narrative ─────────────────────────────────
+            roi_hyps = [
+                h for h in (hypotheses_data or [])
+                if h.get("type") not in ("risk", "churn")
+            ]
+            whitespace_opps: list[dict] = []  # populated from whitespace if available
+
+            value_content = value_tmpl.render(
+                account_name=account_name,
+                roi_hypotheses_json=json.dumps(roi_hyps[:5], indent=2),
+                whitespace_opportunities_json=json.dumps(whitespace_opps, indent=2),
+                validated_claims_json=json.dumps(validated_claims, indent=2),
+            )
+            value_result = await client.call(
+                model_task=value_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": value_content}],
+                temperature=value_tmpl.temperature,
+                max_tokens=value_tmpl.max_tokens,
+                call_id=f"nb_value_{trace_id or 'unknown'}",
+            )
+            value_data = client._parse_json(value_result.content)
+
+            # ── Step 3: risk narrative ──────────────────────────────────
+            risk_signals = [
+                s for s in (signals_data or [])
+                if s.get("category") in ("risk", "churn", "competitive")
+            ]
+            risk_content = risk_tmpl.render(
+                account_name=account_name,
+                risk_signals_json=json.dumps(risk_signals[:5], indent=2),
+                sections_json=json.dumps([], indent=2),
+            )
+            risk_result = await client.call(
+                model_task=risk_tmpl.model_task,
+                messages=[system_msg, {"role": "user", "content": risk_content}],
+                temperature=risk_tmpl.temperature,
+                max_tokens=risk_tmpl.max_tokens,
+                call_id=f"nb_risk_{trace_id or 'unknown'}",
+            )
+            risk_data = client._parse_json(risk_result.content)
+
+            total_prompt = exec_result.prompt_tokens + value_result.prompt_tokens + risk_result.prompt_tokens
+            total_completion = exec_result.completion_tokens + value_result.completion_tokens + risk_result.completion_tokens
+            confidence = float(exec_data.get("confidence", 0.75))
+
+            agent_result.payload = {
+                "account_name": account_name,
+                "executive_summary": exec_data,
+                "value_narrative": value_data,
+                "risk_narrative": risk_data,
+            }
+            agent_result.mark_llm_enriched(
+                model=risk_result.model,
+                prompt_tokens=total_prompt,
+                completion_tokens=total_completion,
+                confidence=confidence,
+            )
+            logger.info(
+                "narrative_llm_generated",
+                account_id=request.account_id,
+                model=risk_result.model,
+                tokens=total_prompt + total_completion,
+            )
+
+        except Exception as exc:
+            logger.warning("narrative_llm_failed", error=str(exc), account_id=request.account_id)
+            # Degrade to template-based generation
+            try:
+                fallback = await self.generate_narrative(
+                    request,
+                    tenant_id=trusted_tenant_id,
+                    account_data=account_data,
+                    signals_data=signals_data,
+                    hypotheses_data=hypotheses_data,
+                    roi_data=roi_data,
+                )
+                agent_result.payload = fallback
+                agent_result.degraded_reason = f"llm_failed_template_fallback: {exc}"
+            except Exception as fallback_exc:
+                agent_result.payload = {}
+                agent_result.degraded_reason = f"llm_failed: {exc}; fallback_failed: {fallback_exc}"
+
+        return agent_result.to_dict()
+
+    @staticmethod
+    def _resolve_provider_name(config: dict[str, Any] | None = None) -> str:
+        import os
+        return (
+            os.getenv("LAYER4_LLM_PROVIDER")
+            or (config.get("llm_provider") if config and hasattr(config, "get") else None)
+            or getattr(config, "llm_provider", None)
+            or "together"
+        )
 
     def _resolve_trusted_tenant_id(
         self,

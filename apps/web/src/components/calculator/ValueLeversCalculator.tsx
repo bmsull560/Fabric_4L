@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Save, RotateCcw } from "lucide-react";
-import { ProgressBar } from "@/components/blocks";
-import { SectionCard } from "@/components/blocks/SectionCard";
+import { ProgressBar, SectionCard } from "@/components/blocks";
 import { useCreateValueCase, useUpdateValueCase, useValueCase, useValueLevers, type ValueCaseResponse } from "@/hooks/useCalculators";
 
 export interface ValueLeversCalculatorProps {
@@ -9,35 +8,28 @@ export interface ValueLeversCalculatorProps {
   industry?: string;
   companySize?: string;
   initialCaseId?: string | null;
-  loadExistingCase?: boolean;
   onSaved?: (valueCase: ValueCaseResponse) => void;
 }
 
-export function ValueLeversCalculator({ accountId, industry, companySize, initialCaseId = null, loadExistingCase = true, onSaved }: ValueLeversCalculatorProps) {
-  const canLoadLevers = Boolean(industry && companySize);
-  const { data: leverConfig, isLoading, error } = useValueLevers(
-    { industry, company_size: companySize },
-    { enabled: canLoadLevers }
-  );
-  const { data: existingCase } = useValueCase(loadExistingCase ? initialCaseId : null);
+export function ValueLeversCalculator({ accountId, industry, companySize, initialCaseId = null, onSaved }: ValueLeversCalculatorProps) {
+  const { data: leverConfig, isLoading, error } = useValueLevers({ industry, company_size: companySize });
+  const { data: existingCase } = useValueCase(initialCaseId);
   const createCase = useCreateValueCase();
   const updateCase = useUpdateValueCase();
   const [leverValues, setLeverValues] = useState<Record<string, { valA: number; valB: number }>>({});
   const initializedConfigRef = useRef<string | null>(null);
-  const levers = useMemo(() => leverConfig?.levers ?? [], [leverConfig?.levers]);
 
   useEffect(() => {
-    const version = leverConfig?.metadata?.version ?? "default";
-    if (leverConfig && initializedConfigRef.current !== version) {
-      initializedConfigRef.current = version;
-      setLeverValues(levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}));
+    if (leverConfig && initializedConfigRef.current !== leverConfig.metadata.version) {
+      initializedConfigRef.current = leverConfig.metadata.version;
+      setLeverValues(leverConfig.levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}));
     }
-  }, [leverConfig, levers]);
+  }, [leverConfig]);
 
   useEffect(() => {
     if (!existingCase) return;
     const next: Record<string, { valA: number; valB: number }> = {};
-    (existingCase.levers ?? []).forEach((lever) => {
+    existingCase.levers.forEach((lever) => {
       next[lever.lever_id] = { valA: lever.scenario_a, valB: lever.scenario_b };
     });
     setLeverValues(next);
@@ -46,10 +38,10 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
   const totals = useMemo(() => {
     if (!leverConfig) return { A: 0, B: 0 };
     return {
-      A: levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
-      B: levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
+      A: leverConfig.levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valA || l.min_value) / l.base_value), 0),
+      B: leverConfig.levers.reduce((s, l) => l.base_value === 0 ? s : s + l.annual_impact * ((leverValues[l.id]?.valB || l.base_value) / l.base_value), 0),
     };
-  }, [leverConfig, leverValues, levers]);
+  }, [leverConfig, leverValues]);
 
   const handleSave = useCallback(async () => {
     if (!leverConfig) return;
@@ -68,22 +60,14 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
     onSaved?.(saved);
   }, [accountId, createCase, initialCaseId, leverConfig, leverValues, onSaved, totals.A, totals.B, updateCase]);
 
-  if (!canLoadLevers) {
+  if (!industry || !companySize) {
     return <div className="rounded border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-800">Select an account with industry and company size before loading value levers.</div>;
   }
 
   return <SectionCard title="Value Levers">
-    {isLoading ? <div className="text-sm text-muted-foreground">Loading value levers...</div> : error ? (
-      <div className="space-y-2 rounded border border-amber-400/40 bg-amber-50 p-3 text-sm text-amber-900">
-        <div className="font-medium">Value lever catalog unavailable</div>
-        <p>
-          Scenario assumptions remain editable while the lever catalog service is degraded.
-          Recalculate ROI from the assumption set, then attach lever-level evidence when the catalog is available.
-        </p>
-      </div>
-    ) : (
+    {isLoading ? <div className="text-sm text-muted-foreground">Loading value levers...</div> : error ? <div className="text-sm text-destructive">Failed to load value levers.</div> : (
       <div className="space-y-3">
-        {levers.map((lever) => (
+        {(leverConfig?.levers ?? []).map((lever) => (
           <div key={lever.id} className="rounded border border-border p-3">
             <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold">{lever.name}</span><span className="text-xs text-muted-foreground">{lever.confidence}% confidence</span></div>
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -93,7 +77,7 @@ export function ValueLeversCalculator({ accountId, industry, companySize, initia
             <ProgressBar value={lever.confidence} max={100} size="sm" />
           </div>
         ))}
-        <div className="flex gap-2"><button onClick={() => leverConfig && setLeverValues(levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}))} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><RotateCcw className="h-3 w-3" />Reset</button><button onClick={handleSave} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><Save className="h-3 w-3" />Save</button></div>
+        <div className="flex gap-2"><button onClick={() => leverConfig && setLeverValues(leverConfig.levers.reduce((acc, l) => ({ ...acc, [l.id]: { valA: l.min_value, valB: l.base_value } }), {}))} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><RotateCcw className="h-3 w-3" />Reset</button><button onClick={handleSave} className="inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-xs"><Save className="h-3 w-3" />Save</button></div>
       </div>
     )}
   </SectionCard>;

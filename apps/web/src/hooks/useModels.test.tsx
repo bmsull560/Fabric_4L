@@ -13,13 +13,17 @@ import {
 import { apiClient } from "@/api/client";
 
 // Mock the API client
-vi.mock("@/api/client", () => ({
-  apiClient: {
-    get: vi.fn(),
-    post: vi.fn(),
-    delete: vi.fn(),
-  },
-}));
+vi.mock("@/api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/client")>();
+  return {
+    ...actual,
+    apiClient: {
+      get: vi.fn(),
+      post: vi.fn(),
+      delete: vi.fn(),
+    },
+  };
+});
 
 // Mock sonner toast
 vi.mock("sonner", () => ({

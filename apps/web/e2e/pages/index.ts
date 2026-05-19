@@ -21,3 +21,5 @@ export { DecisionTracePage } from './DecisionTracePage';
 export { AdminPage } from './AdminPage';
 export { AgentStreamPage } from './AgentStreamPage';
 export { TargetsAdminPage } from './TargetsAdminPage';
+export { AgentWorkflowsPage } from './AgentWorkflowsPage';
+export { HarnessRunDetailPage } from './HarnessRunDetailPage';

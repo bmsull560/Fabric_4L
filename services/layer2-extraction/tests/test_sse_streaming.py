@@ -19,6 +19,10 @@ import pytest
 from value_fabric.layer2.api import main as api_main
 from value_fabric.layer2.integration.job_store import PipelineJob
 
+# Attach the test-tenant middleware once, before the app starts, so that
+# X-Test-Tenant headers are resolved to a governance context in all tests.
+api_main._attach_test_tenant_middleware(api_main.app)
+
 # Test defaults for job creation
 DEFAULT_ENTITIES_EXTRACTED = 5
 DEFAULT_RELATIONSHIPS_EXTRACTED = 3
@@ -42,13 +46,20 @@ async def reset_pipeline_state() -> None:
 async def async_client():
     """Create async HTTP client for testing."""
     transport = httpx.ASGITransport(app=api_main.app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+        headers={"X-Test-Tenant": "test-tenant-sse"},
+    ) as client:
         yield client
 
 
 # -----------------------------------------------------------------------
 # Helper to create jobs with reasonable defaults
 # -----------------------------------------------------------------------
+
+_TEST_TENANT_ID = "test-tenant-sse"
+
 
 async def _create_job(
     job_id: str = "test-job",
@@ -63,6 +74,7 @@ async def _create_job(
     now = datetime.now(UTC)
     job = PipelineJob(
         job_id=job_id,
+        tenant_id=_TEST_TENANT_ID,
         extraction_status=extraction_status,
         ingestion_status=ingestion_status,
         created_at=now.isoformat(),

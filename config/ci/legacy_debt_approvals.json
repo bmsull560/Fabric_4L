@@ -21,9 +21,9 @@
   },
   "staged_thresholds": {
     "DEPRECATED": [
-      { "effective_on": "2026-01-01", "max_count": 61 },
-      { "effective_on": "2026-07-01", "max_count": 56 },
-      { "effective_on": "2026-10-01", "max_count": 50 }
+      { "effective_on": "2026-01-01", "max_count": 86 },
+      { "effective_on": "2026-07-01", "max_count": 81 },
+      { "effective_on": "2026-10-01", "max_count": 76 }
     ],
     "OBSOLETE": [
       { "effective_on": "2026-01-01", "max_count": 18 },

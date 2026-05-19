@@ -1,61 +1,109 @@
-"""Extraction response models for Layer 2."""
+"""Structured output response models for LLM extraction.
 
-from __future__ import annotations
-
-from typing import Any
+These models define the exact schema expected from structured output LLM calls.
+They wrap the ontology models for use with OpenAI's structured outputs API.
+"""
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from .ontology import Capability, Feature, Persona, UseCase, ValueDriver, ValueMetric
+from .relationships import Relationship
 
 
 class CapabilityExtractionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    """Structured response for capability extraction.
 
-    capabilities: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    capabilities: list[Capability] = Field(
+        default_factory=list,
+        description="Extracted product/technical capabilities from the source text. "
+        "Include confidence scores (0.0-1.0) and source evidence for each.",
+    )
 
 
 class UseCaseExtractionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    """Structured response for use case extraction.
 
-    use_cases: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    use_cases: list[UseCase] = Field(
+        default_factory=list,
+        description="Extracted business use cases from the source text. "
+        "Include workflow steps, KPIs, and industry context where available.",
+    )
 
 
 class PersonaExtractionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    """Structured response for persona extraction.
 
-    personas: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    personas: list[Persona] = Field(
+        default_factory=list,
+        description="Extracted stakeholder personas from the source text. "
+        "Include role types, pain points, and success metrics.",
+    )
 
 
 class ValueDriverExtractionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    """Structured response for value driver extraction.
 
-    value_drivers: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    value_drivers: list[ValueDriver] = Field(
+        default_factory=list,
+        description="Extracted quantifiable business value drivers from the source text. "
+        "Include formulas, metrics, and units of measurement where specified.",
+    )
 
 
 class FeatureExtractionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    """Structured response for feature extraction.
 
-    features: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    features: list[Feature] = Field(
+        default_factory=list,
+        description="Extracted product features from the source text. "
+        "Features are concrete product functionality that implements capabilities.",
+    )
 
 
-class UnifiedExtractionResponse(BaseModel):
+class ValueMetricExtractionResponse(BaseModel):
+    """Structured response for value metric extraction.
+
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
-    capabilities: list[Any] = Field(default_factory=list)
-    use_cases: list[Any] = Field(default_factory=list)
-    personas: list[Any] = Field(default_factory=list)
-    value_drivers: list[Any] = Field(default_factory=list)
-    features: list[Any] = Field(default_factory=list)
-    relationships: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    value_metrics: list[ValueMetric] = Field(
+        default_factory=list,
+        description="Extracted measurable KPIs that quantify value driver impact. "
+        "Include units, direction of improvement, baseline/target values where stated.",
+    )
 
 
 class RelationshipExtractionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    """Structured response for relationship extraction.
 
-    relationships: list[Any] = Field(default_factory=list)
-    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    Expected as response_format parameter to OpenAI structured output API.
+    """
+
+    relationships: list[Relationship] = Field(
+        default_factory=list,
+        description="Extracted relationships between entities. "
+        "Only create relationships with explicit evidence in the source text.",
+    )

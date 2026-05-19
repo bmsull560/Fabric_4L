@@ -58,13 +58,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-xdist pytest-timeout pytest-cov httpx pytest-asyncio
+          uv pip install pytest pytest-xdist pytest-timeout pytest-cov httpx pytest-asyncio --system
           if [ -f "packages/shared/pyproject.toml" ]; then
-            pip install -e packages/shared/
+            uv pip install -e packages/shared/ --system
           fi
 
       - name: Wait for services to be healthy
@@ -122,18 +126,33 @@ jobs:
           NEO4J_PASSWORD: testpassword
 
       - name: Generate coverage report
+        # Each service is checked independently. The outer loop uses set -e so a
+        # single service failing --cov-fail-under=80 fails the entire step rather
+        # than being swallowed by the subshell exit code.
         run: |
+          set -euo pipefail
+          failed_services=()
           for svc in services/layer1-ingestion services/layer2-extraction services/layer3-knowledge services/layer4-agents services/layer5-ground-truth services/layer6-benchmarks; do
             echo "=== Coverage for $svc ==="
-            (cd "$svc" && pytest --cov=src --cov-report=xml --cov-fail-under=80)
-            cp "$svc/coverage.xml" "coverage-$(basename "$svc").xml"
+            if (cd "$svc" && pytest --cov=src --cov-report=xml --cov-fail-under=80); then
+              cp "$svc/coverage.xml" "coverage-$(basename "$svc").xml"
+            else
+              echo "::error::Coverage below 80% threshold for $svc"
+              failed_services+=("$svc")
+            fi
           done
+          if [ ${#failed_services[@]} -gt 0 ]; then
+            echo "::error::Coverage gate failed for: ${failed_services[*]}"
+            exit 1
+          fi
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage-*.xml
-          fail_ci_if_error: false
+          # fail_ci_if_error: true ensures a Codecov outage or misconfiguration is
+          # visible as a CI failure rather than silently passing.
+          fail_ci_if_error: true
 
   frontend-tests:
     runs-on: ubuntu-latest

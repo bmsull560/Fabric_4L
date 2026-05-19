@@ -50,7 +50,16 @@ export class AuthClient {
     tenantSlug: string,
     redirectUri: string
   ): Promise<LoginInitiationResponse> {
-    const url = `${API_BASE}${L4_PREFIX}/auth/oidc/${tenantSlug}/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const normalizedTenantSlug = tenantSlug.trim();
+    const isSafeTenantSlug = /^[a-z0-9-]{1,64}$/i.test(normalizedTenantSlug);
+    if (!isSafeTenantSlug) {
+      throw new AuthError(
+        'Tenant slug contains unsafe characters. Contact your administrator.',
+        AuthErrorCategory.VALIDATION
+      );
+    }
+
+    const url = `${API_BASE}${L4_PREFIX}/auth/oidc/${encodeURIComponent(normalizedTenantSlug)}/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
 
     let response: Response;
     try {

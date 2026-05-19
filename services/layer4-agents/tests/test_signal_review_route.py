@@ -48,6 +48,9 @@ async def test_signal_review_approve_reject_roundtrip_and_persistence_reload(app
     persisted: dict[str, dict] = {}
 
     class FakeLayer3Client:
+        def __init__(self, **kwargs):
+            pass
+
         async def __aenter__(self):
             return self
 
@@ -66,7 +69,7 @@ async def test_signal_review_approve_reject_roundtrip_and_persistence_reload(app
             }
             return persisted[signal_id]
 
-    monkeypatch.setattr("src.integration.layer3_client.Layer3Client", FakeLayer3Client)
+    monkeypatch.setattr("value_fabric.layer4.integration.layer3_client.Layer3Client", FakeLayer3Client)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         approve = await client.patch("/v1/signals/sig-1/review", json={"account_id": "acct-1", "review_status": "approved"})

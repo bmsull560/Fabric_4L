@@ -15,13 +15,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LAYER_CONFIG_SOURCES = {
     "l1": REPO_ROOT / "services" / "layer1-ingestion" / "src" / "api" / "app_monolith.py",
-    "l2": REPO_ROOT / "services" / "layer2-extraction" / "src" / "layer2_extraction" / "api" / "app_factory.py",
+    "l2": REPO_ROOT / "services" / "layer2-extraction" / "src" / "layer2_extraction" / "api" / "main.py",
     "l3": REPO_ROOT / "services" / "layer3-knowledge" / "src" / "api" / "app_monolith.py",
     "l4": REPO_ROOT / "services" / "layer4-agents" / "src" / "api" / "middleware.py",
 }
 LAYER_CONFIG_TARGETS = {
     "l1": "_security_config_l1",
-    "l2": "security_config",
+    "l2": "_sec_config",
     "l3": "_security_config_l3",
     "l4": "security_config",
 }

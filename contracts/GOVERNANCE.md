@@ -33,7 +33,7 @@ The RFC is labeled `needs-council-review`. Council members will review the propo
 Once the RFC receives approval from at least two Council members (representing different domains), it is marked `approved`. The engineer may then proceed with the implementation PR.
 
 ### Step 4: CI Enforcement
-The CI pipeline includes a `contract-rfc-enforcer` check. If a PR modifies files in `contracts/openapi/` or `contracts/jsonschema/`, the CI will fail unless the PR description references an approved RFC issue (e.g., `Closes #123`).
+The CI pipeline includes a `contract-rfc-enforcer` check defined in `.github/workflows/contract-rfc-enforcer.yml`. It triggers on any PR that modifies files under `contracts/openapi/` or `contracts/jsonschema/`. The check fails unless the PR description references an approved RFC issue (e.g., `Closes #123`). The enforcer script is at `.github/scripts/contract-rfc-enforcer.sh`.
 
 ## 4. Breaking Changes Policy
 A breaking change is defined as any modification that would cause an existing, compliant client to fail. Examples include:

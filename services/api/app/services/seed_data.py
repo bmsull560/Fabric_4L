@@ -54,23 +54,25 @@ def seed_tenants():
 
 
 def seed_users(tenant_ids: list[str]):
+    # Seed passwords are intentionally weak for demo/dev only.
+    # These accounts must never exist in production (F-02, F-14).
     users = [
         User(
             id="user-1",
             tenant_id=tenant_ids[0],
             email="admin@alpha.com",
             name="Admin User",
-            role="admin",
-            password_hash=hash_password("admin123"),
+            role="tenant_admin",
+            password_hash=hash_password("SeedAdmin!Dev2024"),
             status="active",
         ),
         User(
             id="user-2",
             tenant_id=tenant_ids[1],
-            email="editor@beta.com",
-            name="Editor User",
-            role="editor",
-            password_hash=hash_password("editor123"),
+            email="analyst@beta.com",
+            name="Analyst User",
+            role="analyst",
+            password_hash=hash_password("SeedAnalyst!Dev2024"),
             status="active",
         ),
     ]

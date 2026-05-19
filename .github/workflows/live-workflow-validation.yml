@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - config-only
+          - smoke
           - no-start
           - full
           - remote
@@ -61,7 +62,9 @@ on:
       - 'docs/validation/live-workflow-validation.md'
       - '.github/workflows/live-workflow-validation.yml'
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
     paths:
       - 'docker-compose.live.yml'
       - 'scripts/ci/run_live_workflow_validation.sh'
@@ -77,6 +80,9 @@ permissions:
   contents: read
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # Existing gate: config-only on PR/push to main, full modes on workflow_dispatch
+  # ---------------------------------------------------------------------------
   live-validation-gate:
     name: Live validation gate
     runs-on: ubuntu-latest
@@ -153,6 +159,8 @@ jobs:
           fi
           if [[ "$MODE" == "config-only" ]]; then
             args+=(--config-only)
+          elif [[ "$MODE" == "smoke" ]]; then
+            args+=(--smoke)
           elif [[ "$MODE" == "no-start" ]]; then
             args+=(--no-start)
           elif [[ "$MODE" == "remote" ]]; then
@@ -189,4 +197,71 @@ jobs:
         with:
           name: live-workflow-validation
           path: artifacts/live-workflow-validation
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Smoke gate: automatic on every push to release/** branches.
+  # Starts the full live stack, probes all layer health endpoints, writes a
+  # timestamped evidence artifact, then tears down. Target runtime: ~5 min.
+  # ---------------------------------------------------------------------------
+  live-smoke-gate:
+    name: Live stack smoke gate
+    if: startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      ARTIFACT_DIR: artifacts/live-workflow-validation
+      PLAYWRIGHT_LIVE_FRONTEND_URL: http://localhost:3001
+      PLAYWRIGHT_BACKEND_URL: http://localhost:8004
+      RELEASE_CANDIDATE_SHA: ${{ github.sha }}
+      VITE_USE_MOCKS: "false"
+      VITE_ENABLE_MOCK_FALLBACK: "false"
+      HEALTH_TIMEOUT_SECONDS: "240"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.1
+
+      - name: Provide docker-compose compatibility command
+        run: |
+          if ! command -v docker-compose >/dev/null 2>&1; then
+            sudo tee /usr/local/bin/docker-compose >/dev/null <<'SH'
+          #!/usr/bin/env bash
+          exec docker compose "$@"
+          SH
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
+          docker-compose version
+
+      - name: Run live stack smoke validation
+        run: scripts/ci/run_live_workflow_validation.sh --smoke
+
+      - name: Validate smoke artifact schema
+        run: |
+          python scripts/ci/validate_live_workflow_artifacts.py "$ARTIFACT_DIR" \
+            --require-endpoint-probes
+
+      - name: Upload smoke evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-stack-smoke-evidence-${{ github.sha }}
+          path: artifacts/live-workflow-validation
+          retention-days: 90
           if-no-files-found: error

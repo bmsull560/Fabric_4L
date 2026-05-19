@@ -17504,6 +17504,63 @@
         ],
         "title": "ValueTreeResponse",
         "description": "Complete value tree response."
+      },
+      "EntityContextResponse": {
+        "title": "EntityContextResponse",
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "center": {
+            "title": "Center",
+            "type": "object"
+          },
+          "neighbors": {
+            "title": "Neighbors",
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "relationships": {
+            "title": "Relationships",
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "entity_count": {
+            "title": "Entity Count",
+            "type": "integer"
+          },
+          "relationship_count": {
+            "title": "Relationship Count",
+            "type": "integer"
+          },
+          "pagination": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Pagination info: {has_more, next_cursor, returned_count}",
+            "title": "Pagination"
+          }
+        },
+        "required": [
+          "entity_id",
+          "center",
+          "neighbors",
+          "relationships",
+          "entity_count",
+          "relationship_count"
+        ]
       }
     },
     "securitySchemes": {

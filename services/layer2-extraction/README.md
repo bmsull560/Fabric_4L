@@ -131,6 +131,19 @@ Environment variables:
 | `RDF_OUTPUT_DIR` | `/tmp/rdf` | Where to save RDF files |
 | `LOG_LEVEL` | `info` | Logging level |
 
+## Cache failure behavior (operations runbook)
+
+Layer 2's `ExtractionCache` is best-effort and fail-open by design so extraction workflows continue even if Redis is degraded.
+
+- **Connect (`operation=connect`)**: If Redis client initialization fails, the service logs a structured warning/error and automatically falls back to in-memory LRU cache.
+- **Read (`operation=read`)**: If Redis read or payload decode fails, the service logs a structured warning and continues with in-memory cache or cache miss behavior.
+- **Write (`operation=write`)**: If Redis write or payload serialization fails, the service logs a structured warning and writes to in-memory cache when available.
+- **Invalidate (`operation=invalidate`)**: If Redis close/invalidation fails during shutdown, the service logs a structured warning and continues shutdown.
+
+Structured cache-failure logs include these fields for correlation when available: `operation`, `tenant_id`, `job_id`, `correlation_id`, and `exception_class`.
+
+Operational expectation: cache failures must **never** fail the extraction request. Layer 2 continues the core extraction path with either in-memory fallback or a cache miss/recompute flow, so SLO impact is latency/cost (extra LLM calls), not availability.
+
 ## Development
 
 ### Setup

@@ -1,6 +1,7 @@
 """Executable canonical platform contract surfaces for Fabric 4L."""
 
 from .agent_output import AgentErrorDetail, AgentResultEnvelope, AgentResultMetadata
+from .llm_output_parser import parse_llm_json
 from .context import (
     AUTH_SOURCE_API_KEY,
     AUTH_SOURCE_JWT,
@@ -42,6 +43,7 @@ from .tool_boundary import (
 
 __all__ = [
     "AUTH_SOURCE_API_KEY",
+    "parse_llm_json",
     "AUTH_SOURCE_JWT",
     "AUTH_SOURCE_SERVICE_ACCOUNT",
     "AUTH_SOURCE_UNKNOWN",

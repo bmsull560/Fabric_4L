@@ -1,13 +1,21 @@
-"""Compatibility alias endpoints delegating to canonical route implementations."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Compatibility alias endpoints delegating to canonical route implementations.
+"""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from value_fabric.shared.identity import RequestContext, require_authenticated
 
-from api.dependencies import get_graph_rag, get_hybrid_search
-from api.models import GraphRAGQuery, GraphRAGResponse, SearchRequest, SearchResponse
-from services.compat_metrics import record_deprecated_legacy_field_usage, record_deprecated_route_hit
+from ...api.dependencies import get_graph_rag, get_hybrid_search
+from ...api.models import GraphRAGQuery, GraphRAGResponse, SearchRequest, SearchResponse
+from ...services.compat_metrics import (
+    record_deprecated_legacy_field_usage,
+    record_deprecated_route_hit,
+)
 from . import query_search
 
 router = APIRouter(prefix="/v1", tags=["compatibility"], dependencies=[Depends(require_authenticated)])

@@ -48,8 +48,8 @@ class PriorityScheduler:
 
     def __init__(
         self,
-        per_domain_delay: float = None,
-        jitter_percent: float = None,
+        per_domain_delay: float | None = None,
+        jitter_percent: float | None = None,
         clock: Clock | None = None,
     ):
         self.per_domain_delay = per_domain_delay or settings.per_domain_delay_seconds

@@ -1,16 +1,31 @@
-"""Canonical governance workflow objects/endpoints for L4/L5 traceability."""
+"""Canonical governance workflow objects/endpoints for L4/L5 traceability.
+
+All read routes require authentication (require_authenticated).
+All write routes require content_admin or higher (require_content_admin).
+Tenant context is extracted from the authenticated RequestContext — never
+from request body or headers.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, model_validator
+from value_fabric.shared.identity.context import RequestContext
+from value_fabric.shared.identity.dependencies import (
+    require_authenticated,
+    require_content_admin,
+)
 
 router = APIRouter(prefix="/governance", tags=["governance-workflows"])
+
+# Typed dependency aliases for route signatures
+AuthDep = Annotated[RequestContext, Depends(require_authenticated)]
+ContentAdminDep = Annotated[RequestContext, Depends(require_content_admin)]
 
 
 class LineageRef(BaseModel):
@@ -22,7 +37,7 @@ class LineageRef(BaseModel):
     trace_id: str | None = None
 
     @model_validator(mode="after")
-    def validate_lineage(self) -> "LineageRef":
+    def validate_lineage(self) -> LineageRef:
         if not self.business_case_id and not self.value_model_id:
             raise ValueError("lineage requires business_case_id or value_model_id")
         if self.trace_id is None:
@@ -100,7 +115,7 @@ def _ensure_absent(store: dict[str, BaseModel], object_id: str, object_name: str
 
 def _hash_payload(kind: str, payload: BaseModel) -> str:
     serialized = payload.model_dump_json(exclude={"immutable_audit_hash"}, by_alias=True)
-    return f"sha256:{sha256(f'{kind}:{serialized}'.encode('utf-8')).hexdigest()}"
+    return f"sha256:{sha256(f'{kind}:{serialized}'.encode()).hexdigest()}"
 
 
 def _same_origin(a: LineageRef, b: LineageRef) -> bool:
@@ -119,7 +134,7 @@ class LineageResponse(BaseModel):
 
 
 @router.post("/reviews", response_model=ReviewRequest, status_code=status.HTTP_201_CREATED)
-async def create_review(request: ReviewRequest) -> ReviewRequest:
+async def create_review(request: ReviewRequest, _ctx: ContentAdminDep) -> ReviewRequest:
     _ensure_absent(_REVIEWS, request.review_id, "ReviewRequest")
     request.immutable_audit_hash = _hash_payload("ReviewRequest", request)
     _REVIEWS[request.review_id] = request
@@ -128,6 +143,7 @@ async def create_review(request: ReviewRequest) -> ReviewRequest:
 
 @router.get("/reviews", response_model=list[ReviewRequest])
 async def list_reviews(
+    _ctx: AuthDep,
     status_filter: str | None = Query(default=None, alias="status"),
     subject_type: str | None = None,
     correlation_id: str | None = None,
@@ -143,14 +159,14 @@ async def list_reviews(
 
 
 @router.get("/reviews/{review_id}", response_model=ReviewRequest)
-async def get_review(review_id: str) -> ReviewRequest:
+async def get_review(review_id: str, _ctx: AuthDep) -> ReviewRequest:
     if review_id not in _REVIEWS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="review not found")
     return _REVIEWS[review_id]
 
 
 @router.post("/reviews/{review_id}/decisions", response_model=ApprovalDecision, status_code=status.HTTP_201_CREATED)
-async def create_decision(review_id: str, decision: ApprovalDecision) -> ApprovalDecision:
+async def create_decision(review_id: str, decision: ApprovalDecision, _ctx: ContentAdminDep) -> ApprovalDecision:
     review = _REVIEWS.get(review_id)
     if not review:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="review not found")
@@ -167,14 +183,14 @@ async def create_decision(review_id: str, decision: ApprovalDecision) -> Approva
 
 
 @router.get("/versions/{version_id}", response_model=VersionRecord)
-async def get_version(version_id: str) -> VersionRecord:
+async def get_version(version_id: str, _ctx: AuthDep) -> VersionRecord:
     if version_id not in _VERSIONS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
     return _VERSIONS[version_id]
 
 
 @router.post("/versions", response_model=VersionRecord, status_code=status.HTTP_201_CREATED)
-async def create_version(version: VersionRecord) -> VersionRecord:
+async def create_version(version: VersionRecord, _ctx: ContentAdminDep) -> VersionRecord:
     _ensure_absent(_VERSIONS, version.version_id, "VersionRecord")
     version.immutable_audit_hash = _hash_payload("VersionRecord", version)
     _VERSIONS[version.version_id] = version
@@ -182,7 +198,7 @@ async def create_version(version: VersionRecord) -> VersionRecord:
 
 
 @router.get("/versions/{version_id}/diff", response_model=VersionDiff)
-async def get_version_diff(version_id: str, compare_to_version_id: str) -> VersionDiff:
+async def get_version_diff(version_id: str, compare_to_version_id: str, _ctx: AuthDep) -> VersionDiff:
     source = _VERSIONS.get(version_id)
     target = _VERSIONS.get(compare_to_version_id)
     if not source or not target:
@@ -207,7 +223,7 @@ async def get_version_diff(version_id: str, compare_to_version_id: str) -> Versi
 
 
 @router.post("/audit/exports", response_model=AuditExportJob, status_code=status.HTTP_201_CREATED)
-async def create_audit_export(request: AuditExportCreateRequest) -> AuditExportJob:
+async def create_audit_export(request: AuditExportCreateRequest, _ctx: ContentAdminDep) -> AuditExportJob:
     review = _REVIEWS.get(request.review_id)
     decisions = [item for item in _DECISIONS.values() if item.review_id == request.review_id]
     if not review:
@@ -223,7 +239,7 @@ async def create_audit_export(request: AuditExportCreateRequest) -> AuditExportJ
         review_id=request.review_id,
         status="pending" if approved else "blocked",
         reason=None if approved else "approval_required",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         lineage=LineageRef(
             business_case_id=review.lineage.business_case_id,
             value_model_id=review.lineage.value_model_id,
@@ -238,14 +254,14 @@ async def create_audit_export(request: AuditExportCreateRequest) -> AuditExportJ
 
 
 @router.get("/audit/exports/{audit_export_id}", response_model=AuditExportJob)
-async def get_audit_export(audit_export_id: str) -> AuditExportJob:
+async def get_audit_export(audit_export_id: str, _ctx: AuthDep) -> AuditExportJob:
     if audit_export_id not in _EXPORTS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="audit export not found")
     return _EXPORTS[audit_export_id]
 
 
 @router.get("/lineage/{correlation_id}", response_model=LineageResponse)
-async def get_lineage(correlation_id: str) -> LineageResponse:
+async def get_lineage(correlation_id: str, _ctx: AuthDep) -> LineageResponse:
     reviews = [item for item in _REVIEWS.values() if item.lineage.correlation_id == correlation_id]
     decisions = [item for item in _DECISIONS.values() if item.lineage.correlation_id == correlation_id]
     versions = [item for item in _VERSIONS.values() if item.lineage.correlation_id == correlation_id]

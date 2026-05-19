@@ -1,4 +1,8 @@
-"""Narrative Synthesis Agent.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Narrative Synthesis Agent.
 
 Implements template-based narrative generation for:
 - Executive summaries
@@ -17,7 +21,7 @@ from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from agents.base import AgentResult, BaseAgent
+from ..agents.base import AgentResult, BaseAgent
 
 
 class NarrativeSynthesisAgent__generate_executive_summaryResult(TypedDictModel):

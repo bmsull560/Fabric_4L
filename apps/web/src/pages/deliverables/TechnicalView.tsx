@@ -7,16 +7,18 @@
  * Hooks: useBusinessCase, useBusinessCaseExport
  */
 import { useSearchParams, Link } from "react-router-dom";
+import { deliverableRoutes } from "@/navigation/deliverableRoutes";
 import {
   Code2, Database, GitBranch, FileText, Download,
   AlertCircle, Loader2, ArrowLeft, ExternalLink,
   CheckCircle2, Clock,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport } from "@/hooks/useDocuments";
 
 import { cn } from "@/lib/utils";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 export default function TechnicalView() {
   const [searchParams] = useSearchParams();
@@ -50,13 +52,13 @@ export default function TechnicalView() {
         title={`Technical Review: ${bc.title}`}
         subtitle="Implementation details and evidence provenance"
         breadcrumbs={[
-          { label: "Deliverables", href: "/deliverables/cases" },
-          { label: bc.title, href: `/deliverables/cases/${bc.case_id}` },
+          { label: "Deliverables", href: deliverableRoutes.businessCaseList() },
+          { label: bc.title, href: deliverableRoutes.businessCaseDetail(bc.case_id) },
           { label: "Technical View" },
         ]}
         actions={
           <div className="flex gap-2">
-            <Link to={`/deliverables/cases/${bc.case_id}`}>
+            <Link to={deliverableRoutes.businessCaseDetail(bc.case_id)}>
               <Btn variant="ghost"><ArrowLeft size={14} /> Full Case</Btn>
             </Link>
             <Btn variant="primary" disabled={exportMutation.isPending}

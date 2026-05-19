@@ -10,7 +10,7 @@ Invariants:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from harness.models import HarnessCheckpoint, HarnessState, ToolCallRef
 
@@ -36,18 +36,18 @@ class CheckpointManager:
 
     def __init__(self) -> None:
         # Primary store: checkpoint_id -> HarnessCheckpoint
-        self._checkpoints: Dict[str, HarnessCheckpoint] = {}
+        self._checkpoints: dict[str, HarnessCheckpoint] = {}
         # Run index: run_id -> ordered list of checkpoint_ids
-        self._run_checkpoints: Dict[str, List[str]] = {}
+        self._run_checkpoints: dict[str, list[str]] = {}
 
     def create_checkpoint(
         self,
         run_id: str,
         tenant_id: str,
         state_name: HarnessState,
-        state_payload: Dict[str, Any],
-        tool_calls: Optional[List[ToolCallRef]] = None,
-        output_hash: Optional[str] = None,
+        state_payload: dict[str, Any],
+        tool_calls: list[ToolCallRef] | None = None,
+        output_hash: str | None = None,
     ) -> HarnessCheckpoint:
         """
         Create a deterministic checkpoint.
@@ -114,10 +114,10 @@ class CheckpointManager:
         self,
         run_id: str,
         tenant_id: str,
-    ) -> List[HarnessCheckpoint]:
+    ) -> list[HarnessCheckpoint]:
         """List checkpoints for a run, ordered by creation."""
         checkpoint_ids = self._run_checkpoints.get(run_id, [])
-        result: List[HarnessCheckpoint] = []
+        result: list[HarnessCheckpoint] = []
         for cid in checkpoint_ids:
             cp = self._checkpoints.get(cid)
             if cp is not None and cp.tenant_id == tenant_id:
@@ -128,7 +128,7 @@ class CheckpointManager:
         self,
         run_id: str,
         tenant_id: str,
-    ) -> Optional[HarnessCheckpoint]:
+    ) -> HarnessCheckpoint | None:
         """Get the most recent checkpoint for a run."""
         checkpoints = self.list_checkpoints_for_run(run_id, tenant_id)
         return checkpoints[-1] if checkpoints else None
@@ -136,7 +136,7 @@ class CheckpointManager:
     def verify_payload_unchanged(
         self,
         checkpoint: HarnessCheckpoint,
-        state_payload: Dict[str, Any],
+        state_payload: dict[str, Any],
     ) -> bool:
         """
         Verify that the given payload matches the checkpoint's stored hash.

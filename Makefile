@@ -3,6 +3,7 @@
         typecheck-layer3 typecheck-layer4 typecheck-layer5 typecheck-layer6 \
         test contract-tests contract-lint test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate migrate-layer1 migrate-layer2 migrate-layer4 migrate-layer5 evals perf-test perf-eval clean sdk \
+        setup \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
 	test-backend-integrated-validation test-backend-integrated-release-smoke \
@@ -11,17 +12,23 @@
 	collect-95-plus-evidence collect-95-plus-evidence-focused \
 	platform-contract-lint setup-hooks check-ui-duplicates check-readiness-consistency \
 	check-pytest-skip-governance check-conflict-markers check-legacy-debt check-reports-evidence-policy check-no-nul-bytes check-migration-entrypoints check-migration-heads \
+<<<<<<< HEAD
 <<<<<<< ours
 <<<<<<< ours
 	harness-task harness-guard harness-check
 =======
 =======
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 	check-layer3-legacy-tenant-dependency-imports \
 	check-test-skip-register-uniqueness \
 	harness-task harness-guard harness-check \
 	docs-harness
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 # Strict shell settings for production safety
@@ -35,7 +42,9 @@ ARTIFACT_DIR := artifacts/release
 
 PYTHON ?= python3
 PIP    := pip install -e
-PYTEST := python -m pytest -v --tb=short
+# Use the pipx-managed pytest binary so service deps installed via `make setup`
+# are available without activating a per-service venv.
+PYTEST := pytest -v --tb=short
 
 # Ensure mypy is available before running typecheck targets
 MYPY_VERSION_CHECK := $(shell mypy --version 2>/dev/null || echo "mypy_not_found")
@@ -46,6 +55,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 <<<<<<< ours
 <<<<<<< ours
 verify: check-conflict-markers check-no-nul-bytes check-migration-heads check-layer3-tenant-dependency-imports lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-test-skip-register-uniqueness check-pytest-skip-governance check-legacy-debt verify-structure docs-harness ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure + harness-docs) — required before PR
@@ -55,6 +65,9 @@ verify: check-conflict-markers check-no-nul-bytes check-migration-heads lint typ
 =======
 verify: check-conflict-markers check-no-nul-bytes check-migration-heads lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-test-skip-register-uniqueness check-pytest-skip-governance check-layer3-legacy-tenant-dependency-imports check-legacy-debt verify-structure docs-harness ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure + harness-docs) — required before PR
 >>>>>>> theirs
+=======
+verify: check-conflict-markers check-no-nul-bytes check-migration-heads lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates check-readiness-consistency check-workflow-matrix check-test-skip-register-uniqueness check-pytest-skip-governance check-layer3-legacy-tenant-dependency-imports check-legacy-debt verify-structure docs-harness ## Run all checks (preflight + lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard + readiness-consistency + workflow-matrix + structure + harness-docs) — required before PR
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 	@echo "✅  All checks passed"
 
 verify-structure: ## Run structural preflight and Python contract lint checks
@@ -103,18 +116,24 @@ check-pytest-skip-governance: ## Enforce pytest skip governance from collection 
 	 python scripts/ci/check_pytest_skip_governance.py artifacts/pytest-collection.txt --allowlist config/ci/pytest_skip_allowlist.yaml --baseline config/ci/pytest_skip_baseline.json --write-report artifacts/pytest-skip-governance.json; \
 	 if [ "$$collect_status" -ne 0 ]; then echo "pytest collection exited non-zero ($$collect_status); structural-preflight should catch import errors separately."; fi
 
+<<<<<<< HEAD
 <<<<<<< ours
 <<<<<<< ours
 =======
 =======
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 check-layer3-legacy-tenant-dependency-imports: ## Block legacy Layer 3 tenant dependency imports under src/api/
 	@python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
 
 check-test-skip-register-uniqueness: ## Enforce uniqueness of test skip register keys (path_pattern + marker + reason_pattern)
 	@python scripts/ci/check_test_skip_register_uniqueness.py --register config/ci/test_skip_register.yaml
 
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 check-reports-evidence-policy: ## Enforce reports/ artifact policy and fail on unarchived failing snapshots
 	@python3 scripts/ci/check_reports_evidence_policy.py
 check-legacy-debt: ## Enforce legacy debt baseline (markers + legacy directories)
@@ -286,6 +305,33 @@ test-e2e-docker: ## Run E2E tests with Docker containers
 test-fast: ## Run only fast tests (exclude slow and e2e)
 	@echo "→ Running fast tests only"
 	cd services/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
+
+# ─── Setup ───────────────────────────────────────────────────────────────────
+
+setup: ## Install all service dev dependencies into the pytest pipx venv
+	@PYTEST_BIN=$$(which pytest 2>/dev/null); \
+	if [ -z "$$PYTEST_BIN" ]; then \
+	  echo "ERROR: pytest not found in PATH. Install via: pipx install pytest"; \
+	  exit 1; \
+	fi; \
+	PYTEST_PY=$$(head -1 "$$PYTEST_BIN" | sed 's|#!||'); \
+	echo "→ Installing into $$PYTEST_PY"; \
+	$$PYTEST_PY -m pip install pytest-timeout pytest-randomly -q; \
+	$$PYTEST_PY -m pip install -e "packages/shared/src" -q 2>/dev/null || true; \
+	$$PYTEST_PY -m pip install -e "packages/platform-contract/src/python" -q 2>/dev/null || true; \
+	echo "→ Installing Layer 1 dev dependencies..."; \
+	cd services/layer1-ingestion && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 2 dev dependencies..."; \
+	cd services/layer2-extraction && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 3 dev dependencies..."; \
+	cd services/layer3-knowledge && ($$PYTEST_PY -m pip install -e ".[dev]" -q 2>/dev/null || $$PYTEST_PY -m pip install -e "." -q) && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 4 dev dependencies..."; \
+	cd services/layer4-agents && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 5 dev dependencies..."; \
+	cd services/layer5-ground-truth && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "→ Installing Layer 6 dev dependencies..."; \
+	cd services/layer6-benchmarks && $$PYTEST_PY -m pip install -e ".[dev]" -q && cd ../.. || (cd ../..; exit 1); \
+	echo "✅  All service dependencies installed into $$PYTEST_PY"
 
 # ─── Layer-Specific Tests ─────────────────────────────────────────────────────
 
@@ -648,3 +694,7 @@ harness-guard: ## Run pre-edit boundary and contract checks (TASK=... FILES=...)
 
 harness-check: harness-guard harness-task ## Full harness preflight (guard + context)
 	@echo "✅  Harness preflight complete"
+
+docs-harness: ## Validate harness documentation artifacts (endpoints, models, runbook, config)
+	@echo "→ Validating harness docs..."
+	@python3 scripts/generate_harness_docs.py --check

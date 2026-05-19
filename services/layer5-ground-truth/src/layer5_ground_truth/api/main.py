@@ -9,18 +9,19 @@ Or via Docker:
 
 """
 
+import inspect
 import logging
-import os
 import re
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-import inspect
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
+
 from layer5_ground_truth import __version__
+
 from ..shared_bootstrap import (
     SecurityConfig,
     add_security_middleware,
@@ -413,8 +414,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
-
     app = create_fabric_app(
         service_name="layer5-ground-truth",
         title="Value Fabric — Ground Truth Layer (L5)",
@@ -482,6 +481,7 @@ def create_app() -> FastAPI:
     )
     add_security_middleware(app, config=_security_config_l5)
 
+<<<<<<< HEAD
 <<<<<<< ours
 <<<<<<< ours
 =======
@@ -543,6 +543,8 @@ def create_app() -> FastAPI:
             },
         )
 
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     class _AppStateRateLimiterProxy:
         def __init__(self, application: FastAPI):
             self._application = application
@@ -563,7 +565,10 @@ def create_app() -> FastAPI:
     # handler calls `await redis_client.ping()` to verify connectivity before
     # accepting traffic.
     redis_rate_limiter = _AppStateRateLimiterProxy(app)
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
     try:
         from value_fabric.shared.identity.middleware import GovernanceMiddleware
@@ -695,6 +700,7 @@ def create_app() -> FastAPI:
 
 # JWT Secret validation denylist — known weak/placeholder values (exact match,
 # case-insensitive).  Defined at module level so the set is constructed once.
+<<<<<<< HEAD
 JWT_SECRET_DENYLIST: frozenset[str] = frozenset(
     {
         "changeme-in-production",
@@ -720,6 +726,10 @@ JWT_SECRET_DENYLIST: frozenset[str] = frozenset(
 # that pass the length check but are still predictable.  Defined at module
 # level so the tuple is constructed once, not on every validation call.
 _JWT_WEAK_PREFIXES: tuple[str, ...] = (
+=======
+JWT_SECRET_DENYLIST: frozenset[str] = frozenset({
+    "changeme-in-production",
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     "changeme",
     "password",
     "secret",
@@ -729,10 +739,27 @@ _JWT_WEAK_PREFIXES: tuple[str, ...] = (
     "123456",
     "qwerty",
     "abc123",
+<<<<<<< HEAD
 )
 
 # Compiled pattern for common weak-secret stems followed by digits.
 _JWT_WEAK_PATTERN = re.compile(r"^(changeme|password|secret|admin|test|default)[0-9]*$")
+=======
+})
+
+# Weak prefix patterns — catches padded placeholders like "changemexxxxxxxx"
+# that pass the length check but are still predictable.  Defined at module
+# level so the tuple is constructed once, not on every validation call.
+_JWT_WEAK_PREFIXES: tuple[str, ...] = (
+    "changeme", "password", "secret", "admin", "test", "default",
+    "123456", "qwerty", "abc123",
+)
+
+# Compiled pattern for common weak-secret stems followed by digits.
+_JWT_WEAK_PATTERN = re.compile(
+    r'^(changeme|password|secret|admin|test|default)[0-9]*$'
+)
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 def _validate_jwt_secret(secret: str) -> None:
@@ -740,9 +767,11 @@ def _validate_jwt_secret(secret: str) -> None:
     Validate JWT secret meets security requirements for production.
 
     Requirements:
-    - Minimum 32 characters (256 bits equivalent for base64)
-    - Not in denylist of known weak secrets
-    - Not empty or null
+    - Non-empty
+    - Minimum 32 characters
+    - Not in the exact-match denylist
+    - Does not start with a known weak prefix
+    - Does not match a weak stem+digits pattern
     """
     if not secret:
         raise RuntimeError(
@@ -756,20 +785,37 @@ def _validate_jwt_secret(secret: str) -> None:
             f"Generate a secure secret: openssl rand -base64 32"
         )
 
-    # Check denylist (case-insensitive)
     secret_lower = secret.lower()
+
     if secret_lower in JWT_SECRET_DENYLIST:
         raise RuntimeError(
-            f"JWT_SECRET '{secret}' is a known weak/placeholder value. "
-            f"Generate a secure secret: openssl rand -base64 32"
+            "JWT_SECRET is a known weak/placeholder value. "
+            "Generate a secure secret: openssl rand -base64 32"
         )
 
-    # Check for common patterns that indicate weak secrets
-    if re.match(r'^(changeme|password|secret|admin|test|default)[0-9]*$', secret_lower):
+    if _JWT_WEAK_PATTERN.match(secret_lower):
         raise RuntimeError(
-            f"JWT_SECRET '{secret}' matches a weak secret pattern. "
-            f"Generate a secure secret: openssl rand -base64 32"
+            "JWT_SECRET matches a weak secret pattern. "
+            "Generate a secure secret: openssl rand -base64 32"
         )
+
+
+def _is_internal_ip(ip: str) -> bool:
+    """Return True if *ip* is an RFC-1918 / loopback / link-local address.
+
+    Handles both plain IPv4 strings and IPv4-mapped IPv6 (``::ffff:x.x.x.x``).
+    Used by the metrics endpoint to restrict access to internal callers.
+    """
+    import ipaddress
+
+    try:
+        # Strip IPv4-mapped IPv6 prefix so the private-range check works uniformly.
+        if ip.startswith("::ffff:"):
+            ip = ip[7:]
+        addr = ipaddress.ip_address(ip)
+        return addr.is_private or addr.is_loopback or addr.is_link_local
+    except ValueError:
+        return False
 
 
 app = create_app()

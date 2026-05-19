@@ -82,6 +82,16 @@ ALLOWED_WRITE_PERMISSIONS: dict[str, dict[str, str]] = {
     "vault-integration.yml": {
         "id-token": "authenticates to Vault through OIDC",
     },
+    "codeql-analysis.yml": {
+        "security-events": "uploads CodeQL SARIF results",
+    },
+    "deploy.yml": {
+        "contents": "commits release evidence artifacts in the evidence job",
+    },
+    "refresh-testing-kpis.yml": {
+        "contents": "pushes KPI snapshot updates to a PR branch",
+        "pull-requests": "opens automated KPI refresh pull requests",
+    },
 }
 
 

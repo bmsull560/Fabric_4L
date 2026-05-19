@@ -4,12 +4,16 @@ import { apiClient } from '@/api/client';
 import { createWrapper } from '../test-utils';
 import { useApplyWorkspacePageAction } from './useWorkspaceCase';
 
-vi.mock('@/api/client', () => ({
-  apiClient: {
-    patch: vi.fn(),
-    post: vi.fn(),
-  },
-}));
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/client')>();
+  return {
+    ...actual,
+    apiClient: {
+      patch: vi.fn(),
+      post: vi.fn(),
+    },
+  };
+});
 
 describe('useApplyWorkspacePageAction', () => {
   beforeEach(() => {
@@ -91,5 +95,41 @@ describe('useApplyWorkspacePageAction', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(apiClient.patch).toHaveBeenCalledWith('l4', '/analysis/cases/case-1/workspace/value-model/scenarios/scn-1', expect.objectContaining({ updates: { uplift: 0.15 } }));
+  });
+
+  it('rejects with an error when the API call fails', async () => {
+    (apiClient.patch as Mock).mockRejectedValue(new Error('network error'));
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useApplyWorkspacePageAction(), { wrapper });
+
+    result.current.mutate({
+      entityType: 'signal',
+      entityId: 'sig-1',
+      accountId: 'acc-1',
+      caseId: 'case-1',
+      intendedOperation: 'signal_review',
+      payload: { reviewStatus: 'approved' },
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(Error);
+  });
+
+  it('throws for an unknown intendedOperation', async () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useApplyWorkspacePageAction(), { wrapper });
+
+    result.current.mutate({
+      entityType: 'signal',
+      entityId: 'sig-1',
+      accountId: 'acc-1',
+      caseId: 'case-1',
+      // Cast to bypass TypeScript so we can test the runtime default branch
+      intendedOperation: 'unknown_op' as never,
+      payload: {},
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as Error).message).toMatch(/Unknown workspace page action/);
   });
 });

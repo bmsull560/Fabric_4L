@@ -1,11 +1,4 @@
-from __future__ import annotations
-
-import sys
-from importlib import import_module
-from pathlib import Path
-from typing import Any, Callable, cast
-
-def _resolve_shared_src() -> Path | None:
+from __future__ import annotationsimport sysfrom importlib import import_modulefrom pathlib import Pathfrom typing import Any, Callable, castdef _resolve_shared_src() -> Path | None:
     current = Path(__file__).resolve()
     for parent in current.parents:
         candidate = parent / "packages" / "shared" / "src"

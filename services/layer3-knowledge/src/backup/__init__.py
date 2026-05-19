@@ -1,6 +1,6 @@
 """Backup package initialization."""
 
-from backup.backup_manager import (
+from ..backup.backup_manager import (
     BackupConfig,
     BackupManager,
     BackupMetadata,

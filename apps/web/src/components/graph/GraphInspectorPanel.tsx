@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Info, BarChart3, FileText, MousePointer2, RotateCcw } from "lucide-react";
-import { Btn } from "@/components/WfPrimitives";
 import type { GraphNode } from "@/features/graph/domain/graph.model";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
+import { Btn } from "@/components/ui/fabric";
 
 /** Node details for the inspector panel */
 export type GraphNodeDetails = GraphNode;

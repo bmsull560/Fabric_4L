@@ -1,6 +1,6 @@
 """Tracing package initialization."""
 
-from tracing.middleware import (
+from ..tracing.middleware import (
     BusinessLogicTracer,
     CacheTracer,
     DatabaseTracer,
@@ -13,7 +13,7 @@ from tracing.middleware import (
     get_trace_context_dependency,
     get_trace_id_dependency,
 )
-from tracing.tracer import (
+from ..tracing.tracer import (
     Span,
     SpanContext,
     SpanEvent,

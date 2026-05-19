@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from layer2_extraction.extraction.chunker import SemanticChunker
 from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
 from layer2_extraction.models.extraction_api import ExtractionResult
-from layer2_extraction.models.relationships import RelationshipGraph
 
 
 class ExtractionService:

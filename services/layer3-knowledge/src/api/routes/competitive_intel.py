@@ -1,5 +1,8 @@
-"""
-Competitive Intelligence API routes — Data Intelligence Layer Phase 2, Task 2.2.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Competitive Intelligence API routes — Data Intelligence Layer Phase 2, Task 2.2.
 
 Provides REST endpoints for managing competitors, battlecards, win/loss records,
 and competitive landscape analysis.

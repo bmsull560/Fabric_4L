@@ -28,19 +28,24 @@ import {
   useWorkflowTypes,
   type Workflow,
 } from "@/hooks/useWorkflows";
-import {
-  PageHeader,
-  MetricCard,
-  DataTable,
-  StatusBadge as StatusBadgePrimitive,
-  Btn,
-  SectionCard,
-  Tabs,
-} from "@/components/WfPrimitives";
+import { HarnessRunDetail } from "@/components/HarnessRunDetail";
 import { QueryState } from "@/components/QueryState";
 import { WorkflowDetail } from "@/components/WorkflowDetail";
+import { Badge } from "@/components/ui/badge";
+import type { HarnessRun } from "@/api/harness";
+import { isTerminalState } from "@/api/harness";
+import {
+  useCancelHarnessRun,
+  useHarnessGates,
+  useHarnessRuns,
+  useTransitionHarnessRun,
+} from "@/hooks/useHarness";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { StatusBadge as StatusBadgePrimitive } from "@/components/ui/fabric";
+import { Tabs } from "@/components/ui/fabric";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, MetricCard, LegacyDataTable, Btn } from "@/components/ui/fabric";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -134,6 +139,21 @@ export default function AgentWorkflows() {
   );
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // Harness state
+  const [harnessRunId, setHarnessRunId] = useState<string | null>(null);
+  const [isHarnessDetailOpen, setIsHarnessDetailOpen] = useState(false);
+  const [harnessPage, setHarnessPage] = useState(0);
+  const HARNESS_PAGE_SIZE = 20;
+
+  const { data: harnessData, isLoading: harnessLoading, error: harnessError, refetch: refetchHarnessRuns } =
+    useHarnessRuns({ limit: HARNESS_PAGE_SIZE, offset: harnessPage * HARNESS_PAGE_SIZE });
+  const { data: harnessGatesData } = useHarnessGates(undefined); // for KPI count
+  const harnessRuns = harnessData?.items ?? [];
+  const harnessPendingGates = (harnessGatesData?.items ?? []).filter(g => g.status === "pending").length;
+
+  const transitionRun = useTransitionHarnessRun();
+  const cancelRun = useCancelHarnessRun();
+
   // Mutations
   const cancelWorkflow = useCancelWorkflow();
   const pauseWorkflow = usePauseWorkflow();
@@ -204,7 +224,7 @@ export default function AgentWorkflows() {
       />
 
       <Tabs
-        tabs={["Workflow Dashboard", "Whitespace Analysis", "Business Cases"]}
+        tabs={["Workflow Dashboard", "Whitespace Analysis", "Business Cases", "Harness Runs"]}
         active={activeTab}
         onChange={setActiveTab}
       />
@@ -234,9 +254,10 @@ export default function AgentWorkflows() {
         />
         <MetricCard
           label="Human-in-Loop Pending"
-          value={activeWorkflows
-            .filter((w: Workflow) => w.status === "pending")
-            .length.toString()}
+          value={(
+            activeWorkflows.filter((w: Workflow) => w.status === "pending").length +
+            harnessPendingGates
+          ).toString()}
           trend="Needs review"
         />
       </div>
@@ -386,7 +407,7 @@ export default function AgentWorkflows() {
           isEmpty={historyWorkflows.length === 0}
           emptyMessage="No workflow history available."
         >
-          <DataTable
+          <LegacyDataTable
             columns={[
               "Job ID",
               "Name",
@@ -446,6 +467,92 @@ export default function AgentWorkflows() {
         )}
       </SectionCard>
 
+      {/* ── Harness Runs Tab ─────────────────────────────────────────── */}
+      {activeTab === "Harness Runs" && (
+        <SectionCard title="Harness Runs" noPad>
+          <QueryState
+            isLoading={harnessLoading}
+            error={harnessError}
+            isEmpty={harnessRuns.length === 0}
+            emptyMessage="No harness runs yet."
+            emptySubMessage="Harness-backed agent runs will appear here."
+            loadingMessage="Loading harness runs…"
+          >
+            <LegacyDataTable
+              columns={["Run ID", "Workflow Type", "State", "Status", "Created", "Actions"]}
+              rows={harnessRuns.map((run: HarnessRun) => [
+                <span key="id" className="font-mono text-xs text-muted-foreground truncate max-w-[120px] block">
+                  {run.id}
+                </span>,
+                <span key="type" className="text-sm capitalize">
+                  {run.workflow_type.replace(/_/g, " ")}
+                </span>,
+                <span key="state" className="font-mono text-xs">{run.current_state}</span>,
+                <Badge
+                  key="status"
+                  variant="outline"
+                  className={`text-xs ${
+                    run.status === "completed" ? "text-emerald-700 border-emerald-200" :
+                    run.status === "failed"    ? "text-red-700 border-red-200" :
+                    run.status === "running"   ? "text-blue-700 border-blue-200" :
+                    run.status === "waiting_for_human" ? "text-amber-700 border-amber-200" :
+                    "text-slate-600 border-slate-200"
+                  }`}
+                >
+                  {run.status.replace(/_/g, " ")}
+                </Badge>,
+                <span key="created" className="text-xs text-muted-foreground">
+                  {new Date(run.created_at).toLocaleDateString()}
+                </span>,
+                <div key="actions" className="flex items-center gap-2">
+                  <button
+                    className="text-blue-600 text-[11px] hover:underline flex items-center gap-1"
+                    onClick={() => { setHarnessRunId(run.id); setIsHarnessDetailOpen(true); }}
+                  >
+                    <Eye size={12} /> View
+                  </button>
+                  {!isTerminalState(run.current_state) && run.status === "running" && (
+                    <button
+                      className="text-slate-500 text-[11px] hover:underline"
+                      onClick={() => transitionRun.mutate({
+                        runId: run.id,
+                        data: { to_state: "CANCELLED", human_override: true },
+                      })}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {run.status === "failed" && (
+                    <button
+                      className="text-amber-600 text-[11px] hover:underline"
+                      onClick={() => transitionRun.mutate({
+                        runId: run.id,
+                        data: { to_state: run.current_state, human_override: true },
+                      })}
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>,
+              ])}
+            />
+          </QueryState>
+
+          {harnessData && harnessData.total > HARNESS_PAGE_SIZE && (
+            <PaginationControls
+              page={harnessPage}
+              totalPages={Math.ceil(harnessData.total / HARNESS_PAGE_SIZE)}
+              hasMore={harnessData.has_more}
+              isLoading={harnessLoading}
+              displayRange={getDisplayRange(harnessPage, HARNESS_PAGE_SIZE, harnessData.total)}
+              onPrevious={() => setHarnessPage(p => Math.max(0, p - 1))}
+              onNext={() => setHarnessPage(p => p + 1)}
+              onRefresh={() => refetchHarnessRuns()}
+            />
+          )}
+        </SectionCard>
+      )}
+
       {/* Workflow Detail Drawer */}
       <WorkflowDetail
         workflow={selectedWorkflow}
@@ -455,6 +562,13 @@ export default function AgentWorkflows() {
           setSelectedWorkflow(null);
         }}
         onCancel={id => cancelWorkflow.mutate(id)}
+      />
+
+      {/* Harness Run Detail Sheet */}
+      <HarnessRunDetail
+        runId={harnessRunId}
+        isOpen={isHarnessDetailOpen}
+        onClose={() => { setIsHarnessDetailOpen(false); setHarnessRunId(null); }}
       />
     </div>
   );

@@ -1,4 +1,8 @@
-"""Shared Layer 3 API metrics state.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Shared Layer 3 API metrics state.
 
 This module intentionally owns process-local application metrics state so both the
 monolith and decomposed route modules can access health metrics without importing
@@ -26,7 +30,7 @@ except ImportError:  # pragma: no cover - exercised only in minimal test envs
 
     psutil = _PsutilFallback()
 
-from api.models import ServiceMetrics
+from ..api.models import ServiceMetrics
 
 logger = logging.getLogger(__name__)
 

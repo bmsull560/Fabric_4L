@@ -13,20 +13,24 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID, uuid4
-from ..observability import Layer4EventContext, Layer4LifecycleLogger
 
 from value_fabric.shared.identity.context import RequestContext, get_request_context
 from value_fabric.shared.identity.policy_registry import authorize_action, get_tool_action
-from value_fabric.shared.models.typed_dict import TypedDictModel
+from value_fabric.shared.identity.tool_contract import (
+    ToolError as CanonicalToolError,
+)
+from value_fabric.shared.identity.tool_contract import (
+    ToolMetadata as CanonicalToolMetadata,
+)
 
 # CONTRACT §2.4: Canonical ToolResult from shared package (migration in progress)
 from value_fabric.shared.identity.tool_contract import (
     ToolResult as CanonicalToolResult,
-    ToolError as CanonicalToolError,
-    ToolMetadata as CanonicalToolMetadata,
 )
+from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from ..models.tool_schemas import ToolCategory, ToolSchema
+from ..observability import Layer4EventContext, Layer4LifecycleLogger
 
 
 class ToolResult(TypedDictModel):
@@ -55,7 +59,7 @@ class ToolResult(TypedDictModel):
         cls,
         data: dict[str, Any],
         metadata: dict[str, Any] | None = None,
-    ) -> "ToolResult":
+    ) -> ToolResult:
         """Create a success result."""
         return cls(status="success", data=data, error=None, metadata=metadata)
 
@@ -68,7 +72,7 @@ class ToolResult(TypedDictModel):
         trace_id: str | None = None,
         recoverable: bool = False,
         metadata: dict[str, Any] | None = None,
-    ) -> "ToolResult":
+    ) -> ToolResult:
         """Create an error result.
 
         Args:
@@ -353,9 +357,7 @@ class BaseTool(ABC):
             )
 
         # Convert result to dict
-        if hasattr(result, "model_dump"):
-            result_data = result.model_dump()
-        elif hasattr(result, "dict"):
+        if hasattr(result, "model_dump") or hasattr(result, "dict"):
             result_data = result.model_dump()
         elif isinstance(result, dict):
             result_data = result
@@ -693,7 +695,7 @@ class ToolRegistry:
     @staticmethod
     def _emit_tool_invocation_audit(
         tool_name: str,
-        tool: "BaseTool",
+        tool: BaseTool,
         request_hash: str | None,
         response_hash: str | None,
         elapsed_ms: int,
@@ -841,7 +843,7 @@ def tool(
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def get_all_tools(registry: "ToolRegistry") -> dict[str, Callable]:
+def get_all_tools(registry: ToolRegistry) -> dict[str, Callable]:
     """Get all registered tools.
     
     Args:
@@ -858,7 +860,7 @@ def get_all_tools(registry: "ToolRegistry") -> dict[str, Callable]:
     return tools
 
 
-def get_tool_metadata(registry: "ToolRegistry", tool_name: str) -> dict:
+def get_tool_metadata(registry: ToolRegistry, tool_name: str) -> dict:
     """Get metadata for a tool.
     
     Args:
@@ -886,7 +888,7 @@ def get_tool_metadata(registry: "ToolRegistry", tool_name: str) -> dict:
     })
 
 
-def get_available_tools(registry: "ToolRegistry", context: RequestContext) -> list[str]:
+def get_available_tools(registry: ToolRegistry, context: RequestContext) -> list[str]:
     """Get tools available to user based on permissions.
     
     Args:

@@ -355,6 +355,42 @@ class BaseWorkflow(ABC):
         state_type = self._get_state_type()
         return state_type(**data)
 
+    def _make_harness_run(
+        self,
+        workflow_type_str: str,
+        tenant_id: str,
+        trace_id: str | None = None,
+    ) -> Any:
+        """Create an in-memory HarnessRun for GovernedLLMClient attribution.
+
+        Returns a HarnessRun so that every LLM trace event carries run_id,
+        workflow_type, and tenant_id.  Falls back to None (with a warning) if
+        the harness models are unavailable, so callers degrade gracefully.
+
+        Args:
+            workflow_type_str: Canonical workflow type string (e.g. "business_case_generation").
+            tenant_id: Authenticated tenant identifier.
+            trace_id: Optional existing trace ID; a new one is generated if absent.
+        """
+        from ..harness.models import HarnessRun, HarnessWorkflowType, InitiatedBy
+
+        try:
+            kwargs: dict[str, Any] = {
+                "tenant_id": tenant_id,
+                "workflow_type": HarnessWorkflowType(workflow_type_str),
+                "initiated_by": InitiatedBy.SYSTEM,
+            }
+            if trace_id:
+                kwargs["trace_id"] = trace_id
+            return HarnessRun(**kwargs)
+        except ImportError as exc:
+            # Harness models unavailable in this environment — degrade gracefully.
+            logger.warning("Could not create HarnessRun for LLM attribution: %s", exc)
+            return None
+        # ValueError (unknown workflow_type_str) and all other exceptions propagate
+        # so misconfigured callers are caught at development time rather than
+        # silently producing ungoverned LLM calls with run=None.
+
     @abstractmethod
     def create_initial_state(self, input_data: dict[str, Any]) -> AgentState:
         """Create initial state from input data.
@@ -390,22 +426,22 @@ class WorkflowBuilder:
         self.entry_point: str | None = None
         self.global_config: dict[str, Any] = {}
 
-    def add_node(self, node: NodeConfig) -> "WorkflowBuilder":
+    def add_node(self, node: NodeConfig) -> WorkflowBuilder:
         """Add a node to the workflow."""
         self.nodes.append(node)
         return self
 
-    def add_edge(self, source: str, target: str, **kwargs) -> "WorkflowBuilder":
+    def add_edge(self, source: str, target: str, **kwargs) -> WorkflowBuilder:
         """Add an edge between nodes."""
         self.edges.append(EdgeConfig(source=source, target=target, **kwargs))
         return self
 
-    def set_entry_point(self, node_id: str) -> "WorkflowBuilder":
+    def set_entry_point(self, node_id: str) -> WorkflowBuilder:
         """Set the workflow entry point."""
         self.entry_point = node_id
         return self
 
-    def set_global_config(self, config: dict[str, Any]) -> "WorkflowBuilder":
+    def set_global_config(self, config: dict[str, Any]) -> WorkflowBuilder:
         """Set global workflow configuration."""
         self.global_config = config
         return self

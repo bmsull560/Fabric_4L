@@ -1,7 +1,8 @@
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Btn } from "@/components/WfPrimitives";
 import WorkspacePagePattern, { type WorkspaceAccountContext } from "@/components/workspace/WorkspacePagePattern";
+import { buildPath } from "@/navigation/navigationService";
+import { Btn } from "@/components/ui/fabric";
 interface ValueStudioShellProps { account: WorkspaceAccountContext; children: React.ReactNode; rightRail?: React.ReactNode; }
 const TABS = [
   { key: "action-plan", label: "Action Plan" },
@@ -15,5 +16,5 @@ const TABS = [
 export default function ValueStudioShell({ account, children, rightRail }: ValueStudioShellProps) {
   const { accountId = "" } = useParams<{ accountId: string }>();
   const activeTab = useLocation().pathname.split("/")[3] || "action-plan";
-  return <WorkspacePagePattern account={account} activeTab={activeTab} tabs={TABS.map((t)=>({ ...t, to:`/studio/${accountId}/${t.key}` }))} rightRail={rightRail} headerAction={<Link to={`/intelligence/${accountId}/signals`}><Btn variant="outline" className="gap-1.5"><ArrowLeft size={13} />Back to Intelligence</Btn></Link>}>{children}</WorkspacePagePattern>;
+  return <WorkspacePagePattern account={account} activeTab={activeTab} tabs={TABS.map((t) => ({ ...t, to: buildPath("/studio/:accountId/:tab", { accountId, tab: t.key }) }))} rightRail={rightRail} headerAction={<Link to={buildPath("/intelligence/:accountId/:tab", { accountId, tab: "signals" })}><Btn variant="outline" className="gap-1.5"><ArrowLeft size={13} />Back to Intelligence</Btn></Link>}>{children}</WorkspacePagePattern>;
 }

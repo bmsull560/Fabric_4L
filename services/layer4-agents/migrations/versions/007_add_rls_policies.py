@@ -66,17 +66,25 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Remove RLS policies and disable RLS."""
+    """Remove RLS policies and disable RLS.
+
+    Order matters:
+    1. Revoke bypass grants from admin/system roles.
+    2. Drop per-table policies (tenant_isolation_policy, admin_bypass_policy).
+    3. NO FORCE ROW LEVEL SECURITY — must precede DISABLE to avoid Postgres
+       errors on tables where FORCE was set explicitly.
+    4. DISABLE ROW LEVEL SECURITY.
+    """
     # Revoke bypass privilege from admin roles first (defense in depth)
     for table in RLS_TABLES:
         op.execute(f"REVOKE ALL ON {table} FROM admin_role, system_role")
-    
-    # Drop policies
+
+    # Drop policies before disabling RLS
     for table in RLS_TABLES:
         op.execute(f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}")
         op.execute(f"DROP POLICY IF EXISTS admin_bypass_policy ON {table}")
 
-    # Disable RLS
+    # Un-force before disabling — required order on all supported Postgres versions
     for table in RLS_TABLES:
         op.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")

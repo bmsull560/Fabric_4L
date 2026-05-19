@@ -22,7 +22,7 @@ from neo4j.exceptions import (
 )
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from config import Settings, get_settings
+from ..config import Settings, get_settings
 
 
 class health_checkResult(TypedDictModel):

@@ -1,4 +1,8 @@
-"""Data migration script for adding tenant_id to existing Neo4j nodes.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Data migration script for adding tenant_id to existing Neo4j nodes.
 
 This script migrates existing Neo4j graph data to include tenant_id for
 multi-tenant isolation. It uses batched updates via APOC periodic iterate

@@ -1,12 +1,19 @@
 from __future__ import annotations
 
+import warnings
 from functools import lru_cache
 from typing import Literal
 from urllib.parse import parse_qsl, urlparse
 
-from pydantic import AliasChoices, Field, SecretStr, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    Field,
+    SecretStr,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 from value_fabric.shared.security.neo4j import (
     INSECURE_NEO4J_PASSWORDS,
     is_production_like_environment,
@@ -66,12 +73,17 @@ class Layer6Settings(BaseSettings):
     layer3_api_key: SecretStr = Field(alias="LAYER3_API_KEY", min_length=16)
     layer5_api_key: SecretStr = Field(alias="LAYER5_API_KEY", min_length=16)
 
+    # Canonical auth bypass flag — use this in all new code.
     allow_insecure_dev_auth_bypass: bool = Field(default=False, alias="ALLOW_INSECURE_DEV_AUTH_BYPASS")
+
+    # Deprecated aliases — kept for backward compatibility with existing deployments.
+    # These emit DeprecationWarning at startup if set. Migrate to ALLOW_INSECURE_DEV_AUTH_BYPASS.
     dev_auth_bypass: bool = Field(default=False, alias="DEV_AUTH_BYPASS")
     auth_bypass_enabled: bool = Field(default=False, alias="AUTH_BYPASS_ENABLED")
+    allow_dev_auth_bypass: str | None = Field(default=None, alias="ALLOW_DEV_AUTH_BYPASS")
+
     jwt_fallback_to_query_param: bool = Field(default=False, alias="JWT_FALLBACK_TO_QUERY_PARAM")
     allow_ephemeral_encryption: bool = Field(default=False, alias="ALLOW_EPHEMERAL_ENCRYPTION")
-    allow_dev_auth_bypass: str | None = Field(default=None, alias="ALLOW_DEV_AUTH_BYPASS")
 
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
     api_port: int = Field(default=8006, alias="API_PORT", ge=1, le=65535)
@@ -140,6 +152,35 @@ class Layer6Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
+    def _warn_deprecated_bypass_flags(self) -> "Layer6Settings":
+        """Emit DeprecationWarning for legacy auth bypass env vars and fold them
+        into the canonical ``allow_insecure_dev_auth_bypass`` flag.
+
+        Canonical flag: ``ALLOW_INSECURE_DEV_AUTH_BYPASS``
+        Deprecated:     ``DEV_AUTH_BYPASS``, ``AUTH_BYPASS_ENABLED``, ``ALLOW_DEV_AUTH_BYPASS``
+        """
+        legacy_active: list[str] = []
+        if self.dev_auth_bypass:
+            legacy_active.append("DEV_AUTH_BYPASS")
+        if self.auth_bypass_enabled:
+            legacy_active.append("AUTH_BYPASS_ENABLED")
+        if (self.allow_dev_auth_bypass or "").strip().lower() == "i_understand_risk":
+            legacy_active.append("ALLOW_DEV_AUTH_BYPASS")
+
+        if legacy_active:
+            warnings.warn(
+                f"Layer 6: deprecated auth bypass flag(s) set: {', '.join(legacy_active)}. "
+                "Migrate to ALLOW_INSECURE_DEV_AUTH_BYPASS. "
+                "These flags will be removed in a future release.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            # Fold into canonical flag so downstream code only checks one field.
+            object.__setattr__(self, "allow_insecure_dev_auth_bypass", True)
+
+        return self
+
+    @model_validator(mode="after")
     def _validate_cross_field_constraints(self) -> "Layer6Settings":
         if self.api_port != self.port:
             raise ValueError("API_PORT and PORT must match when both are configured")
@@ -154,19 +195,15 @@ class Layer6Settings(BaseSettings):
                 environment=self.environment,
             )
 
+            # Legacy flags are folded into allow_insecure_dev_auth_bypass by
+            # _warn_deprecated_bypass_flags, so only the canonical flag needs checking here.
             active_flags: list[str] = []
             if self.allow_insecure_dev_auth_bypass:
                 active_flags.append("ALLOW_INSECURE_DEV_AUTH_BYPASS")
-            if self.dev_auth_bypass:
-                active_flags.append("DEV_AUTH_BYPASS")
-            if self.auth_bypass_enabled:
-                active_flags.append("AUTH_BYPASS_ENABLED")
             if self.jwt_fallback_to_query_param:
                 active_flags.append("JWT_FALLBACK_TO_QUERY_PARAM")
             if self.allow_ephemeral_encryption:
                 active_flags.append("ALLOW_EPHEMERAL_ENCRYPTION")
-            if (self.allow_dev_auth_bypass or "").strip().lower() == "i_understand_risk":
-                active_flags.append("ALLOW_DEV_AUTH_BYPASS")
 
             if active_flags:
                 raise ValueError(

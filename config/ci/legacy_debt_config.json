@@ -9,6 +9,7 @@
     "config/ci/legacy_debt_config.json",
     "config/ci/legacy_debt_baseline.json",
     "config/ci/legacy_debt_approvals.json",
-    "docs/operations/legacy-debt-baseline-overrides.md"
+    "docs/operations/legacy-debt-baseline-overrides.md",
+    "spec.md"
   ]
 }

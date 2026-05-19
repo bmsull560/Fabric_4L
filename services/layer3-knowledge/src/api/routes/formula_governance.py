@@ -1,4 +1,8 @@
-"""Formula Governance API routes for Layer 3.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Formula Governance API routes for Layer 3.
 
 Provides endpoints for formula versioning, lifecycle, and governance.
 

@@ -51,6 +51,18 @@ TENANT_HEADER = "X-Tenant-ID"
 TEST_TENANT_A = "tenant-contract-a"
 TEST_TENANT_B = "tenant-contract-b"
 
+def _in_ci() -> bool:
+    """Detect CI execution for fail-closed preflight behavior."""
+    return os.getenv("CI", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _fail_closed_or_skip(message: str) -> None:
+    """Fail in CI for launch-gated checks; skip only for local developer ergonomics."""
+    if _in_ci():
+        pytest.fail(message)
+    pytest.skip(message)
+
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -152,7 +164,7 @@ class TestJourney1IngestionContract:
         # First, get a job ID from the list
         resp = await l1_client.get("/api/v1/ingestion/jobs")
         if resp.status_code != 200 or not resp.json():
-            pytest.skip("No ingestion jobs available for progress check")
+            _fail_closed_or_skip("No ingestion jobs available for progress check")
         job_id = resp.json()[0].get("id") or resp.json()[0].get("job_id")
         resp = await l1_client.get(f"/api/v1/ingestion/jobs/{job_id}/progress")
         assert resp.status_code == 200
@@ -171,7 +183,7 @@ class TestJourney2IntelligenceContract:
         # List accounts first
         resp = await l4_client.get("/v1/accounts")
         if resp.status_code != 200 or not resp.json():
-            pytest.skip("No accounts available")
+            _fail_closed_or_skip("No accounts available")
         account_id = resp.json()[0].get("id") or resp.json()[0].get("account_id")
 
         resp = await l4_client.get(f"/v1/accounts/{account_id}")
@@ -202,7 +214,7 @@ class TestJourney2IntelligenceContract:
         resp_b = await l4_client_tenant_b.get("/v1/accounts")
 
         if resp_a.status_code != 200 or resp_b.status_code != 200:
-            pytest.skip("Cannot verify isolation — one or both tenants returned non-200")
+            _fail_closed_or_skip("Cannot verify isolation — one or both tenants returned non-200")
 
         accounts_a = {a.get("id") for a in resp_a.json() if a.get("id")}
         accounts_b = {a.get("id") for a in resp_b.json() if a.get("id")}
@@ -231,7 +243,7 @@ class TestJourney3ValueStudioContract:
         """GET /v1/cases/{id}/export must return an export URL."""
         resp = await l4_client.get("/v1/cases")
         if resp.status_code != 200 or not resp.json():
-            pytest.skip("No cases available for export test")
+            _fail_closed_or_skip("No cases available for export test")
         case_id = resp.json()[0].get("id") or resp.json()[0].get("case_id")
 
         resp = await l4_client.get(f"/v1/cases/{case_id}/export")
@@ -361,7 +373,7 @@ class TestOpenApiSchemaDrift:
         """Verify the account mock shape matches the OpenAPI Account schema."""
         schema_info = load_openapi_schema("layer4-agents.json", "/v1/accounts/{account_id}", "get")
         if not schema_info:
-            pytest.skip("No OpenAPI schema found for /v1/accounts/{account_id}")
+            _fail_closed_or_skip("No OpenAPI schema found for /v1/accounts/{account_id}")
 
         # This is the shape used in frontend/e2e/helpers/api-harness.ts
         mock_account = {
@@ -385,7 +397,7 @@ class TestOpenApiSchemaDrift:
         """Verify the ingestion jobs mock shape matches the OpenAPI schema."""
         schema_info = load_openapi_schema("layer1-ingestion.json", "/api/v1/ingestion/jobs", "get")
         if not schema_info:
-            pytest.skip("No OpenAPI schema found for /api/v1/ingestion/jobs")
+            _fail_closed_or_skip("No OpenAPI schema found for /api/v1/ingestion/jobs")
 
         mock_jobs = {
             "data": [

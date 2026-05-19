@@ -28,7 +28,6 @@ import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
-import { SectionCard, MetricCard, StatusBadge } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import {
   useEnrichAccount,
@@ -41,6 +40,8 @@ import {
   useDealReadiness,
   type DealReadiness,
 } from "@/hooks/useIntelligence";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard, StatusBadge } from "@/components/ui/fabric";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -29,6 +29,13 @@ APPROVED_DOMAINS = {
     "registry.value-fabric.internal",
     "localhost",
     "127.0.0.1",
+    # Kubernetes cluster-internal service DNS names used in post-deploy smoke tests
+    "layer1-ingestion",
+    "layer2-extraction",
+    "layer3-knowledge",
+    "layer4-agents",
+    "layer5-ground-truth",
+    "frontend",
 }
 
 ACTION_REF_RE = re.compile(r"^\s*-\s*uses:\s*([^@\s]+)@([^\s#]+)")

@@ -5,7 +5,12 @@ Canonical implementation lives in services/layer1-ingestion/src/crawler/.
 
 from __future__ import annotations
 
-from .decision_store import CrawlDecisionRecord, CrawlDecisionRepository, FallbackStats, RouterQualityReport
+from .decision_store import (
+    CrawlDecisionRecord,
+    CrawlDecisionRepository,
+    FallbackStats,
+    RouterQualityReport,
+)
 from .httpx_crawler import FastPathResult, HttpxCrawler, HttpxCrawlerConfig, SSRFProtectionError
 from .playwright_crawler import CrawlResult, PlaywrightCrawler
 from .quality_gate import AdaptiveQualityGate, QualityGate, QualityThresholds

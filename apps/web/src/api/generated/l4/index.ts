@@ -229,6 +229,7 @@ export interface paths {
          *     Example:
          *         POST /v1/workflows/wf-123/resume
          *         {
+         *             "user_id": "user-001",
          *             "resume_data": {"approved": true, "notes": "Proceed with ROI calc"}
          *         }
          *
@@ -1325,11 +1326,12 @@ export interface paths {
          *     Salesforce sends notifications when Accounts, Opportunities, or Contacts
          *     are created/updated. We trigger incremental sync for affected records.
          *
-         *     **Production Multi-Tenancy:**
-         *     The `tenant_id` query parameter is required in production. Configure your
-         *     Salesforce outbound message URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
-         *     The handler verifies both tenant existence and webhook token authenticity
-         *     before syncing to prevent cross-tenant data leakage.
+         *     **Tenant Binding:**
+         *     Configure the Salesforce outbound message URL with
+         *     `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
+         *     The handler requires an authenticated tenant-bound integration for normal
+         *     operation and only allows tenant-free local development flows behind an
+         *     explicit development-only flag.
          *
          *     Headers:
          *         X-Webhook-Token: Per-tenant opaque token (preferred)
@@ -1361,11 +1363,12 @@ export interface paths {
          *     HubSpot sends notifications when objects are created, updated, or deleted.
          *     We trigger incremental sync for affected company (account) records.
          *
-         *     **Production Multi-Tenancy:**
-         *     The `tenant_id` query parameter is required in production. Configure your
-         *     HubSpot webhook URL with `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
-         *     The handler verifies both tenant existence and webhook token authenticity
-         *     before syncing to prevent cross-tenant data leakage.
+         *     **Tenant Binding:**
+         *     Configure the HubSpot webhook URL with
+         *     `?tenant_id=<your-tenant-id>&webhook_token=<token>`.
+         *     The handler requires an authenticated tenant-bound integration for normal
+         *     operation and only allows tenant-free local development flows behind an
+         *     explicit development-only flag.
          *
          *     Headers:
          *         X-Webhook-Token: Per-tenant opaque token (preferred)
@@ -2063,7 +2066,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/integrations/salesforce/oauth/authorize": {
+    "/v1/integrations/{provider}/sync-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sync Jobs */
+        get: operations["list_sync_jobs_v1_integrations__provider__sync_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{provider}/sync-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sync Job */
+        get: operations["get_sync_job_v1_integrations__provider__sync_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/salesforce/oauth/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -2074,9 +2111,30 @@ export interface paths {
         put?: never;
         /**
          * Start Salesforce Oauth
-         * @description Generate the Salesforce OAuth authorize URL for the current tenant.
+         * @description Canonical Salesforce OAuth start route.
          */
-        post: operations["start_salesforce_oauth_v1_integrations_salesforce_oauth_authorize_post"];
+        post: operations["start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/salesforce/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Salesforce Oauth Compat
+         * @deprecated
+         * @description Deprecated compatibility alias for the old OAuth start route.
+         */
+        post: operations["start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3611,9 +3669,12 @@ export interface paths {
         trace?: never;
     };
     "/v1/billing/subscription": {
+<<<<<<< HEAD
 <<<<<<< ours
     "/v1/billing/entitlements": {
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -3640,7 +3701,603 @@ export interface paths {
         trace?: never;
     };
     "/v1/billing/checkout": {
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Checkout
+         * @description Create a Stripe checkout session for subscription.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         request: Checkout session parameters
+         *
+         *     Returns:
+         *         Session ID and checkout URL
+         */
+        post: operations["create_checkout_v1_billing_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/portal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Portal
+         * @description Create a Stripe customer portal session.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         request: Portal session parameters
+         *
+         *     Returns:
+         *         Portal URL for customer to manage billing
+         */
+        post: operations["create_portal_v1_billing_portal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Entitlements
+         * @description Get all feature entitlements for a customer.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *
+         *     Returns:
+         *         Plan details and feature availability map
+         */
+        get: operations["get_entitlements_v1_billing_entitlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/check-feature": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Feature
+         * @description Check if a customer has access to a specific feature.
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         feature_id: Feature identifier to check
+         *
+         *     Returns:
+         *         Feature access status
+         */
+        get: operations["check_feature_v1_billing_check_feature_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/sync-customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Customer
+         * @description Sync customer with Stripe (create or update).
+         *
+         *     Args:
+         *         customer_id: Internal customer/user ID
+         *         request: Customer details
+         *
+         *     Returns:
+         *         Customer record with Stripe ID if available
+         */
+        post: operations["sync_customer_v1_billing_sync_customer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stripe Webhook
+         * @description Handle Stripe webhook events.
+         *
+         *     Processes subscription lifecycle events from Stripe with idempotency.
+         *     Must configure webhook secret in STRIPE_WEBHOOK_SECRET env var.
+         *
+         *     SECURITY: Validates request originates from Stripe IP ranges AND
+         *     has valid Stripe-Signature header. Dual verification for defense-in-depth.
+         *
+         *     Headers:
+         *         Stripe-Signature: Webhook signature for verification
+         *
+         *     Returns:
+         *         Processing status
+         */
+        post: operations["stripe_webhook_v1_billing_webhook_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Usage Event
+         * @description Ingest a single usage event for billing.
+         *
+         *     Args:
+         *         request: Usage event details
+         *
+         *     Returns:
+         *         Ingested event with ID and status
+         *
+         *     Raises:
+         *         400: Validation error
+         *         409: Duplicate event (idempotency conflict)
+         */
+        post: operations["ingest_usage_event_v1_billing_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/events/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Usage Batch
+         * @description Ingest multiple usage events in a batch.
+         *
+         *     Args:
+         *         request: Batch of usage events (max 1000)
+         *
+         *     Returns:
+         *         Summary with counts of created, duplicate, and error events
+         *
+         *     Raises:
+         *         400: Batch validation error
+         */
+        post: operations["ingest_usage_batch_v1_billing_events_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/usage/{customer_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage Summary
+         * @description Get aggregated usage summary for a customer and metric.
+         *
+         *     Args:
+         *         customer_id: Customer to query
+         *         metric_name: Metric to aggregate
+         *         start_date: Start of period (ISO format)
+         *         end_date: End of period (ISO format)
+         *
+         *     Returns:
+         *         Usage summary with total quantity and event count
+         */
+        get: operations["get_usage_summary_v1_billing_usage__customer_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/usage/{customer_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Usage Events
+         * @description List individual usage events for a customer.
+         *
+         *     Args:
+         *         customer_id: Customer to query
+         *         metric_name: Optional metric filter
+         *         start_date: Optional start date filter
+         *         end_date: Optional end date filter
+         *         limit: Maximum results (1-1000)
+         *         offset: Pagination offset
+         *
+         *     Returns:
+         *         List of usage events
+         */
+        get: operations["list_usage_events_v1_billing_usage__customer_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/usage/{customer_id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Usage To Stripe
+         * @description Sync pending usage events to Stripe MeterEvents.
+         *
+         *     Aggregates pending usage and reports to Stripe for metered billing.
+         *     Requires Stripe customer to be linked and STRIPE_METER_EVENTS_ENABLED=true.
+         *
+         *     Args:
+         *         customer_id: Customer to sync usage for
+         *         metric_name: Optional metric filter (syncs all if omitted)
+         *
+         *     Returns:
+         *         Sync summary with counts and Stripe responses
+         *
+         *     Raises:
+         *         400: Validation error or no Stripe customer linked
+         *         402: Stripe not configured
+         */
+        post: operations["sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/limits/{customer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage Limits
+         * @description Get current usage and limits for a customer.
+         *
+         *     Returns all configured limits and current usage percentages.
+         *     Use this to show progress bars or warnings in the UI.
+         *
+         *     Args:
+         *         customer_id: Customer to check
+         *
+         *     Returns:
+         *         Usage limits and current consumption for all metrics
+         */
+        get: operations["get_usage_limits_v1_billing_limits__customer_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/limits/{customer_id}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Request Allowed
+         * @description Check if a request should be allowed based on usage limits.
+         *
+         *     Use this endpoint before processing expensive operations to validate
+         *     that the customer has quota remaining. Returns 402 Payment Required
+         *     if the hard limit is exceeded.
+         *
+         *     Args:
+         *         customer_id: Customer making the request
+         *         metric_name: Metric being consumed
+         *         quantity: Amount to be consumed
+         *
+         *     Returns:
+         *         Validation result with allow/deny decision
+         *
+         *     Raises:
+         *         402: Hard limit exceeded (upgrade required)
+         *         400: Invalid request
+         */
+        post: operations["check_request_allowed_v1_billing_limits__customer_id__check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/plans/{plan_id}/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Plan Limits
+         * @description Get the configured usage limits for a plan.
+         *
+         *     Returns the limits configuration without customer-specific usage data.
+         *     Useful for displaying plan details in pricing pages.
+         *
+         *     Args:
+         *         plan_id: Plan identifier (free, pro, enterprise)
+         *
+         *     Returns:
+         *         Plan limits configuration
+         */
+        get: operations["get_plan_limits_v1_billing_plans__plan_id__limits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Invoices
+         * @description List invoices with optional filters.
+         *
+         *     Returns paginated list of invoices for the tenant, optionally filtered
+         *     by customer and status.
+         */
+        get: operations["list_invoices_v1_billing_invoices_get"];
+        put?: never;
+        /**
+         * Create Invoice
+         * @description Create a new invoice.
+         *
+         *     Creates a draft invoice for the specified customer and billing period.
+         *     Add line items via POST /invoices/{id}/items, then finalize via POST /invoices/{id}/finalize.
+         */
+        post: operations["create_invoice_v1_billing_invoices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Invoice
+         * @description Get invoice details including line items and charges.
+         */
+        get: operations["get_invoice_v1_billing_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Invoice Item
+         * @description Add a line item to an invoice.
+         */
+        post: operations["add_invoice_item_v1_billing_invoices__invoice_id__items_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Invoice
+         * @description Finalize a draft invoice (make it open/payable).
+         *
+         *     Recalculates totals from line items and changes status to 'open'.
+         */
+        post: operations["finalize_invoice_v1_billing_invoices__invoice_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/invoices/{invoice_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Invoice
+         * @description Void an invoice.
+         */
+        post: operations["void_invoice_v1_billing_invoices__invoice_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/charges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Charges
+         * @description List charge records.
+         */
+        get: operations["list_charges_v1_billing_charges_get"];
+        put?: never;
+        /**
+         * Record Charge
+         * @description Record a charge attempt.
+         */
+        post: operations["record_charge_v1_billing_charges_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/reports/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Revenue Summary
+         * @description Get revenue summary for a period.
+         *
+         *     Returns aggregated invoice and charge totals for the specified period.
+         */
+        get: operations["get_revenue_summary_v1_billing_reports_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing/customers/{customer_id}/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Customer Balance
+         * @description Get customer balance summary.
+         *
+         *     Returns open invoice amounts and lifetime payment totals.
+         */
+        get: operations["get_customer_balance_v1_billing_customers__customer_id__balance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/c1/stream": {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -10849,6 +11506,25 @@ export interface components {
             has_more: boolean;
         };
         /**
+         * WorkflowOutput
+         * @description Structured workflow output envelope for completed workflow results.
+         */
+        WorkflowOutput: {
+            data?: components["schemas"]["JsonValue"];
+            /** Summary */
+            summary?: string | null;
+            /** Artifacts */
+            artifacts?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
+            /** Metrics */
+            metrics?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * WorkflowPauseRequest
          * @description Request to pause a running workflow.
          */
@@ -10955,10 +11631,14 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "running" | "paused" | "interrupted" | "completed" | "failed" | "cancelled";
+<<<<<<< HEAD
             /** Output */
             output?: {
                 [key: string]: components["schemas"]["JsonValue"];
             } | null;
+=======
+            output?: components["schemas"]["WorkflowOutput"] | null;
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             /** Errors */
             errors?: (string | {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -13467,11 +14147,15 @@ export interface operations {
             };
         };
     };
+<<<<<<< HEAD
 <<<<<<< ours
     decide_evidence_v1_evidence__evidence_id__decision_patch: {
 =======
     create_task_v1_tasks_post: {
 >>>>>>> theirs
+=======
+    decide_evidence_v1_evidence__evidence_id__decision_patch: {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -13484,7 +14168,112 @@ export interface operations {
             content: {
 <<<<<<< ours
                 "application/json": components["schemas"]["EvidenceDecisionRequest"];
+<<<<<<< HEAD
 =======
+=======
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceDecisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+                driver_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EvidenceDriverLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_v1_tasks_get: {
+        parameters: {
+            query?: {
+                account_id?: string | null;
+                status?: components["schemas"]["TaskStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_v1_tasks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 "application/json": components["schemas"]["CreateTaskRequest"];
 >>>>>>> theirs
             };
@@ -14231,6 +15020,100 @@ export interface operations {
             };
             cookie?: never;
         };
+<<<<<<< HEAD
+=======
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["layer4_agents__api__routes__checkpoints__CheckpointListResponse"];
+                };
+            };
+            /** @description Workflow out of tenant scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Workflow not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_checkpoint_state_v1_workflows__workflow_id__checkpoints__checkpoint_id__state_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+                checkpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StateSnapshotResponse"];
+                };
+            };
+            /** @description Workflow out of tenant scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Workflow/checkpoint not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_checkpoints_v1_workflows__workflow_id__checkpoints_diff_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StateDiffRequest"];
@@ -14257,11 +15140,15 @@ export interface operations {
                 };
                 content?: never;
             };
+<<<<<<< HEAD
 <<<<<<< ours
             /** @description Workflow not found */
 =======
             /** @description Workflow/checkpoint not found */
 >>>>>>> theirs
+=======
+            /** @description Workflow/checkpoint not found */
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -15233,7 +16120,10 @@ export interface operations {
             };
         };
     };
+<<<<<<< HEAD
 <<<<<<< ours
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     list_sync_jobs_v1_integrations__provider__sync_jobs_get: {
         parameters: {
             query?: {
@@ -15242,15 +16132,9 @@ export interface operations {
             header?: never;
             path: {
                 provider: components["schemas"]["CRMProvider"];
+<<<<<<< HEAD
 =======
-    get_sync_job_v1_integrations__provider__sync_jobs__job_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                provider: components["schemas"]["CRMProvider"];
-                job_id: string;
->>>>>>> theirs
+=======
             };
             cookie?: never;
         };
@@ -15262,9 +16146,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["CRMSyncJobListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
+    get_sync_job_v1_integrations__provider__sync_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: components["schemas"]["CRMProvider"];
+                job_id: string;
+<<<<<<< HEAD
+>>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+<<<<<<< HEAD
 <<<<<<< ours
                     "application/json": components["schemas"]["CRMSyncJobListResponse"];
 =======
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                     "application/json": components["schemas"]["CRMSyncJobResponse"];
                 };
             };
@@ -15275,22 +16199,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+<<<<<<< HEAD
 >>>>>>> theirs
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 };
             };
         };
     };
+<<<<<<< HEAD
 <<<<<<< ours
     api_get_current_tenant_settings_v1_tenants_current_settings_get: {
 =======
     start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
 >>>>>>> theirs
+=======
+    start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
+<<<<<<< HEAD
 <<<<<<< ours
         requestBody?: never;
         responses: {
@@ -15311,6 +16243,13 @@ export interface operations {
         };
     };
         requestBody?: never;
+=======
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
+            };
+        };
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         responses: {
             /** @description Successful Response */
             200: {
@@ -15318,11 +16257,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+<<<<<<< HEAD
 <<<<<<< ours
                     "application/json": components["schemas"]["CRMSyncJobResponse"];
 =======
                     "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
 >>>>>>> theirs
+=======
+                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 };
             };
             /** @description Validation Error */
@@ -15336,11 +16279,15 @@ export interface operations {
             };
         };
     };
+<<<<<<< HEAD
 <<<<<<< ours
     start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
 =======
     start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post: {
 >>>>>>> theirs
+=======
+    start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post: {
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;

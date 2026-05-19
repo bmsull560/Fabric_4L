@@ -111,6 +111,7 @@ def _contract_service_gate(request: pytest.FixtureRequest):
     (which use live-service client fixtures). Static architecture tests always
     check service availability regardless of mock mode.
     """
+<<<<<<< HEAD
     if "contract_static_no_service" in request.keywords:
         return
 
@@ -138,6 +139,36 @@ def _contract_service_gate(request: pytest.FixtureRequest):
         "Required contract services are unavailable in local/non-strict mode. "
         f"Missing: {missing_services}"
     )
+=======
+    is_service_required = "service_required" in request.keywords
+    is_static = "contract_static" in request.keywords
+
+    if not is_service_required and not is_static:
+        return
+
+    # mock mode only bypasses live-service tests, not static architecture checks
+    if is_service_required and os.getenv("CONTRACT_TEST_MODE") == "mock":
+        return
+
+    # For static tests, bypass mock_mode and check actual connectivity.
+    # mock_mode is set by individual test files (e.g. CONTRACT_TEST_MODE=mock)
+    # and should not suppress architecture/parity checks.
+    if is_static:
+        mock_mode, missing_services, strict_mode = _evaluate_services_availability(
+            env={k: v for k, v in os.environ.items() if k != "CONTRACT_TEST_MODE"}
+        )
+    else:
+        mock_mode, missing_services, strict_mode = _evaluate_services_availability()
+        if mock_mode:
+            return
+    if missing_services:
+        if strict_mode:
+            pytest.fail(
+                "Contract test strict mode enabled and required services are unavailable. "
+                f"Missing: {missing_services}"
+            )
+        pytest.skip(f"Required services unavailable: {missing_services}")
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 def _is_truthy(value: str | None) -> bool:
     """Return True when an environment flag is set to a truthy value."""
@@ -227,13 +258,32 @@ def check_services_availability(request: pytest.FixtureRequest):
         )
 
 
+def _skip_if_services_unavailable(service_urls: list[str]) -> None:
+    """Skip the current test if any of the given service URLs are unreachable.
+
+    Used by client fixtures to guard individual tests when the session-level
+    skip did not fire (e.g. because env vars were mutated after session start).
+    """
+    for url in service_urls:
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=2) as response:
+                if response.status != 200:
+                    pytest.skip(f"Service unavailable: {url} returned HTTP {response.status}")
+        except (urllib.error.URLError, ConnectionError, OSError):
+            pytest.skip(f"Service unreachable: {url}")
+
+
 @pytest.fixture
 async def client() -> AsyncClient:
     """Create HTTP client for Layer 3 API contract tests.
 
     Uses LAYER3_API_URL environment variable, falls back to localhost:8003.
+    Skips the test if the service is unreachable (guards against env var mutation
+    after the session-level availability check has already run).
     """
     base_url = _get_env_url("LAYER3_API_URL", DEFAULT_LAYER3_URL)
+    _skip_if_services_unavailable([f"{base_url}/health"])
     timeout = float(os.getenv("CONTRACT_TEST_TIMEOUT", DEFAULT_TIMEOUT))
 
     async with AsyncClient(base_url=base_url, timeout=timeout) as client:
@@ -245,8 +295,10 @@ async def layer4_client() -> AsyncClient:
     """Create HTTP client for Layer 4 Agents API tests.
 
     Uses LAYER4_API_URL environment variable, falls back to localhost:8004.
+    Skips the test if the service is unreachable.
     """
     base_url = _get_env_url("LAYER4_API_URL", DEFAULT_LAYER4_URL)
+    _skip_if_services_unavailable([f"{base_url}/health"])
     timeout = float(os.getenv("CONTRACT_TEST_TIMEOUT", DEFAULT_TIMEOUT))
 
     async with AsyncClient(base_url=base_url, timeout=timeout) as client:
@@ -258,8 +310,10 @@ async def layer5_client() -> AsyncClient:
     """Create HTTP client for Layer 5 Ground Truth API tests.
 
     Uses LAYER5_API_URL environment variable, falls back to localhost:8005.
+    Skips the test if the service is unreachable.
     """
     base_url = _get_env_url("LAYER5_API_URL", DEFAULT_LAYER5_URL)
+    _skip_if_services_unavailable([f"{base_url}/api/v1/health"])
     timeout = float(os.getenv("CONTRACT_TEST_TIMEOUT", DEFAULT_TIMEOUT))
 
     async with AsyncClient(base_url=base_url, timeout=timeout) as client:

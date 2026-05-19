@@ -7,12 +7,16 @@ import { useApplyWorkspacePageAction } from './useWorkspaceCase';
 const patchMock = vi.fn();
 const postMock = vi.fn();
 
-vi.mock('@/api/client', () => ({
-  apiClient: {
-    patch: (...args: unknown[]) => patchMock(...args),
-    post: (...args: unknown[]) => postMock(...args),
-  },
-}));
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/client')>();
+  return {
+    ...actual,
+    apiClient: {
+      patch: (...args: unknown[]) => patchMock(...args),
+      post: (...args: unknown[]) => postMock(...args),
+    },
+  };
+});
 
 function wrapperFactory(client: QueryClient) {
   return ({ children }: { children: React.ReactNode }) => (

@@ -8,12 +8,16 @@ import React from "react";
 import { QK } from "./queryKeys";
 
 // Mock the API client
-vi.mock("@/api/client", () => ({
-  apiClient: {
-    get: vi.fn(),
-    post: vi.fn(),
-  },
-}));
+vi.mock("@/api/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/client")>();
+  return {
+    ...actual,
+    apiClient: {
+      get: vi.fn(),
+      post: vi.fn(),
+    },
+  };
+});
 
 describe("useValuePacks", () => {
   beforeEach(() => {

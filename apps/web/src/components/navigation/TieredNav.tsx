@@ -29,8 +29,8 @@ import {
   isRouteActive,
   type NavItem,
   type UserTier,
-} from "@/navigation/navHelpers";
-export type { UserTier } from "@/navigation/navHelpers";
+} from "@/navigation/navigationService";
+export type { UserTier } from "@/navigation/navigationService";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAccountContextStore } from "@/stores/accountContextStore";

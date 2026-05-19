@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useNavigation } from "@/hooks/useNavigation";
+import { workspacePath } from "@/features/intelligence-workspace/workspaceRoutes";
+import { getStatePath, buildPath } from "@/navigation/navigationService";
 import { GlobalLayout } from "@/components/layout/GlobalLayout";
 import { ProtectedRoute } from "@/components/routing/ProtectedRoute";
 import { AccountContextSync } from "@/components/routing/AccountContextSync";
@@ -147,7 +149,7 @@ function ProspectSetupWithNav() {
     <ProspectSetup
       onNavigateToWorkspace={(path, accountId) => {
         setSelectedAccountId(accountId);
-        navigateTo(`/accounts/${accountId}/intelligence/signals`);
+        navigateTo(workspacePath(accountId, "signals"));
       }}
       onCreateSetup={handleCreateSetup}
       isSubmitting={prospectSetup.isSubmitting}
@@ -162,7 +164,7 @@ function StudioAccountRedirect() {
     return <Navigate to="/accounts" replace />;
   }
   const targetTab = tab || "action-plan";
-  return <Navigate to={`/studio/${selectedAccountId}/${targetTab}`} replace />;
+  return <Navigate to={buildPath(`${getStatePath("studio", { accountId: selectedAccountId })}/:tab`, { tab: targetTab })} replace />;
 }
 
 function RootRedirect() {

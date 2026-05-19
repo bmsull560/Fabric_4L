@@ -23,7 +23,7 @@ from typing import Any
 from neo4j import AsyncSession
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from schema.constraints import get_relationship_types
+from ..schema.constraints import get_relationship_types
 
 
 class get_entity_contextResult(TypedDictModel):

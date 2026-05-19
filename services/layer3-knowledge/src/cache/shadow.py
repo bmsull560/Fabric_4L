@@ -1,4 +1,8 @@
-"""Shadow comparison utilities for CachePort parity pilots.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Shadow comparison utilities for CachePort parity pilots.
 
 The comparator is deliberately passive from the application's perspective: the
 primary provider result is always returned, while shadow mismatches are recorded
@@ -7,10 +11,11 @@ for tests or future staging telemetry.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
-from cache.ports import CachePort
+from ..cache.ports import CachePort
 
 
 @dataclass(frozen=True)

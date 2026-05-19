@@ -1,9 +1,13 @@
-"""Pydantic models for Layer 3 knowledge API."""
+"""Allowed service-local exception for Layer 3 service wrapper.
 
-from collections import Counter
-from datetime import datetime
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Pydantic models for Layer 3 knowledge API.
+"""
 
 import os
+from collections import Counter
+from datetime import datetime
 from enum import Enum
 from typing import Annotated, Any, Literal
 
@@ -13,14 +17,13 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-
 from value_fabric.shared.contracts.layer3_statuses import (
-    BenchmarkStatus,
     EntityStatus,
     HealthStatus,
     IngestStatus,
     SyncStatus,
 )
+
 
 # Health Check
 class DependencyStatus(BaseModel):
@@ -126,7 +129,7 @@ class IngestRequest(BaseModel):
         None,
         min_length=1,
         max_length=255,
-        description="Optional tenant UUID hint for compatibility; authenticated tenant context is authoritative and any provided value must match it",
+        description="Optional tenant hint for compatibility; authenticated tenant context is authoritative and any provided value must match it",
         examples=["12345678-1234-1234-1234-123456789abc"],
     )
 

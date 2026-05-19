@@ -27,6 +27,31 @@ afterAll(() => {
   server.close();
 });
 
+// Radix UI uses pointer capture, scroll, and PointerEvent APIs that jsdom
+// does not fully implement.  Polyfill them so Radix Select, DropdownMenu,
+// and Dialog components work in tests.
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+}
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => undefined;
+}
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => undefined;
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => undefined;
+}
+// Radix DropdownMenu uses PointerEvent to detect open/close.
+if (typeof window !== 'undefined' && !window.PointerEvent) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).PointerEvent = class PointerEvent extends MouseEvent {
+    constructor(type: string, params: PointerEventInit = {}) {
+      super(type, params);
+    }
+  };
+}
+
 // Mock matchMedia for responsive component tests
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

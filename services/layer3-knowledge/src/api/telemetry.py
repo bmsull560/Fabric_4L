@@ -1,4 +1,9 @@
-"""Optional OpenTelemetry imports for Layer 3 API."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Optional OpenTelemetry imports for Layer 3 API.
+"""
 
 try:
     from opentelemetry import trace

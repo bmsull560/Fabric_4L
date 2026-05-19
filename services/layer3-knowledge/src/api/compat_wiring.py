@@ -1,10 +1,15 @@
-"""Layer 3 version compatibility wiring."""
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Layer 3 version compatibility wiring.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from api.versioning import (
+from ..api.versioning import (
     initialize_versioning,
     migrate_v1_to_v2_ingestion_request,
     migrate_v1_to_v2_search_request,

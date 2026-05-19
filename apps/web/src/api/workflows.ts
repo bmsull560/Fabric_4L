@@ -100,10 +100,22 @@ export interface WorkflowResumeResponse {
   estimated_completion_seconds: number;
 }
 
+export interface WorkflowOutput {
+  data?: unknown;
+  summary?: string | null;
+  artifacts?: Record<string, unknown>[];
+  metrics?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface WorkflowResultResponse {
   workflow_id: string;
   status: WorkflowStatus;
+<<<<<<< HEAD
   output: Record<string, unknown> | null;
+=======
+  output: WorkflowOutput | null;
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
   errors: (string | Record<string, unknown>)[];
   completed_at: string | null;
 }

@@ -19,14 +19,12 @@ from value_fabric.shared.identity.dependencies import require_authenticated
 
 from ...database import get_db_from_context
 from ...models.company_knowledge import (
-    ProfileStatus,
     ReviewStatus,
     SourceType,
 )
 from ...services.company_knowledge_service import CompanyKnowledgeService
 from ..schemas.company_knowledge import (
     CompanyKnowledgeProfileCreateRequest,
-    CompanyKnowledgeProfileListItemResponse,
     CompanyKnowledgeProfileResponse,
     CompanyKnowledgeProfileUpdateRequest,
     ICPProfileCreateRequest,

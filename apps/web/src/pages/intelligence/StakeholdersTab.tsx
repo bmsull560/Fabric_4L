@@ -8,8 +8,9 @@ import { useAccount } from "@/hooks/useAccounts";
 import { AccountRequiredGuard } from "@/components/AccountRequiredGuard";
 import { CenteredLoader } from "@/components/CenteredLoader";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
-import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { MetricCard } from "@/components/ui/fabric";
 
 interface Stakeholder { id: string; name: string; title: string; role: string; priorities: string[]; relevantSignals: string[]; engagementLevel: "high" | "medium" | "low" }
 

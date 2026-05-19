@@ -74,6 +74,16 @@ updates:
       - value-fabric/qa-leads
 
   - package-ecosystem: pip
+    directory: /services/layer2-5-signal-refinery
+    schedule:
+      interval: weekly
+    labels: [dependencies, python, service-layer2-5]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - value-fabric/backend-leads
+
+  - package-ecosystem: pip
     directory: /sdk/python
     schedule:
       interval: weekly
@@ -226,6 +236,17 @@ updates:
       prefix: chore(deps)
     reviewers:
       - value-fabric/qa-leads
+      - value-fabric/sre-leads
+
+  - package-ecosystem: docker
+    directory: /services/layer2-5-signal-refinery
+    schedule:
+      interval: weekly
+    labels: [dependencies, docker, service-layer2-5]
+    commit-message:
+      prefix: chore(deps)
+    reviewers:
+      - value-fabric/backend-leads
       - value-fabric/sre-leads
 
   - package-ecosystem: docker

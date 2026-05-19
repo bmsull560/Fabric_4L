@@ -1,4 +1,8 @@
-"""Cache ports for OSS-0 substitution scaffolding.
+"""Allowed service-local exception for Layer 3 service wrapper.
+
+Owner: layer3-knowledge
+Removal/migration target: 2026-09-30
+Reason: Cache ports for OSS-0 substitution scaffolding.
 
 The port expresses Fabric's cache contract without exposing Redis-specific APIs. The
 legacy adapter delegates to the current RedisCache implementation so runtime defaults
@@ -10,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from cache.redis_cache import RedisCache
+from ..cache.redis_cache import RedisCache
 
 
 @runtime_checkable

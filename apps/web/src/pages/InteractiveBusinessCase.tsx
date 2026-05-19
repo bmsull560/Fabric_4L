@@ -7,7 +7,6 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Send, RotateCcw, Save, GitCompare, AlertCircle, Loader2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigation } from "@/hooks/useNavigation";
-import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -15,6 +14,8 @@ import { useBusinessCase } from "@/hooks/useDocuments";
 import { useC1Stream } from "@/hooks/useC1Stream";
 import { isC1Enabled, C1Component, getScenarios } from "@/api/thesysClient";
 import { createFeatureLogger } from "@/lib/telemetry";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, Btn } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('InteractiveBusinessCase');
 

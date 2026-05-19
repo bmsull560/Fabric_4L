@@ -6,7 +6,6 @@
  */
 import { useEffect, useState, useMemo } from "react";
 import { Pause, Play, Settings2, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
-import { PageHeader, SectionCard, DataTable, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +16,11 @@ import { useExtractionConfig } from "@/hooks/useExtractionConfig";
 import { useRunExtraction } from "@/hooks/useRunExtraction";
 import { useExtractionResults, useExtractedEntities } from "@/hooks/useExtractionResults";
 import { useJobStream } from "@/hooks/useJobStream";
-import { StatusBadge } from "@/components/WfPrimitives";
 import { createFeatureLogger } from "@/lib/telemetry";
 import { usePauseAllExtractions } from "@/hooks/usePauseAllExtractions";
 import { toast } from "sonner";
+import { SectionCard } from "@/components/blocks/SectionCard";
+import { PageHeader, LegacyDataTable, Btn, StatusBadge } from "@/components/ui/fabric";
 
 const log = createFeatureLogger('ExtractionEngine');
 
@@ -410,7 +410,7 @@ export default function ExtractionEngine() {
 
           {/* Results Table */}
           <SectionCard title="Results Table" className="flex-1 min-h-[200px]">
-            <DataTable
+            <LegacyDataTable
               columns={['Name', 'Type', 'Confidence', 'Source', 'Status']}
               rows={extractedEntities?.map(entity => [
                 entity.name,

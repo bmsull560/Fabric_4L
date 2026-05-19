@@ -117,6 +117,7 @@ Related governance references:
 - Layer runtime parity checks: `tests/contract/test_layer_runtime_parity.py`
 - Service entrypoint smoke checks: `tests/contract/test_layer_service_entrypoint_smoke.py`
 
+<<<<<<< HEAD
 ## Route dependency import inventory (as of 2026-05-19)
 
 Inventory command:
@@ -127,6 +128,8 @@ rg "from \\.\\.\\.api\.dependencies_tenant(_secured)? import" services/layer3-kn
 
 Result: every route under `services/layer3-knowledge/src/api/routes` imports Neo4j tenant dependencies from `dependencies_tenant_secured` only; zero route imports target `dependencies_tenant`.
 
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 ## Canonical Neo4j tenant dependency
 
 Layer 3 route modules must import tenant-scoped Neo4j dependencies only from
@@ -156,6 +159,7 @@ and is hard-removal targeted for **2026-09-30**. CI enforces this with:
 python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
 ```
 
+<<<<<<< HEAD
 Current route inventory (all canonical imports):
 
 - `src/api/routes/benchmarks.py` → `create_neo4j_tenant_session`
@@ -168,6 +172,8 @@ Current route inventory (all canonical imports):
 - `src/api/routes/signals.py` → `Neo4jTenantSession`, `get_neo4j_with_tenant`
 - `src/api/routes/variables.py` → `create_neo4j_tenant_session`
 
+=======
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 ## Scheduled removals & deprecations
 
 Layer 3 follows Value Fabric deprecation policy:

@@ -8,9 +8,15 @@ from value_fabric.shared.identity.context import require_context
 from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
+<<<<<<< HEAD
 from config import Settings, get_settings
 from db.query_execution import run_scoped_query
 from db.query_execution import run_validated_query
+=======
+from ..config import Settings, get_settings
+from ..db.query_execution import run_scoped_query
+from ..db.query_execution import run_validated_query
+>>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 class CommunityDetector__fallback_community_detectionResult(TypedDictModel):
@@ -123,7 +129,7 @@ class CommunityDetector:
 
         # Build graph projection
         node_filter = self._build_node_filter(node_labels)
-        rel_filter = self._build_rel_filter(relationship_types)
+        _rel_filter = self._build_rel_filter(relationship_types)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Check if GDS is available
@@ -231,7 +237,7 @@ class CommunityDetector:
         driver = await self._get_driver()
 
         node_filter = self._build_node_filter(node_labels)
-        rel_filter = self._build_rel_filter(relationship_types)
+        _rel_filter = self._build_rel_filter(relationship_types)
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             try:

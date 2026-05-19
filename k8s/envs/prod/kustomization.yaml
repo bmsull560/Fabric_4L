@@ -23,32 +23,37 @@ patches:
   - path: neo4j-aura-patch.yml
   - path: layer4-aura-wait-patch.yml
 
-# Production application images are pinned to immutable SHA digests by
-# scripts/ci/prepare_kustomize_deploy.sh during the deploy workflow. The
-# committed overlay intentionally contains no synthetic or zero digests.
+# Image digests are injected at deploy time by scripts/ci/prepare_kustomize_deploy.sh.
+# This file must not contain placeholder digests (sha256:1111...1111 through sha256:7777...7777).
+# The CI workflow (.github/workflows/environment-promotion.yml) enforces this before every deploy.
+#
+# For the template showing the expected structure, see kustomization.yaml.template.
+#
+# HOW TO DEPLOY:
+#   CI: environment-promotion.yml runs prepare_kustomize_deploy.sh automatically.
+#   Manual: export REGISTRY=ghcr.io/bmsull560/fabric_4l && bash scripts/ci/prepare_kustomize_deploy.sh prod <output>
 images:
-  # Application images are resolved to real registry digests during promotion.
   - name: services/layer1-ingestion
     newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
-    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   - name: services/layer2-extraction
     newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
-    digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   - name: services/layer3-knowledge
     newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
-    digest: sha256:3333333333333333333333333333333333333333333333333333333333333333
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   - name: services/layer4-agents
     newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
-    digest: sha256:4444444444444444444444444444444444444444444444444444444444444444
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   - name: services/layer5-ground-truth
     newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
-    digest: sha256:5555555555555555555555555555555555555555555555555555555555555555
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   - name: services/layer6-benchmarks
     newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
-    digest: sha256:6666666666666666666666666666666666666666666666666666666666666666
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   - name: apps/web
     newName: ghcr.io/bmsull560/fabric_4l/frontend
-    digest: sha256:7777777777777777777777777777777777777777777777777777777777777777
+    # digest: injected by scripts/ci/prepare_kustomize_deploy.sh
   # Infrastructure images use explicit versions.
   - name: postgres
     newTag: "15.10-alpine"

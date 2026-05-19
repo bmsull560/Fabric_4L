@@ -50,6 +50,18 @@ _session.mount("https://", HTTPAdapter(max_retries=_retries))
 
 F = TypeVar("F", bound=Callable[..., Any])
 
+def _in_ci() -> bool:
+    """Detect CI execution for fail-closed preflight behavior."""
+    return os.environ.get("CI", "").strip().lower() in {"1", "true", "yes"}
+
+
+def _fail_closed_or_skip(message: str) -> None:
+    """Fail in CI for launch-gated preflight checks; skip only for local runs."""
+    if _in_ci():
+        pytest.fail(message)
+    pytest.skip(message)
+
+
 
 def retry_on_connection_error(max_retries: int = 3, delay: float = 1.0) -> Callable[[F], F]:
     """Decorator to retry tests on connection errors."""
@@ -79,7 +91,7 @@ def _require_runtime_services(services: set[str]) -> None:
     """Preflight runtime service health and skip with explicit diagnostics."""
     if not _runtime_enabled_for(services):
         required_flags = ", ".join(sorted(f"RUN_RUNTIME_{s.upper()}=1" for s in services))
-        pytest.skip(
+        _fail_closed_or_skip(
             "Runtime contracts disabled. Set RUN_RUNTIME_CONTRACTS=1 "
             f"or service-specific flags ({required_flags})."
         )
@@ -98,7 +110,7 @@ def _require_runtime_services(services: set[str]) -> None:
             diagnostics.append(f"{service.upper()} health check error at {health_url}: {exc}")
 
     if diagnostics:
-        pytest.skip("Runtime preflight prerequisites not met: " + " | ".join(diagnostics))
+        _fail_closed_or_skip("Runtime preflight prerequisites not met: " + " | ".join(diagnostics))
 
 
 @pytest.fixture
@@ -216,10 +228,6 @@ class TestL1ToL3DataFlow:
     """Verify data flows from L1 ingestion to L3 knowledge graph."""
 
     @pytest.mark.runtime_contract
-    @pytest.mark.skipif(
-        not _runtime_enabled_for({"l1", "l3"}),
-        reason="Runtime contracts disabled; set RUN_RUNTIME_CONTRACTS=1 or RUN_RUNTIME_L1=1 and RUN_RUNTIME_L3=1",
-    )
     def test_l1_ingest_creates_data_in_l3(self, test_entity_data):
         """End-to-end: L1 ingest → L3 queryable."""
         _require_runtime_services({"l1", "l3"})
@@ -240,10 +248,6 @@ class TestL1ToL3DataFlow:
         assert "entities" in results or "results" in results, f"Missing entities in response: {list(results.keys())}"
 
     @pytest.mark.runtime_contract
-    @pytest.mark.skipif(
-        not _runtime_enabled_for({"l3"}),
-        reason="Runtime contracts disabled; set RUN_RUNTIME_CONTRACTS=1 or RUN_RUNTIME_L3=1",
-    )
     def test_l3_entity_persistence(self):
         """L3 entities endpoint returns data."""
         _require_runtime_services({"l3"})
@@ -263,7 +267,7 @@ class TestL1ToL3DataFlow:
         )
         # L3 may not have direct ingest - skip if 404
         if response.status_code == 404:
-            pytest.skip("L3 ingest endpoint not available")
+            _fail_closed_or_skip("L3 ingest endpoint not available")
 
         assert response.status_code in [200, 202, 401, 403], f"Unexpected status: {response.status_code}"
 
@@ -272,10 +276,6 @@ class TestL4WorkflowOrchestration:
     """Verify L4 workflows trigger real L1 and L2 jobs."""
 
     @pytest.mark.runtime_contract
-    @pytest.mark.skipif(
-        not _runtime_enabled_for({"l1", "l2", "l4"}),
-        reason="Runtime contracts disabled; set RUN_RUNTIME_CONTRACTS=1 or RUN_RUNTIME_L1=1 RUN_RUNTIME_L2=1 RUN_RUNTIME_L4=1",
-    )
     def test_l4_workflow_triggers_l1_l2(self):
         """L4 workflow orchestrates real L1 and L2 jobs."""
         _require_runtime_services({"l1", "l2", "l4"})
@@ -288,7 +288,7 @@ class TestL4WorkflowOrchestration:
         )
 
         if response.status_code == 404:
-            pytest.skip("L4 workflow endpoint not available")
+            _fail_closed_or_skip("L4 workflow endpoint not available")
 
         assert response.status_code == 200, f"Workflow start failed: {response.text[:200]}"
         workflow_id = response.json().get("workflow_id")
@@ -319,7 +319,7 @@ class TestContractAlignment:
         """L1 OpenAPI spec is valid and loadable."""
         response = _session.get(f"{L1_URL}/openapi.json", timeout=10)
         if response.status_code == 404:
-            pytest.skip("L1 OpenAPI endpoint not exposed")
+            _fail_closed_or_skip("L1 OpenAPI endpoint not exposed")
 
         assert response.status_code == 200, f"OpenAPI spec load failed: {response.status_code}"
         spec = response.json()
@@ -336,7 +336,7 @@ class TestContractAlignment:
             response = _session.get(f"{L2_URL}/docs/openapi.json", timeout=10)
 
         if response.status_code == 404:
-            pytest.skip("L2 OpenAPI endpoint not exposed")
+            _fail_closed_or_skip("L2 OpenAPI endpoint not exposed")
 
         assert response.status_code == 200, f"OpenAPI spec load failed: {response.status_code}"
         spec = response.json()
@@ -347,7 +347,7 @@ class TestContractAlignment:
         """L3 runtime spec matches contracts/openapi/layer3-knowledge.json."""
         response = _session.get(f"{L3_URL}/openapi.json", timeout=10)
         if response.status_code == 404:
-            pytest.skip("L3 OpenAPI endpoint not exposed")
+            _fail_closed_or_skip("L3 OpenAPI endpoint not exposed")
 
         assert response.status_code == 200, f"OpenAPI spec load failed: {response.status_code}"
         runtime_spec = response.json()
@@ -358,7 +358,7 @@ class TestContractAlignment:
 
         contract_path = Path(__file__).parent.parent.parent / "contracts" / "openapi" / "layer3-knowledge.json"
         if not contract_path.exists():
-            pytest.skip("Contract spec not found")
+            _fail_closed_or_skip("Contract spec not found")
 
         contract_spec = json.loads(contract_path.read_text())
 
