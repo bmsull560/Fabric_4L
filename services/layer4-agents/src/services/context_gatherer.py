@@ -214,24 +214,20 @@ class ContextGatheringService:
                 operation="context_gatherer.account_hypotheses",
             )
 
-            hypotheses: list[dict[str, Any]] = []
-            for record in records:
-                h = record.get("hypothesis")
-                if not h:
-                    continue
-                hypotheses.append(
-                    {
-                        "id": h.get("id"),
-                        "text": h.get("hypothesis_text"),
-                        "status": h.get("status"),
-                        "confidence": h.get("confidence_score"),
-                        "value_path": h.get("value_path_category"),
-                        "estimated_impact_usd": h.get("estimated_impact_usd"),
-                        "capability": h.get("capability_name"),
-                        "signal": h.get("signal_name"),
-                    }
-                )
-            return hypotheses
+            return [
+                {
+                    "id": h.get("id"),
+                    "text": h.get("hypothesis_text"),
+                    "status": h.get("status"),
+                    "confidence": h.get("confidence_score"),
+                    "value_path": h.get("value_path_category"),
+                    "estimated_impact_usd": h.get("estimated_impact_usd"),
+                    "capability": h.get("capability_name"),
+                    "signal": h.get("signal_name"),
+                }
+                for record in records
+                if (h := record.get("hypothesis"))
+            ]
         except Exception as e:
             logger.warning("Failed to load account hypotheses: %s", e)
             return []
