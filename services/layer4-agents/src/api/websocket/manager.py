@@ -321,6 +321,7 @@ class WorkflowWebSocketManager:
 
     async def disconnect(self, websocket: WebSocket, workflow_id: str, trace_id: str | None = None) -> None:
         """Remove a WebSocket connection."""
+        log_trace_id = trace_id
         async with self._lock:
             if workflow_id in self._workflow_connections:
                 # Find and remove the connection
@@ -331,6 +332,8 @@ class WorkflowWebSocketManager:
                         break
 
                 if conn_to_remove:
+                    if log_trace_id is None:
+                        log_trace_id = conn_to_remove.trace_id
                     conn_to_remove.is_alive = False
                     self._workflow_connections[workflow_id].discard(conn_to_remove)
 
@@ -339,13 +342,6 @@ class WorkflowWebSocketManager:
                         del self._workflow_connections[workflow_id]
                         # Note: we keep _event_stores[workflow_id] for reconnection replay
 
-        log_trace_id = trace_id
-        async with self._lock:
-            if log_trace_id is None and workflow_id in self._workflow_connections:
-                for conn in self._workflow_connections[workflow_id]:
-                    if conn.websocket == websocket:
-                        log_trace_id = conn.trace_id
-                        break
         logger.info(
             "WebSocket disconnected for workflow %s",
             workflow_id,

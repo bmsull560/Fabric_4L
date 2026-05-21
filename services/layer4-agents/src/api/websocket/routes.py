@@ -116,6 +116,7 @@ async def workflow_websocket(
     `last_event_id` to receive all missed events.
     """
     # OBS-L4-004: Resolve correlation ID at the HTTP upgrade stage.
+    trace_ctx = resolve_trace_context(websocket.headers)
     trace_id = trace_ctx.trace_id or str(uuid.uuid4())
     correlation_id = trace_id
     _log: dict = {
