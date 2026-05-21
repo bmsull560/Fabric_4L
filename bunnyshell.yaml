@@ -77,8 +77,8 @@ components:
         gitApplicationPath: services/layer1-ingestion
         dockerCompose:
             build:
-                context: .
-                dockerfile: ./services/layer1-ingestion/Dockerfile.live
+                context: ./services/layer1-ingestion
+                dockerfile: ./Dockerfile.live
                 args:
                     INSTALL_PLAYWRIGHT_BROWSERS: 'false'
             environment:
