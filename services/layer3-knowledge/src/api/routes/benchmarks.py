@@ -29,8 +29,13 @@ router = APIRouter()
 
 
 def _get_authenticated_tenant_id(api_key: APIKey) -> str:
-    """Resolve tenant ID from authenticated API-key context; fail closed if absent."""
-    tenant_id = str(api_key.metadata.get("tenant_id", "") or "").strip()
+    """Resolve tenant ID from authenticated API-key context; fail closed if absent.
+
+    Raises HTTPException(401) for any of: missing metadata attr, None metadata,
+    missing tenant_id key, empty string, or whitespace-only tenant_id.
+    """
+    metadata = getattr(api_key, "metadata", None) or {}
+    tenant_id = str(metadata.get("tenant_id", "") or "").strip()
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Invalid tenant context")
     return tenant_id
