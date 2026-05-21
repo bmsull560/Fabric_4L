@@ -18,14 +18,8 @@ from uuid import UUID
 
 import httpx
 from pydantic import ValidationError
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
 
 from metrics.prometheus_metrics import get_metrics
->>>>>>> theirs
 
 from metrics.prometheus_metrics import get_metrics
 
@@ -33,8 +27,6 @@ from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
-<<<<<<< ours
-<<<<<<< ours
 ERR_LAYER3_HTTP_CLIENT = "L5_LAYER3_HTTP_CLIENT_ERROR"
 ERR_LAYER3_TIMEOUT = "L5_LAYER3_TIMEOUT"
 ERR_LAYER3_CONTRACT_INVALID = "L5_LAYER3_CONTRACT_INVALID"
@@ -105,16 +97,6 @@ def _log_context(
         "attempt": attempt,
         "upstream_status_code": status_code,
     }
-=======
-L3_ERR_HTTP_CLIENT = "L3_HTTP_CLIENT_ERROR"
-L3_ERR_TIMEOUT = "L3_TIMEOUT"
-L3_ERR_CONTRACT = "L3_CONTRACT_VALIDATION_FAILED"
->>>>>>> theirs
-=======
-L3_ERR_HTTP_CLIENT = "L3_HTTP_CLIENT_ERROR"
-L3_ERR_TIMEOUT = "L3_TIMEOUT"
-L3_ERR_CONTRACT = "L3_CONTRACT_VALIDATION_FAILED"
->>>>>>> theirs
 
 
 # ---------------------------------------------------------------------------
@@ -716,8 +698,6 @@ class Layer3Client:
             if resp.status_code == 404:
                 return None
             resp.raise_for_status()
-<<<<<<< ours
-<<<<<<< ours
             data = resp.json()
             if not isinstance(data, dict):
                 logger.warning(
@@ -772,9 +752,6 @@ class Layer3Client:
                 extra=_log_context(
                     tenant_id=tenant_id, error_code=ERR_LAYER3_HTTP_CLIENT
                 ),
-=======
-=======
->>>>>>> theirs
             payload = resp.json()
             if not isinstance(payload, dict):
                 raise ValidationError.from_exception_data(
@@ -823,8 +800,6 @@ class Layer3Client:
                     "tenant_id": request_tenant,
                     "entity_id": entity_id,
                 },
-<<<<<<< ours
->>>>>>> theirs
             )
             logger.debug("Layer 3 HTTP client failure for entity %s: %s", entity_id, exc)
             return None
@@ -853,9 +828,6 @@ class Layer3Client:
                     sync_status="contract_invalid",
                 ),
             )
-=======
-            )
->>>>>>> theirs
             logger.debug("Layer 3 HTTP client failure for entity %s: %s", entity_id, exc)
             return None
         except ValidationError as exc:
