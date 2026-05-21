@@ -50,9 +50,10 @@ async def _resolve_workflow_authorization(
         tenant_id: Tenant extracted from the authenticated JWT.
 
     Returns:
-        Tuple of (is_authorized, auth_code). If both status.user_id and the
-        authenticated user_id are present, authorization also requires they
-        match; otherwise the check is tenant-only.
+        Tuple of (is_authorized, auth_code). User-level authorization is
+        conditional: only when both status.user_id and authenticated user_id are
+        present must they match; if either side is missing, validation remains
+        tenant-only.
     """
     try:
         # Local import — avoids circular dependency at module load time.
