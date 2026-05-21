@@ -314,8 +314,7 @@ class WorkflowWebSocketManager:
         )
 
         logger.info(
-            "WebSocket connected for workflow %s",
-            workflow_id,
+            "WebSocket connected",
             extra={"workflow_id": workflow_id, "trace_id": trace_id, "correlation_id": correlation_id or trace_id},
         )
 
@@ -343,8 +342,7 @@ class WorkflowWebSocketManager:
                         # Note: we keep _event_stores[workflow_id] for reconnection replay
 
         logger.info(
-            "WebSocket disconnected for workflow %s",
-            workflow_id,
+            "WebSocket disconnected",
             extra={"workflow_id": workflow_id, "trace_id": log_trace_id, "correlation_id": log_trace_id},
         )
 
