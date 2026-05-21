@@ -440,18 +440,21 @@ components:
         kind: Service
         name: postgres-init
         dockerCompose:
+            environment:
+                POSTGRES_USER: '${POSTGRES_USER}'
+                POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
             entrypoint:
                 - /bin/sh
                 - '-c'
                 - |4-
-                     until PGPASSWORD=${POSTGRES_PASSWORD} pg_isready -h postgres -U ${POSTGRES_USER}; do
+                     until PGPASSWORD="$POSTGRES_PASSWORD" pg_isready -h postgres -U "$POSTGRES_USER"; do
                       echo 'waiting for postgres';
                       sleep 2;
                     done;
-                    PGPASSWORD=${POSTGRES_PASSWORD} psql -h postgres -U ${POSTGRES_USER} -c "CREATE DATABASE layer2_extraction;" 2>/dev/null || true;
-                    PGPASSWORD=${POSTGRES_PASSWORD} psql -h postgres -U ${POSTGRES_USER} -c "CREATE DATABASE ground_truth;" 2>/dev/null || true;
-                    PGPASSWORD=${POSTGRES_PASSWORD} psql -h postgres -U ${POSTGRES_USER} -c "CREATE DATABASE layer4_agents;" 2>/dev/null || true;
-                    PGPASSWORD=${POSTGRES_PASSWORD} psql -h postgres -U ${POSTGRES_USER} -c "CREATE DATABASE layer6_benchmarks;" 2>/dev/null || true;
+                    PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -c "CREATE DATABASE layer2_extraction;" 2>/dev/null || true;
+                    PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -c "CREATE DATABASE ground_truth;" 2>/dev/null || true;
+                    PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -c "CREATE DATABASE layer4_agents;" 2>/dev/null || true;
+                    PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -c "CREATE DATABASE layer6_benchmarks;" 2>/dev/null || true;
                     exit 0;
             image: 'postgres:15-alpine'
             deploy:
