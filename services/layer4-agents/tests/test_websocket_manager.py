@@ -266,6 +266,19 @@ class TestConnectionManagement:
         assert first_call["event_type"] == "connection_established"
         assert first_call["workflow_id"] == "wf-1"
         assert "replay_count" in first_call
+        assert "trace_id" in first_call
+        assert "correlation_id" in first_call
+        assert "request_id" in first_call
+
+    @pytest.mark.asyncio
+    async def test_connect_includes_trace_metadata_when_provided(
+        self, started_manager, mock_websocket
+    ):
+        await started_manager.connect(mock_websocket, "wf-1", trace_id="req-999")
+        first_call = mock_websocket.send_json.call_args_list[0][0][0]
+        assert first_call["trace_id"] == "req-999"
+        assert first_call["correlation_id"] == "req-999"
+        assert first_call["request_id"] == "req-999"
     
     @pytest.mark.asyncio
     async def test_connect_replays_missed_events_on_reconnect(
