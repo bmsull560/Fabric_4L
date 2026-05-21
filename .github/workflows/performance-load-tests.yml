@@ -2,6 +2,7 @@ name: Performance Load Tests
 
 permissions:
   contents: read
+  packages: read  # required to pull ghcr.io/value-fabric/base-images
 
 on:
   push:
@@ -44,6 +45,13 @@ jobs:
 
       - name: Set up Docker Compose
         run: docker compose version
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start ephemeral stack
         run: |

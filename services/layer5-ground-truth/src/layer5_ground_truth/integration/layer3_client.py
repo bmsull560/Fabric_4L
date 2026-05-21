@@ -27,76 +27,9 @@ from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
-ERR_LAYER3_HTTP_CLIENT = "L5_LAYER3_HTTP_CLIENT_ERROR"
-ERR_LAYER3_TIMEOUT = "L5_LAYER3_TIMEOUT"
-ERR_LAYER3_CONTRACT_INVALID = "L5_LAYER3_CONTRACT_INVALID"
-ERR_LAYER3_POLICY_DENIED = "L5_LAYER3_POLICY_DENIED"
-ERR_LAYER3_TENANT_MISMATCH = "L5_LAYER3_TENANT_MISMATCH"
-ERR_LAYER3_SERVER_ERROR = "L5_LAYER3_SERVER_ERROR"
-
-
-class Layer3ClientError(RuntimeError):
-    """Base error for Layer 3 sync failures that need explicit API handling."""
-
-    error_code = ERR_LAYER3_HTTP_CLIENT
-    status_code = 502
-
-    def __init__(
-        self,
-        message: str,
-        *,
-        tenant_id: UUID | None = None,
-        request_id: str | None = None,
-    ) -> None:
-        super().__init__(message)
-        self.tenant_id = tenant_id
-        self.request_id = request_id
-
-
-class Layer3PolicyDeniedError(Layer3ClientError):
-    """Raised when Layer 3 rejects a request for auth, policy, or governance reasons."""
-
-    error_code = ERR_LAYER3_POLICY_DENIED
-    status_code = 403
-
-
-class Layer3TenantMismatchError(Layer3ClientError):
-    """Raised when Layer 3 returns data scoped to a different tenant."""
-
-    error_code = ERR_LAYER3_TENANT_MISMATCH
-    status_code = 403
-
-
-class Layer3ContractValidationError(Layer3ClientError):
-    """Raised when Layer 3 returns a malformed or incompatible response contract."""
-
-    error_code = ERR_LAYER3_CONTRACT_INVALID
-    status_code = 502
-
-
-def _log_context(
-    *,
-    tenant_id: UUID | None,
-    truth_object_id: UUID | None = None,
-    request_id: str | None = None,
-    error_code: str,
-    transition: str | None = None,
-    sync_status: str | None = None,
-    attempt: int | None = None,
-    status_code: int | None = None,
-) -> dict[str, Any]:
-    return {
-        "request_id": request_id,
-        "tenant_id": str(tenant_id) if tenant_id is not None else None,
-        "truth_object_id": (
-            str(truth_object_id) if truth_object_id is not None else None
-        ),
-        "error_code": error_code,
-        "transition": transition,
-        "sync_status": sync_status,
-        "attempt": attempt,
-        "upstream_status_code": status_code,
-    }
+L3_ERR_HTTP_CLIENT = "L3_HTTP_CLIENT_ERROR"
+L3_ERR_TIMEOUT = "L3_TIMEOUT"
+L3_ERR_CONTRACT = "L3_CONTRACT_VALIDATION_FAILED"
 
 
 # ---------------------------------------------------------------------------
@@ -698,60 +631,6 @@ class Layer3Client:
             if resp.status_code == 404:
                 return None
             resp.raise_for_status()
-            data = resp.json()
-            if not isinstance(data, dict):
-                logger.warning(
-                    "layer3_entity_context_contract_invalid",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_CONTRACT_INVALID,
-                        sync_status="contract_invalid",
-                    ),
-                )
-                return None
-            response_tenant = data.get("tenant_id")
-            if response_tenant is not None and str(response_tenant) != str(tenant_id):
-                logger.error(
-                    "layer3_entity_context_tenant_mismatch",
-                    extra=_log_context(
-                        tenant_id=tenant_id,
-                        request_id=request_id,
-                        error_code=ERR_LAYER3_TENANT_MISMATCH,
-                        sync_status="tenant_mismatch",
-                    ),
-                )
-                raise Layer3TenantMismatchError(
-                    "Layer 3 returned entity context for a different tenant",
-                    tenant_id=tenant_id,
-                )
-            return data
-        except httpx.HTTPStatusError as exc:
-            logger.debug(
-                "layer3_entity_context_http_status",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    error_code=(
-                        ERR_LAYER3_SERVER_ERROR
-                        if exc.response.status_code >= 500
-                        else ERR_LAYER3_HTTP_CLIENT
-                    ),
-                    status_code=exc.response.status_code,
-                ),
-            )
-            return None
-        except httpx.TimeoutException as exc:
-            logger.debug(
-                "layer3_entity_context_timeout",
-                extra=_log_context(tenant_id=tenant_id, error_code=ERR_LAYER3_TIMEOUT),
-            )
-            return None
-        except httpx.RequestError as exc:
-            logger.debug(
-                "layer3_entity_context_http_client_error",
-                extra=_log_context(
-                    tenant_id=tenant_id, error_code=ERR_LAYER3_HTTP_CLIENT
-                ),
             payload = resp.json()
             if not isinstance(payload, dict):
                 raise ValidationError.from_exception_data(
@@ -800,33 +679,6 @@ class Layer3Client:
                     "tenant_id": request_tenant,
                     "entity_id": entity_id,
                 },
-            )
-            logger.debug("Layer 3 HTTP client failure for entity %s: %s", entity_id, exc)
-            return None
-        except ValidationError as exc:
-            logger.warning(
-                "Layer 3 entity context contract validation failed",
-                extra={
-                    "error_code": L3_ERR_CONTRACT,
-                    "request_id": None,
-                    "tenant_id": request_tenant,
-                    "entity_id": entity_id,
-                },
-            )
-            logger.debug("Layer 3 contract validation details for entity %s: %s", entity_id, exc)
-            return None
-        except Exception as exc:
-            logger.debug("Layer 3 entity context fetch failed for %s: %s", entity_id, exc)
-            return None
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.warning(
-                "layer3_entity_context_contract_invalid_json",
-                extra=_log_context(
-                    tenant_id=tenant_id,
-                    request_id=request_id,
-                    error_code=ERR_LAYER3_CONTRACT_INVALID,
-                    sync_status="contract_invalid",
-                ),
             )
             logger.debug("Layer 3 HTTP client failure for entity %s: %s", entity_id, exc)
             return None

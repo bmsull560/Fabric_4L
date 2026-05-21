@@ -59,12 +59,27 @@ jobs:
       - name: Render overlays
         run: |
           kustomize build k8s/overlays/dev > /tmp/dev.yaml
-          kustomize build k8s/overlays/prod > /tmp/prod.yaml
+          kustomize build k8s/overlays/production > /tmp/prod.yaml
 
       - name: Schema validate overlays
+        # kubeconform -strict rejects unknown resource types by default.
+        # The datreeio CRDs-catalog provides kubeconform-format schemas for
+        # CloudNativePG and other operators, so operator CRDs validate correctly.
+        # Types absent from both the default schema location and the catalog are
+        # skipped rather than failed (kubeconform default behaviour).
         run: |
-          kubeconform -summary -strict /tmp/dev.yaml
-          kubeconform -summary -strict /tmp/prod.yaml
+          SCHEMA_LOCATIONS=(
+            "default"
+            "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          )
+          kubeconform -summary -strict \
+            -schema-location "${SCHEMA_LOCATIONS[0]}" \
+            -schema-location "${SCHEMA_LOCATIONS[1]}" \
+            /tmp/dev.yaml
+          kubeconform -summary -strict \
+            -schema-location "${SCHEMA_LOCATIONS[0]}" \
+            -schema-location "${SCHEMA_LOCATIONS[1]}" \
+            /tmp/prod.yaml
 
       - name: Client dry-run precheck
         run: |
@@ -107,13 +122,47 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
 
+      - name: Install operator CRDs into kind cluster
+        # The base manifests use CloudNativePG (postgresql.cnpg.io/v1 Cluster) and
+        # Spotahome Redis Operator (databases.spotahome.com/v1 RedisFailover).
+        # Server-side dry-run requires these CRDs to be registered in the API server.
+        #
+        # CNPG: extract only CustomResourceDefinition documents from the release
+        # bundle. Installing the full bundle would register admission webhooks that
+        # call back to the operator pod — which is not running in this kind cluster —
+        # causing dry-run to fail with a webhook connection error.
+        #
+        # Spotahome: pinned to v1.2.4 (latest tagged release). Using 'master' would
+        # risk silent schema drift on every CI run.
+        run: |
+          # CloudNativePG 1.23 — CRDs only (strip Deployment, webhooks, RBAC, etc.)
+          curl -sSfL \
+            https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.23/releases/cnpg-1.23.0.yaml \
+            | python3 -c "
+          import sys, yaml
+          docs = [d for d in yaml.safe_load_all(sys.stdin)
+                  if isinstance(d, dict) and d.get('kind') == 'CustomResourceDefinition']
+          print('---\n'.join(yaml.dump(d) for d in docs))
+          " | kubectl apply --server-side -f - --force-conflicts
+
+          # Spotahome Redis Operator v1.2.4 — CRD manifest only
+          kubectl apply --server-side -f \
+            https://raw.githubusercontent.com/spotahome/redis-operator/v1.2.4/manifests/databases.spotahome.com_redisfailovers.yaml \
+            --force-conflicts
+
+          # Wait for CRDs to be established before dry-run
+          kubectl wait --for=condition=Established \
+            crd/clusters.postgresql.cnpg.io \
+            crd/redisfailovers.databases.spotahome.com \
+            --timeout=60s
+
       - name: Server-side dry-run (dev overlay)
         run: |
           kubectl apply --dry-run=server -k k8s/overlays/dev
 
       - name: Server-side dry-run (prod overlay)
         run: |
-          kubectl apply --dry-run=server -k k8s/overlays/prod
+          kubectl apply --dry-run=server -k k8s/overlays/production
 
       - name: Upload rendered manifests on failure
         if: failure()

@@ -41,7 +41,14 @@ def test_layer4_workflow_routes_publish_concrete_response_models() -> None:
 
     workflow_result = _schema(spec, "WorkflowResultResponse")
     assert {"workflow_id", "status"}.issubset(set(workflow_result["required"]))
-    output_schema = workflow_result["properties"]["output"]["anyOf"][0]
+    # Resolve the non-null branch of output.anyOf regardless of position.
+    # Pydantic may emit [{"$ref": ...}, {"type": "null"}] or the reverse.
+    output_anyof = workflow_result["properties"]["output"]["anyOf"]
+    non_null = next(s for s in output_anyof if s.get("type") != "null")
+    if "$ref" in non_null:
+        output_schema = _schema(spec, non_null["$ref"].split("/")[-1])
+    else:
+        output_schema = non_null
     assert output_schema["type"] == "object"
     assert "additionalProperties" in output_schema
 

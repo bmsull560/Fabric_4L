@@ -481,62 +481,6 @@ def create_app() -> FastAPI:
     )
     add_security_middleware(app, config=_security_config_l5)
 
-    @app.exception_handler(HTTPException)
-    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-        detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
-        error_code = str(detail.get("error_code") or detail.get("code") or "HTTP_EXCEPTION")
-        ctx = getattr(request.state, "governance_context", None)
-        tenant_id = (
-            str(getattr(ctx, "tenant_id", "")) if ctx and getattr(ctx, "tenant_id", None) else
-            request.headers.get("X-Tenant-ID")
-        )
-        request_id = request.headers.get("X-Request-ID")
-        is_security_error = exc.status_code in (401, 403) or error_code in SECURITY_ERROR_CODES
-        logger.warning(
-            "security error response" if is_security_error else "operational http error response",
-            extra={
-                "error_code": error_code,
-                "request_id": request_id,
-                "tenant_id": tenant_id,
-                "path": request.url.path,
-                "status_code": exc.status_code,
-            },
-        )
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "error": "security_error" if is_security_error else "operational_error",
-                "error_code": error_code,
-                "message": detail.get("message") or detail.get("detail") or str(exc.detail),
-            },
-        )
-
-    @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-        request_id = request.headers.get("X-Request-ID")
-        ctx = getattr(request.state, "governance_context", None)
-        tenant_id = (
-            str(getattr(ctx, "tenant_id", "")) if ctx and getattr(ctx, "tenant_id", None) else
-            request.headers.get("X-Tenant-ID")
-        )
-        logger.exception(
-            "unhandled operational error",
-            extra={
-                "error_code": "L5_UNHANDLED_ERROR",
-                "request_id": request_id,
-                "tenant_id": tenant_id,
-                "path": request.url.path,
-            },
-        )
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "operational_error",
-                "error_code": "L5_UNHANDLED_ERROR",
-                "message": "Internal server error",
-            },
-        )
-
     class _AppStateRateLimiterProxy:
         def __init__(self, application: FastAPI):
             self._application = application
@@ -688,31 +632,8 @@ def create_app() -> FastAPI:
 
 # JWT Secret validation denylist — known weak/placeholder values (exact match,
 # case-insensitive).  Defined at module level so the set is constructed once.
-JWT_SECRET_DENYLIST: frozenset[str] = frozenset(
-    {
-        "changeme-in-production",
-        "changeme",
-        "password",
-        "password123",
-        "admin",
-        "secret",
-        "jwt-secret",
-        "default",
-        "test",
-        "",
-        "null",
-        "none",
-        "123456",
-        "12345678",
-        "qwerty",
-        "abc123",
-    }
-)
-
-# Weak prefix patterns — catches padded placeholders like "changemexxxxxxxx"
-# that pass the length check but are still predictable.  Defined at module
-# level so the tuple is constructed once, not on every validation call.
-_JWT_WEAK_PREFIXES: tuple[str, ...] = (
+JWT_SECRET_DENYLIST: frozenset[str] = frozenset({
+    "changeme-in-production",
     "changeme",
     "password",
     "secret",
@@ -722,10 +643,20 @@ _JWT_WEAK_PREFIXES: tuple[str, ...] = (
     "123456",
     "qwerty",
     "abc123",
+})
+
+# Weak prefix patterns — catches padded placeholders like "changemexxxxxxxx"
+# that pass the length check but are still predictable.  Defined at module
+# level so the tuple is constructed once, not on every validation call.
+_JWT_WEAK_PREFIXES: tuple[str, ...] = (
+    "changeme", "password", "secret", "admin", "test", "default",
+    "123456", "qwerty", "abc123",
 )
 
 # Compiled pattern for common weak-secret stems followed by digits.
-_JWT_WEAK_PATTERN = re.compile(r"^(changeme|password|secret|admin|test|default)[0-9]*$")
+_JWT_WEAK_PATTERN = re.compile(
+    r'^(changeme|password|secret|admin|test|default)[0-9]*$'
+)
 
 
 def _validate_jwt_secret(secret: str) -> None:

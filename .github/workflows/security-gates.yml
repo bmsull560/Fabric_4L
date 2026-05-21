@@ -21,6 +21,7 @@ permissions:
   contents: read
   security-events: write
   actions: read
+  packages: read  # required to pull ghcr.io/value-fabric/base-images
 
 env:
   SECURITY_ARTIFACT_RETENTION_DAYS: 30
@@ -213,6 +214,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start ephemeral Value Fabric stack
         run: |

@@ -66,6 +66,7 @@ ALLOWLIST: set[str] = {
     "tests/security/test_security_fixes.py",
     "tests/security/test_layer3_similarity_roi_tenant_isolation.py",
     "tests/security/test_neo4j_cross_tenant_write_isolation.py",
+    "tests/security/test_neo4j_rls_write.py",
     "tests/security/test_neo4j_tenant_query_enforcement.py",
     "tests/security/test_graph_tenant_hostile_regression.py",
     "tests/performance/test_performance_optimizations.py",

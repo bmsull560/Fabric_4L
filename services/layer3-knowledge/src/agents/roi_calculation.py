@@ -20,7 +20,7 @@ from neo4j import AsyncDriver
 from value_fabric.shared.identity.isolation import ScopedQuery, TenantScopedCypher
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from .base import AgentResult, BaseAgent
+from ..agents.base import AgentResult, BaseAgent
 from ..db.query_execution import run_validated_query
 
 
