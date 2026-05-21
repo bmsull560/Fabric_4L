@@ -31,6 +31,7 @@ This table maps each launch criterion in `docs/readiness/current.md` to objectiv
 | Item | Status | Evidence |
 |---|---|---|
 | Neo4j schema migration (7 labels) | ✅ Created | `services/layer3-knowledge/src/migrations/030_neo4j_tenant_id_constraints_and_indexes.py` |
+| Migration wired into deploy sequence | ✅ Added 2026-05-21 | `docker-compose.live.yml` service `layer3-neo4j-migrate` runs migration 030 before `layer3` starts (`depends_on: service_completed_successfully`); idempotent against repeat runs. |
 | Migration registry | ✅ Created | `services/layer3-knowledge/src/migrations/MIGRATIONS.md` |
 | Hostile tests — benchmarks | ✅ 13/13 pass | `tests/security/test_benchmarks_cross_tenant_isolation.py` |
 | Hostile tests — variables | ✅ 12/12 pass | `tests/security/test_variables_cross_tenant_isolation.py` |
