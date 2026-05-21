@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 from logging_config import get_logger
 
 from ...api.dependencies_tenant_secured import create_neo4j_tenant_session
+from ...api.routes._utils import get_tenant_id_from_api_key
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
 
@@ -29,11 +30,11 @@ router = APIRouter()
 
 
 def _get_authenticated_tenant_id(api_key: APIKey) -> str:
-    """Resolve tenant ID from authenticated API-key context; fail closed if absent."""
-    tenant_id = str(api_key.metadata.get("tenant_id", "") or "").strip()
-    if not tenant_id:
-        raise HTTPException(status_code=401, detail="Invalid tenant context")
-    return tenant_id
+    """Resolve tenant ID from authenticated API-key context; fail closed if absent.
+
+    Delegates to the shared get_tenant_id_from_api_key helper in _utils.
+    """
+    return get_tenant_id_from_api_key(api_key)
 
 
 # Pagination limits
