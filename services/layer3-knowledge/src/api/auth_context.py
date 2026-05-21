@@ -64,7 +64,7 @@ def extract_tenant_from_bearer(request: Request) -> TenantBearerContext:
     except Exception:
         raise HTTPException(status_code=401, detail="Could not decode JWT payload")
 
-    tenant_id = payload.get("tenant_id") or payload.get("tid") or ""
+    tenant_id = str(payload.get("tenant_id") or payload.get("tid") or "").strip()
     if not tenant_id:
         raise HTTPException(status_code=401, detail="JWT token missing tenant_id claim")
 

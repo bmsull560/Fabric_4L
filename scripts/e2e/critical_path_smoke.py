@@ -113,8 +113,10 @@ API_KEY = os.getenv("E2E_API_KEY", "dev-bypass-key")
 TENANT_ID = os.getenv("E2E_TENANT_ID", "e2e-smoke-tenant")
 try:
     TIMEOUT = int(os.getenv("E2E_TIMEOUT_SECONDS") or "10")
-except ValueError:
-    TIMEOUT = 10
+except ValueError as exc:
+    raise SystemExit(
+        f"Invalid E2E_TIMEOUT_SECONDS: {os.getenv('E2E_TIMEOUT_SECONDS')!r} — must be an integer"
+    ) from exc
 
 
 # ---------------------------------------------------------------------------

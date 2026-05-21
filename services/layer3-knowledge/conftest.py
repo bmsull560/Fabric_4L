@@ -21,9 +21,11 @@ _HERE = Path(__file__).parent
 _REPO_ROOT = _HERE.parent.parent
 
 # Layer 3 src must be first so its `config` package shadows layer4's.
+# Always remove any existing occurrence then reinsert at 0 to guarantee priority.
 _L3_SRC = _HERE / "src"
-if str(_L3_SRC) not in sys.path:
-    sys.path.insert(0, str(_L3_SRC))
+_l3_str = str(_L3_SRC)
+sys.path = [p for p in sys.path if p != _l3_str]
+sys.path.insert(0, _l3_str)
 
 # Repo root for value_fabric.* namespace packages.
 if str(_REPO_ROOT) not in sys.path:
