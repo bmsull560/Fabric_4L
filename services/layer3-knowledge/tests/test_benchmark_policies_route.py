@@ -146,6 +146,10 @@ async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j
         # Non-dict metadata — previously caused AttributeError (500); must be 401
         SimpleNamespace(metadata="tenant-a"),
         SimpleNamespace(metadata=[]),
+        # Non-string tenant_id — must not be coerced; must be 401
+        SimpleNamespace(metadata={"tenant_id": True}),
+        SimpleNamespace(metadata={"tenant_id": 42}),
+        SimpleNamespace(metadata={"tenant_id": ["x"]}),
     ],
     ids=[
         "empty_metadata_dict",
@@ -156,6 +160,9 @@ async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j
         "missing_metadata_attr",
         "string_metadata",
         "list_metadata",
+        "bool_true_tenant_id",
+        "int_tenant_id",
+        "list_tenant_id",
     ],
 )
 @pytest.mark.asyncio

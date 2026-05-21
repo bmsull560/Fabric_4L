@@ -51,6 +51,11 @@ def test_strips_whitespace_from_valid_tenant_id():
         SimpleNamespace(metadata=42),
         SimpleNamespace(metadata=[]),
         SimpleNamespace(metadata=["tenant-a"]),
+        # Non-string tenant_id — must not be coerced; must be 401
+        SimpleNamespace(metadata={"tenant_id": True}),
+        SimpleNamespace(metadata={"tenant_id": 42}),
+        SimpleNamespace(metadata={"tenant_id": {"id": "x"}}),
+        SimpleNamespace(metadata={"tenant_id": ["x"]}),
         # Ensure old api_key.tenant_id / workspace_id attrs are NOT used as fallback
         SimpleNamespace(tenant_id="tenant-a"),
         SimpleNamespace(workspace_id="tenant-a"),
@@ -67,6 +72,10 @@ def test_strips_whitespace_from_valid_tenant_id():
         "int_metadata",
         "empty_list_metadata",
         "list_metadata",
+        "bool_true_tenant_id",
+        "int_tenant_id",
+        "dict_tenant_id",
+        "list_tenant_id",
         "old_tenant_id_attr_not_used",
         "old_workspace_id_attr_not_used",
         "both_old_attrs_not_used",
