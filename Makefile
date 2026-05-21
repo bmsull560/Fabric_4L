@@ -90,7 +90,7 @@ check-pytest-skip-governance: ## Enforce pytest skip governance from collection 
 	 if [ "$$collect_status" -ne 0 ]; then echo "pytest collection exited non-zero ($$collect_status); structural-preflight should catch import errors separately."; fi
 
 check-layer3-legacy-tenant-dependency-imports: ## Block legacy Layer 3 tenant dependency imports under src/api/
-	@python scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
+	@$(PYTHON) scripts/ci/check_layer3_legacy_tenant_dependency_imports.py
 
 check-layer3-tenant-dependency-imports: check-layer3-legacy-tenant-dependency-imports ## Alias for check-layer3-legacy-tenant-dependency-imports (backward compat)
 
