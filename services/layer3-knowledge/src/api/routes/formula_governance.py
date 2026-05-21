@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 
 def _get_authenticated_tenant_id(api_key: APIKey) -> str:
     """Resolve tenant ID from authenticated API-key context; fail closed if absent."""
-    tenant_id = str(getattr(api_key, "tenant_id", "") or "").strip()
+    tenant_id = str(api_key.metadata.get("tenant_id", "") or "").strip()
     if not tenant_id:
         raise HTTPException(status_code=401, detail="Missing tenant context")
     return tenant_id
