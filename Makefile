@@ -95,7 +95,7 @@ check-layer3-legacy-tenant-dependency-imports: ## Block legacy Layer 3 tenant de
 check-layer3-tenant-dependency-imports: check-layer3-legacy-tenant-dependency-imports ## Alias for check-layer3-legacy-tenant-dependency-imports (backward compat)
 
 check-test-skip-register-uniqueness: ## Enforce uniqueness of test skip register keys (path_pattern + marker + reason_pattern)
-	@python scripts/ci/check_test_skip_register_uniqueness.py --register config/ci/test_skip_register.yaml
+	@$(PYTHON) scripts/ci/check_test_skip_register_uniqueness.py --register config/ci/test_skip_register.yaml
 
 check-reports-evidence-policy: ## Enforce reports/ artifact policy and fail on unarchived failing snapshots
 	@python3 scripts/ci/check_reports_evidence_policy.py
