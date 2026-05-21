@@ -47,7 +47,8 @@ async def test_list_pending_approvals_accepts_valid_tenant_metadata(monkeypatch)
         return session
 
     monkeypatch.setattr(
-        "api.routes.formula_governance.create_neo4j_tenant_session", _session_factory
+        "value_fabric.layer3.api.routes.formula_governance.create_neo4j_tenant_session",
+        _session_factory,
     )
 
     api_key = SimpleNamespace(metadata={"tenant_id": "tenant-a"})
@@ -71,6 +72,9 @@ async def test_list_pending_approvals_accepts_valid_tenant_metadata(monkeypatch)
         SimpleNamespace(metadata={"tenant_id": None}),
         SimpleNamespace(metadata=None),
         SimpleNamespace(),  # no metadata attr at all
+        # Non-dict metadata — previously caused AttributeError (500); must be 401
+        SimpleNamespace(metadata="tenant-a"),
+        SimpleNamespace(metadata=[]),
     ],
     ids=[
         "empty_metadata_dict",
@@ -79,6 +83,8 @@ async def test_list_pending_approvals_accepts_valid_tenant_metadata(monkeypatch)
         "none_tenant_id",
         "none_metadata",
         "missing_metadata_attr",
+        "string_metadata",
+        "list_metadata",
     ],
 )
 @pytest.mark.asyncio
@@ -95,7 +101,8 @@ async def test_rejects_api_key_without_valid_tenant_metadata(api_key, monkeypatc
         return session
 
     monkeypatch.setattr(
-        "api.routes.formula_governance.create_neo4j_tenant_session", _session_factory
+        "value_fabric.layer3.api.routes.formula_governance.create_neo4j_tenant_session",
+        _session_factory,
     )
 
     with pytest.raises(HTTPException) as exc_info:

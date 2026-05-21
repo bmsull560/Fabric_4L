@@ -46,6 +46,11 @@ def test_strips_whitespace_from_valid_tenant_id():
         SimpleNamespace(metadata={"tenant_id": None}),
         SimpleNamespace(metadata=None),
         SimpleNamespace(),  # no metadata attr at all
+        # Non-dict metadata — previously caused AttributeError (500); must be 401
+        SimpleNamespace(metadata="tenant-a"),
+        SimpleNamespace(metadata=42),
+        SimpleNamespace(metadata=[]),
+        SimpleNamespace(metadata=["tenant-a"]),
         # Ensure old api_key.tenant_id / workspace_id attrs are NOT used as fallback
         SimpleNamespace(tenant_id="tenant-a"),
         SimpleNamespace(workspace_id="tenant-a"),
@@ -58,6 +63,10 @@ def test_strips_whitespace_from_valid_tenant_id():
         "none_tenant_id",
         "none_metadata",
         "missing_metadata_attr",
+        "string_metadata",
+        "int_metadata",
+        "empty_list_metadata",
+        "list_metadata",
         "old_tenant_id_attr_not_used",
         "old_workspace_id_attr_not_used",
         "both_old_attrs_not_used",

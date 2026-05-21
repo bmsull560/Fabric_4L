@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from logging_config import get_logger
 
 from ...api.dependencies_tenant_secured import create_neo4j_tenant_session
-from ...api.routes._utils import semver_key
+from ...api.routes._utils import get_tenant_id_from_api_key, semver_key
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key, require_admin_role
 
@@ -29,14 +29,9 @@ logger = get_logger(__name__)
 def _get_authenticated_tenant_id(api_key: APIKey) -> str:
     """Resolve tenant ID from authenticated API-key context; fail closed if absent.
 
-    Raises HTTPException(401) for any of: missing metadata attr, None metadata,
-    missing tenant_id key, empty string, or whitespace-only tenant_id.
+    Delegates to the shared get_tenant_id_from_api_key helper in _utils.
     """
-    metadata = getattr(api_key, "metadata", None) or {}
-    tenant_id = str(metadata.get("tenant_id", "") or "").strip()
-    if not tenant_id:
-        raise HTTPException(status_code=401, detail="Invalid tenant context")
-    return tenant_id
+    return get_tenant_id_from_api_key(api_key)
 
 
 # Status constants for Formula Governance

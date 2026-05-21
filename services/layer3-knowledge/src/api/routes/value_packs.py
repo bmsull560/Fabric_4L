@@ -30,7 +30,7 @@ from value_fabric.shared.models.typed_dict import TypedDictModel
 
 from logging_config import get_logger
 
-from ...api.routes._utils import increment_patch_version
+from ...api.routes._utils import get_tenant_id_from_api_key, increment_patch_version
 from ...api.routes.formulas import evaluate_expression
 from ...auth.api_keys import APIKey
 from ...auth.middleware import get_current_api_key
@@ -81,8 +81,7 @@ def _extract_tenant_id(request: Request | None) -> str | None:
 def _tenant_id_from_api_key(api_key: APIKey) -> str:
     """Resolve tenant ID from authenticated API-key metadata; fail closed if absent.
 
-    Raises HTTPException(401) for any of: missing metadata attr, None metadata,
-    missing tenant_id key, empty string, or whitespace-only tenant_id.
+    Delegates to the shared get_tenant_id_from_api_key helper in _utils.
 
     Contract note: previously raised 403 ("Tenant context is required"). Changed to
     401 in round-2 hardening to align with benchmarks.py and formula_governance.py,
@@ -90,11 +89,8 @@ def _tenant_id_from_api_key(api_key: APIKey) -> str:
     does not carry a valid identity) rather than an authorization failure.
     Callers that previously distinguished 403 from 401 should be updated accordingly.
     """
-    metadata = getattr(api_key, "metadata", None) or {}
-    tenant_id = str(metadata.get("tenant_id", "") or "").strip()
-    if not tenant_id:
-        raise HTTPException(status_code=401, detail="Invalid tenant context")
-    return tenant_id
+    return get_tenant_id_from_api_key(api_key)
+
 
 # Status constants for Value Packs
 STATUS_DRAFT = "draft"

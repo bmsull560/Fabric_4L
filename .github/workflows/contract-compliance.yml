@@ -330,6 +330,7 @@ jobs:
 
       - name: Runtime canonical import drift (warn-only)
         run: |
+          set -o pipefail
           mkdir -p artifacts
           python scripts/ci/check_runtime_canonical_imports.py | tee artifacts/canonical-import-drift.txt
           echo "## Runtime canonical import drift" >> $GITHUB_STEP_SUMMARY

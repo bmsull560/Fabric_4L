@@ -63,7 +63,10 @@ async def test_list_benchmark_policies_returns_same_tenant_records(monkeypatch):
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr(
+        "value_fabric.layer3.api.routes.benchmarks.create_neo4j_tenant_session",
+        _session_factory,
+    )
 
     api_key = SimpleNamespace(metadata={"tenant_id": tenant_id})
     policies = await list_benchmark_policies(api_key=api_key)
@@ -94,7 +97,10 @@ async def test_list_benchmark_policies_returns_empty_for_cross_tenant_records(mo
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr(
+        "value_fabric.layer3.api.routes.benchmarks.create_neo4j_tenant_session",
+        _session_factory,
+    )
 
     api_key = SimpleNamespace(metadata={"tenant_id": tenant_id})
     policies = await list_benchmark_policies(api_key=api_key)
@@ -111,7 +117,10 @@ async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr(
+        "value_fabric.layer3.api.routes.benchmarks.create_neo4j_tenant_session",
+        _session_factory,
+    )
 
     api_key = SimpleNamespace(metadata={"tenant_id": tenant_id})
     result = await list_benchmark_policies(api_key=api_key)
@@ -134,6 +143,9 @@ async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j
         SimpleNamespace(metadata={"tenant_id": None}),
         SimpleNamespace(metadata=None),
         SimpleNamespace(),  # no metadata attr at all
+        # Non-dict metadata — previously caused AttributeError (500); must be 401
+        SimpleNamespace(metadata="tenant-a"),
+        SimpleNamespace(metadata=[]),
     ],
     ids=[
         "empty_metadata_dict",
@@ -142,6 +154,8 @@ async def test_list_benchmark_policies_passes_required_tenant_parameter_to_neo4j
         "none_tenant_id",
         "none_metadata",
         "missing_metadata_attr",
+        "string_metadata",
+        "list_metadata",
     ],
 )
 @pytest.mark.asyncio
@@ -158,7 +172,10 @@ async def test_rejects_api_key_without_valid_tenant_metadata(api_key, monkeypatc
     async def _session_factory(_tenant_id):
         return session
 
-    monkeypatch.setattr("api.routes.benchmarks.create_neo4j_tenant_session", _session_factory)
+    monkeypatch.setattr(
+        "value_fabric.layer3.api.routes.benchmarks.create_neo4j_tenant_session",
+        _session_factory,
+    )
 
     with pytest.raises(HTTPException) as exc_info:
         await list_benchmark_policies(api_key=api_key)
