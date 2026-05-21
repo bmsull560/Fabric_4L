@@ -38,6 +38,12 @@ _DEV_ENVIRONMENTS = frozenset({"local", "dev", "development", "test", "testing",
 # Known PostgreSQL superuser names that bypass RLS
 _SUPERUSER_NAMES = frozenset({"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"})
 
+# URL scheme prefixes that indicate a PostgreSQL connection (RLS-capable)
+_POSTGRES_URL_PREFIXES = ("postgresql://", "postgres://", "postgresql+asyncpg://", "postgresql+psycopg2://")
+
+# Known superuser role names that bypass all RLS policies
+_RLS_SUPERUSER_ROLES = frozenset({"postgres", "root", "admin", "superuser", "sa"})
+
 # Default database credentials that must not be used in production
 _DEFAULT_DATABASE_USERS = frozenset({"postgres", "admin", "root", "user", "dbuser"})
 _DEFAULT_DATABASE_NAMES = frozenset({"postgres", "admin", "test", "db", "database"})
@@ -508,11 +514,11 @@ def validate_database_config() -> None:
     if not database_url:
         raise ValueError("DATABASE_URL is required")
     
-    if is_production():
-        # SQLite is not allowed in production
+    if is_production_like_environment():
+        # SQLite is not allowed in production-like environments
         if database_url.startswith("sqlite"):
             raise ValueError(
-                "SQLite is not supported in production. "
+                "SQLite is not supported in production-like environments. "
                 "Use PostgreSQL with RLS for multi-tenant isolation."
             )
         _validate_database_tls_mode(database_url, source_variable="DATABASE_URL")
@@ -529,8 +535,9 @@ def _validate_database_tls_mode(database_url: str, *, source_variable: str) -> N
 
     if sslmode not in _APPROVED_DATABASE_SSL_MODES:
         raise ValueError(
-            f"Production {source_variable} must include sslmode=require or stronger "
-            "(verify-ca/verify-full); verify-full is preferred."
+            f"Production {source_variable} must enforce TLS — "
+            "sslmode=require or stronger (verify-ca/verify-full) is required. "
+            "sslmode=verify-full is preferred for maximum security."
         )
     if sslmode != _PREFERRED_DATABASE_SSL_MODE:
         logger.info(
@@ -548,15 +555,27 @@ def validate_jwt_secret_strength() -> None:
     at least 256 bits (32 bytes) for HMAC keys.
 
     Raises:
-        ValueError: If JWT_SECRET is too short in production
+        ValueError: If JWT_SECRET is missing or too short in production-like environments
     """
     jwt_secret = os.getenv("JWT_SECRET", "")
 
+    if is_production_like_environment() and not jwt_secret:
+        raise ValueError(
+            "JWT_SECRET is required in production-like environments. "
+            "Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+
     if not jwt_secret:
-        # Missing JWT_SECRET is handled by validate_all_controls / jwt.py
         return
 
-    if is_production() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
+    if is_production_like_environment() and jwt_secret.lower() in _WEAK_SECRET_DENYLIST:
+        raise ValueError(
+            "JWT_SECRET is a known default/test value and must not be used in "
+            "production-like environments. "
+            "Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+
+    if is_production_like_environment() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
         raise ValueError(
             f"JWT_SECRET is too short ({len(jwt_secret)} chars). "
             f"Production requires at least {_MIN_JWT_SECRET_LENGTH} characters "
@@ -575,16 +594,29 @@ def validate_jwt_secret_strength() -> None:
 def validate_jwt_config() -> None:
     """Validate JWT configuration for the current environment.
 
-    Checks that JWT_SECRET meets minimum strength requirements and that
-    JWT_ALGORITHM (if set) is an approved value.  This is the canonical
-    entry point for JWT configuration validation; it delegates to
-    validate_jwt_secret_strength() for secret-strength checks and adds
-    algorithm-safety checks.
+    Checks that JWT_SECRET, JWT_ISSUER, and JWT_AUDIENCE are present in
+    production-like environments, that JWT_SECRET meets minimum strength
+    requirements, and that JWT_ALGORITHM (if set) is an approved value.
 
     Raises:
         ValueError: If JWT configuration is unsafe for the current environment
     """
     validate_jwt_secret_strength()
+
+    if is_production_like_environment():
+        jwt_issuer = os.getenv("JWT_ISSUER", "")
+        if not jwt_issuer:
+            raise ValueError(
+                "JWT_ISSUER is required in production-like environments. "
+                "Set JWT_ISSUER to the expected token issuer (e.g. your OIDC provider URL)."
+            )
+
+        jwt_audience = os.getenv("JWT_AUDIENCE", "")
+        if not jwt_audience:
+            raise ValueError(
+                "JWT_AUDIENCE is required in production-like environments. "
+                "Set JWT_AUDIENCE to the expected token audience (e.g. your API identifier)."
+            )
 
     algorithm = os.getenv("JWT_ALGORITHM", "HS256")
     if algorithm not in _APPROVED_JWT_ALGORITHMS:
@@ -608,17 +640,12 @@ def validate_database_superuser() -> None:
     if not database_url:
         return
 
-    # Extract username from connection string
-    try:
-        parsed = urlparse(database_url)
-        username = parsed.username or ""
-    except Exception:
-        username = ""
-
-    # Known PostgreSQL superuser names
-    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
-
-    if username.lower() in superuser_names:
+    _, is_superuser = _parse_rls_posture(database_url)
+    if is_superuser:
+        try:
+            username = urlparse(database_url).username or ""
+        except Exception:
+            username = "<unknown>"
         msg = (
             f"DATABASE_URL connects as '{username}', which is a PostgreSQL superuser. "
             f"Superusers bypass ALL Row-Level Security policies, meaning tenant "
@@ -665,6 +692,65 @@ def validate_all_controls() -> None:
         )
 
 
+def _parse_rls_posture(database_url: str) -> tuple[bool, bool]:
+    """Return ``(is_postgres, is_superuser)`` for the given database URL.
+
+    ``is_postgres`` is True when the URL scheme indicates a PostgreSQL connection.
+    ``is_superuser`` is True when the URL username matches a known superuser role
+    that would bypass all RLS policies.
+
+    On URL parse failure, logs a warning and returns ``(is_postgres, False)`` so
+    that the superuser check degrades gracefully rather than silently passing.
+    """
+    is_postgres = database_url.startswith(_POSTGRES_URL_PREFIXES)
+    if not is_postgres:
+        return False, False
+    try:
+        username = (urlparse(database_url).username or "").lower()
+        return True, username in _RLS_SUPERUSER_ROLES
+    except Exception as exc:
+        logger.warning("Could not parse DATABASE_URL for superuser check: %s", exc)
+        return True, False
+
+
+def validate_rls_prerequisites() -> None:
+    """Validate that the database configuration supports Row-Level Security.
+
+    RLS is the primary tenant isolation mechanism. It requires PostgreSQL —
+    other databases do not support it. Connecting as a superuser bypasses
+    all RLS policies, making tenant isolation completely ineffective.
+
+    Raises:
+        ValueError: If the database is not PostgreSQL, or if the connection
+            user is a known superuser role, in production-like environments.
+    """
+    if not is_production_like_environment():
+        return
+
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        return
+
+    is_postgres, is_superuser = _parse_rls_posture(database_url)
+
+    if not is_postgres:
+        raise ValueError(
+            "Tenant isolation via Row-Level Security (RLS) requires PostgreSQL. "
+            "The configured DATABASE_URL must use PostgreSQL "
+            "(postgresql:// or postgres://). "
+            "Value Fabric's tenant isolation model depends on PostgreSQL RLS policies."
+        )
+
+    if is_superuser:
+        parsed_username = (urlparse(database_url).username or "").lower()
+        raise ValueError(
+            f"Database connection uses a known superuser role '{parsed_username}'. "
+            "Superuser roles bypass all PostgreSQL RLS policies, making "
+            "tenant isolation completely ineffective. "
+            "Create a dedicated application role with only the required privileges."
+        )
+
+
 def get_startup_summary() -> dict[str, Any]:
     """Get startup summary with active control modes.
     
@@ -677,13 +763,25 @@ def get_startup_summary() -> dict[str, Any]:
     cors_origins = os.getenv("CORS_ORIGINS", "*")
     database_url = os.getenv("DATABASE_URL", "")
     
+    rls_status = _get_rls_status(database_url)
+    _is_postgres, _is_superuser = _parse_rls_posture(database_url)
+    _rls_enforced = _is_postgres and not _is_superuser and bool(database_url)
+
     summary = {
         "environment": environment,
         "redis_enabled": bool(redis_url),
         "audit_enabled": bool(audit_sink),
         "cors_mode": "restricted" if cors_origins != "*" else "permissive",
         "jwt_validation": "strict" if is_production() else "relaxed",
-        "rls_status": _get_rls_status(database_url),
+        "rls_status": rls_status,
+        "rls_enforcement": {
+            "supported_backend": _is_postgres,
+            "superuser_connection": _is_superuser,
+            "enforced": _rls_enforced,
+            "status": "enforced" if _rls_enforced else (
+                "superuser_bypass" if _is_superuser else "unsupported_backend"
+            ),
+        },
         "warnings": [],
         "degraded_controls": [],
     }
@@ -722,14 +820,18 @@ def get_startup_summary() -> dict[str, Any]:
     if summary["warnings"]:
         summary["warnings"].insert(0, "WARNING: Some security controls are degraded")
         summary["warnings"].insert(0, "WARNING")
-    
+
+    summary["degraded_control_status"] = {
+        "is_degraded": bool(summary["degraded_controls"]),
+        "degraded_controls": list(summary["degraded_controls"]),
+        "count": len(summary["degraded_controls"]),
+    }
+
     return summary
 
 
-# Compatibility alias — imported by value_fabric.shared.identity.dependencies.
-# validate_jwt_secret_strength() is the canonical implementation; this alias
-# preserves the name used by legacy callers without duplicating logic.
-validate_jwt_config = validate_jwt_secret_strength
+# validate_jwt_config is defined above as a full function.
+# validate_jwt_secret_strength is the lower-level helper it delegates to.
 
 
 def _get_rls_status(database_url: str) -> str:
@@ -740,14 +842,8 @@ def _get_rls_status(database_url: str) -> str:
     if not database_url or database_url.startswith("sqlite"):
         return "disabled"
 
-    try:
-        parsed = urlparse(database_url)
-        username = (parsed.username or "").lower()
-    except Exception:
-        username = ""
-
-    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
-    if username in superuser_names:
+    _, is_superuser = _parse_rls_posture(database_url)
+    if is_superuser:
         return "superuser_bypass"
 
     return "active"

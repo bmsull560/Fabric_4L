@@ -23,7 +23,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 BASE_DIR = ROOT / "k8s" / "base"
 SECRETS_TEMPLATE = ROOT / "k8s" / "secrets.yml.template"
-LAYER5_MIGRATIONS = ROOT / "value-fabric" / "layer5-ground-truth" / "src" / "migrations" / "versions"
+LAYER5_MIGRATIONS = ROOT / "services" / "layer5-ground-truth" / "src" / "layer5_ground_truth" / "migrations" / "versions"
 WORKLOAD_KINDS = {"Deployment", "StatefulSet", "DaemonSet"}
 
 

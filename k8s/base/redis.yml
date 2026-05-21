@@ -1,5 +1,8 @@
-apiVersion: apps/v1
-kind: Deployment
+# Spotahome RedisFailover — production-grade Redis with sentinel failover.
+# Requires the Spotahome Redis Operator (redisfailovers.databases.spotahome.com CRD).
+# See k8s/operators/operator-prerequisites.yaml for installation instructions.
+apiVersion: databases.spotahome.com/v1
+kind: RedisFailover
 metadata:
   name: redis
   namespace: value-fabric
@@ -7,49 +10,41 @@ metadata:
     app: redis
     component: infrastructure
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: redis
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
-  template:
-    metadata:
-      labels:
-        app: redis
-        component: infrastructure
-    spec:
-      containers:
-        - name: redis
-          image: redis:7-alpine
-          ports:
-            - containerPort: 6379
-              name: redis
+  sentinel:
+    replicas: 1
+    resources:
+      requests:
+        memory: "32Mi"
+        cpu: "50m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+
+  redis:
+    replicas: 1
+    image: redis:7-alpine
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    storage:
+      persistentVolumeClaim:
+        metadata:
+          name: redis-data
+        spec:
+          accessModes:
+            - ReadWriteOnce
           resources:
             requests:
-              memory: "128Mi"
-              cpu: "100m"
-            limits:
-              memory: "512Mi"
-              cpu: "500m"
-          livenessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          readinessProbe:
-            exec:
-              command:
-                - redis-cli
-                - ping
-            initialDelaySeconds: 5
-            periodSeconds: 5
+              storage: 2Gi
+
+  # Dev/local overlay overrides replicas: 1 for both sentinel and redis.
+  # Prod overlay sets redis.replicas: 3 and sentinel.replicas: 3.
 ---
+# Service alias for backward compatibility with service DNS references.
 apiVersion: v1
 kind: Service
 metadata:
@@ -60,7 +55,10 @@ metadata:
     component: infrastructure
 spec:
   selector:
+    # The Spotahome operator sets 'app: redis' (constant) and the component label
+    # on Redis pods. It does not set app.kubernetes.io/name.
     app: redis
+    redisfailovers.databases.spotahome.com/component: redis
   ports:
     - port: 6379
       targetPort: 6379

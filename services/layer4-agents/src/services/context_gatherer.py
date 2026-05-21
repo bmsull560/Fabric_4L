@@ -19,7 +19,7 @@ from typing import Any
 
 from value_fabric.shared.models.typed_dict import TypedDictModel
 
-from .tenant_query_helper import run_tenant_validated_query
+from .tenant_cypher import fetch_tenant_validated_records, fetch_tenant_validated_single
 
 logger = logging.getLogger(__name__)
 
@@ -182,14 +182,15 @@ class ContextGatheringService:
             ORDER BY s.confidence_score DESC
             LIMIT $limit
             """
-            records = await run_tenant_validated_query(
+            records = await fetch_tenant_validated_records(
                 driver=self._driver,
                 query=query,
-                tenant_id=tenant_id,
                 params={
                     "account_id": account_id,
                     "limit": MAX_SIGNALS,
                 },
+                tenant_id=tenant_id,
+                operation="context_gatherer.account_signals",
             )
 
             return [
@@ -224,14 +225,15 @@ class ContextGatheringService:
             ORDER BY vh.confidence_score DESC
             LIMIT $limit
             """
-            records = await run_tenant_validated_query(
+            records = await fetch_tenant_validated_records(
                 driver=self._driver,
                 query=query,
-                tenant_id=tenant_id,
                 params={
                     "account_id": account_id,
                     "limit": MAX_HYPOTHESES,
                 },
+                tenant_id=tenant_id,
+                operation="context_gatherer.account_hypotheses",
             )
 
             return [
@@ -278,13 +280,13 @@ class ContextGatheringService:
                    avg(COALESCE(e.time_to_value_days, 180)) AS avg_ttv
             """
 
-            records = await run_tenant_validated_query(
+            record = await fetch_tenant_validated_single(
                 driver=self._driver,
                 query=query,
-                tenant_id=tenant_id,
                 params=params,
+                tenant_id=tenant_id,
+                operation="context_gatherer.evidence_summary",
             )
-            record = records[0] if records else None
 
             if not record:
                 return None

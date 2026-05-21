@@ -3669,12 +3669,6 @@ export interface paths {
         trace?: never;
     };
     "/v1/billing/subscription": {
-<<<<<<< HEAD
-<<<<<<< ours
-    "/v1/billing/entitlements": {
-=======
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -3701,9 +3695,6 @@ export interface paths {
         trace?: never;
     };
     "/v1/billing/checkout": {
-<<<<<<< HEAD
->>>>>>> theirs
-=======
         parameters: {
             query?: never;
             header?: never;
@@ -4297,7 +4288,6 @@ export interface paths {
         trace?: never;
     };
     "/v1/c1/stream": {
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -4307,1285 +4297,6 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-<<<<<<< ours
-         * Create Portal
-         * @description Create a Stripe customer portal session.
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         request: Portal session parameters
-         *
-         *     Returns:
-         *         Portal URL for customer to manage billing
-         */
-        post: operations["create_portal_v1_billing_portal_post"];
-=======
-         * Create Checkout
-         * @description Create a Stripe checkout session for subscription.
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         request: Checkout session parameters
-         *
-         *     Returns:
-         *         Session ID and checkout URL
-         */
-        post: operations["create_checkout_v1_billing_checkout_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/check-feature": {
-=======
-    "/v1/billing/portal": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Check Feature
-         * @description Check if a customer has access to a specific feature.
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         feature_id: Feature identifier to check
-         *
-         *     Returns:
-         *         Feature access status
-         */
-        get: operations["check_feature_v1_billing_check_feature_get"];
-        put?: never;
-        post?: never;
-=======
-         * Create Portal
-         * @description Create a Stripe customer portal session.
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         request: Portal session parameters
-         *
-         *     Returns:
-         *         Portal URL for customer to manage billing
-         */
-        post: operations["create_portal_v1_billing_portal_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/sync-customer": {
-=======
-    "/v1/billing/entitlements": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Sync Customer
-         * @description Sync customer with Stripe (create or update).
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         request: Customer details
-         *
-         *     Returns:
-         *         Customer record with Stripe ID if available
-         */
-        post: operations["sync_customer_v1_billing_sync_customer_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-    "/v1/billing/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-=======
-         * Get Entitlements
-         * @description Get all feature entitlements for a customer.
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *
-         *     Returns:
-         *         Plan details and feature availability map
-         */
-        get: operations["get_entitlements_v1_billing_entitlements_get"];
->>>>>>> theirs
-        put?: never;
-        /**
-         * Ingest Usage Event
-         * @description Ingest a single usage event for billing.
-         *
-         *     Args:
-         *         request: Usage event details
-         *
-         *     Returns:
-         *         Ingested event with ID and status
-         *
-         *     Raises:
-         *         400: Validation error
-         *         409: Duplicate event (idempotency conflict)
-         */
-        post: operations["ingest_usage_event_v1_billing_events_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-<<<<<<< ours
-    "/v1/billing/usage/{customer_id}/summary": {
-=======
-        trace?: never;
-    };
-    "/v1/billing/check-feature": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * Ingest Usage Event
-         * @description Ingest a single usage event for billing.
-         *
-         *     Args:
-         *         request: Usage event details
-         *
-         *     Returns:
-         *         Ingested event with ID and status
-         *
-         *     Raises:
-         *         400: Validation error
-         *         409: Duplicate event (idempotency conflict)
-         */
-        post: operations["ingest_usage_event_v1_billing_events_post"];
-=======
-         * Check Feature
-         * @description Check if a customer has access to a specific feature.
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         feature_id: Feature identifier to check
-         *
-         *     Returns:
-         *         Feature access status
-         */
-        get: operations["check_feature_v1_billing_check_feature_get"];
-        put?: never;
-        post?: never;
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-<<<<<<< ours
-    "/v1/billing/usage/{customer_id}/sync": {
-=======
-        trace?: never;
-    };
-    "/v1/billing/sync-customer": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * Sync Usage To Stripe
-         * @description Sync pending usage events to Stripe MeterEvents.
-         *
-         *     Aggregates pending usage and reports to Stripe for metered billing.
-         *     Requires Stripe customer to be linked and STRIPE_METER_EVENTS_ENABLED=true.
-         *
-         *     Args:
-         *         customer_id: Customer to sync usage for
-         *         metric_name: Optional metric filter (syncs all if omitted)
-         *
-         *     Returns:
-         *         Sync summary with counts and Stripe responses
-         *
-         *     Raises:
-         *         400: Validation error or no Stripe customer linked
-         *         402: Stripe not configured
-         */
-        post: operations["sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post"];
-=======
-         * Sync Customer
-         * @description Sync customer with Stripe (create or update).
-         *
-         *     Args:
-         *         customer_id: Internal customer/user ID
-         *         request: Customer details
-         *
-         *     Returns:
-         *         Customer record with Stripe ID if available
-         */
-        post: operations["sync_customer_v1_billing_sync_customer_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/limits/{customer_id}": {
-=======
-    "/v1/billing/webhook": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Get Usage Limits
-         * @description Get current usage and limits for a customer.
-         *
-         *     Returns all configured limits and current usage percentages.
-         *     Use this to show progress bars or warnings in the UI.
-         *
-         *     Args:
-         *         customer_id: Customer to check
-         *
-         *     Returns:
-         *         Usage limits and current consumption for all metrics
-         */
-        get: operations["get_usage_limits_v1_billing_limits__customer_id__get"];
-        put?: never;
-        post?: never;
-=======
-         * Stripe Webhook
-         * @description Handle Stripe webhook events.
-         *
-         *     Processes subscription lifecycle events from Stripe with idempotency.
-         *     Must configure webhook secret in STRIPE_WEBHOOK_SECRET env var.
-         *
-         *     SECURITY: Validates request originates from Stripe IP ranges AND
-         *     has valid Stripe-Signature header. Dual verification for defense-in-depth.
-         *
-         *     Headers:
-         *         Stripe-Signature: Webhook signature for verification
-         *
-         *     Returns:
-         *         Processing status
-         */
-        post: operations["stripe_webhook_v1_billing_webhook_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/limits/{customer_id}/check": {
-=======
-    "/v1/billing/events": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Check Request Allowed
-         * @description Check if a request should be allowed based on usage limits.
-         *
-         *     Use this endpoint before processing expensive operations to validate
-         *     that the customer has quota remaining. Returns 402 Payment Required
-         *     if the hard limit is exceeded.
-         *
-         *     Args:
-         *         customer_id: Customer making the request
-         *         metric_name: Metric being consumed
-         *         quantity: Amount to be consumed
-         *
-         *     Returns:
-         *         Validation result with allow/deny decision
-         *
-         *     Raises:
-         *         402: Hard limit exceeded (upgrade required)
-         *         400: Invalid request
-         */
-        post: operations["check_request_allowed_v1_billing_limits__customer_id__check_post"];
-=======
-         * Ingest Usage Event
-         * @description Ingest a single usage event for billing.
-         *
-         *     Args:
-         *         request: Usage event details
-         *
-         *     Returns:
-         *         Ingested event with ID and status
-         *
-         *     Raises:
-         *         400: Validation error
-         *         409: Duplicate event (idempotency conflict)
-         */
-        post: operations["ingest_usage_event_v1_billing_events_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/plans/{plan_id}/limits": {
-=======
-    "/v1/billing/events/batch": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Invoices
-         * @description List invoices with optional filters.
-         *
-         *     Returns paginated list of invoices for the tenant, optionally filtered
-         *     by customer and status.
-         */
-        get: operations["list_invoices_v1_billing_invoices_get"];
-        put?: never;
-        /**
-<<<<<<< ours
-         * Create Invoice
-         * @description Create a new invoice.
-         *
-         *     Creates a draft invoice for the specified customer and billing period.
-         *     Add line items via POST /invoices/{id}/items, then finalize via POST /invoices/{id}/finalize.
-         */
-        post: operations["create_invoice_v1_billing_invoices_post"];
-=======
-         * Ingest Usage Batch
-         * @description Ingest multiple usage events in a batch.
-         *
-         *     Args:
-         *         request: Batch of usage events (max 1000)
-         *
-         *     Returns:
-         *         Summary with counts of created, duplicate, and error events
-         *
-         *     Raises:
-         *         400: Batch validation error
-         */
-        post: operations["ingest_usage_batch_v1_billing_events_batch_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/invoices/{invoice_id}": {
-=======
-    "/v1/billing/usage/{customer_id}/summary": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * Get Invoice
-         * @description Get invoice details including line items and charges.
-         */
-        get: operations["get_invoice_v1_billing_invoices__invoice_id__get"];
-=======
-         * Get Usage Summary
-         * @description Get aggregated usage summary for a customer and metric.
-         *
-         *     Args:
-         *         customer_id: Customer to query
-         *         metric_name: Metric to aggregate
-         *         start_date: Start of period (ISO format)
-         *         end_date: End of period (ISO format)
-         *
-         *     Returns:
-         *         Usage summary with total quantity and event count
-         */
-        get: operations["get_usage_summary_v1_billing_usage__customer_id__summary_get"];
->>>>>>> theirs
-        put?: never;
-        /**
-         * Check Request Allowed
-         * @description Check if a request should be allowed based on usage limits.
-         *
-         *     Use this endpoint before processing expensive operations to validate
-         *     that the customer has quota remaining. Returns 402 Payment Required
-         *     if the hard limit is exceeded.
-         *
-         *     Args:
-         *         customer_id: Customer making the request
-         *         metric_name: Metric being consumed
-         *         quantity: Amount to be consumed
-         *
-         *     Returns:
-         *         Validation result with allow/deny decision
-         *
-         *     Raises:
-         *         402: Hard limit exceeded (upgrade required)
-         *         400: Invalid request
-         */
-        post: operations["check_request_allowed_v1_billing_limits__customer_id__check_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/invoices/{invoice_id}/items": {
-=======
-    "/v1/billing/usage/{customer_id}/events": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Add Invoice Item
-         * @description Add a line item to an invoice.
-         */
-        post: operations["add_invoice_item_v1_billing_invoices__invoice_id__items_post"];
-=======
-         * List Usage Events
-         * @description List individual usage events for a customer.
-         *
-         *     Args:
-         *         customer_id: Customer to query
-         *         metric_name: Optional metric filter
-         *         start_date: Optional start date filter
-         *         end_date: Optional end date filter
-         *         limit: Maximum results (1-1000)
-         *         offset: Pagination offset
-         *
-         *     Returns:
-         *         List of usage events
-         */
-        get: operations["list_usage_events_v1_billing_usage__customer_id__events_get"];
-        put?: never;
-        post?: never;
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-<<<<<<< ours
-        trace?: never;
-    };
-    "/v1/billing/invoices/{invoice_id}/finalize": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Finalize Invoice
-         * @description Finalize a draft invoice (make it open/payable).
-         *
-         *     Recalculates totals from line items and changes status to 'open'.
-         */
-        post: operations["finalize_invoice_v1_billing_invoices__invoice_id__finalize_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/invoices/{invoice_id}/void": {
-=======
-        trace?: never;
-    };
-    "/v1/billing/usage/{customer_id}/sync": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Void Invoice
-         * @description Void an invoice.
-         */
-        post: operations["void_invoice_v1_billing_invoices__invoice_id__void_post"];
-=======
-         * Sync Usage To Stripe
-         * @description Sync pending usage events to Stripe MeterEvents.
-         *
-         *     Aggregates pending usage and reports to Stripe for metered billing.
-         *     Requires Stripe customer to be linked and STRIPE_METER_EVENTS_ENABLED=true.
-         *
-         *     Args:
-         *         customer_id: Customer to sync usage for
-         *         metric_name: Optional metric filter (syncs all if omitted)
-         *
-         *     Returns:
-         *         Sync summary with counts and Stripe responses
-         *
-         *     Raises:
-         *         400: Validation error or no Stripe customer linked
-         *         402: Stripe not configured
-         */
-        post: operations["sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/charges": {
-=======
-    "/v1/billing/limits/{customer_id}": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * List Charges
-         * @description List charge records.
-         */
-        get: operations["list_charges_v1_billing_charges_get"];
-        put?: never;
-        /**
-         * Record Charge
-         * @description Record a charge attempt.
-         */
-        post: operations["record_charge_v1_billing_charges_post"];
-=======
-         * Get Usage Limits
-         * @description Get current usage and limits for a customer.
-         *
-         *     Returns all configured limits and current usage percentages.
-         *     Use this to show progress bars or warnings in the UI.
-         *
-         *     Args:
-         *         customer_id: Customer to check
-         *
-         *     Returns:
-         *         Usage limits and current consumption for all metrics
-         */
-        get: operations["get_usage_limits_v1_billing_limits__customer_id__get"];
-        put?: never;
-        post?: never;
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/reports/revenue": {
-=======
-    "/v1/billing/limits/{customer_id}/check": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Get Revenue Summary
-         * @description Get revenue summary for a period.
-         *
-         *     Returns aggregated invoice and charge totals for the specified period.
-         */
-        get: operations["get_revenue_summary_v1_billing_reports_revenue_get"];
-        put?: never;
-        post?: never;
-=======
-         * Check Request Allowed
-         * @description Check if a request should be allowed based on usage limits.
-         *
-         *     Use this endpoint before processing expensive operations to validate
-         *     that the customer has quota remaining. Returns 402 Payment Required
-         *     if the hard limit is exceeded.
-         *
-         *     Args:
-         *         customer_id: Customer making the request
-         *         metric_name: Metric being consumed
-         *         quantity: Amount to be consumed
-         *
-         *     Returns:
-         *         Validation result with allow/deny decision
-         *
-         *     Raises:
-         *         402: Hard limit exceeded (upgrade required)
-         *         400: Invalid request
-         */
-        post: operations["check_request_allowed_v1_billing_limits__customer_id__check_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/billing/customers/{customer_id}/balance": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Customer Balance
-         * @description Get customer balance summary.
-         *
-         *     Returns open invoice amounts and lifetime payment totals.
-         */
-        get: operations["get_customer_balance_v1_billing_customers__customer_id__balance_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-    "/v1/tenant/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-    "/v1/company-knowledge/profiles": {
-=======
-    "/v1/billing/plans/{plan_id}/limits": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * Get Current Profile
-         * @description Get the current tenant's active or latest draft profile.
-         */
-        get: operations["get_current_profile_v1_company_knowledge_profiles_current_get"];
-=======
-         * Get Plan Limits
-         * @description Get the configured usage limits for a plan.
-         *
-         *     Returns the limits configuration without customer-specific usage data.
-         *     Useful for displaying plan details in pricing pages.
-         *
-         *     Args:
-         *         plan_id: Plan identifier (free, pro, enterprise)
-         *
-         *     Returns:
-         *         Plan limits configuration
-         */
-        get: operations["get_plan_limits_v1_billing_plans__plan_id__limits_get"];
->>>>>>> theirs
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/company-knowledge/profiles/{profile_id}": {
-=======
-    "/v1/billing/invoices": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * Get Profile
-         * @description Get a company knowledge profile by ID.
-         */
-        get: operations["get_profile_v1_company_knowledge_profiles__profile_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Update Profile
-         * @description Update sections of a company knowledge profile.
-         */
-        patch: operations["update_profile_v1_company_knowledge_profiles__profile_id__patch"];
-        trace?: never;
-    };
-    "/v1/company-knowledge/profiles/{profile_id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Advance run state
-         * @description Advance the state machine for a harness run.
-         */
-        post: operations["transition_run_v1_harness_runs__run_id__transition_post"];
-=======
-         * List Invoices
-         * @description List invoices with optional filters.
-         *
-         *     Returns paginated list of invoices for the tenant, optionally filtered
-         *     by customer and status.
-         */
-        get: operations["list_invoices_v1_billing_invoices_get"];
-        put?: never;
-        /**
-         * Create Invoice
-         * @description Create a new invoice.
-         *
-         *     Creates a draft invoice for the specified customer and billing period.
-         *     Add line items via POST /invoices/{id}/items, then finalize via POST /invoices/{id}/finalize.
-         */
-        post: operations["create_invoice_v1_billing_invoices_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/harness/runs/{run_id}/checkpoints": {
-=======
-    "/v1/billing/invoices/{invoice_id}": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-<<<<<<< ours
-         * List checkpoints for a run
-         * @description List all checkpoints for a harness run.
-         */
-        get: operations["list_checkpoints_v1_harness_runs__run_id__checkpoints_get"];
-=======
-         * Get Invoice
-         * @description Get invoice details including line items and charges.
-         */
-        get: operations["get_invoice_v1_billing_invoices__invoice_id__get"];
->>>>>>> theirs
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/harness/runs/{run_id}/checkpoints/latest": {
-=======
-    "/v1/billing/invoices/{invoice_id}/items": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * Get latest checkpoint for a run
-         * @description Get the most recent checkpoint for a harness run.
-         */
-        get: operations["get_latest_checkpoint_v1_harness_runs__run_id__checkpoints_latest_get"];
-        put?: never;
-        post?: never;
-=======
-         * Add Invoice Item
-         * @description Add a line item to an invoice.
-         */
-        post: operations["add_invoice_item_v1_billing_invoices__invoice_id__items_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/harness/runs/{run_id}/gates": {
-=======
-    "/v1/billing/invoices/{invoice_id}/finalize": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-<<<<<<< ours
-        /**
-         * List gates for a run
-         * @description List all human gates for a harness run.
-         */
-        get: operations["list_gates_v1_harness_runs__run_id__gates_get"];
-        put?: never;
-        /**
-         * Create a human gate
-         * @description Create a human gate for a harness run.
-         */
-        post: operations["create_gate_v1_harness_runs__run_id__gates_post"];
-=======
-        get?: never;
-        put?: never;
-        /**
-         * Finalize Invoice
-         * @description Finalize a draft invoice (make it open/payable).
-         *
-         *     Recalculates totals from line items and changes status to 'open'.
-         */
-        post: operations["finalize_invoice_v1_billing_invoices__invoice_id__finalize_post"];
->>>>>>> theirs
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-<<<<<<< ours
-    "/v1/harness/gates/{gate_id}/decide": {
-=======
-    "/v1/billing/invoices/{invoice_id}/void": {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-<<<<<<< ours
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Decide a human gate
-         * @description Approve, reject, modify, or expire a human gate.
-         *
-         *     Requires content_admin, tenant_admin, or super_admin role.
-         *     decision_by is always server-derived from ctx.user_id — any
-         *     body-supplied value is ignored to prevent spoofing.
-         */
-        post: operations["decide_gate_v1_harness_gates__gate_id__decide_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/harness/runs/{run_id}/validate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Validate claims for a run
-         * @description Validate a list of claims through the L5 ValidationHook.
-         */
-        post: operations["validate_claims_v1_harness_runs__run_id__validate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/harness/runs/{run_id}/validation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get validation results for a run
-         * @description Return the stored validation results for a run.
-         *
-         *     Returns an empty summary when no claims have been validated yet.
-         *     Tenant-scoped: 403 if run belongs to a different tenant.
-         */
-        get: operations["get_run_validation_v1_harness_runs__run_id__validation_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/harness/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Harness health check
-         * @description Return harness health: validation availability and L5 connectivity.
-         */
-        get: operations["harness_health_v1_harness_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-}
-export type webhooks = Record<string, never>;
-export interface components {
-    schemas: {
-        /**
-         * APIKeyCreateRequest
-         * @description Create a new persistent API key (tenant_admin only).
-         */
-        APIKeyCreateRequest: {
-            /** Name */
-            name: string;
-            /** @default analyst */
-            role: components["schemas"]["Role"];
-            /** Permissions */
-            permissions?: components["schemas"]["Permission"][] | null;
-            /** Expires At */
-            expires_at?: string | null;
-            /** Rate Limit Per Minute */
-            rate_limit_per_minute?: number | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
-=======
->>>>>>> theirs
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Void Invoice
-         * @description Void an invoice.
-         */
-        post: operations["void_invoice_v1_billing_invoices__invoice_id__void_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/charges": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Charges
-         * @description List charge records.
-         */
-<<<<<<< ours
-        APIKeyModel: {
-            /**
-             * Key Id
-             * @description Unique identifier (vf_<uuid>)
-             */
-            key_id: string;
-            /**
-             * Tenant Id
-             * Format: uuid
-             * @description Owning tenant
-             */
-            tenant_id: string;
-            /**
-             * User Id
-             * @description Issuing user (None for system keys)
-             */
-            user_id?: string | null;
-            /** Name */
-            name: string;
-            /**
-             * Prefix
-             * @description First 8 chars of the key for identification
-             */
-            prefix: string;
-            role: components["schemas"]["Role"];
-            /** Permissions */
-            permissions: components["schemas"]["Permission"][];
-            /**
-             * Enabled
-             * @default true
-             */
-            enabled: boolean;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at?: string;
-            /** Expires At */
-            expires_at?: string | null;
-            /** Last Used At */
-            last_used_at?: string | null;
-            /**
-             * Rate Limit Per Minute
-             * @description Per-key override; None inherits tenant limit
-             */
-            rate_limit_per_minute?: number | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
-        };
-        get?: never;
-=======
-        get: operations["list_charges_v1_billing_charges_get"];
->>>>>>> theirs
-        put?: never;
-        /**
-         * Record Charge
-         * @description Record a charge attempt.
-         */
-        post: operations["record_charge_v1_billing_charges_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/reports/revenue": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Revenue Summary
-         * @description Get revenue summary for a period.
-         *
-         *     Returns aggregated invoice and charge totals for the specified period.
-         */
-        get: operations["get_revenue_summary_v1_billing_reports_revenue_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/billing/customers/{customer_id}/balance": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * CreateGateRequest
-         * @description Request body for POST /v1/harness/runs/{run_id}/gates.
-         */
-        CreateGateRequest: {
-            gate_type: components["schemas"]["GateType"];
-=======
-         * Get Customer Balance
-         * @description Get customer balance summary.
-         *
-         *     Returns open invoice amounts and lifetime payment totals.
-         */
-        get: operations["get_customer_balance_v1_billing_customers__customer_id__balance_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/c1/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
->>>>>>> theirs
-        };
-        get?: never;
-        put?: never;
-        /**
-<<<<<<< ours
-         * CreateInvoiceRequest
-         * @description Request to create a new invoice.
-         */
-        CreateInvoiceRequest: {
-            /**
-             * Customer Id
-             * @description Customer being invoiced
-             */
-            customer_id: string;
-            /**
-             * Period Start
-             * Format: date-time
-             * @description Billing period start
-             */
-            period_start: string;
-            /**
-             * Period End
-             * Format: date-time
-             * @description Billing period end
-             */
-            period_end: string;
-            /**
-             * Invoice Number
-             * @description Optional invoice number
-             */
-            invoice_number?: string | null;
-            /**
-             * Subscription Id
-             * @description Optional subscription link
-             */
-            subscription_id?: string | null;
-            /**
-             * Currency
-             * @description Currency code
-             * @default USD
-             */
-            currency: string;
-            /**
-             * Description
-             * @description Invoice description
-             */
-            description?: string | null;
-        };
-        /** CreateNotificationRequest */
-        CreateNotificationRequest: {
-            /** Account Id */
-            account_id?: string | null;
-            /** Subject Id */
-            subject_id?: string | null;
-            /** Subject Type */
-            subject_type?: string | null;
-            /** Type */
-            type: string;
-            /** Title */
-            title: string;
-            /** Message */
-            message: string;
-        };
-        /**
-         * CreateRunRequest
-         * @description Request body for POST /v1/harness/runs.
-         */
-        CreateRunRequest: {
-            workflow_type: components["schemas"]["HarnessWorkflowType"];
-            /** @default user */
-            initiated_by: components["schemas"]["InitiatedBy"];
-            /** Account Id */
-            account_id?: string | null;
-            /** Value Pack Id */
-            value_pack_id?: string | null;
-        };
-        /** CreateTaskRequest */
-        CreateTaskRequest: {
-            /** Title */
-            title: string;
-            /** Account Id */
-            account_id?: string | null;
-            /** Assignee */
-            assignee?: string | null;
-            /** Due Date */
-            due_date?: string | null;
-            /** Stage */
-            stage?: string | null;
-=======
          * Stream C1
          * @description Proxy a streaming request to the Thesys C1 API.
          *
@@ -5742,89 +4453,10 @@ export interface components {
             header?: never;
             path?: never;
             cookie?: never;
->>>>>>> theirs
         };
         get?: never;
         put?: never;
         /**
-<<<<<<< ours
-         * CrmMatchResult
-         * @description Result of CRM opportunity matching (never fabricated).
-         */
-        CrmMatchResult: {
-            status: components["schemas"]["CrmMatchStatus"];
-            /** Opportunity Id */
-            opportunity_id?: string | null;
-            /** Confidence */
-            confidence?: number | null;
-            /** Source */
-            source?: string | null;
-        };
-        /**
-         * CrmMatchStatus
-         * @description Status of CRM opportunity matching.
-         * @enum {string}
-         */
-        CrmMatchStatus: "matched" | "not_found" | "unavailable";
-        /** CurrentTenantSettingsResponse */
-        CurrentTenantSettingsResponse: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Slug */
-            slug: string;
-            /** Status */
-            status: string;
-            /** Tier Id */
-            tier_id: string;
-            /** Settings */
-            settings: {
-                [key: string]: unknown;
-            };
-            /** Created At */
-            created_at: string;
-        };
-        /** CurrentTenantSettingsUpdate */
-        CurrentTenantSettingsUpdate: {
-            /** Settings */
-            settings?: {
-                [key: string]: unknown;
-            } | null;
-        };
-        /** CurrentTenantSettingsUpdateResponse */
-        CurrentTenantSettingsUpdateResponse: {
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Settings */
-            settings: {
-                [key: string]: unknown;
-            };
-            /** Updated At */
-            updated_at: string;
-        };
-        /**
-         * CustomerSyncRequest
-         * @description Request to sync customer with Stripe.
-         */
-        CustomerSyncRequest: {
-            /**
-             * Email
-             * @description Customer email address
-             */
-            email: string;
-            /**
-             * Name
-             * @description Customer name
-             */
-            name?: string | null;
-        };
-        get?: never;
-        put?: never;
-        /**
-=======
          * Create Profile
          * @description Create a new draft company knowledge profile.
          */
@@ -11631,14 +10263,7 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "running" | "paused" | "interrupted" | "completed" | "failed" | "cancelled";
-<<<<<<< HEAD
-            /** Output */
-            output?: {
-                [key: string]: components["schemas"]["JsonValue"];
-            } | null;
-=======
             output?: components["schemas"]["WorkflowOutput"] | null;
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             /** Errors */
             errors?: (string | {
                 [key: string]: components["schemas"]["JsonValue"];
@@ -13159,7 +11784,6 @@ export interface operations {
                 case_id: string;
             };
             cookie?: never;
->>>>>>> theirs
         };
         requestBody?: never;
         responses: {
@@ -13169,13 +11793,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["BusinessCaseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-=======
                     "application/json": components["schemas"]["WorkspaceEvidenceResponse"];
                 };
             };
@@ -13204,13 +11821,10 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
->>>>>>> theirs
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-=======
                     "application/json": {
                         [key: string]: unknown;
                     };
@@ -13222,17 +11836,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
->>>>>>> theirs
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-<<<<<<< ours
-    seed_business_case_lifecycle_v1_validation_seed_business_case_lifecycle_post: {
-=======
     update_workspace_tab_v1_cases__case_id__workspace__tab_key__put: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -13244,13 +11853,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["BusinessCaseLifecycleSeedRequest"];
-=======
                 "application/json": {
                     [key: string]: unknown;
                 };
->>>>>>> theirs
             };
         };
         responses: {
@@ -13276,15 +11881,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    export_business_case_v1_cases__case_id__export_get: {
-=======
     generate_workspace_intelligence_v1_cases__case_id__workspace_generate_post: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                format?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 case_id: string;
@@ -13315,11 +11914,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    list_saved_scenarios_v1_cases__case_id__scenarios_get: {
-        parameters: {
-            query?: never;
-=======
     list_accounts_v1_accounts_get: {
         parameters: {
             query?: {
@@ -13335,11 +11929,8 @@ export interface operations {
                 sort_by?: string;
                 sort_order?: string;
             };
->>>>>>> theirs
             header?: never;
-            path: {
-                case_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -13350,11 +11941,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["SavedScenarioSummary"][];
-=======
                     "application/json": components["schemas"]["AccountListResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -13368,26 +11955,16 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    save_scenario_v1_cases__case_id__scenarios_post: {
-=======
     create_account_v1_accounts_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                case_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["SaveScenarioRequest"];
-=======
                 "application/json": components["schemas"]["CreateAccountRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -13397,270 +11974,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["SavedScenarioDetail"];
-=======
-                    "application/json": components["schemas"]["AccountDetailSchema"];
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    get_saved_scenario_v1_cases__case_id__scenarios__scenario_id__get: {
-=======
-    search_accounts_v1_accounts_search_post: {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                case_id: string;
-                scenario_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AccountSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["SavedScenarioDetail"];
-=======
-                    "application/json": components["schemas"]["AccountListResponse"];
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    delete_saved_scenario_v1_cases__case_id__scenarios__scenario_id__delete: {
-=======
-    get_filter_options_v1_accounts_filters_get: {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                case_id: string;
-                scenario_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["HTTPValidationError"];
-=======
-                    "application/json": components["schemas"]["AccountFilterOptionsResponse"];
->>>>>>> theirs
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    get_workspace_evidence_v1_cases__case_id__workspace_evidence_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                case_id: string;
-            };
-=======
-    get_sync_status_all_v1_accounts_sync_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
->>>>>>> theirs
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AccountSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-<<<<<<< ours
-            201: {
-=======
-            200: {
->>>>>>> theirs
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-=======
-                    "application/json": components["schemas"]["SyncStatusListResponse"];
->>>>>>> theirs
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    get_workspace_tab_v1_cases__case_id__workspace__tab_key__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                case_id: string;
-                tab_key: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_workspace_tab_v1_cases__case_id__workspace__tab_key__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                case_id: string;
-                tab_key: string;
-=======
-    sync_accounts_v1_accounts_sync_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SyncAccountsRequest"];
->>>>>>> theirs
-            };
-        };
-<<<<<<< ours
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-=======
->>>>>>> theirs
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-=======
-                    "application/json": components["schemas"]["SyncAccountsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    generate_workspace_intelligence_v1_cases__case_id__workspace_generate_post: {
-=======
-    get_account_v1_accounts__account_id__get: {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-<<<<<<< ours
-                case_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SyncAccountsRequest"];
-            };
-        };
-=======
-                account_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
->>>>>>> theirs
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
                     "application/json": components["schemas"]["AccountDetailSchema"];
                 };
             };
@@ -13675,31 +11988,18 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     search_accounts_v1_accounts_search_post: {
-=======
-    get_account_activity_v1_accounts__account_id__activity_get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                limit?: number;
-                since_days?: number;
-            };
+            query?: never;
             header?: never;
-            path: {
-                account_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-<<<<<<< ours
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AccountSearchRequest"];
             };
         };
-=======
-        requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -13707,11 +12007,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["AccountListResponse"];
-=======
-                    "application/json": components["schemas"]["AccountActivityResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -13725,21 +12021,11 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     get_filter_options_v1_accounts_filters_get: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
-=======
-    refresh_account_v1_accounts__account_id__refresh_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                account_id: string;
-            };
->>>>>>> theirs
             cookie?: never;
         };
         requestBody?: never;
@@ -13750,11 +12036,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["AccountFilterOptionsResponse"];
-=======
-                    "application/json": components["schemas"]["AccountDetailSchema"];
->>>>>>> theirs
                 };
             };
         };
@@ -13779,11 +12061,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     sync_accounts_v1_accounts_sync_post: {
-=======
-    setup_prospect_v1_prospects_setup_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -13792,11 +12070,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
                 "application/json": components["schemas"]["SyncAccountsRequest"];
-=======
-                "application/json": components["schemas"]["ProspectSetupRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -13806,11 +12080,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["SyncAccountsResponse"];
-=======
-                    "application/json": components["schemas"]["ProspectSetupResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -13824,15 +12094,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     get_account_v1_accounts__account_id__get: {
-=======
-    get_account_signals_v1_accounts__account_id__signals_get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                category?: string | null;
-            };
+            query?: never;
             header?: never;
             path: {
                 account_id: string;
@@ -13847,11 +12111,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["AccountDetailSchema"];
-=======
-                    "application/json": components["schemas"]["SignalListResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -13865,11 +12125,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     get_account_activity_v1_accounts__account_id__activity_get: {
-=======
-    get_signal_by_id_v1_signals__signal_id__get: {
->>>>>>> theirs
         parameters: {
             query?: {
                 limit?: number;
@@ -13877,11 +12133,7 @@ export interface operations {
             };
             header?: never;
             path: {
-<<<<<<< ours
                 account_id: string;
-=======
-                signal_id: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
@@ -13893,13 +12145,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["AccountActivityResponse"];
-=======
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -13913,28 +12159,16 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     refresh_account_v1_accounts__account_id__refresh_post: {
-=======
-    review_signal_v1_signals__signal_id__review_patch: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path: {
-<<<<<<< ours
                 account_id: string;
-=======
-                signal_id: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SignalReviewRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -13942,11 +12176,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["AccountDetailSchema"];
-=======
-                    "application/json": components["schemas"]["SignalReviewResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -13960,26 +12190,16 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     setup_prospect_v1_prospects_setup_post: {
-=======
-    decide_evidence_v1_evidence__evidence_id__decision_patch: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                evidence_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-<<<<<<< ours
                 "application/json": components["schemas"]["ProspectSetupRequest"];
-=======
-                "application/json": components["schemas"]["EvidenceDecisionRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -13989,11 +12209,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["ProspectSetupResponse"];
-=======
-                    "application/json": components["schemas"]["EvidenceDecisionResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14007,7 +12223,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     get_account_signals_v1_accounts__account_id__signals_get: {
         parameters: {
             query?: {
@@ -14016,23 +12231,10 @@ export interface operations {
             header?: never;
             path: {
                 account_id: string;
-=======
-    link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                evidence_id: string;
-                driver_id: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EvidenceDriverLinkRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -14040,13 +12242,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["SignalListResponse"];
-=======
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14060,7 +12256,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     get_signal_by_id_v1_signals__signal_id__get: {
         parameters: {
             query?: never;
@@ -14068,8 +12263,6 @@ export interface operations {
             path: {
                 signal_id: string;
             };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -14099,41 +12292,25 @@ export interface operations {
     review_signal_v1_signals__signal_id__review_patch: {
         parameters: {
             query?: never;
-=======
-    list_tasks_v1_tasks_get: {
-        parameters: {
-            query?: {
-                account_id?: string | null;
-                status?: components["schemas"]["TaskStatus"] | null;
-            };
->>>>>>> theirs
             header?: never;
             path: {
                 signal_id: string;
             };
             cookie?: never;
         };
-<<<<<<< ours
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SignalReviewRequest"];
             };
         };
-=======
-        requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["SignalReviewResponse"];
-=======
-                    "application/json": components["schemas"]["TaskListResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14147,15 +12324,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< HEAD
-<<<<<<< ours
     decide_evidence_v1_evidence__evidence_id__decision_patch: {
-=======
-    create_task_v1_tasks_post: {
->>>>>>> theirs
-=======
-    decide_evidence_v1_evidence__evidence_id__decision_patch: {
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -14166,11 +12335,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
                 "application/json": components["schemas"]["EvidenceDecisionRequest"];
-<<<<<<< HEAD
-=======
-=======
             };
         };
         responses: {
@@ -14273,9 +12438,7 @@ export interface operations {
         };
         requestBody: {
             content: {
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 "application/json": components["schemas"]["CreateTaskRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -14285,11 +12448,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["EvidenceDecisionResponse"];
-=======
                     "application/json": components["schemas"]["TaskRecord"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14303,31 +12462,18 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post: {
-=======
     update_task_v1_tasks__task_id__patch: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path: {
-<<<<<<< ours
-                evidence_id: string;
-                driver_id: string;
-=======
                 task_id: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["EvidenceDriverLinkRequest"];
-=======
                 "application/json": components["schemas"]["UpdateTaskRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -14351,20 +12497,12 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    list_tasks_v1_tasks_get: {
-        parameters: {
-            query?: {
-                account_id?: string | null;
-                status?: components["schemas"]["TaskStatus"] | null;
-=======
     list_comments_v1_comments_get: {
         parameters: {
             query?: {
                 subject_type?: string | null;
                 subject_id?: string | null;
                 account_id?: string | null;
->>>>>>> theirs
             };
             header?: never;
             path?: never;
@@ -14378,11 +12516,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["TaskListResponse"];
-=======
                     "application/json": components["schemas"]["CommentListResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14396,11 +12530,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    create_task_v1_tasks_post: {
-=======
     create_comment_v1_comments_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -14409,11 +12539,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["CreateTaskRequest"];
-=======
                 "application/json": components["schemas"]["CreateCommentRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -14423,11 +12549,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["TaskRecord"];
-=======
                     "application/json": components["schemas"]["CommentRecord"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14441,28 +12563,14 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    update_task_v1_tasks__task_id__patch: {
-        parameters: {
-            query?: never;
-=======
     list_notifications_v1_notifications_get: {
         parameters: {
             query?: {
                 read?: boolean | null;
                 account_id?: string | null;
             };
->>>>>>> theirs
             header?: never;
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateTaskRequest"];
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -14473,11 +12581,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["TaskRecord"];
-=======
                     "application/json": components["schemas"]["NotificationListResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14491,57 +12595,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    list_comments_v1_comments_get: {
-=======
     create_notification_v1_notifications_post: {
->>>>>>> theirs
-        parameters: {
-            query?: {
-                subject_type?: string | null;
-                subject_id?: string | null;
-                account_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-<<<<<<< ours
-        requestBody?: never;
-=======
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateNotificationRequest"];
-            };
-        };
->>>>>>> theirs
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["CommentListResponse"];
-=======
-                    "application/json": components["schemas"]["NotificationRecord"];
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    create_comment_v1_comments_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14550,10 +12604,30 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateCommentRequest"];
+                "application/json": components["schemas"]["CreateNotificationRequest"];
             };
         };
-=======
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     mark_notification_read_v1_notifications__notification_id__read_patch: {
         parameters: {
             query?: never;
@@ -14564,19 +12638,14 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
-            201: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["CommentRecord"];
-=======
                     "application/json": components["schemas"]["NotificationRecord"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14590,19 +12659,10 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    list_notifications_v1_notifications_get: {
-        parameters: {
-            query?: {
-                read?: boolean | null;
-                account_id?: string | null;
-            };
-=======
     agent_stream_chat_v1_agent_stream_chat_post: {
         parameters: {
             query?: never;
             header?: never;
->>>>>>> theirs
             path?: never;
             cookie?: never;
         };
@@ -14613,16 +12673,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            202: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["NotificationListResponse"];
-=======
                     "application/json": components["schemas"]["AgentStreamResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -14636,163 +12692,11 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    create_notification_v1_notifications_post: {
-=======
-    agent_stream_chat_sse_v1_agent_stream_chat_stream_post: {
->>>>>>> theirs
-        parameters: {
-            query?: {
-                /** @description Tenant identifier for multi-tenant webhook routing */
-                tenant_id?: string | null;
-                /** @description Per-tenant webhook token for authentication */
-                webhook_token?: string | null;
-            };
-            header?: {
-                "X-Webhook-Token"?: string | null;
-                "X-HubSpot-Signature"?: string | null;
-                "X-HubSpot-Signature-v3"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["CreateNotificationRequest"];
-=======
-                "application/json": components["schemas"]["AgentStreamRequest"];
->>>>>>> theirs
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["NotificationRecord"];
-=======
-                    "application/json": unknown;
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-=======
-    salesforce_webhook_v1_webhooks_crm_salesforce_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant identifier for multi-tenant webhook routing */
-                tenant_id?: string | null;
-                /** @description Per-tenant webhook token for authentication */
-                webhook_token?: string | null;
-            };
-            header?: {
-                "X-Webhook-Token"?: string | null;
-                "X-Salesforce-Signature"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
->>>>>>> theirs
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    agent_stream_chat_v1_agent_stream_chat_post: {
-        parameters: {
-            query?: {
-                /** @description Maximum checkpoints to return */
-                limit?: number;
-                /** @description Include full state in summary */
-                include_state?: boolean;
-            };
-            header?: never;
-=======
-    hubspot_webhook_v1_webhooks_crm_hubspot_post: {
-        parameters: {
-            query?: {
-                /** @description Tenant identifier for multi-tenant webhook routing */
-                tenant_id?: string | null;
-                /** @description Per-tenant webhook token for authentication */
-                webhook_token?: string | null;
-            };
-            header?: {
-                "X-Webhook-Token"?: string | null;
-                "X-HubSpot-Signature"?: string | null;
-                "X-HubSpot-Signature-v3"?: string | null;
-            };
->>>>>>> theirs
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AgentStreamRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["AgentStreamResponse"];
-=======
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
->>>>>>> theirs
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
     agent_stream_chat_sse_v1_agent_stream_chat_stream_post: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                workflow_id: string;
-                checkpoint_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -14810,33 +12714,17 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
-            /** @description Workflow out of tenant scope */
-            403: {
-=======
-    webhook_health_v1_webhooks_crm_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
->>>>>>> theirs
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-<<<<<<< ours
     salesforce_webhook_v1_webhooks_crm_salesforce_post: {
         parameters: {
             query?: {
@@ -14848,19 +12736,6 @@ export interface operations {
             header?: {
                 "X-Webhook-Token"?: string | null;
                 "X-Salesforce-Signature"?: string | null;
-=======
-    list_checkpoints_v1_workflows__workflow_id__checkpoints_get: {
-        parameters: {
-            query?: {
-                /** @description Maximum checkpoints to return */
-                limit?: number;
-                /** @description Include full state in summary */
-                include_state?: boolean;
-            };
-            header?: never;
-            path: {
-                workflow_id: string;
->>>>>>> theirs
             };
             path?: never;
             cookie?: never;
@@ -14872,26 +12747,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-<<<<<<< ours
-=======
                 content: {
-                    "application/json": components["schemas"]["layer4_agents__api__routes__checkpoints__CheckpointListResponse"];
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
-            };
-            /** @description Workflow out of tenant scope */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Workflow not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
->>>>>>> theirs
-                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -14904,7 +12764,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     hubspot_webhook_v1_webhooks_crm_hubspot_post: {
         parameters: {
             query?: {
@@ -14917,57 +12776,22 @@ export interface operations {
                 "X-Webhook-Token"?: string | null;
                 "X-HubSpot-Signature"?: string | null;
                 "X-HubSpot-Signature-v3"?: string | null;
-=======
-    get_checkpoint_state_v1_workflows__workflow_id__checkpoints__checkpoint_id__state_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                workflow_id: string;
-                checkpoint_id: string;
->>>>>>> theirs
             };
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StateDiffRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
-<<<<<<< ours
             202: {
-=======
-            200: {
->>>>>>> theirs
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": {
                         [key: string]: unknown;
                     };
-=======
-                    "application/json": components["schemas"]["StateSnapshotResponse"];
                 };
-            };
-            /** @description Workflow out of tenant scope */
-            403: {
-                headers: {
-                    [name: string]: unknown;
->>>>>>> theirs
-                };
-                content?: never;
-            };
-            /** @description Workflow/checkpoint not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -14980,11 +12804,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     webhook_health_v1_webhooks_crm_health_get: {
-=======
-    compare_checkpoints_v1_workflows__workflow_id__checkpoints_diff_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -15020,8 +12840,6 @@ export interface operations {
             };
             cookie?: never;
         };
-<<<<<<< HEAD
-=======
         requestBody?: never;
         responses: {
             /** @description Successful Response */
@@ -15113,7 +12931,6 @@ export interface operations {
             };
             cookie?: never;
         };
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StateDiffRequest"];
@@ -15126,151 +12943,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["layer4_agents__api__routes__checkpoints__CheckpointListResponse"];
-=======
-                    "application/json": components["schemas"]["StateDiffResponse"];
->>>>>>> theirs
-                };
-            };
-            /** @description Workflow out of tenant scope */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-<<<<<<< HEAD
-<<<<<<< ours
-            /** @description Workflow not found */
-=======
-            /** @description Workflow/checkpoint not found */
->>>>>>> theirs
-=======
-            /** @description Workflow/checkpoint not found */
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    get_state_values_v1_workflows__workflow_id__state_values_get: {
-=======
-    resume_from_checkpoint_v1_workflows__workflow_id__resume_from_checkpoint_post: {
->>>>>>> theirs
-        parameters: {
-            query?: {
-                /** @description Include null-valued fields */
-                include_nulls?: boolean;
-                /** @description Truncate strings longer than this */
-                max_string_length?: number;
-            };
-            header?: never;
-            path: {
-                workflow_id: string;
-<<<<<<< ours
-                checkpoint_id: string;
-=======
->>>>>>> theirs
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ResumeFromCheckpointRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["StateSnapshotResponse"];
-=======
-                    "application/json": components["schemas"]["ResumeFromCheckpointResponse"];
->>>>>>> theirs
-                };
-            };
-            /** @description Workflow out of tenant scope */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Workflow/checkpoint not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-<<<<<<< ours
-                };
-                content: {
-                    "application/json": components["schemas"]["StateValueResponse"];
-=======
->>>>>>> theirs
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    inspect_output_data_v1_workflows__workflow_id__state_outputs_get: {
-=======
-    get_state_schema_v1_workflows__workflow_id__state_schema_get: {
->>>>>>> theirs
-        parameters: {
-            query?: {
-                /** @description Maximum recursion depth for nested objects */
-                max_depth?: number;
-            };
-            header?: never;
-            path: {
-                workflow_id: string;
-            };
-            cookie?: never;
-        };
-<<<<<<< ours
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StateDiffRequest"];
-            };
-        };
-=======
-        requestBody?: never;
->>>>>>> theirs
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["StateDiffResponse"];
                 };
             };
@@ -15285,9 +12957,6 @@ export interface operations {
             404: {
                 headers: {
                     [name: string]: unknown;
-=======
-                    "application/json": components["schemas"]["StateSchemaResponse"];
->>>>>>> theirs
                 };
                 content?: never;
             };
@@ -15302,18 +12971,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     resume_from_checkpoint_v1_workflows__workflow_id__resume_from_checkpoint_post: {
-=======
-    get_state_values_v1_workflows__workflow_id__state_values_get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                /** @description Include null-valued fields */
-                include_nulls?: boolean;
-                /** @description Truncate strings longer than this */
-                max_string_length?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 workflow_id: string;
@@ -15332,11 +12992,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["ResumeFromCheckpointResponse"];
-=======
-                    "application/json": components["schemas"]["StateValueResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Workflow out of tenant scope */
@@ -15364,18 +13020,44 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     get_state_schema_v1_workflows__workflow_id__state_schema_get: {
         parameters: {
-            query?: {
-                limit?: number;
-=======
-    inspect_output_data_v1_workflows__workflow_id__state_outputs_get: {
+            query?: never;
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StateSchemaResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_state_values_v1_workflows__workflow_id__state_values_get: {
         parameters: {
             query?: {
-                /** @description Maximum recursion depth for nested objects */
-                max_depth?: number;
->>>>>>> theirs
+                /** @description Include null-valued fields */
+                include_nulls?: boolean;
+                /** @description Truncate strings longer than this */
+                max_string_length?: number;
             };
             header?: never;
             path: {
@@ -15391,11 +13073,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["StateSchemaResponse"];
-=======
+                    "application/json": components["schemas"]["StateValueResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_output_data_v1_workflows__workflow_id__state_outputs_get: {
+        parameters: {
+            query?: {
+                /** @description Maximum recursion depth for nested objects */
+                max_depth?: number;
+            };
+            header?: never;
+            path: {
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["OutputDataInspectorResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -15409,18 +13121,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_state_values_v1_workflows__workflow_id__state_values_get: {
-=======
     analyze_errors_v1_workflows__workflow_id__state_errors_get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                /** @description Include null-valued fields */
-                include_nulls?: boolean;
-                /** @description Truncate strings longer than this */
-                max_string_length?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 workflow_id: string;
@@ -15431,8 +13134,6 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
-<<<<<<< ours
-=======
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15442,25 +13143,18 @@ export interface operations {
             };
             /** @description Validation Error */
             422: {
->>>>>>> theirs
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-<<<<<<< ours
-    inspect_output_data_v1_workflows__workflow_id__state_outputs_get: {
-=======
     get_performance_metrics_v1_workflows__workflow_id__state_performance_get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                /** @description Maximum recursion depth for nested objects */
-                max_depth?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 workflow_id: string;
@@ -15475,9 +13169,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["HealthStatusResponse"];
-=======
                     "application/json": components["schemas"]["PerformanceMetricsResponse"];
                 };
             };
@@ -15488,23 +13179,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    analyze_errors_v1_workflows__workflow_id__state_errors_get: {
-        parameters: {
-            query?: {
-                /** @description Filter by max priority */
-                priority_filter?: number | null;
-=======
     get_state_history_v1_workflows__workflow_id__state_history_get: {
         parameters: {
             query?: {
                 limit?: number;
->>>>>>> theirs
             };
             header?: never;
             path: {
@@ -15520,8 +13202,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-=======
                     "application/json": components["schemas"]["StateHistoryResponse"];
                 };
             };
@@ -15532,22 +13212,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    get_performance_metrics_v1_workflows__workflow_id__state_performance_get: {
-=======
     get_detailed_health_v1_health_detailed_get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                workflow_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -15558,43 +13231,22 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["WebSocketStatusResponse"];
-=======
                     "application/json": components["schemas"]["HealthStatusResponse"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    get_state_history_v1_workflows__workflow_id__state_history_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-=======
     get_active_badges_v1_health_badges_get: {
         parameters: {
             query?: {
                 /** @description Filter by max priority */
                 priority_filter?: number | null;
->>>>>>> theirs
             };
             header?: never;
-            path: {
-                workflow_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-<<<<<<< ours
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DismissBadgeRequest"];
-            };
-        };
-=======
         requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -15602,11 +13254,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["StateHistoryResponse"];
-=======
                     "application/json": components["schemas"]["HealthBadgeInfo"][];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -15620,16 +13268,11 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_detailed_health_v1_health_detailed_get: {
-=======
     get_websocket_status_v1_health_websocket_get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path?: never;
-<<<<<<< ours
             cookie?: never;
         };
         requestBody?: never;
@@ -15640,46 +13283,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthStatusResponse"];
-                };
-            };
-        };
-    };
-=======
->>>>>>> theirs
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["HealthBadgeInfo"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-=======
                     "application/json": components["schemas"]["WebSocketStatusResponse"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    get_websocket_status_v1_health_websocket_get: {
-=======
     dismiss_badge_v1_health_badges_dismiss_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -15698,9 +13307,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["WebSocketStatusResponse"];
-=======
                     "application/json": components["schemas"]["DismissBadgeResponse"];
                 };
             };
@@ -15711,16 +13317,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    dismiss_badge_v1_health_badges_dismiss_post: {
-=======
     report_connection_quality_v1_health_report_connection_quality_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -15729,11 +13330,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["DismissBadgeRequest"];
-=======
                 "application/json": components["schemas"]["ConnectionQualityRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -15743,9 +13340,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["IntegrationListResponse"];
-=======
                     "application/json": {
                         [key: string]: unknown;
                     };
@@ -15758,30 +13352,16 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    report_connection_quality_v1_health_report_connection_quality_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConnectionQualityRequest"];
-=======
     get_component_health_v1_health_components__component_name__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 component_name: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
@@ -15793,50 +13373,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-=======
-                    "application/json": components["schemas"]["ComponentHealthInfo"];
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    get_component_health_v1_health_components__component_name__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-=======
-    list_integrations_v1_integrations_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
->>>>>>> theirs
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["ComponentHealthInfo"];
                 };
             };
@@ -15847,60 +13383,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-=======
-                    "application/json": components["schemas"]["IntegrationListResponse"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
     list_integrations_v1_integrations_get: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
-=======
-    get_integration_v1_integrations__provider__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                provider: components["schemas"]["CRMProvider"];
-            };
->>>>>>> theirs
             cookie?: never;
         };
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-<<<<<<< ours
-            204: {
-=======
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["IntegrationStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
->>>>>>> theirs
-                headers: {
-                    [name: string]: unknown;
-                };
                     "application/json": components["schemas"]["IntegrationListResponse"];
                 };
             };
         };
     };
-<<<<<<< ours
     get_integration_v1_integrations__provider__get: {
-=======
-    create_or_update_integration_v1_integrations__provider__post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -15909,15 +13416,7 @@ export interface operations {
             };
             cookie?: never;
         };
-<<<<<<< ours
         requestBody?: never;
-=======
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IntegrationCreateRequest"];
-            };
-        };
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -15939,43 +13438,29 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     create_or_update_integration_v1_integrations__provider__post: {
-=======
-    delete_integration_v1_integrations__provider__delete: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 provider: components["schemas"]["CRMProvider"];
             };
             cookie?: never;
         };
-<<<<<<< ours
         requestBody: {
             content: {
                 "application/json": components["schemas"]["IntegrationCreateRequest"];
             };
         };
-=======
-        requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-<<<<<<< ours
                 content: {
                     "application/json": components["schemas"]["IntegrationStatusResponse"];
                 };
-=======
-                content?: never;
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -15988,17 +13473,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     delete_integration_v1_integrations__provider__delete: {
         parameters: {
-            query?: {
-                limit?: number;
-            };
-=======
-    test_integration_connection_v1_integrations__provider__test_post: {
-        parameters: {
             query?: never;
->>>>>>> theirs
             header?: never;
             path: {
                 provider: components["schemas"]["CRMProvider"];
@@ -16012,13 +13489,7 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-<<<<<<< ours
                 content?: never;
-=======
-                content: {
-                    "application/json": components["schemas"]["ConnectionTestResponse"];
-                };
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -16031,25 +13502,12 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     test_integration_connection_v1_integrations__provider__test_post: {
-=======
-    trigger_sync_v1_integrations__provider__sync_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path: {
                 provider: components["schemas"]["CRMProvider"];
-<<<<<<< ours
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
-=======
->>>>>>> theirs
             };
             cookie?: never;
         };
@@ -16061,11 +13519,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["ConnectionTestResponse"];
-=======
-                    "application/json": components["schemas"]["SyncTriggerResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -16079,15 +13533,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
     trigger_sync_v1_integrations__provider__sync_post: {
-=======
-    list_sync_jobs_v1_integrations__provider__sync_jobs_get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 provider: components["schemas"]["CRMProvider"];
@@ -16102,11 +13550,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
                     "application/json": components["schemas"]["SyncTriggerResponse"];
-=======
-                    "application/json": components["schemas"]["CRMSyncJobListResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -16120,10 +13564,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< HEAD
-<<<<<<< ours
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     list_sync_jobs_v1_integrations__provider__sync_jobs_get: {
         parameters: {
             query?: {
@@ -16132,9 +13572,6 @@ export interface operations {
             header?: never;
             path: {
                 provider: components["schemas"]["CRMProvider"];
-<<<<<<< HEAD
-=======
-=======
             };
             cookie?: never;
         };
@@ -16160,7 +13597,6 @@ export interface operations {
             };
         };
     };
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     get_sync_job_v1_integrations__provider__sync_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -16168,10 +13604,6 @@ export interface operations {
             path: {
                 provider: components["schemas"]["CRMProvider"];
                 job_id: string;
-<<<<<<< HEAD
->>>>>>> theirs
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
             };
             cookie?: never;
         };
@@ -16183,12 +13615,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< HEAD
-<<<<<<< ours
-                    "application/json": components["schemas"]["CRMSyncJobListResponse"];
-=======
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                     "application/json": components["schemas"]["CRMSyncJobResponse"];
                 };
             };
@@ -16199,95 +13625,11 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-<<<<<<< HEAD
->>>>>>> theirs
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
                 };
             };
         };
     };
-<<<<<<< HEAD
-<<<<<<< ours
-    api_get_current_tenant_settings_v1_tenants_current_settings_get: {
-=======
     start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
->>>>>>> theirs
-=======
-    start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-<<<<<<< HEAD
-<<<<<<< ours
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CurrentTenantSettingsResponse"];
-                };
-=======
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
->>>>>>> theirs
-            };
-        };
-    };
-        requestBody?: never;
-=======
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
-            };
-        };
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< HEAD
-<<<<<<< ours
-                    "application/json": components["schemas"]["CRMSyncJobResponse"];
-=======
-                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
->>>>>>> theirs
-=======
-                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< HEAD
-<<<<<<< ours
-    start_salesforce_oauth_v1_integrations_salesforce_oauth_start_post: {
-=======
-    start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post: {
->>>>>>> theirs
-=======
-    start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post: {
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         parameters: {
             query?: never;
             header?: never;
@@ -16315,18 +13657,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CurrentTenantSettingsResponse"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-<<<<<<< ours
+    start_salesforce_oauth_compat_v1_integrations_salesforce_oauth_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SalesforceOAuthAuthorizeRequest"];
             };
         };
-=======
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_tenant_context_v1_tenant_context_get: {
         parameters: {
             query?: never;
@@ -16335,7 +13703,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -16343,11 +13710,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["SalesforceOAuthAuthorizeResponse"];
-=======
                     "application/json": components["schemas"]["TenantContextResponse"];
->>>>>>> theirs
                 };
             };
         };
@@ -16372,18 +13735,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_tenant_context_v1_tenant_context_get: {
-        parameters: {
-            query?: {
-                status?: string | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-=======
     api_update_current_tenant_settings_v1_tenants_current_settings_patch: {
         parameters: {
             query?: never;
@@ -16399,7 +13750,6 @@ export interface operations {
             content: {
                 "application/json": components["schemas"]["CurrentTenantSettingsUpdate"];
             };
->>>>>>> theirs
         };
         responses: {
             /** @description Successful Response */
@@ -16408,43 +13758,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["TenantContextResponse"];
-=======
                     "application/json": components["schemas"]["CurrentTenantSettingsUpdateResponse"];
->>>>>>> theirs
                 };
             };
-        };
-    };
-    api_get_current_tenant_settings_v1_tenants_current_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CurrentTenantSettingsResponse"];
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-<<<<<<< ours
-    api_update_current_tenant_settings_v1_tenants_current_settings_patch: {
-        parameters: {
-            query?: never;
-            header?: {
-                "X-CSRF-Token"?: string | null;
-            };
-=======
     api_list_tenants_v1_tenants_get: {
         parameters: {
             query?: {
@@ -16453,19 +13780,45 @@ export interface operations {
                 offset?: number;
             };
             header?: never;
->>>>>>> theirs
             path?: never;
-            cookie?: {
-                vf_csrf_token?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["CurrentTenantSettingsUpdate"];
-=======
                 "application/json": components["schemas"]["RequestContext"] | null;
->>>>>>> theirs
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantModel"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    api_create_tenant_v1_tenants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_api_create_tenant_v1_tenants_post"];
             };
         };
         responses: {
@@ -16475,62 +13828,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["CurrentTenantSettingsUpdateResponse"];
-=======
-                    "application/json": components["schemas"]["TenantModel"][];
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    api_list_tenants_v1_tenants_get: {
-=======
-    api_create_tenant_v1_tenants_post: {
->>>>>>> theirs
-        parameters: {
-            query?: {
-                status?: string | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path: {
-                tenant_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["RequestContext"] | null;
-=======
-                "application/json": components["schemas"]["Body_api_create_tenant_v1_tenants_post"];
->>>>>>> theirs
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["TenantModel"][];
-=======
                     "application/json": components["schemas"]["TenantModel"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -16544,11 +13842,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_create_tenant_v1_tenants_post: {
-=======
     api_get_tenant_v1_tenants__tenant_id__get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -16557,26 +13851,19 @@ export interface operations {
             };
             cookie?: never;
         };
-<<<<<<< ours
-                "application/json": components["schemas"]["Body_api_create_tenant_v1_tenants_post"];
-=======
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["RequestContext"] | null;
->>>>>>> theirs
             };
         };
         responses: {
             /** @description Successful Response */
-<<<<<<< ours
-=======
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["TenantModel"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -16590,11 +13877,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_get_tenant_v1_tenants__tenant_id__get: {
-=======
     api_delete_tenant_v1_tenants__tenant_id__delete: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -16610,21 +13893,11 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-<<<<<<< ours
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TenantModel"];
-                };
-=======
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -16729,9 +14002,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantModel"];
-<<<<<<< ours
-                };
-=======
                 };
             };
             /** @description Validation Error */
@@ -16771,7 +14041,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TenantModel"];
                 };
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -16804,9 +14073,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserModel"];
-<<<<<<< ours
-                };
-=======
                 };
             };
             /** @description Validation Error */
@@ -16844,7 +14110,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserModel"][];
                 };
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -16879,8 +14144,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserModel"];
-<<<<<<< ours
-=======
                 };
             };
             /** @description Validation Error */
@@ -16913,8 +14176,8 @@ export interface operations {
             204: {
                 headers: {
                     [name: string]: unknown;
->>>>>>> theirs
                 };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -17490,31 +14753,20 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-        parameters: {
-            query?: never;
-=======
     get_tenant_usage_v1_tenants__tenant_id__usage_get: {
         parameters: {
             query?: {
                 days?: number;
             };
->>>>>>> theirs
             header?: never;
             path: {
                 tenant_id: string;
             };
             cookie?: never;
         };
-<<<<<<< ours
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_update_tenant_settings_v1_tenants__tenant_id__settings_patch"];
-=======
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["RequestContext"] | null;
->>>>>>> theirs
             };
         };
         responses: {
@@ -17524,11 +14776,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["TenantSettingsUpdateResponse"];
-=======
                     "application/json": components["schemas"]["UsageMetricsResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -17542,12 +14790,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_list_models_v1_models_get: {
-        parameters: {
-            query?: {
-                stage?: string | null;
-=======
     get_tenant_audit_log_v1_tenants__tenant_id__audit_log_get: {
         parameters: {
             query?: {
@@ -17557,10 +14799,7 @@ export interface operations {
             header?: never;
             path: {
                 tenant_id: string;
->>>>>>> theirs
             };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: {
@@ -17575,11 +14814,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["ModelVersionResponse"][];
-=======
                     "application/json": components["schemas"]["layer4_agents__tenants__api__routes__admin__AuditLogResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -17593,11 +14828,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_register_model_v1_models_post: {
-=======
     get_tenant_settings_v1_tenants__tenant_id__settings_get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -17608,62 +14839,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["Body_api_register_model_v1_models_post"];
-=======
                 "application/json": components["schemas"]["RequestContext"] | null;
->>>>>>> theirs
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-=======
-                    "application/json": components["schemas"]["layer4_agents__tenants__api__routes__admin__TenantSettingsResponse"];
->>>>>>> theirs
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-<<<<<<< ours
-    api_get_model_v1_models__model_id__get: {
-=======
-    update_tenant_settings_v1_tenants__tenant_id__settings_patch: {
->>>>>>> theirs
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-<<<<<<< ours
-                model_id: string;
-=======
-                tenant_id: string;
->>>>>>> theirs
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["RequestContext"] | null;
-=======
-                "application/json": components["schemas"]["Body_update_tenant_settings_v1_tenants__tenant_id__settings_patch"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -17673,11 +14849,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-=======
-                    "application/json": components["schemas"]["TenantSettingsUpdateResponse"];
->>>>>>> theirs
+                    "application/json": components["schemas"]["layer4_agents__tenants__api__routes__admin__TenantSettingsResponse"];
                 };
             };
             /** @description Validation Error */
@@ -17691,30 +14863,53 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_promote_model_v1_models__model_id__promote_post: {
-=======
+    update_tenant_settings_v1_tenants__tenant_id__settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Body_update_tenant_settings_v1_tenants__tenant_id__settings_patch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSettingsUpdateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     api_list_models_v1_models_get: {
->>>>>>> theirs
         parameters: {
             query?: {
                 stage?: string | null;
             };
             header?: never;
-            path: {
-                model_id: string;
-            };
+            path?: never;
             cookie?: never;
         };
-<<<<<<< ours
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["Body_api_promote_model_v1_models__model_id__promote_post"];
-=======
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["RequestContext"] | null;
->>>>>>> theirs
             };
         };
         responses: {
@@ -17724,11 +14919,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["ModelVersionResponse"];
-=======
                     "application/json": components["schemas"]["ModelVersionResponse"][];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -17742,30 +14933,16 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_get_promotion_history_v1_models__model_id__history_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                model_id: string;
-            };
-=======
     api_register_model_v1_models_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
->>>>>>> theirs
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["RequestContext"] | null;
-=======
                 "application/json": components["schemas"]["Body_api_register_model_v1_models_post"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -17775,11 +14952,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["PromotionLogResponse"][];
-=======
                     "application/json": components["schemas"]["ModelVersionResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -17793,17 +14966,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_get_active_model_v1_models_active_get: {
-        parameters: {
-            query: {
-                provider: string;
-            };
-=======
     api_get_model_v1_models__model_id__get: {
         parameters: {
             query?: never;
->>>>>>> theirs
             header?: never;
             path: {
                 model_id: string;
@@ -17836,15 +15001,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    api_record_eval_run_v1_models_eval_run_post: {
-=======
     api_promote_model_v1_models__model_id__promote_post: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                provider?: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 model_id: string;
@@ -17853,11 +15012,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["Body_api_record_eval_run_v1_models_eval_run_post"];
-=======
                 "application/json": components["schemas"]["Body_api_promote_model_v1_models__model_id__promote_post"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -17881,23 +15036,13 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    list_feature_flags_v1_feature_flags_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-=======
     api_get_promotion_history_v1_models__model_id__history_get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 model_id: string;
->>>>>>> theirs
             };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: {
@@ -17912,11 +15057,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["FeatureFlagResponse"][];
-=======
                     "application/json": components["schemas"]["PromotionLogResponse"][];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -17930,19 +15071,10 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_feature_flag_v1_feature_flags__flag_key__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                flag_key: string;
-=======
     api_get_active_model_v1_models_active_get: {
         parameters: {
             query: {
                 provider: string;
->>>>>>> theirs
             };
             header?: never;
             path?: never;
@@ -17960,11 +15092,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["FeatureFlagResponse"];
-=======
                     "application/json": components["schemas"]["ModelVersionResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -17978,19 +15106,10 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    upsert_feature_flag_v1_feature_flags__flag_key__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                flag_key: string;
-=======
     api_record_eval_run_v1_models_eval_run_post: {
         parameters: {
             query?: {
                 provider?: string;
->>>>>>> theirs
             };
             header?: never;
             path?: never;
@@ -17998,11 +15117,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["Body_upsert_feature_flag_v1_feature_flags__flag_key__put"];
-=======
                 "application/json": components["schemas"]["Body_api_record_eval_run_v1_models_eval_run_post"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -18012,11 +15127,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["FeatureFlagResponse"];
-=======
                     "application/json": components["schemas"]["ModelVersionResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18030,20 +15141,11 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    delete_feature_flag_v1_feature_flags__flag_key__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                flag_key: string;
-=======
     list_feature_flags_v1_feature_flags_get: {
         parameters: {
             query?: {
                 limit?: number;
                 offset?: number;
->>>>>>> theirs
             };
             header?: never;
             path?: never;
@@ -18056,17 +15158,13 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-<<<<<<< ours
-                content?: never;
-=======
                 content: {
                     "application/json": components["schemas"]["FeatureFlagResponse"][];
                 };
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -18079,11 +15177,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    evaluate_feature_flag_v1_feature_flags__flag_key__evaluate_get: {
-=======
     get_feature_flag_v1_feature_flags__flag_key__get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -18104,13 +15198,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-=======
                     "application/json": components["schemas"]["FeatureFlagResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18124,22 +15212,11 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_account_enrichment_v1_enrichment__account_id__get: {
-=======
     upsert_feature_flag_v1_feature_flags__flag_key__put: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path: {
-<<<<<<< ours
-                account_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-=======
                 flag_key: string;
             };
             cookie?: never;
@@ -18149,7 +15226,6 @@ export interface operations {
                 "application/json": components["schemas"]["Body_upsert_feature_flag_v1_feature_flags__flag_key__put"];
             };
         };
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -18157,13 +15233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-=======
                     "application/json": components["schemas"]["FeatureFlagResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18177,51 +15247,27 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    enrich_account_v1_enrichment__account_id__post: {
-=======
     delete_feature_flag_v1_feature_flags__flag_key__delete: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path: {
-<<<<<<< ours
-                account_id: string;
-=======
                 flag_key: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
         requestBody?: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["EnrichAccountRequest"] | null;
-=======
                 "application/json": components["schemas"]["RequestContext"] | null;
->>>>>>> theirs
             };
         };
         responses: {
             /** @description Successful Response */
-<<<<<<< ours
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-=======
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
->>>>>>> theirs
             };
             /** @description Validation Error */
             422: {
@@ -18234,11 +15280,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    enrich_batch_v1_enrichment_batch_post: {
-=======
     evaluate_feature_flag_v1_feature_flags__flag_key__evaluate_get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -18247,9 +15289,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["BatchEnrichRequest"];
+                "application/json": components["schemas"]["RequestContext"] | null;
             };
         };
         responses: {
@@ -18275,13 +15317,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_enrichment_status_v1_enrichment_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-=======
     get_account_enrichment_v1_enrichment__account_id__get: {
         parameters: {
             query?: never;
@@ -18289,7 +15324,6 @@ export interface operations {
             path: {
                 account_id: string;
             };
->>>>>>> theirs
             cookie?: never;
         };
         requestBody?: never;
@@ -18300,9 +15334,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["EnrichmentStatusResponse"];
-=======
                     "application/json": {
                         [key: string]: unknown;
                     };
@@ -18315,18 +15346,10 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    generate_hypotheses_v1_hypotheses_generate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-=======
     enrich_account_v1_enrichment__account_id__post: {
         parameters: {
             query?: never;
@@ -18334,16 +15357,11 @@ export interface operations {
             path: {
                 account_id: string;
             };
->>>>>>> theirs
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["GenerateHypothesesRequest"];
-=======
                 "application/json": components["schemas"]["EnrichAccountRequest"] | null;
->>>>>>> theirs
             };
         };
         responses: {
@@ -18353,13 +15371,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": unknown;
-=======
                     "application/json": {
                         [key: string]: unknown;
                     };
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18373,11 +15387,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    promote_signal_v1_hypotheses_from_signal_post: {
-=======
     enrich_batch_v1_enrichment_batch_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -18386,11 +15396,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["PromoteSignalRequest"];
-=======
                 "application/json": components["schemas"]["BatchEnrichRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -18400,13 +15406,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["PromoteSignalResponse"];
-=======
                     "application/json": {
                         [key: string]: unknown;
                     };
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18420,14 +15422,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_hypothesis_v1_hypotheses__hypothesis_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                hypothesis_id: string;
-=======
     get_enrichment_status_v1_enrichment_status_get: {
         parameters: {
             query?: never;
@@ -18458,11 +15452,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["GenerateHypothesesRequest"];
->>>>>>> theirs
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -18484,14 +15475,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    delete_hypothesis_v1_hypotheses__hypothesis_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                hypothesis_id: string;
-=======
     promote_signal_v1_hypotheses_from_signal_post: {
         parameters: {
             query?: never;
@@ -18502,11 +15485,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["PromoteSignalRequest"];
->>>>>>> theirs
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -18514,11 +15494,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": unknown;
-=======
                     "application/json": components["schemas"]["PromoteSignalResponse"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18532,33 +15508,16 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_account_hypotheses_v1_hypotheses_account__account_id__get: {
-=======
     get_hypothesis_v1_hypotheses__hypothesis_id__get: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                /** @description Filter by status */
-                status?: string | null;
-                /** @description Filter by value path category: revenue_uplift, cost_savings, risk_reduction, blended */
-                value_path_category?: string | null;
-                skip?: number;
-                limit?: number;
-            };
+            query?: never;
             header?: never;
             path: {
-<<<<<<< ours
-                account_id: string;
-=======
                 hypothesis_id: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
         requestBody?: never;
-<<<<<<< ours
-=======
         responses: {
             /** @description Successful Response */
             200: {
@@ -18590,7 +15549,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -18612,14 +15570,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    validate_hypothesis_v1_hypotheses__hypothesis_id__validate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                hypothesis_id: string;
-=======
     get_account_hypotheses_v1_hypotheses_account__account_id__get: {
         parameters: {
             query?: {
@@ -18633,15 +15583,10 @@ export interface operations {
             header?: never;
             path: {
                 account_id: string;
->>>>>>> theirs
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateHypothesisRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -18663,11 +15608,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    convert_hypothesis_to_tree_v1_hypotheses__hypothesis_id__convert_post: {
-=======
     validate_hypothesis_v1_hypotheses__hypothesis_id__validate_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -18688,11 +15629,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": components["schemas"]["convert_hypothesisResult"];
-=======
                     "application/json": unknown;
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18706,22 +15643,13 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_hypothesis_summary_v1_hypotheses_summary_stats_get: {
-        parameters: {
-            query?: {
-                account_id?: string | null;
-=======
     convert_hypothesis_to_tree_v1_hypotheses__hypothesis_id__convert_post: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 hypothesis_id: string;
->>>>>>> theirs
             };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -18732,11 +15660,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": unknown;
-=======
                     "application/json": components["schemas"]["convert_hypothesisResult"];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -18750,19 +15674,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    rank_hypotheses_v1_hypotheses_rank_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RankHypothesesRequest"];
-            };
-=======
     get_hypothesis_summary_v1_hypotheses_summary_stats_get: {
         parameters: {
             query?: {
@@ -18771,8 +15682,8 @@ export interface operations {
             header?: never;
             path?: never;
             cookie?: never;
->>>>>>> theirs
         };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -18794,11 +15705,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    generate_narrative_v1_narratives_generate_post: {
-=======
     rank_hypotheses_v1_hypotheses_rank_post: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -18807,11 +15714,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-<<<<<<< ours
-                "application/json": components["schemas"]["NarrativeGenerateRequest"];
-=======
                 "application/json": components["schemas"]["RankHypothesesRequest"];
->>>>>>> theirs
             };
         };
         responses: {
@@ -18835,20 +15738,9 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    list_narratives_v1_narratives_get: {
-        parameters: {
-            query?: {
-                account_id?: string | null;
-                status?: string | null;
-                skip?: number;
-                limit?: number;
-            };
-=======
     generate_narrative_v1_narratives_generate_post: {
         parameters: {
             query?: never;
->>>>>>> theirs
             header?: never;
             path?: never;
             cookie?: never;
@@ -18879,14 +15771,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_narrative_v1_narratives__narrative_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                narrative_id: string;
-=======
     list_narratives_v1_narratives_get: {
         parameters: {
             query?: {
@@ -18894,7 +15778,6 @@ export interface operations {
                 status?: string | null;
                 skip?: number;
                 limit?: number;
->>>>>>> theirs
             };
             header?: never;
             path?: never;
@@ -18922,11 +15805,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    delete_narrative_v1_narratives__narrative_id__delete: {
-=======
     get_narrative_v1_narratives__narrative_id__get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -18957,25 +15836,12 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    update_narrative_status_v1_narratives__narrative_id__status_patch: {
-=======
     delete_narrative_v1_narratives__narrative_id__delete: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
             path: {
                 narrative_id: string;
-<<<<<<< ours
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StatusUpdateRequest"];
-=======
->>>>>>> theirs
             };
             cookie?: never;
         };
@@ -19001,22 +15867,11 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_account_briefing_v1_intelligence_account__account_id__briefing_get: {
-=======
     update_narrative_status_v1_narratives__narrative_id__status_patch: {
->>>>>>> theirs
         parameters: {
-            query?: {
-                include_narrative?: boolean;
-                top_n?: number;
-                roi_scenario?: string;
-            };
+            query?: never;
             header?: never;
             path: {
-<<<<<<< ours
-                account_id: string;
-=======
                 narrative_id: string;
             };
             cookie?: never;
@@ -19024,11 +15879,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["StatusUpdateRequest"];
->>>>>>> theirs
             };
-            cookie?: never;
         };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -19050,11 +15902,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_deal_readiness_v1_intelligence_account__account_id__deal_readiness_get: {
-        parameters: {
-            query?: never;
-=======
     get_account_briefing_v1_intelligence_account__account_id__briefing_get: {
         parameters: {
             query?: {
@@ -19062,7 +15909,6 @@ export interface operations {
                 top_n?: number;
                 roi_scenario?: string;
             };
->>>>>>> theirs
             header?: never;
             path: {
                 account_id: string;
@@ -19091,11 +15937,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_pipeline_summary_v1_intelligence_pipeline_summary_get: {
-=======
     get_deal_readiness_v1_intelligence_account__account_id__deal_readiness_get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -19113,8 +15955,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-<<<<<<< ours
-=======
                 };
             };
             /** @description Validation Error */
@@ -19124,31 +15964,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    list_truths_v1_ground_truth_truths_get: {
-        parameters: {
-            query?: {
-                /** @description Filter by validation status */
-                status?: string | null;
-                /** @description Filter by claim type */
-                claim_type?: string | null;
-                /** @description Minimum maturity level */
-                min_maturity?: number | null;
-                /** @description Minimum confidence */
-                min_confidence?: number | null;
-                limit?: number;
-                offset?: number;
-            };
-=======
     get_pipeline_summary_v1_intelligence_pipeline_summary_get: {
         parameters: {
             query?: never;
->>>>>>> theirs
             header?: never;
             path?: never;
             cookie?: never;
@@ -19161,35 +15983,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-<<<<<<< ours
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-=======
                     "application/json": unknown;
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    get_truth_v1_ground_truth_truths__truth_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                truth_id: string;
-            };
-=======
     list_truths_v1_ground_truth_truths_get: {
         parameters: {
             query?: {
@@ -19206,7 +16004,6 @@ export interface operations {
             };
             header?: never;
             path?: never;
->>>>>>> theirs
             cookie?: never;
         };
         requestBody?: never;
@@ -19233,11 +16030,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_truth_audit_v1_ground_truth_truths__truth_id__audit_get: {
-=======
     get_truth_v1_ground_truth_truths__truth_id__get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -19256,11 +16049,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-<<<<<<< ours
-                    }[];
-=======
                     };
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -19274,11 +16063,7 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    validate_truth_v1_ground_truth_truths__truth_id__validate_post: {
-=======
     get_truth_audit_v1_ground_truth_truths__truth_id__audit_get: {
->>>>>>> theirs
         parameters: {
             query?: never;
             header?: never;
@@ -19287,15 +16072,7 @@ export interface operations {
             };
             cookie?: never;
         };
-<<<<<<< ours
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ValidateTruthRequest"];
-            };
-        };
-=======
         requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -19305,11 +16082,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
-<<<<<<< ours
-                    };
-=======
                     }[];
->>>>>>> theirs
                 };
             };
             /** @description Validation Error */
@@ -19323,16 +16096,6 @@ export interface operations {
             };
         };
     };
-<<<<<<< ours
-    get_freshness_summary_v1_ground_truth_truths_freshness_summary_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-=======
     validate_truth_v1_ground_truth_truths__truth_id__validate_post: {
         parameters: {
             query?: never;
@@ -19347,7 +16110,6 @@ export interface operations {
                 "application/json": components["schemas"]["ValidateTruthRequest"];
             };
         };
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {
@@ -19358,8 +16120,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-<<<<<<< ours
-=======
                 };
             };
             /** @description Validation Error */
@@ -19369,23 +16129,13 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    get_stale_truths_v1_ground_truth_truths_stale_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-            };
-=======
     get_freshness_summary_v1_ground_truth_truths_freshness_summary_get: {
         parameters: {
             query?: never;
->>>>>>> theirs
             header?: never;
             path?: never;
             cookie?: never;
@@ -19401,27 +16151,11 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-<<<<<<< ours
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-=======
->>>>>>> theirs
                 };
             };
         };
     };
-<<<<<<< ours
-    get_maturity_ladder_v1_ground_truth_maturity_ladder_get: {
-=======
     get_stale_truths_v1_ground_truth_truths_stale_get: {
->>>>>>> theirs
         parameters: {
             query?: {
                 limit?: number;
@@ -19435,8 +16169,6 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
-<<<<<<< ours
-=======
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19448,38 +16180,23 @@ export interface operations {
             };
             /** @description Validation Error */
             422: {
->>>>>>> theirs
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-<<<<<<< ours
-    list_reviews_v1_governance_reviews_get: {
-        parameters: {
-            query?: {
-                status?: string | null;
-                subject_type?: string | null;
-                correlation_id?: string | null;
-            };
-=======
     get_maturity_ladder_v1_ground_truth_maturity_ladder_get: {
         parameters: {
             query?: never;
->>>>>>> theirs
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
-<<<<<<< ours
-=======
         responses: {
             /** @description Successful Response */
             200: {
@@ -19506,7 +16223,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
->>>>>>> theirs
         responses: {
             /** @description Successful Response */
             200: {

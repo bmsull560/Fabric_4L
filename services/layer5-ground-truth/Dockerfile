@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM ghcr.io/value-fabric/base-images/python:3.11.13-slim-bookworm@sha256:86adf8dbadc3d6e82ee5dd2c74bec2e1c2467cdad47886280501df722372d2e1
+ARG BASE_IMAGE=ghcr.io/value-fabric/base-images/python:3.11.13-slim-bookworm@sha256:86adf8dbadc3d6e82ee5dd2c74bec2e1c2467cdad47886280501df722372d2e1
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="Value Fabric Engineering"
 LABEL description="Layer 5 — Ground Truth Service"

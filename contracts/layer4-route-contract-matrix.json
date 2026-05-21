@@ -6121,7 +6121,7 @@
           "status_code": "200",
           "description": "Successful Response",
           "schema": {
-            "$ref": "#/components/schemas/CheckpointListResponse"
+            "$ref": "#/components/schemas/layer4_agents__api__routes__checkpoints__CheckpointListResponse"
           }
         }
       ],
@@ -6569,6 +6569,726 @@
         "apps/web/src/pages/admin/PlatformSettings.tsx",
         "apps/web/src/pages/drivers/DriverTreePage.test.tsx"
       ]
+    },
+    {
+      "route_id": "DELETE /v1/harness/runs/{run_id}",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}",
+      "method": "DELETE",
+      "operation_id": "cancel_run_v1_harness_runs__run_id__delete",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "204",
+          "description": "Successful Response",
+          "schema_ref": null
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/charges",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/charges",
+      "method": "GET",
+      "operation_id": "list_charges_v1_billing_charges_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/check-feature",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/check-feature",
+      "method": "GET",
+      "operation_id": "check_feature_v1_billing_check_feature_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/customers/{customer_id}/balance",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/customers/{customer_id}/balance",
+      "method": "GET",
+      "operation_id": "get_customer_balance_v1_billing_customers__customer_id__balance_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/entitlements",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/entitlements",
+      "method": "GET",
+      "operation_id": "get_entitlements_v1_billing_entitlements_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/invoices",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/invoices",
+      "method": "GET",
+      "operation_id": "list_invoices_v1_billing_invoices_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/invoices/{invoice_id}",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/invoices/{invoice_id}",
+      "method": "GET",
+      "operation_id": "get_invoice_v1_billing_invoices__invoice_id__get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/limits/{customer_id}",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/limits/{customer_id}",
+      "method": "GET",
+      "operation_id": "get_usage_limits_v1_billing_limits__customer_id__get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/plans/{plan_id}/limits",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/plans/{plan_id}/limits",
+      "method": "GET",
+      "operation_id": "get_plan_limits_v1_billing_plans__plan_id__limits_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/reports/revenue",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/reports/revenue",
+      "method": "GET",
+      "operation_id": "get_revenue_summary_v1_billing_reports_revenue_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/subscription",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/subscription",
+      "method": "GET",
+      "operation_id": "get_subscription_v1_billing_subscription_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "SubscriptionResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/usage/{customer_id}/events",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/usage/{customer_id}/events",
+      "method": "GET",
+      "operation_id": "list_usage_events_v1_billing_usage__customer_id__events_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/billing/usage/{customer_id}/summary",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/usage/{customer_id}/summary",
+      "method": "GET",
+      "operation_id": "get_usage_summary_v1_billing_usage__customer_id__summary_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/health",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/health",
+      "method": "GET",
+      "operation_id": "harness_health_v1_harness_health_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "HarnessHealthResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/runs",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs",
+      "method": "GET",
+      "operation_id": "list_runs_v1_harness_runs_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "RunListResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/runs/{run_id}",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}",
+      "method": "GET",
+      "operation_id": "get_run_v1_harness_runs__run_id__get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "RunResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/runs/{run_id}/checkpoints",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/checkpoints",
+      "method": "GET",
+      "operation_id": "list_checkpoints_v1_harness_runs__run_id__checkpoints_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "layer4_agents__harness__api_models__CheckpointListResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/runs/{run_id}/checkpoints/latest",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/checkpoints/latest",
+      "method": "GET",
+      "operation_id": "get_latest_checkpoint_v1_harness_runs__run_id__checkpoints_latest_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "CheckpointResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/runs/{run_id}/gates",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/gates",
+      "method": "GET",
+      "operation_id": "list_gates_v1_harness_runs__run_id__gates_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "GateListResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "GET /v1/harness/runs/{run_id}/validation",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/validation",
+      "method": "GET",
+      "operation_id": "get_run_validation_v1_harness_runs__run_id__validation_get",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "ValidateClaimsResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "PATCH /v1/evidence/{evidence_id}/decision",
+      "backend_route_files": [],
+      "openapi_path": "/v1/evidence/{evidence_id}/decision",
+      "method": "PATCH",
+      "operation_id": "decide_evidence_v1_evidence__evidence_id__decision_patch",
+      "request_schema": "EvidenceDecisionRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "EvidenceDecisionResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/charges",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/charges",
+      "method": "POST",
+      "operation_id": "record_charge_v1_billing_charges_post",
+      "request_schema": "RecordChargeRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/checkout",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/checkout",
+      "method": "POST",
+      "operation_id": "create_checkout_v1_billing_checkout_post",
+      "request_schema": "CheckoutRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/events",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/events",
+      "method": "POST",
+      "operation_id": "ingest_usage_event_v1_billing_events_post",
+      "request_schema": "UsageEventRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/events/batch",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/events/batch",
+      "method": "POST",
+      "operation_id": "ingest_usage_batch_v1_billing_events_batch_post",
+      "request_schema": "UsageBatchRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/invoices",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/invoices",
+      "method": "POST",
+      "operation_id": "create_invoice_v1_billing_invoices_post",
+      "request_schema": "CreateInvoiceRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/invoices/{invoice_id}/finalize",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/invoices/{invoice_id}/finalize",
+      "method": "POST",
+      "operation_id": "finalize_invoice_v1_billing_invoices__invoice_id__finalize_post",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/invoices/{invoice_id}/items",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/invoices/{invoice_id}/items",
+      "method": "POST",
+      "operation_id": "add_invoice_item_v1_billing_invoices__invoice_id__items_post",
+      "request_schema": "AddInvoiceItemRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/invoices/{invoice_id}/void",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/invoices/{invoice_id}/void",
+      "method": "POST",
+      "operation_id": "void_invoice_v1_billing_invoices__invoice_id__void_post",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/limits/{customer_id}/check",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/limits/{customer_id}/check",
+      "method": "POST",
+      "operation_id": "check_request_allowed_v1_billing_limits__customer_id__check_post",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/portal",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/portal",
+      "method": "POST",
+      "operation_id": "create_portal_v1_billing_portal_post",
+      "request_schema": "PortalRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/sync-customer",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/sync-customer",
+      "method": "POST",
+      "operation_id": "sync_customer_v1_billing_sync_customer_post",
+      "request_schema": "CustomerSyncRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/usage/{customer_id}/sync",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/usage/{customer_id}/sync",
+      "method": "POST",
+      "operation_id": "sync_usage_to_stripe_v1_billing_usage__customer_id__sync_post",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/billing/webhook",
+      "backend_route_files": [],
+      "openapi_path": "/v1/billing/webhook",
+      "method": "POST",
+      "operation_id": "stripe_webhook_v1_billing_webhook_post",
+      "request_schema": null,
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/evidence/{evidence_id}/drivers/{driver_id}",
+      "backend_route_files": [],
+      "openapi_path": "/v1/evidence/{evidence_id}/drivers/{driver_id}",
+      "method": "POST",
+      "operation_id": "link_evidence_driver_v1_evidence__evidence_id__drivers__driver_id__post",
+      "request_schema": "EvidenceDriverLinkRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "inline"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/harness/gates/{gate_id}/decide",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/gates/{gate_id}/decide",
+      "method": "POST",
+      "operation_id": "decide_gate_v1_harness_gates__gate_id__decide_post",
+      "request_schema": "Body_decide_gate_v1_harness_gates__gate_id__decide_post",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "GateResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/harness/runs",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs",
+      "method": "POST",
+      "operation_id": "create_run_v1_harness_runs_post",
+      "request_schema": "CreateRunRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "201",
+          "description": "Successful Response",
+          "schema_ref": "RunResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/harness/runs/{run_id}/gates",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/gates",
+      "method": "POST",
+      "operation_id": "create_gate_v1_harness_runs__run_id__gates_post",
+      "request_schema": "CreateGateRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "201",
+          "description": "Successful Response",
+          "schema_ref": "GateResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/harness/runs/{run_id}/transition",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/transition",
+      "method": "POST",
+      "operation_id": "transition_run_v1_harness_runs__run_id__transition_post",
+      "request_schema": "TransitionRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "TransitionResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
+    },
+    {
+      "route_id": "POST /v1/harness/runs/{run_id}/validate",
+      "backend_route_files": [],
+      "openapi_path": "/v1/harness/runs/{run_id}/validate",
+      "method": "POST",
+      "operation_id": "validate_claims_v1_harness_runs__run_id__validate_post",
+      "request_schema": "ValidateClaimsRequest",
+      "success_response_schemas": [
+        {
+          "status_code": "200",
+          "description": "Successful Response",
+          "schema_ref": "ValidateClaimsResponse"
+        }
+      ],
+      "frontend_consumers": [],
+      "auth_required": true,
+      "tenant_scoped": true
     }
   ]
 }

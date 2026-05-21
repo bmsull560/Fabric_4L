@@ -21,7 +21,6 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
-  CI_TOOLS_IMAGE: ghcr.io/value-fabric/ci-tools/security-suite@sha256:a4c5f6e78b2a1bc98d3f4e1c8a7b6d5e4f3a2b1c0d9e8f7766554433221100aa
 
 permissions:
   contents: read
@@ -86,8 +85,6 @@ jobs:
   # SBOM Generation and Vulnerability Scan (image-based, release only)
   # ============================================
   sbom-scan:
-    container:
-      image: ${{ env.CI_TOOLS_IMAGE }}
     name: SBOM + Vulnerability Scan
     if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -100,6 +97,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Install Grype
+        uses: anchore/scan-action/download-grype@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate CycloneDX SBOM
         run: |
@@ -160,7 +170,7 @@ jobs:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
       - name: Log in to Container Registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -190,8 +200,6 @@ jobs:
   # Cosign Signature Verification
   # ============================================
   verify-signatures:
-    container:
-      image: ${{ env.CI_TOOLS_IMAGE }}
     name: Verify Image Signatures
     if: github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -203,6 +211,9 @@ jobs:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, apps-web]
 
     steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+
       - name: Verify image signature
         env:
           COSIGN_EXPERIMENTAL: 1
@@ -218,8 +229,6 @@ jobs:
   # Dependency Audit
   # ============================================
   dependency-audit:
-    container:
-      image: ${{ env.CI_TOOLS_IMAGE }}
     name: Dependency Audit
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -227,22 +236,36 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
-      - name: Audit Python dependencies
-        run: |
-          echo "Using pip-audit from pinned CI tools image"
-          for dir in services/*/; do
-            if [ -f "$dir/pyproject.toml" ]; then
-              service_name=$(basename "$dir")
-              echo "Auditing $service_name"
-              # Generate requirements from pyproject.toml using pip freeze approach
-              (cd "$dir" && pip freeze > /tmp/requirements.txt 2>/dev/null && pip-audit -r /tmp/requirements.txt --format=json --output="../${service_name}-audit.json") || true
-            fi
-          done
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: '22'
 
       - name: Setup pnpm
+        run: corepack enable && corepack prepare pnpm@10.18.1 --activate
+
+      - name: Install uv and pip-audit
         run: |
-          node --version
-          pnpm --version
+          pip install uv==0.11.6 pip-audit==2.7.3
+
+      - name: Audit Python dependencies
+        # Export each service's locked dependency set via uv, then audit it.
+        # Using uv export avoids auditing the CI runner's global packages (the
+        # old `pip freeze` approach) and ensures we scan the actual locked graph.
+        run: |
+          for dir in services/*/; do
+            if [ -f "$dir/pyproject.toml" ] && [ -f "$dir/uv.lock" ]; then
+              service_name=$(basename "$dir")
+              echo "Auditing $service_name"
+              (cd "$dir" && uv export --no-dev --frozen -q \
+                | pip-audit --format=json --output="../${service_name}-audit.json" -r /dev/stdin) || true
+            fi
+          done
 
       - name: Verify frontend lockfile and install from lock graph
         run: pnpm --dir apps/web install --frozen-lockfile
@@ -277,8 +300,6 @@ jobs:
   # License Compliance Check
   # ============================================
   license-check:
-    container:
-      image: ${{ env.CI_TOOLS_IMAGE }}
     name: License Compliance
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -286,11 +307,18 @@ jobs:
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
 
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-licenses
+        run: pip install pip-licenses==4.4.0
+
       - name: Check Python licenses
         run: |
-          echo "Using pip-licenses from pinned CI tools image"
           for dir in services/*/; do
-            if [ -f "$dir/requirements.txt" ]; then
+            if [ -f "$dir/pyproject.toml" ] || [ -f "$dir/requirements.txt" ]; then
               echo "Checking licenses in $dir"
               (cd "$dir" && pip-licenses --format=json --output-file=licenses.json) || true
             fi

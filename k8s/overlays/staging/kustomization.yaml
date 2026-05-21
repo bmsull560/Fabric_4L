@@ -7,7 +7,7 @@ resources:
   - ../../base/
 
 # Image overrides: match exact base image names, redirect to GHCR.
-# Base manifests use bare names (services/<name>:main, apps/web:main).
+# Base manifests use value-fabric/<name>:main and apps/web:main.
 # newName rewrites the registry/repository; newTag pins the candidate build.
 #
 # Staging tracks the sha-tagged image from the latest main build, not the
@@ -15,22 +15,22 @@ resources:
 # The environment-promotion.yml workflow updates this automatically on merge to main.
 # To promote manually: replace sha-<commit> with the SHA from the build you want.
 images:
-  - name: services/layer1-ingestion
+  - name: value-fabric/layer1-ingestion
     newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
     newTag: sha-e2a0c3eac82766f79f3b3daac750114b571fdb6a
-  - name: services/layer2-extraction
+  - name: value-fabric/layer2-extraction
     newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
     newTag: sha-e2a0c3eac82766f79f3b3daac750114b571fdb6a
-  - name: services/layer3-knowledge
+  - name: value-fabric/layer3-knowledge
     newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
     newTag: sha-e2a0c3eac82766f79f3b3daac750114b571fdb6a
-  - name: services/layer4-agents
+  - name: value-fabric/layer4-agents
     newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
     newTag: sha-e2a0c3eac82766f79f3b3daac750114b571fdb6a
-  - name: services/layer5-ground-truth
+  - name: value-fabric/layer5-ground-truth
     newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
     newTag: sha-e2a0c3eac82766f79f3b3daac750114b571fdb6a
-  - name: services/layer6-benchmarks
+  - name: value-fabric/layer6-benchmarks
     newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
     newTag: sha-e2a0c3eac82766f79f3b3daac750114b571fdb6a
   - name: apps/web
