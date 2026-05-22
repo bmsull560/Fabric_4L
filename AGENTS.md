@@ -88,7 +88,7 @@ make test-layer5
 make test-layer6
 
 # Specific test file or marker
-pytest services/layer4-agents/tests/test_workflow.py
+pytest services/layer4-agents/tests/test_*.py
 pytest -m unit
 pytest -m "contract_static"
 pytest -m "tenant_boundary"
