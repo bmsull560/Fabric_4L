@@ -10,7 +10,7 @@ repo structure, change safety rules, and how to add agents, skills, and provider
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+ and pnpm 10+
+- Node.js 22+ and pnpm 10+
 - Docker + Docker Compose
 - `make`
 
@@ -22,10 +22,11 @@ git clone https://github.com/bmsull560/Fabric_4L.git && cd Fabric_4L
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env — fill in TOGETHER_API_KEY and JWT_SECRET at minimum
+# Edit .env — fill in OPENAI_API_KEY and JWT_SECRET at minimum
 
 # 3. Start infrastructure
-docker compose up -d
+make up
+# Or directly: docker compose -f docker-compose.dev.yml up -d
 
 # 4. Install all service dev dependencies (installs into the pytest pipx venv)
 make setup
