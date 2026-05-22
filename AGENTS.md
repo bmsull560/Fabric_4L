@@ -19,7 +19,7 @@
 ```bash
 # 1. Clone and configure environment
 cp .env.example .env
-# Edit .env — set TOGETHER_API_KEY and JWT_SECRET at minimum
+# Edit .env — set JWT_SECRET and the provider key(s) you use for local dev: OPENAI_API_KEY and/or ANTHROPIC_API_KEY; use LAYER4_TOGETHER_API_KEY for Layer4 Together access
 
 # 2. Enable pnpm via corepack (do not use npm/yarn)
 corepack enable
