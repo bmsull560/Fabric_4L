@@ -46,7 +46,7 @@ make verify
 ## Dev Server
 
 ```bash
-# Full local stack (frontend + all backend layers via Docker Compose)
+# Local Docker Compose stack (frontend + supporting backend services defined in docker-compose.dev.yml)
 docker compose -f docker-compose.dev.yml up
 
 # Frontend only (Vite, port 3001, with mock API)
