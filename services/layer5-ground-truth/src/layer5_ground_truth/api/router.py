@@ -43,15 +43,9 @@ from ..services.truth_service import (
 from .auth import TokenClaims, authorize_action, get_current_user
 from .schemas import (
     AddSourceRequest,
-<<<<<<< HEAD
     FreshnessCheckResponse,
     FreshnessSummaryResponse,
-<<<<<<< ours
     HealthResponse,
-=======
->>>>>>> theirs
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     MaturityLadderResponse,
     MaturityLevelDetail,
     TruthObjectCreate,
@@ -67,8 +61,6 @@ from .schemas import (
 )
 
 
-<<<<<<< HEAD
-<<<<<<< ours
 class sync_to_kgResult(TypedDictModel):
     failed: Any
     synced: Any
@@ -83,10 +75,6 @@ class list_staleResult(TypedDictModel):
     total: Any
 
 
-=======
->>>>>>> theirs
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
@@ -319,8 +307,6 @@ async def sync_to_kg(
         else:
             failed += 1
 
-<<<<<<< HEAD
-<<<<<<< ours
     return sync_to_kgResult.model_validate(
         {
             "synced": synced,
@@ -328,15 +314,11 @@ async def sync_to_kg(
             "total_pending": len(pending),
         }
     )
-=======
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     return SyncToKgResponse.model_validate({
         "synced": synced,
         "failed": failed,
         "total_pending": len(pending),
     })
->>>>>>> theirs
 
 
 # ---------------------------------------------------------------------------
@@ -419,8 +401,6 @@ async def list_stale(
         for t in items
     ]
 
-<<<<<<< HEAD
-<<<<<<< ours
     return list_staleResult.model_validate(
         {
             "items": summaries,
@@ -430,9 +410,6 @@ async def list_stale(
             "has_more": (offset + limit) < total,
         }
     )
-=======
-=======
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     return StaleTruthsResponse.model_validate({
         "items": summaries,
         "total": total,
@@ -440,7 +417,6 @@ async def list_stale(
         "offset": offset,
         "has_more": (offset + limit) < total,
     })
->>>>>>> theirs
 
 
 # ---------------------------------------------------------------------------

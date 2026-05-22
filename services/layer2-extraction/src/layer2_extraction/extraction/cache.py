@@ -14,21 +14,12 @@ from typing import Any
 
 LLM_CACHE_TTL_SECONDS = int(os.getenv("LLM_CACHE_TTL_SECONDS", "3600"))
 
-<<<<<<< HEAD
 try:
     from redis.exceptions import RedisError
 except ImportError:
     _REDIS_ERRORS = ()
 else:
     _REDIS_ERRORS = (RedisError,)
-=======
-logger = logging.getLogger(__name__)
-
-try:
-    from redis.exceptions import RedisError
-except ImportError:  # pragma: no cover - optional dependency fallback
-    RedisError = Exception
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
 
 class _InMemoryLRUCache:
@@ -68,52 +59,12 @@ class ExtractionCache:
             try:
                 import redis.asyncio as aioredis
                 self._redis = aioredis.from_url(redis_url, decode_responses=False)
-<<<<<<< HEAD
             except ImportError:
                 self._fallback = _InMemoryLRUCache()
             except _REDIS_ERRORS:
                 self._fallback = _InMemoryLRUCache()
         else:
             self._fallback = _InMemoryLRUCache()
-=======
-            except (ImportError, RedisError) as exc:
-                logger.warning(
-                    "Cache backend unavailable; falling back to in-memory cache",
-                    extra={
-                        "operation": "connect",
-                        "tenant_id": None,
-                        "job_id": None,
-                        "correlation_id": None,
-                        "exception_class": type(exc).__name__,
-                    },
-                )
-            except (ValueError, TypeError, OSError) as exc:
-                logger.exception(
-                    "Unexpected cache initialization failure; using in-memory fallback",
-                    extra={
-                        "operation": "connect",
-                        "tenant_id": None,
-                        "job_id": None,
-                        "correlation_id": None,
-                        "exception_class": type(exc).__name__,
-                    },
-                )
-
-    @staticmethod
-    def _log_cache_failure(operation: str, exc: Exception, context: dict[str, str | None] | None = None) -> None:
-        context = context or {}
-        logger.warning(
-            "Cache operation failed; continuing without cache",
-            exc_info=exc,
-            extra={
-                "operation": operation,
-                "tenant_id": context.get("tenant_id"),
-                "job_id": context.get("job_id"),
-                "correlation_id": context.get("correlation_id"),
-                "exception_class": type(exc).__name__,
-            },
-        )
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
 
     def _make_key(
         self,
@@ -141,17 +92,8 @@ class ExtractionCache:
                 raw = await self._redis.get(key)
                 if raw:
                     return pickle.loads(raw)
-<<<<<<< HEAD
             except _REDIS_ERRORS:
                 pass
-=======
-            except RedisError as exc:
-                self._log_cache_failure("read", exc, context)
-            except (pickle.UnpicklingError, AttributeError, EOFError, ValueError, TypeError) as exc:
-                self._log_cache_failure("read", exc, context)
-            except (RuntimeError, OSError) as exc:
-                self._log_cache_failure("read", exc, context)
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         if self._fallback is not None:
             return self._fallback.get(key)
         return None
@@ -172,17 +114,8 @@ class ExtractionCache:
             try:
                 await self._redis.setex(key, ttl, pickle.dumps(value))
                 return
-<<<<<<< HEAD
             except _REDIS_ERRORS:
                 pass
-=======
-            except RedisError as exc:
-                self._log_cache_failure("write", exc, context)
-            except (pickle.PickleError, TypeError, AttributeError, ValueError) as exc:
-                self._log_cache_failure("write", exc, context)
-            except (RuntimeError, OSError) as exc:
-                self._log_cache_failure("write", exc, context)
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
         if self._fallback is not None:
             self._fallback.set(key, value)
 
@@ -190,12 +123,5 @@ class ExtractionCache:
         if self._redis is not None:
             try:
                 await self._redis.close()
-<<<<<<< HEAD
             except _REDIS_ERRORS:
                 pass
-=======
-            except RedisError as exc:
-                self._log_cache_failure("invalidate", exc)
-            except (RuntimeError, OSError) as exc:
-                self._log_cache_failure("invalidate", exc)
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
