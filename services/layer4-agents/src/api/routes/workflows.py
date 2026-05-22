@@ -38,27 +38,10 @@ WorkflowStatusValue = Literal["pending", "running", "paused", "interrupted", "co
 WorkflowErrorValue = str | JsonObject
 
 
-<<<<<<< HEAD
 class WorkflowResultResponse(BaseModel):
     workflow_id: str
     status: WorkflowStatusValue
     output: JsonObject | None = None
-=======
-class WorkflowOutput(BaseModel):
-    """Structured workflow output envelope for completed workflow results."""
-
-    data: JsonValue = Field(default_factory=dict)
-    summary: str | None = None
-    artifacts: list[JsonObject] = Field(default_factory=list)
-    metrics: JsonObject = Field(default_factory=dict)
-    model_config = ConfigDict(extra="allow")
-
-
-class WorkflowResultResponse(BaseModel):
-    workflow_id: str
-    status: WorkflowStatusValue
-    output: WorkflowOutput | None = None
->>>>>>> 315e84c14c9306363c718c22c8cb7a292d514eee
     errors: list[WorkflowErrorValue] = Field(default_factory=list)
     completed_at: str | None = None
 
