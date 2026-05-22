@@ -241,14 +241,12 @@ Co-authored-by: Ona <no-reply@ona.com>
 
 ### Required CI checks (`.github/workflows/pr-checks.yml`)
 
-All PRs targeting `main` must pass:
+All PRs targeting `main` must pass the GitHub checks as named in the workflow:
 
-- `structural-preflight` — import topology, Python contract lint, frontend root policy
-- `package-manager-policy` — pnpm-only enforcement
+- `structural-preflight` — import topology, Python contract lint, frontend root policy, and pnpm-only/package-manager enforcement
 - Per-layer lint, typecheck, and test jobs
-- `contract-compliance` — OpenAPI drift detection
-- `security-gates` — secret guardrails, tenant isolation
-- `verify-gate` — `make verify` equivalent
+- `contract-checks` — OpenAPI drift detection and related contract coverage
+- Any additional required jobs shown in the PR’s Checks tab under `.github/workflows/pr-checks.yml`
 
 ### PR body
 
