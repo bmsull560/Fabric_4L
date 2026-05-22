@@ -451,15 +451,16 @@ components:
                 - '-c'
                 - |4-
                     create_db() {
-                      out=$(PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" \
-                        -c "CREATE DATABASE $1;" 2>&1)
-                      rc=$?
-                      if [ $rc -eq 0 ]; then
-                        echo "created $1"
-                      elif echo "$out" | grep -q "already exists"; then
-                        echo "$1 already exists, skipping"
+                      if PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d postgres <<EOF
+                    SELECT format('CREATE DATABASE %I', '$1')
+                    WHERE NOT EXISTS (
+                      SELECT 1 FROM pg_database WHERE datname = '$1'
+                    ) \gexec
+                    EOF
+                      then
+                        echo "$1 created or already exists"
                       else
-                        echo "ERROR creating $1: $out" >&2
+                        echo "ERROR creating $1" >&2
                         exit 1
                       fi
                     }
