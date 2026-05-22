@@ -32,7 +32,7 @@ pnpm install --frozen-lockfile
 make setup
 
 # 5. Start infrastructure (PostgreSQL, Redis, Neo4j, Keycloak)
-docker compose up -d
+docker compose -f docker-compose.dev.yml up -d
 
 # 6. Run database migrations
 make migrate
